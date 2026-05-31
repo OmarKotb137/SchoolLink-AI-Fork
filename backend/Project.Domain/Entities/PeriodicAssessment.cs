@@ -1,0 +1,16 @@
+﻿using SchoolLink.Domain.Enums;
+
+namespace SchoolLink.Domain.Entities
+{
+    public class PeriodicAssessment : BaseEntity
+    {
+        public int EnrollmentId { get; set; }
+        public PeriodicAssessmentType AssessmentType { get; set; }
+        public decimal Score { get; set; }
+        public decimal MaxScore { get; set; }
+        public DateTime? AssessmentDate { get; set; }
+
+        // Navigation Properties
+        public StudentEnrollment Enrollment { get; set; } = null!;
+    }
+}

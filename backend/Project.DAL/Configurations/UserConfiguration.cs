@@ -1,18 +1,37 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Project.Domain.Entities;
+using SchoolLink.Domain.Entities;
 
-namespace Project.DAL.Configurations;
-
-public class UserConfiguration : IEntityTypeConfiguration<User>
+namespace Project.DAL.Configurations
 {
-    public void Configure(EntityTypeBuilder<User> builder)
+    public class UserConfiguration : IEntityTypeConfiguration<User>
     {
-        builder.HasKey(x => x.Id);
-        builder.Property(x => x.Email).IsRequired().HasMaxLength(200);
-        builder.Property(x => x.FirstName).IsRequired().HasMaxLength(100);
-        builder.Property(x => x.LastName).IsRequired().HasMaxLength(100);
-        builder.HasIndex(x => x.Email).IsUnique();
-        builder.HasQueryFilter(x => !x.IsDeleted);
+        public void Configure(EntityTypeBuilder<User> builder)
+        {
+            builder.HasKey(x => x.Id);
+
+            builder.Property(x => x.FullName)
+                .IsRequired()
+                .HasMaxLength(150);
+
+            builder.Property(x => x.Email)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            builder.HasIndex(x => x.Email)
+                .IsUnique();
+
+            builder.Property(x => x.Phone)
+                .HasMaxLength(20);
+
+            builder.Property(x => x.PasswordHash)
+                .IsRequired()
+                .HasMaxLength(500);
+
+            builder.Property(x => x.ProfilePictureUrl)
+                .HasMaxLength(500);
+
+            builder.HasQueryFilter(x => !x.IsDeleted);
+        }
     }
 }

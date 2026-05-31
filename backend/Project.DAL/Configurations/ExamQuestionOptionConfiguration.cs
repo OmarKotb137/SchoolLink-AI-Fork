@@ -1,0 +1,25 @@
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using SchoolLink.Domain.Entities;
+
+namespace Project.DAL.Configurations
+{
+    public class ExamQuestionOptionConfiguration : IEntityTypeConfiguration<ExamQuestionOption>
+    {
+        public void Configure(EntityTypeBuilder<ExamQuestionOption> builder)
+        {
+            builder.HasKey(x => x.Id);
+
+            builder.Property(x => x.OptionText)
+                .IsRequired()
+                .HasMaxLength(500);
+
+            builder.HasOne(x => x.Question)
+                .WithMany(x => x.Options)
+                .HasForeignKey(x => x.QuestionId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasQueryFilter(x => !x.IsDeleted);
+        }
+    }
+}
