@@ -8,8 +8,8 @@ namespace SchoolLink.Domain.Entities
         public string Name { get; set; } = string.Empty;
         public PeriodType PeriodType { get; set; }
         public int OrderNum { get; set; }
-        public DateTime? StartDate { get; set; }
-        public DateTime? EndDate { get; set; }
+        public DateOnly? StartDate { get; set; }
+        public DateOnly? EndDate { get; set; }
         public string? MonthName { get; set; }
 
         // Navigation Properties

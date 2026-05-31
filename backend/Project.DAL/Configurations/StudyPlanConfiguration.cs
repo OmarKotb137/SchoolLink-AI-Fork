@@ -13,6 +13,12 @@ namespace Project.DAL.Configurations
             builder.Property(x => x.AIPromptSummary)
                 .HasMaxLength(500);
 
+            builder.Property(x => x.StartDate)
+                .HasColumnType("date");
+
+            builder.Property(x => x.EndDate)
+                .HasColumnType("date");
+
             builder.HasOne(x => x.Enrollment)
                 .WithMany()
                 .HasForeignKey(x => x.EnrollmentId)

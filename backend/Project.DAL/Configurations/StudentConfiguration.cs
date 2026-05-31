@@ -17,6 +17,9 @@ namespace Project.DAL.Configurations
             builder.Property(x => x.NationalId)
                 .HasMaxLength(20);
 
+            builder.Property(x => x.BirthDate)
+                .HasColumnType("date");
+
             builder.HasIndex(x => x.NationalId)
                 .IsUnique()
                 .HasFilter("[NationalId] IS NOT NULL");

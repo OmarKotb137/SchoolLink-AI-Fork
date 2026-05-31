@@ -1,4 +1,4 @@
-namespace Project.Domain.Exceptions;
+﻿namespace Project.Domain.Exceptions;
 
 public class ValidationException : Exception
 {

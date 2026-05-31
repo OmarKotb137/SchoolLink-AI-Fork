@@ -6,7 +6,7 @@ namespace SchoolLink.Domain.Entities
     {
         public int EnrollmentId { get; set; }
         public int ClassSubjectTeacherId { get; set; }
-        public DateTime LessonDate { get; set; }
+        public DateOnly LessonDate { get; set; }
         public int Rating { get; set; }
         public LessonUnderstanding Understanding { get; set; }
         public string? Comment { get; set; }

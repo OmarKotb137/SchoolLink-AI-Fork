@@ -2,8 +2,8 @@ using AutoMapper;
 using Project.BLL.DTOs;
 using Project.BLL.Interfaces;
 using Project.DAL.Interfaces;
-using Project.Domain.Entities;
 using Project.Domain.Exceptions;
+using SchoolLink.Domain.Entities;
 
 namespace Project.BLL.Services;
 
@@ -44,8 +44,7 @@ public class UserService : IUserService
     {
         var user = await _unitOfWork.Users.GetByIdAsync(id)
             ?? throw new NotFoundException(nameof(User), id);
-        user.FirstName = dto.FirstName;
-        user.LastName = dto.LastName;
+        user.FullName = $"{dto.FirstName} {dto.LastName}".Trim();
         user.UpdatedAt = DateTime.UtcNow;
         _unitOfWork.Users.Update(user);
         await _unitOfWork.SaveChangesAsync();

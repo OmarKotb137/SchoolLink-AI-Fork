@@ -17,6 +17,12 @@ namespace Project.DAL.Configurations
             builder.Property(x => x.MonthName)
                 .HasMaxLength(20);
 
+            builder.Property(x => x.StartDate)
+                .HasColumnType("date");
+
+            builder.Property(x => x.EndDate)
+                .HasColumnType("date");
+
             builder.HasOne(x => x.AcademicYear)
                 .WithMany()
                 .HasForeignKey(x => x.AcademicYearId)

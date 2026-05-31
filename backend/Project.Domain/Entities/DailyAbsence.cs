@@ -4,7 +4,7 @@
     {
         public int EnrollmentId { get; set; }
         public int? ClassSubjectTeacherId { get; set; }
-        public DateTime AbsenceDate { get; set; }
+        public DateOnly AbsenceDate { get; set; }
         public int? PeriodId { get; set; }
         public bool IsAbsent { get; set; } = true;
         public string? Reason { get; set; }

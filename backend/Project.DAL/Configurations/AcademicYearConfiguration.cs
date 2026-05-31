@@ -14,6 +14,12 @@ namespace Project.DAL.Configurations
                 .IsRequired()
                 .HasMaxLength(20);
 
+            builder.Property(x => x.StartDate)
+                .HasColumnType("date");
+
+            builder.Property(x => x.EndDate)
+                .HasColumnType("date");
+
             builder.HasIndex(x => x.Name)
                 .IsUnique();
 

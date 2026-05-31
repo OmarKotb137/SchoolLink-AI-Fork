@@ -5,8 +5,8 @@
         public int StudentId { get; set; }
         public int ClassId { get; set; }
         public int AcademicYearId { get; set; }
-        public DateTime EnrolledAt { get; set; }
-        public DateTime? LeftAt { get; set; }
+        public DateOnly EnrolledAt { get; set; }
+        public DateOnly? LeftAt { get; set; }
         public string? TransferReason { get; set; }
 
         // Navigation Properties

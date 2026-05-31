@@ -16,6 +16,9 @@ namespace Project.DAL.Configurations
             builder.Property(x => x.MaxScore)
                 .HasColumnType("decimal(5,2)");
 
+            builder.Property(x => x.AssessmentDate)
+                .HasColumnType("date");
+
             builder.HasIndex(x => new { x.EnrollmentId, x.AssessmentType })
                 .IsUnique();
 

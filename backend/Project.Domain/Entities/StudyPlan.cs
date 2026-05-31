@@ -5,8 +5,8 @@
         public int EnrollmentId { get; set; }
         public bool GeneratedByAI { get; set; } = false;
         public string? AIPromptSummary { get; set; }
-        public DateTime StartDate { get; set; }
-        public DateTime EndDate { get; set; }
+        public DateOnly StartDate { get; set; }
+        public DateOnly EndDate { get; set; }
         public bool IsActive { get; set; } = true;
 
         // Navigation Properties

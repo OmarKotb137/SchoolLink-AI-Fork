@@ -9,5 +9,6 @@
         // Navigation Properties
         public GradeLevel GradeLevel { get; set; } = null!;
         public AcademicYear AcademicYear { get; set; } = null!;
+        public ICollection<StudentEnrollment> Enrollments { get; set; } = new List<StudentEnrollment>();
     }
 }

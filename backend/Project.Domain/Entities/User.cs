@@ -1,4 +1,4 @@
-using SchoolLink.Domain.Enums;
+﻿using SchoolLink.Domain.Enums;
 
 namespace SchoolLink.Domain.Entities
 {

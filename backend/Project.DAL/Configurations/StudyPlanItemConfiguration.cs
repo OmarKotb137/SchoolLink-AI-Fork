@@ -16,6 +16,12 @@ namespace Project.DAL.Configurations
             builder.Property(x => x.Notes)
                 .HasMaxLength(500);
 
+            builder.Property(x => x.StartTime)
+                .HasColumnType("time");
+
+            builder.Property(x => x.EndTime)
+                .HasColumnType("time");
+
             builder.HasOne(x => x.StudyPlan)
                 .WithMany(x => x.Items)
                 .HasForeignKey(x => x.StudyPlanId)

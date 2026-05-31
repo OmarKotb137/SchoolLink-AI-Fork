@@ -13,6 +13,9 @@ namespace Project.DAL.Configurations
             builder.Property(x => x.Comment)
                 .HasMaxLength(1000);
 
+            builder.Property(x => x.LessonDate)
+                .HasColumnType("date");
+
             builder.HasOne(x => x.Enrollment)
                 .WithMany()
                 .HasForeignKey(x => x.EnrollmentId)

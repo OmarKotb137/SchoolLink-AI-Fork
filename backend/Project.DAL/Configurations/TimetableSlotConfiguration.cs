@@ -13,6 +13,12 @@ namespace Project.DAL.Configurations
             builder.HasIndex(x => new { x.TimetableId, x.DayOfWeek, x.PeriodNumber })
                 .IsUnique();
 
+            builder.Property(x => x.StartTime)
+                .HasColumnType("time");
+
+            builder.Property(x => x.EndTime)
+                .HasColumnType("time");
+
             builder.HasOne(x => x.Timetable)
                 .WithMany(x => x.Slots)
                 .HasForeignKey(x => x.TimetableId)

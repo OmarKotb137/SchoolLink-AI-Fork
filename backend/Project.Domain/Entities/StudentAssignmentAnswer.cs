@@ -5,6 +5,8 @@
         public int SubmissionId { get; set; }
         public int QuestionId { get; set; }
         public string? AnswerText { get; set; }
+        public int? SelectedOptionId { get; set; }
+        public bool? BooleanAnswer { get; set; }
         public bool? IsCorrect { get; set; }
         public decimal PointsEarned { get; set; }
         public string? AIFeedback { get; set; }
@@ -12,5 +14,6 @@
         // Navigation Properties
         public StudentAssignmentSubmission Submission { get; set; } = null!;
         public AssignmentQuestion Question { get; set; } = null!;
+        public AssignmentQuestionOption? SelectedOption { get; set; }
     }
 }

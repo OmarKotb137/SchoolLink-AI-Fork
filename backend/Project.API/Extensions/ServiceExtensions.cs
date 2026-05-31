@@ -7,6 +7,7 @@ using Project.BLL.Validators;
 using Project.BLL.DTOs;
 using Project.DAL.Context;
 using Project.DAL.Interfaces;
+using Project.DAL.Repositories;
 using Project.DAL.UnitOfWork;
 
 namespace Project.API.Extensions;
@@ -19,6 +20,7 @@ public static class ServiceExtensions
             options.UseSqlServer(config.GetConnectionString("DefaultConnection")));
 
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+        RegisterRepositories(services);
         services.AddScoped<IUserService, UserService>();
 
         services.AddAutoMapper(typeof(UserMappingProfile).Assembly);
@@ -26,5 +28,24 @@ public static class ServiceExtensions
         services.AddValidatorsFromAssemblyContaining<CreateUserValidator>();
 
         return services;
+    }
+
+    private static void RegisterRepositories(IServiceCollection services)
+    {
+        var dalAssembly = typeof(Repository<>).Assembly;
+        var repositoryTypes = dalAssembly.GetTypes()
+            .Where(type =>
+                type is { IsClass: true, IsAbstract: false } &&
+                type.Name.EndsWith("Repository", StringComparison.Ordinal) &&
+                !type.IsGenericTypeDefinition);
+
+        foreach (var repositoryType in repositoryTypes)
+        {
+            var repositoryInterface = repositoryType.GetInterfaces()
+                .FirstOrDefault(i => i.Name == $"I{repositoryType.Name}");
+
+            if (repositoryInterface is not null)
+                services.AddScoped(repositoryInterface, repositoryType);
+        }
     }
 }

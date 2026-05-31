@@ -1,4 +1,4 @@
-namespace SchoolLink.Domain.Enums
+﻿namespace SchoolLink.Domain.Enums
 {
     public enum UserRole
     {

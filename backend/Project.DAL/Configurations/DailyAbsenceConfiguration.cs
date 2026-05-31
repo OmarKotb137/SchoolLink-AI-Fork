@@ -13,6 +13,9 @@ namespace Project.DAL.Configurations
             builder.Property(x => x.Reason)
                 .HasMaxLength(300);
 
+            builder.Property(x => x.AbsenceDate)
+                .HasColumnType("date");
+
             builder.HasIndex(x => new { x.EnrollmentId, x.ClassSubjectTeacherId, x.AbsenceDate })
                 .IsUnique();
 

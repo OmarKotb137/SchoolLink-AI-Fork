@@ -8,7 +8,7 @@ namespace SchoolLink.Domain.Entities
         public PeriodicAssessmentType AssessmentType { get; set; }
         public decimal Score { get; set; }
         public decimal MaxScore { get; set; }
-        public DateTime? AssessmentDate { get; set; }
+        public DateOnly? AssessmentDate { get; set; }
 
         // Navigation Properties
         public StudentEnrollment Enrollment { get; set; } = null!;

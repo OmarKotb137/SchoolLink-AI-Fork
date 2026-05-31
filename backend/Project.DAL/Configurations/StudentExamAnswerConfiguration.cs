@@ -19,6 +19,9 @@ namespace Project.DAL.Configurations
             builder.Property(x => x.AIFeedback)
                 .HasMaxLength(2000);
 
+            builder.HasIndex(x => new { x.AttemptId, x.QuestionId })
+                .IsUnique();
+
             builder.HasOne(x => x.Attempt)
                 .WithMany(x => x.Answers)
                 .HasForeignKey(x => x.AttemptId)
@@ -27,6 +30,11 @@ namespace Project.DAL.Configurations
             builder.HasOne(x => x.Question)
                 .WithMany()
                 .HasForeignKey(x => x.QuestionId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne(x => x.SelectedOption)
+                .WithMany()
+                .HasForeignKey(x => x.SelectedOptionId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             builder.HasQueryFilter(x => !x.IsDeleted);

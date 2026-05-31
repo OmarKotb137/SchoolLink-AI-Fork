@@ -7,7 +7,7 @@ namespace SchoolLink.Domain.Entities
         public string FullName { get; set; } = string.Empty;
         public string? NationalId { get; set; }
         public Gender? Gender { get; set; }
-        public DateTime? BirthDate { get; set; }
+        public DateOnly? BirthDate { get; set; }
         public int? UserId { get; set; }
         public bool IsActive { get; set; } = true;
 

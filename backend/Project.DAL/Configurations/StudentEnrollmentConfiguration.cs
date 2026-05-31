@@ -13,13 +13,19 @@ namespace Project.DAL.Configurations
             builder.Property(x => x.TransferReason)
                 .HasMaxLength(500);
 
+            builder.Property(x => x.EnrolledAt)
+                .HasColumnType("date");
+
+            builder.Property(x => x.LeftAt)
+                .HasColumnType("date");
+
             builder.HasOne(x => x.Student)
                 .WithMany(x => x.Enrollments)
                 .HasForeignKey(x => x.StudentId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             builder.HasOne(x => x.Class)
-                .WithMany()
+                .WithMany(x => x.Enrollments)
                 .HasForeignKey(x => x.ClassId)
                 .OnDelete(DeleteBehavior.Restrict);
 
