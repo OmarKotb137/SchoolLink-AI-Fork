@@ -1,3 +1,4 @@
+using Common.Results;
 using Microsoft.AspNetCore.Mvc;
 using Project.BLL.DTOs;
 using Project.BLL.Interfaces;
@@ -18,35 +19,45 @@ public class UsersController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
-        var users = await _userService.GetAllAsync();
-        return Ok(users);
+        var result = await _userService.GetAllAsync();
+        if (!result.IsSuccess)
+            return BadRequest(result);
+        return Ok(result);
     }
 
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(int id)
     {
-        var user = await _userService.GetByIdAsync(id);
-        return Ok(user);
+        var result = await _userService.GetByIdAsync(id);
+        if (!result.IsSuccess)
+            return NotFound(result);
+        return Ok(result);
     }
 
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateUserDto dto)
     {
-        var user = await _userService.CreateAsync(dto);
-        return CreatedAtAction(nameof(GetById), new { id = user.Id }, user);
+        var result = await _userService.CreateAsync(dto);
+        if (!result.IsSuccess)
+            return BadRequest(result);
+        return CreatedAtAction(nameof(GetById), new { id = result.Data.Id }, result);
     }
 
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateUserDto dto)
     {
-        var user = await _userService.UpdateAsync(id, dto);
-        return Ok(user);
+        var result = await _userService.UpdateAsync(id, dto);
+        if (!result.IsSuccess)
+            return NotFound(result);
+        return Ok(result);
     }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(int id)
     {
-        await _userService.DeleteAsync(id);
+        var result = await _userService.DeleteAsync(id);
+        if (!result.IsSuccess)
+            return NotFound(result);
         return NoContent();
     }
 }
