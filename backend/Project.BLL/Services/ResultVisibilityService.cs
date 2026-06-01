@@ -53,6 +53,13 @@ public class ResultVisibilityService : IResultVisibilityService
         return OperationResult<ResultVisibilityDto>.Success(dto, "Visibility setting saved successfully");
     }
 
+    public async Task<OperationResult<IEnumerable<ResultVisibilityDto>>> GetSettingsByAcademicYearAsync(int academicYearId)
+    {
+        var settings = await _unitOfWork.ResultVisibilitySettings.GetByAcademicYearIdAsync(academicYearId);
+        var dtos = _mapper.Map<IEnumerable<ResultVisibilityDto>>(settings);
+        return OperationResult<IEnumerable<ResultVisibilityDto>>.Success(dtos);
+    }
+
     public async Task<OperationResult<bool>> IsResultsVisibleAsync(int academicYearId, AcademicTerm term)
     {
         var isVisible = await _unitOfWork.ResultVisibilitySettings.IsVisibleAsync(academicYearId, term);

@@ -5,6 +5,7 @@ using Project.BLL.DTOs.Users;
 using Project.BLL.Interfaces;
 using Project.DAL.Interfaces;
 using SchoolLink.Domain.Entities;
+using SchoolLink.Domain.Enums;
 
 namespace Project.BLL.Services;
 
@@ -67,6 +68,34 @@ public class UserService : IUserService
             PageSize = filter.PageSize
         };
         return OperationResult<PagedResult<UserDto>>.Success(paged, "Users retrieved successfully");
+    }
+
+    public async Task<OperationResult<PagedResult<UserDto>>> GetUsersByRoleAsync(UserRole role, PaginationFilter filter)
+    {
+        var users = await _unitOfWork.Users.GetByRoleAsync(role);
+        var userDtos = _mapper.Map<IEnumerable<UserDto>>(users);
+        var paged = new PagedResult<UserDto>
+        {
+            Items = userDtos,
+            TotalCount = userDtos.Count(),
+            Page = filter.Page,
+            PageSize = filter.PageSize
+        };
+        return OperationResult<PagedResult<UserDto>>.Success(paged, $"Users with role {role} retrieved successfully");
+    }
+
+    public async Task<OperationResult<PagedResult<UserDto>>> SearchUsersAsync(string searchTerm, PaginationFilter filter)
+    {
+        var users = await _unitOfWork.Users.SearchByNameAsync(searchTerm);
+        var userDtos = _mapper.Map<IEnumerable<UserDto>>(users);
+        var paged = new PagedResult<UserDto>
+        {
+            Items = userDtos,
+            TotalCount = userDtos.Count(),
+            Page = filter.Page,
+            PageSize = filter.PageSize
+        };
+        return OperationResult<PagedResult<UserDto>>.Success(paged, "Search completed successfully");
     }
 
     public async Task<OperationResult> SetUserActiveStatusAsync(int userId, bool isActive)

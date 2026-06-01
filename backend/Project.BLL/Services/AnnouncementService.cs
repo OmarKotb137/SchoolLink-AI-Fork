@@ -41,6 +41,66 @@ public class AnnouncementService : IAnnouncementService
         return OperationResult<AnnouncementDto>.Success(dto, "Announcement created successfully");
     }
 
+    public async Task<OperationResult<AnnouncementDto>> GetAnnouncementByIdAsync(int id)
+    {
+        var announcement = await _unitOfWork.Announcements.GetByIdAsync(id);
+        if (announcement == null || announcement.IsDeleted)
+            return OperationResult<AnnouncementDto>.Failure($"Announcement with id {id} not found");
+
+        var dto = _mapper.Map<AnnouncementDto>(announcement);
+        return OperationResult<AnnouncementDto>.Success(dto, "Announcement retrieved successfully");
+    }
+
+    public async Task<OperationResult<AnnouncementDto>> UpdateAnnouncementAsync(int id, CreateAnnouncementRequest request)
+    {
+        var announcement = await _unitOfWork.Announcements.GetByIdAsync(id);
+        if (announcement == null || announcement.IsDeleted)
+            return OperationResult<AnnouncementDto>.Failure($"Announcement with id {id} not found");
+
+        var caller = await _unitOfWork.Users.GetByIdAsync(request.AuthorId);
+        if (caller == null || caller.IsDeleted)
+            return OperationResult<AnnouncementDto>.Failure("Caller not found");
+
+        if (caller.Role != SchoolLink.Domain.Enums.UserRole.Admin &&
+            caller.Role != SchoolLink.Domain.Enums.UserRole.Teacher)
+            return OperationResult<AnnouncementDto>.Failure("Only Admins and Teachers can update announcements");
+
+        if (request.ExpiresAt.HasValue && request.ExpiresAt <= DateTime.UtcNow)
+            return OperationResult<AnnouncementDto>.Failure("Expiry date must be in the future");
+
+        announcement.Title = request.Title;
+        announcement.Body = request.Body;
+        announcement.TargetRole = request.TargetRole;
+        announcement.TargetClassId = request.TargetClassId;
+        announcement.ExpiresAt = request.ExpiresAt;
+        announcement.UpdatedAt = DateTime.UtcNow;
+        _unitOfWork.Announcements.Update(announcement);
+        await _unitOfWork.SaveChangesAsync();
+
+        var dto = _mapper.Map<AnnouncementDto>(announcement);
+        dto.AuthorName = caller.FullName;
+
+        return OperationResult<AnnouncementDto>.Success(dto, "Announcement updated successfully");
+    }
+
+    public async Task<OperationResult> DeleteAnnouncementAsync(int id, int callerUserId)
+    {
+        var announcement = await _unitOfWork.Announcements.GetByIdAsync(id);
+        if (announcement == null || announcement.IsDeleted)
+            return OperationResult.Failure($"Announcement with id {id} not found");
+
+        var caller = await _unitOfWork.Users.GetByIdAsync(callerUserId);
+        if (caller == null || caller.IsDeleted)
+            return OperationResult.Failure("Caller not found");
+
+        if (caller.Role != SchoolLink.Domain.Enums.UserRole.Admin && announcement.AuthorId != callerUserId)
+            return OperationResult.Failure("Only the author or an Admin can delete this announcement");
+
+        _unitOfWork.Announcements.SoftDelete(announcement);
+        await _unitOfWork.SaveChangesAsync();
+        return OperationResult.Success("Announcement deleted successfully");
+    }
+
     public async Task<OperationResult<IEnumerable<AnnouncementDto>>> GetActiveAnnouncementsAsync(GetAnnouncementsFilter filter)
     {
         var caller = await _unitOfWork.Users.GetByIdAsync(filter.CallerUserId);

@@ -49,6 +49,16 @@ public class NotificationService : INotificationService
         return OperationResult<IEnumerable<NotificationDto>>.Success(dtos);
     }
 
+    public async Task<OperationResult<int>> GetUnreadCountAsync(int userId)
+    {
+        var user = await _unitOfWork.Users.GetByIdAsync(userId);
+        if (user == null)
+            return OperationResult<int>.Failure("User not found");
+
+        var count = await _unitOfWork.Notifications.GetUnreadCountAsync(userId);
+        return OperationResult<int>.Success(count);
+    }
+
     public async Task<OperationResult> MarkNotificationAsReadAsync(int notificationId, int userId)
     {
         var notification = await _unitOfWork.Notifications.GetByIdAsync(notificationId);
@@ -67,5 +77,16 @@ public class NotificationService : INotificationService
 
         await _unitOfWork.Notifications.MarkAllAsReadAsync(userId);
         return OperationResult.Success("All notifications marked as read");
+    }
+
+    public async Task<OperationResult> DeleteNotificationAsync(int notificationId, int userId)
+    {
+        var notification = await _unitOfWork.Notifications.GetByIdAsync(notificationId);
+        if (notification == null || notification.UserId != userId)
+            return OperationResult.Failure("Notification not found or does not belong to this user");
+
+        _unitOfWork.Notifications.SoftDelete(notification);
+        await _unitOfWork.SaveChangesAsync();
+        return OperationResult.Success("Notification deleted successfully");
     }
 }

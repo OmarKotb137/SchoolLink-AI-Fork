@@ -77,6 +77,9 @@ public class ConversationService : IConversationService
         if (creator == null || creator.IsDeleted || !creator.IsActive)
             return OperationResult<ConversationDto>.Failure("Creator not found or inactive");
 
+        if (creator.Role == UserRole.Student || creator.Role == UserRole.Parent)
+            return OperationResult<ConversationDto>.Failure("Only Admins and Teachers can create group conversations");
+
         if (request.ParticipantUserIds.Count < 2)
             return OperationResult<ConversationDto>.Failure("At least 2 participants are required");
 
@@ -112,6 +115,163 @@ public class ConversationService : IConversationService
 
         var dto = await MapConversationWithParticipantsAsync(conversation);
         return OperationResult<ConversationDto>.Success(dto, "Group conversation created successfully");
+    }
+
+    public async Task<OperationResult<ConversationDto>> CreateSubjectGroupConversationAsync(CreateSubjectGroupConversationRequest request)
+    {
+        var creator = await _unitOfWork.Users.GetByIdAsync(request.CreatorUserId);
+        if (creator == null || creator.IsDeleted || !creator.IsActive)
+            return OperationResult<ConversationDto>.Failure("Creator not found or inactive");
+
+        if (creator.Role != UserRole.Admin && creator.Role != UserRole.Teacher)
+            return OperationResult<ConversationDto>.Failure("Only Admins and Teachers can create subject group conversations");
+
+        var subject = await _unitOfWork.Subjects.GetByIdAsync(request.SubjectId);
+        if (subject == null || subject.IsDeleted)
+            return OperationResult<ConversationDto>.Failure("Subject not found");
+
+        var schoolClass = await _unitOfWork.Classes.GetByIdAsync(request.ClassId);
+        if (schoolClass == null || schoolClass.IsDeleted)
+            return OperationResult<ConversationDto>.Failure("Class not found");
+
+        var cst = await _unitOfWork.ClassSubjectTeachers.GetByClassSubjectAndYearAsync(
+            request.ClassId, request.SubjectId, request.AcademicYearId);
+
+        if (cst == null)
+            return OperationResult<ConversationDto>.Failure("No teacher assigned to this subject in this class");
+
+        var enrollments = await _unitOfWork.StudentEnrollments.GetActiveByClassAsync(
+            request.ClassId, request.AcademicYearId);
+
+        var studentUserIds = enrollments
+            .Select(e => e.Student.UserId)
+            .Where(id => id.HasValue)
+            .Cast<int>()
+            .ToList();
+
+        var allUserIds = new List<int> { cst.TeacherId };
+        allUserIds.AddRange(studentUserIds);
+
+        if (!allUserIds.Contains(request.CreatorUserId))
+            allUserIds.Add(request.CreatorUserId);
+
+        allUserIds = allUserIds.Distinct().ToList();
+
+        var title = request.Title ?? $"{subject.Name} - {schoolClass.Name}";
+
+        var conversation = new Conversation
+        {
+            Title = title,
+            Type = ConversationType.Group,
+            LastMessageAt = DateTime.UtcNow
+        };
+
+        await _unitOfWork.Conversations.AddAsync(conversation);
+        await _unitOfWork.SaveChangesAsync();
+
+        var participants = allUserIds.Select(userId => new ConversationParticipant
+        {
+            ConversationId = conversation.Id,
+            UserId = userId,
+            JoinedAt = DateTime.UtcNow
+        }).ToList();
+
+        await _unitOfWork.ConversationParticipants.AddRangeAsync(participants);
+        await _unitOfWork.SaveChangesAsync();
+
+        var dto = await MapConversationWithParticipantsAsync(conversation);
+        return OperationResult<ConversationDto>.Success(dto, "Subject group conversation created successfully");
+    }
+
+    public async Task<OperationResult<IEnumerable<ConversationDto>>> GetUserConversationsAsync(int userId)
+    {
+        var user = await _unitOfWork.Users.GetByIdAsync(userId);
+        if (user == null || user.IsDeleted)
+            return OperationResult<IEnumerable<ConversationDto>>.Failure("User not found");
+
+        var conversations = await _unitOfWork.Conversations.GetWithLastMessageAsync(userId);
+
+        var dtos = new List<ConversationDto>();
+        foreach (var conversation in conversations)
+        {
+            var dto = await MapConversationWithParticipantsAsync(conversation);
+            dtos.Add(dto);
+        }
+
+        return OperationResult<IEnumerable<ConversationDto>>.Success(dtos.OrderByDescending(c => c.LastMessageAt));
+    }
+
+    public async Task<OperationResult<int>> GetUnreadMessagesCountAsync(int userId)
+    {
+        var participants = await _unitOfWork.ConversationParticipants.GetByUserIdAsync(userId);
+        var totalUnread = 0;
+
+        foreach (var participant in participants)
+        {
+            var unread = await _unitOfWork.Messages.GetUnreadCountAsync(participant.ConversationId, userId);
+            totalUnread += unread;
+        }
+
+        return OperationResult<int>.Success(totalUnread);
+    }
+
+    public async Task<OperationResult> AddParticipantAsync(int conversationId, int userId, int callerUserId)
+    {
+        var conversation = await _unitOfWork.Conversations.GetByIdAsync(conversationId);
+        if (conversation == null || conversation.IsDeleted)
+            return OperationResult.Failure("Conversation not found");
+
+        if (conversation.Type != ConversationType.Group)
+            return OperationResult.Failure("Can only add participants to group conversations");
+
+        var isCallerParticipant = await _unitOfWork.ConversationParticipants.IsParticipantAsync(conversationId, callerUserId);
+        if (!isCallerParticipant)
+            return OperationResult.Failure("Caller is not a participant in this conversation");
+
+        var user = await _unitOfWork.Users.GetByIdAsync(userId);
+        if (user == null || user.IsDeleted || !user.IsActive)
+            return OperationResult.Failure("User not found or inactive");
+
+        var alreadyParticipant = await _unitOfWork.ConversationParticipants.IsParticipantAsync(conversationId, userId);
+        if (alreadyParticipant)
+            return OperationResult.Failure("User is already a participant");
+
+        var participant = new ConversationParticipant
+        {
+            ConversationId = conversationId,
+            UserId = userId,
+            JoinedAt = DateTime.UtcNow
+        };
+
+        await _unitOfWork.ConversationParticipants.AddAsync(participant);
+        await _unitOfWork.SaveChangesAsync();
+
+        return OperationResult.Success("Participant added successfully");
+    }
+
+    public async Task<OperationResult> RemoveParticipantAsync(int conversationId, int userId, int callerUserId)
+    {
+        var conversation = await _unitOfWork.Conversations.GetByIdAsync(conversationId);
+        if (conversation == null || conversation.IsDeleted)
+            return OperationResult.Failure("Conversation not found");
+
+        if (conversation.Type != ConversationType.Group)
+            return OperationResult.Failure("Can only remove participants from group conversations");
+
+        var isCallerParticipant = await _unitOfWork.ConversationParticipants.IsParticipantAsync(conversationId, callerUserId);
+        if (!isCallerParticipant)
+            return OperationResult.Failure("Caller is not a participant in this conversation");
+
+        var participant = await _unitOfWork.ConversationParticipants
+            .GetByConversationAndUserAsync(conversationId, userId);
+
+        if (participant == null)
+            return OperationResult.Failure("User is not a participant in this conversation");
+
+        _unitOfWork.ConversationParticipants.SoftDelete(participant);
+        await _unitOfWork.SaveChangesAsync();
+
+        return OperationResult.Success("Participant removed successfully");
     }
 
     public async Task<OperationResult<MessageDto>> SendMessageAsync(SendMessageRequest request)
