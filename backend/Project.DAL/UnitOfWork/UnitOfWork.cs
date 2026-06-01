@@ -65,6 +65,7 @@ public class UnitOfWork : IUnitOfWork
 
         IResultVisibilitySettingRepository     resultVisibilitySettings,
         IAIGenerationLogRepository             aiGenerationLogs,
+        ISchoolProfileRepository               schoolProfiles,
 
         ITimetableRepository                   timetables,
         ITimetableSlotRepository               timetableSlots,
@@ -124,6 +125,7 @@ public class UnitOfWork : IUnitOfWork
         // Section G
         ResultVisibilitySettings     = resultVisibilitySettings;
         AIGenerationLogs             = aiGenerationLogs;
+        SchoolProfiles               = schoolProfiles;
 
         // Section H
         Timetables                   = timetables;
@@ -184,6 +186,7 @@ public class UnitOfWork : IUnitOfWork
     // Section G: Settings
     public IResultVisibilitySettingRepository     ResultVisibilitySettings     { get; }
     public IAIGenerationLogRepository             AIGenerationLogs             { get; }
+    public ISchoolProfileRepository               SchoolProfiles               { get; }
 
     // Section H: Timetable
     public ITimetableRepository                   Timetables                   { get; }

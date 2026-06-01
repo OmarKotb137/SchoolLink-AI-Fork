@@ -50,6 +50,7 @@ public class AppDbContext : DbContext
     
     public DbSet<ResultVisibilitySetting> ResultVisibilitySettings => Set<ResultVisibilitySetting>();
     public DbSet<AIGenerationLog> AIGenerationLogs => Set<AIGenerationLog>();
+    public DbSet<SchoolProfile> SchoolProfiles => Set<SchoolProfile>();
     
     public DbSet<Timetable> Timetables => Set<Timetable>();
     public DbSet<TimetableSlot> TimetableSlots => Set<TimetableSlot>();
