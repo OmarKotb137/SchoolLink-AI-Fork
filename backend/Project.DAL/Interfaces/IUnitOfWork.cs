@@ -61,6 +61,7 @@ public interface IUnitOfWork : IDisposable, IAsyncDisposable
     // Section G: Settings
     IResultVisibilitySettingRepository     ResultVisibilitySettings     { get; }
     IAIGenerationLogRepository             AIGenerationLogs             { get; }
+    ISchoolProfileRepository               SchoolProfiles               { get; }
 
     // Section H: Timetable
     ITimetableRepository                   Timetables                   { get; }

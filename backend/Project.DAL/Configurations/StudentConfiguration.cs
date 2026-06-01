@@ -15,7 +15,11 @@ namespace Project.DAL.Configurations
                 .HasMaxLength(150);
 
             builder.Property(x => x.NationalId)
-                .HasMaxLength(20);
+                .HasMaxLength(14);
+
+            builder.ToTable(t => t.HasCheckConstraint(
+                "CK_Students_NationalId_14Digits",
+                "[NationalId] IS NULL OR (LEN([NationalId]) = 14 AND [NationalId] NOT LIKE '%[^0-9]%')"));
 
             builder.Property(x => x.BirthDate)
                 .HasColumnType("date");

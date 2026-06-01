@@ -8,7 +8,9 @@ public interface IRepository<T> where T : class
 {
     Task<T?>                   GetByIdAsync(int id, CancellationToken ct = default);
     Task<IReadOnlyList<T>>     GetAllAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<T>>     GetPagedAsync(int pageNumber, int pageSize, CancellationToken ct = default);
     Task<IReadOnlyList<T>>     FindAsync(Expression<Func<T, bool>> predicate, CancellationToken ct = default);
+    Task<IReadOnlyList<T>>     FindPagedAsync(Expression<Func<T, bool>> predicate, int pageNumber, int pageSize, CancellationToken ct = default);
     Task<T?>                   FirstOrDefaultAsync(Expression<Func<T, bool>> predicate, CancellationToken ct = default);
     Task<bool>                 AnyAsync(Expression<Func<T, bool>> predicate, CancellationToken ct = default);
     Task<int>                  CountAsync(Expression<Func<T, bool>>? predicate = null, CancellationToken ct = default);

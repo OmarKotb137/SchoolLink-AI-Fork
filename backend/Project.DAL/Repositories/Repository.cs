@@ -25,10 +25,23 @@ public class Repository<T> : IRepository<T> where T : class
     public virtual async Task<IReadOnlyList<T>> GetAllAsync(CancellationToken ct = default)
         => await _dbSet.ToListAsync(ct);
 
+    public virtual async Task<IReadOnlyList<T>> GetPagedAsync(
+        int pageNumber,
+        int pageSize,
+        CancellationToken ct = default)
+        => await ApplyPaging(_dbSet, pageNumber, pageSize).ToListAsync(ct);
+
     public virtual async Task<IReadOnlyList<T>> FindAsync(
         Expression<Func<T, bool>> predicate,
         CancellationToken ct = default)
         => await _dbSet.Where(predicate).ToListAsync(ct);
+
+    public virtual async Task<IReadOnlyList<T>> FindPagedAsync(
+        Expression<Func<T, bool>> predicate,
+        int pageNumber,
+        int pageSize,
+        CancellationToken ct = default)
+        => await ApplyPaging(_dbSet.Where(predicate), pageNumber, pageSize).ToListAsync(ct);
 
     public virtual async Task<T?> FirstOrDefaultAsync(
         Expression<Func<T, bool>> predicate,
@@ -85,6 +98,16 @@ public class Repository<T> : IRepository<T> where T : class
     {
         foreach (var entity in entities)
             SoftDelete(entity);
+    }
+
+    private static IQueryable<T> ApplyPaging(IQueryable<T> query, int pageNumber, int pageSize)
+    {
+        pageNumber = Math.Max(pageNumber, 1);
+        pageSize = Math.Max(pageSize, 1);
+
+        return query
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize);
     }
 }
 
