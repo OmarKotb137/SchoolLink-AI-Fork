@@ -23,6 +23,7 @@ public class UnitOfWork : IUnitOfWork
         AppDbContext context,
 
         IUserRepository                        users,
+        IRefreshTokenRepository                refreshTokens,
         IAcademicYearRepository                academicYears,
         IGradeLevelRepository                  gradeLevels,
         ISubjectRepository                     subjects,
@@ -75,6 +76,7 @@ public class UnitOfWork : IUnitOfWork
 
         // Section A
         Users                        = users;
+        RefreshTokens                = refreshTokens;
         AcademicYears                = academicYears;
         GradeLevels                  = gradeLevels;
         Subjects                     = subjects;
@@ -134,6 +136,7 @@ public class UnitOfWork : IUnitOfWork
 
     // Section A: Core
     public IUserRepository                        Users                        { get; }
+    public IRefreshTokenRepository                RefreshTokens                { get; }
     public IAcademicYearRepository                AcademicYears                { get; }
     public IGradeLevelRepository                  GradeLevels                  { get; }
     public ISubjectRepository                     Subjects                     { get; }

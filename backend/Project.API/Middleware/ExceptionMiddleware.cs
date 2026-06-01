@@ -1,18 +1,17 @@
 using System.Net;
 using System.Text.Json;
 using Project.Domain.Exceptions;
+using Serilog;
 
 namespace Project.API.Middleware;
 
 public class ExceptionMiddleware
 {
     private readonly RequestDelegate _next;
-    private readonly ILogger<ExceptionMiddleware> _logger;
 
-    public ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddleware> logger)
+    public ExceptionMiddleware(RequestDelegate next)
     {
         _next = next;
-        _logger = logger;
     }
 
     public async Task InvokeAsync(HttpContext context)
@@ -23,15 +22,23 @@ public class ExceptionMiddleware
         }
         catch (NotFoundException ex)
         {
+            Log.Warning("NotFoundException: {Message}", ex.Message);
             await HandleExceptionAsync(context, ex, HttpStatusCode.NotFound);
         }
         catch (ValidationException ex)
         {
+            Log.Warning("ValidationException: {Message}", ex.Message);
             await HandleExceptionAsync(context, ex, HttpStatusCode.BadRequest);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Unexpected error");
+            Log.Error(ex, "Unhandled exception - Path: {Path} | User: {User} | Method: {Method}",
+                context.Request.Path,
+                context.User.Identity?.Name ?? "Anonymous",
+                context.Request.Method);
+
+            if (context.Response.HasStarted) return;
+
             await HandleExceptionAsync(context, ex, HttpStatusCode.InternalServerError);
         }
     }

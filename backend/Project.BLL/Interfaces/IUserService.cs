@@ -1,13 +1,15 @@
 using Common.Results;
-using Project.BLL.DTOs;
+using Project.BLL.DTOs.Common;
+using Project.BLL.DTOs.Users;
 
 namespace Project.BLL.Interfaces;
 
 public interface IUserService
 {
-    Task<OperationResult<IEnumerable<UserDto>>> GetAllAsync();
-    Task<OperationResult<UserDto>> GetByIdAsync(int id);
-    Task<OperationResult<UserDto>> CreateAsync(CreateUserDto dto);
-    Task<OperationResult<UserDto>> UpdateAsync(int id, UpdateUserDto dto);
-    Task<OperationResult> DeleteAsync(int id);
+    Task<OperationResult<UserDto>> CreateUserAsync(CreateUserRequest request);
+    Task<OperationResult<UserDto>> UpdateUserAsync(UpdateUserRequest request);
+    Task<OperationResult<UserDto>> GetUserByIdAsync(int id);
+    Task<OperationResult<PagedResult<UserDto>>> GetAllUsersAsync(GetUsersFilter filter);
+    Task<OperationResult> SetUserActiveStatusAsync(int userId, bool isActive);
+    Task<OperationResult> DeleteUserAsync(int id);
 }
