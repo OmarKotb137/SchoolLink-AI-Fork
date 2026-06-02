@@ -1,9 +1,12 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Project.BLL.Interfaces;
 
 namespace Project.API.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("api/[controller]")]
 public class ProfileController : ControllerBase
 {
@@ -17,6 +20,12 @@ public class ProfileController : ControllerBase
     [HttpPost("upload-photo/{userId}")]
     public async Task<IActionResult> UploadPhoto(int userId, IFormFile file)
     {
+        var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var currentUserRole = User.FindFirst(ClaimTypes.Role)!.Value;
+
+        if (currentUserId != userId && currentUserRole != "Admin")
+            return Forbid();
+
         if (file == null || file.Length == 0)
             return BadRequest(new { error = "No file provided" });
 
