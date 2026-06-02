@@ -1,3 +1,4 @@
+using Project.Domain.Entities;
 using SchoolLink.Domain.Enums;
 
 namespace SchoolLink.Domain.Entities
