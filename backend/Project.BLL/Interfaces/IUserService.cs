@@ -1,13 +1,23 @@
 using Common.Results;
-using Project.BLL.DTOs;
+using Project.BLL.DTOs.Common;
+using Project.BLL.DTOs.Users;
+using SchoolLink.Domain.Enums;
 
 namespace Project.BLL.Interfaces;
 
 public interface IUserService
 {
-    Task<OperationResult<IEnumerable<UserDto>>> GetAllAsync();
-    Task<OperationResult<UserDto>> GetByIdAsync(int id);
-    Task<OperationResult<UserDto>> CreateAsync(CreateUserDto dto);
-    Task<OperationResult<UserDto>> UpdateAsync(int id, UpdateUserDto dto);
-    Task<OperationResult> DeleteAsync(int id);
+    Task<OperationResult<UserDto>> CreateUserAsync(CreateUserRequest request);
+    Task<OperationResult<UserDto>> UpdateUserAsync(UpdateUserRequest request);
+    Task<OperationResult<UserDto>> GetUserByIdAsync(int id);
+    Task<OperationResult<PagedResult<UserDto>>> GetAllUsersAsync(GetUsersFilter filter);
+    Task<OperationResult<PagedResult<UserDto>>> GetUsersByRoleAsync(UserRole role, PaginationFilter filter);
+    Task<OperationResult<PagedResult<UserDto>>> SearchUsersAsync(string searchTerm, PaginationFilter filter);
+    Task<OperationResult<UserStatsDto>> GetUserStatsAsync();
+    Task<OperationResult> SetUserActiveStatusAsync(int userId, bool isActive);
+    Task<OperationResult> BulkDeleteUsersAsync(List<int> userIds);
+    Task<OperationResult> DeleteUserAsync(int id);
+    Task<OperationResult<UserDto>> UpdateProfileAsync(int userId, UpdateProfileRequest request);
+    Task<OperationResult> UpdateProfilePhotoAsync(int userId, string photoUrl);
+    Task<OperationResult> DeleteProfilePhotoAsync(int userId);
 }

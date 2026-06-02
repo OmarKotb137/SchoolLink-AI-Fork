@@ -4,7 +4,6 @@ using Project.BLL.Interfaces;
 using Project.BLL.Mapping;
 using Project.BLL.Services;
 using Project.BLL.Validators;
-using Project.BLL.DTOs;
 using Project.DAL.Context;
 using Project.DAL.Interfaces;
 using Project.DAL.Repositories;
@@ -21,13 +20,16 @@ public static class ServiceExtensions
 
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         RegisterRepositories(services);
-        services.AddScoped<IUserService,                UserService>();
-        services.AddScoped<IAcademicYearService,        AcademicYearService>();
-        services.AddScoped<IGradeLevelService,          GradeLevelService>();
-        services.AddScoped<ISubjectService,             SubjectService>();
-        services.AddScoped<IClassService,               ClassService>();
-        services.AddScoped<IClassSubjectTeacherService, ClassSubjectTeacherService>();
-        services.AddScoped<ITimetableService,           TimetableService>();
+
+        services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IUserService, UserService>();
+        services.AddScoped<INotificationService, NotificationService>();
+        services.AddScoped<IAnnouncementService, AnnouncementService>();
+        services.AddScoped<IConversationService, ConversationService>();
+        services.AddScoped<IResultVisibilityService, ResultVisibilityService>();
+        services.AddScoped<ILibraryService, LibraryService>();
+        services.AddScoped<ISchoolProfileService, SchoolProfileService>();
+        services.AddHttpClient<IDropboxService, DropboxService>();
 
         services.AddAutoMapper(typeof(UserMappingProfile).Assembly);
 
