@@ -21,7 +21,13 @@ public static class ServiceExtensions
 
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         RegisterRepositories(services);
-        services.AddScoped<IUserService, UserService>();
+        services.AddScoped<IUserService,                UserService>();
+        services.AddScoped<IAcademicYearService,        AcademicYearService>();
+        services.AddScoped<IGradeLevelService,          GradeLevelService>();
+        services.AddScoped<ISubjectService,             SubjectService>();
+        services.AddScoped<IClassService,               ClassService>();
+        services.AddScoped<IClassSubjectTeacherService, ClassSubjectTeacherService>();
+        services.AddScoped<ITimetableService,           TimetableService>();
 
         services.AddAutoMapper(typeof(UserMappingProfile).Assembly);
 

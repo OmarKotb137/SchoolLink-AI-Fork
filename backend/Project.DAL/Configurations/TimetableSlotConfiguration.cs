@@ -11,7 +11,8 @@ namespace Project.DAL.Configurations
             builder.HasKey(x => x.Id);
 
             builder.HasIndex(x => new { x.TimetableId, x.DayOfWeek, x.PeriodNumber })
-                .IsUnique();
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
 
             builder.Property(x => x.StartTime)
                 .HasColumnType("time");

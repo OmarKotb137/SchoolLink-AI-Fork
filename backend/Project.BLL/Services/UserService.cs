@@ -22,17 +22,17 @@ public class UserService : IUserService
     {
         var users = await _unitOfWork.Users.GetAllAsync();
         var userDtos = _mapper.Map<IEnumerable<UserDto>>(users);
-        return OperationResult<IEnumerable<UserDto>>.Success(userDtos, "Users retrieved successfully");
+        return OperationResult<IEnumerable<UserDto>>.Success(userDtos, "تم جلب المستخدمين بنجاح");
     }
 
     public async Task<OperationResult<UserDto>> GetByIdAsync(int id)
     {
         var user = await _unitOfWork.Users.GetByIdAsync(id);
         if (user == null)
-            return OperationResult<UserDto>.Failure($"User with id {id} not found");
+            return OperationResult<UserDto>.Failure($"المستخدم رقم {id} غير موجود");
 
         var userDto = _mapper.Map<UserDto>(user);
-        return OperationResult<UserDto>.Success(userDto, "User retrieved successfully");
+        return OperationResult<UserDto>.Success(userDto, "تم جلب المستخدم بنجاح");
     }
 
     public async Task<OperationResult<UserDto>> CreateAsync(CreateUserDto dto)
@@ -42,32 +42,32 @@ public class UserService : IUserService
         await _unitOfWork.Users.AddAsync(user);
         await _unitOfWork.SaveChangesAsync();
         var userDto = _mapper.Map<UserDto>(user);
-        return OperationResult<UserDto>.Success(userDto, "User created successfully");
+        return OperationResult<UserDto>.Success(userDto, "تم إنشاء المستخدم بنجاح");
     }
 
     public async Task<OperationResult<UserDto>> UpdateAsync(int id, UpdateUserDto dto)
     {
         var user = await _unitOfWork.Users.GetByIdAsync(id);
         if (user == null)
-            return OperationResult<UserDto>.Failure($"User with id {id} not found");
+            return OperationResult<UserDto>.Failure($"المستخدم رقم {id} غير موجود");
 
         user.FullName = $"{dto.FirstName} {dto.LastName}".Trim();
         user.UpdatedAt = DateTime.UtcNow;
         _unitOfWork.Users.Update(user);
         await _unitOfWork.SaveChangesAsync();
         var userDto = _mapper.Map<UserDto>(user);
-        return OperationResult<UserDto>.Success(userDto, "User updated successfully");
+        return OperationResult<UserDto>.Success(userDto, "تم تحديث المستخدم بنجاح");
     }
 
     public async Task<OperationResult> DeleteAsync(int id)
     {
         var user = await _unitOfWork.Users.GetByIdAsync(id);
         if (user == null)
-            return OperationResult.Failure($"User with id {id} not found");
+            return OperationResult.Failure($"المستخدم رقم {id} غير موجود");
 
         user.IsDeleted = true;
         _unitOfWork.Users.Update(user);
         await _unitOfWork.SaveChangesAsync();
-        return OperationResult.Success("User deleted successfully");
+        return OperationResult.Success("تم حذف المستخدم بنجاح");
     }
 }

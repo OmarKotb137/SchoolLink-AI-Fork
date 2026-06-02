@@ -11,7 +11,8 @@ namespace Project.DAL.Configurations
             builder.HasKey(x => x.Id);
 
             builder.HasIndex(x => new { x.ClassId, x.SubjectId, x.AcademicYearId })
-                .IsUnique();
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
 
             builder.HasOne(x => x.Class)
                 .WithMany()

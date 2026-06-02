@@ -74,6 +74,38 @@ public class SchoolClassRepository : Repository<SchoolClass>, ISchoolClassReposi
             .OrderBy(c => c.GradeLevel.LevelOrder)
             .ThenBy(c => c.Name)
             .ToListAsync(ct);
+
+
+    public async Task<SchoolClass?> GetByIdWithIncludesAsync(
+        int id,
+        CancellationToken ct = default)
+        => await _context.Classes
+            .Include(c => c.GradeLevel)
+            .Include(c => c.AcademicYear)
+            .FirstOrDefaultAsync(c => c.Id == id, ct);
+
+    public async Task<IReadOnlyList<SchoolClass>> GetFilteredWithIncludesAsync(
+        int? academicYearId,
+        int? gradeLevelId,
+        CancellationToken ct = default)
+    {
+        var query = _context.Classes
+            .Where(c => !c.IsDeleted)
+            .Include(c => c.GradeLevel)
+            .Include(c => c.AcademicYear)
+            .AsQueryable();
+
+        if (academicYearId.HasValue)
+            query = query.Where(c => c.AcademicYearId == academicYearId.Value);
+
+        if (gradeLevelId.HasValue)
+            query = query.Where(c => c.GradeLevelId == gradeLevelId.Value);
+
+        return await query
+            .OrderBy(c => c.GradeLevel.LevelOrder)
+            .ThenBy(c => c.Name)
+            .ToListAsync(ct);
+    }
 }
 
 

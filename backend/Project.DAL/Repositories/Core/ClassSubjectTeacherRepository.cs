@@ -144,6 +144,53 @@ public class ClassSubjectTeacherRepository : Repository<ClassSubjectTeacher>, IC
             .Include(cst => cst.Subject)
             .OrderBy(cst => cst.Subject.Name)
             .ToListAsync(ct);
+
+
+    public async Task<ClassSubjectTeacher?> GetWithAllDetailsAsync(
+        int id,
+        CancellationToken ct = default)
+        => await _context.ClassSubjectTeachers
+            .Include(cst => cst.Class)
+                .ThenInclude(c => c.GradeLevel)
+            .Include(cst => cst.Subject)
+            .Include(cst => cst.Teacher)
+            .Include(cst => cst.AcademicYear)
+            .FirstOrDefaultAsync(cst => cst.Id == id, ct);
+
+    public async Task<IReadOnlyList<ClassSubjectTeacher>> GetByClassWithAllDetailsAsync(
+        int classId,
+        int academicYearId,
+        CancellationToken ct = default)
+        => await _context.ClassSubjectTeachers
+            .Where(cst =>
+                cst.ClassId        == classId        &&
+                cst.AcademicYearId == academicYearId &&
+                !cst.IsDeleted)
+            .Include(cst => cst.Class)
+            .Include(cst => cst.Subject)
+            .Include(cst => cst.Teacher)
+            .Include(cst => cst.AcademicYear)
+            .OrderBy(cst => cst.Subject.Name)
+            .ToListAsync(ct);
+
+    public async Task<IReadOnlyList<ClassSubjectTeacher>> GetByTeacherWithAllDetailsAsync(
+        int teacherId,
+        int academicYearId,
+        CancellationToken ct = default)
+        => await _context.ClassSubjectTeachers
+            .Where(cst =>
+                cst.TeacherId      == teacherId      &&
+                cst.AcademicYearId == academicYearId &&
+                !cst.IsDeleted)
+            .Include(cst => cst.Class)
+                .ThenInclude(c => c.GradeLevel)
+            .Include(cst => cst.Subject)
+            .Include(cst => cst.Teacher)
+            .Include(cst => cst.AcademicYear)
+            .OrderBy(cst => cst.Class.GradeLevel.LevelOrder)
+            .ThenBy(cst => cst.Class.Name)
+            .ThenBy(cst => cst.Subject.Name)
+            .ToListAsync(ct);
 }
 
 

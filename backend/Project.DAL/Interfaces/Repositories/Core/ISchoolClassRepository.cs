@@ -14,6 +14,23 @@ public interface ISchoolClassRepository : IRepository<SchoolClass>
 
     Task<int>                        GetEnrollmentCountAsync(int classId, int academicYearId, CancellationToken ct = default);
     Task<IReadOnlyList<SchoolClass>> GetWithEnrollmentCountAsync(int academicYearId, CancellationToken ct = default);
+
+    /// <summary>
+    /// يجيب SchoolClass بـ GradeLevel + AcademicYear محملين.
+    /// يُستخدم في ClassService بعد Create/Update وفي GetById.
+    /// </summary>
+    Task<SchoolClass?> GetByIdWithIncludesAsync(int id, CancellationToken ct = default);
+
+    /// <summary>
+    /// يجيب كل الـ classes مع GradeLevel + AcademicYear محملين.
+    /// يدعم فلترة اختيارية بالـ academicYearId و/أو gradeLevelId.
+    /// مُرتَّب تلقائياً بـ LevelOrder ثم Name.
+    /// يُستخدم في ClassService.GetAllClassesAsync.
+    /// </summary>
+    Task<IReadOnlyList<SchoolClass>> GetFilteredWithIncludesAsync(
+        int? academicYearId,
+        int? gradeLevelId,
+        CancellationToken ct = default);
 }
 
 

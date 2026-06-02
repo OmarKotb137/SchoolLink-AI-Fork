@@ -42,6 +42,28 @@ public class TimetableRepository : Repository<SchoolLink.Domain.Entities.Timetab
             .OrderByDescending(t => t.CreatedAt)
             .ToListAsync(ct);
 
+    public async Task<IReadOnlyList<SchoolLink.Domain.Entities.Timetable>> GetByClassAndYearWithDetailsAsync(
+        int classId,
+        int academicYearId,
+        CancellationToken ct = default)
+        => await _context.Timetables
+            .Where(t =>
+                t.ClassId        == classId        &&
+                t.AcademicYearId == academicYearId)
+            .Include(t => t.Class)
+            .Include(t => t.Slots
+                .Where(s => !s.IsDeleted)
+                .OrderBy(s => s.DayOfWeek)
+                .ThenBy(s => s.PeriodNumber))
+                .ThenInclude(s => s.ClassSubjectTeacher)
+                    .ThenInclude(cst => cst!.Subject)
+            .Include(t => t.Slots
+                .Where(s => !s.IsDeleted))
+                .ThenInclude(s => s.ClassSubjectTeacher)
+                    .ThenInclude(cst => cst!.Teacher)
+            .OrderByDescending(t => t.CreatedAt)
+            .ToListAsync(ct);
+
 
     public async Task<SchoolLink.Domain.Entities.Timetable?> GetWithSlotsAsync(
         int timetableId,
@@ -72,7 +94,24 @@ public class TimetableRepository : Repository<SchoolLink.Domain.Entities.Timetab
             .ExecuteUpdateAsync(s => s
                 .SetProperty(t => t.IsActive,   false)
                 .SetProperty(t => t.UpdatedAt,  DateTime.UtcNow), ct);
-}
 
+
+    public async Task<SchoolLink.Domain.Entities.Timetable?> GetWithClassAndAllSlotsAsync(
+        int timetableId,
+        CancellationToken ct = default)
+        => await _context.Timetables
+            .Include(t => t.Class)
+            .Include(t => t.Slots
+                .Where(s => !s.IsDeleted)
+                .OrderBy(s => s.DayOfWeek)
+                .ThenBy(s => s.PeriodNumber))
+                .ThenInclude(s => s.ClassSubjectTeacher)
+                    .ThenInclude(cst => cst!.Subject)
+            .Include(t => t.Slots
+                .Where(s => !s.IsDeleted))
+                .ThenInclude(s => s.ClassSubjectTeacher)
+                    .ThenInclude(cst => cst!.Teacher)
+            .FirstOrDefaultAsync(t => t.Id == timetableId, ct);
+}
 
 

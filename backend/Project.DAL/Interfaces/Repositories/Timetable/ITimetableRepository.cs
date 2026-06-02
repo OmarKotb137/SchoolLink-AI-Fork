@@ -11,10 +11,23 @@ public interface ITimetableRepository : IRepository<SchoolLink.Domain.Entities.T
 
     Task<IReadOnlyList<SchoolLink.Domain.Entities.Timetable>> GetByClassAndYearAsync(int classId, int academicYearId, CancellationToken ct = default);
 
+    Task<IReadOnlyList<SchoolLink.Domain.Entities.Timetable>> GetByClassAndYearWithDetailsAsync(int classId, int academicYearId, CancellationToken ct = default);
+
     Task<SchoolLink.Domain.Entities.Timetable?> GetWithSlotsAsync(int timetableId, CancellationToken ct = default);
 
     Task DeactivateByClassAndYearAsync(int classId, int academicYearId, CancellationToken ct = default);
-}
 
+    /// <summary>
+    /// يجيب Timetable مع:
+    ///   - Class navigation property (لـ ClassName في الـ DTO)
+    ///   - كل الـ slots غير المحذوفة (lessons + breaks) مُرتَّبة بـ DayOfWeek ثم PeriodNumber
+    ///   - كل slot فيها CST → Subject + Teacher
+    /// يُستخدم في: CreateTimetableAsync (بعد save)، GetByClassAsync، GetByStudentAsync.
+    /// (GetWithSlotsAsync الموجودة مش بتجيب Class وبتفلتر الـ IsBreak=true)
+    /// </summary>
+    Task<SchoolLink.Domain.Entities.Timetable?> GetWithClassAndAllSlotsAsync(
+        int timetableId,
+        CancellationToken ct = default);
+}
 
 
