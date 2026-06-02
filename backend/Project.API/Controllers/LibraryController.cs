@@ -39,6 +39,7 @@ public class LibraryController : ControllerBase
         ".txt", ".mp4", ".webm"
     };
 
+    [Authorize(Roles = "Admin,Teacher")]
     [HttpPost("upload")]
     public async Task<IActionResult> Upload(
         IFormFile file,
