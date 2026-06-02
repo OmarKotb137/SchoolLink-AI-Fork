@@ -86,11 +86,14 @@ public class AuthService : IAuthService
         }, "Token refreshed successfully");
     }
 
-    public async Task<OperationResult> LogoutAsync(LogoutRequest request)
+    public async Task<OperationResult> LogoutAsync(LogoutRequest request, int callerUserId)
     {
         var storedToken = await _unitOfWork.RefreshTokens.GetByTokenAsync(request.RefreshToken);
         if (storedToken == null)
             return OperationResult.Failure("Refresh token not found");
+
+        if (storedToken.UserId != callerUserId)
+            return OperationResult.Failure("Refresh token does not belong to the current user");
 
         storedToken.IsRevoked = true;
         storedToken.RevokedAt = DateTime.UtcNow;

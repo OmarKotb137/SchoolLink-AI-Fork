@@ -95,6 +95,50 @@ public class LibraryService : ILibraryService
         return OperationResult<LibraryItemDto>.Success(dto, "Library item updated successfully");
     }
 
+    public async Task<OperationResult<LibraryItemDto>> GetLibraryItemByIdAsync(int id)
+    {
+        var item = await _unitOfWork.LibraryItems.GetByIdAsync(id);
+        if (item == null || item.IsDeleted)
+            return OperationResult<LibraryItemDto>.Failure("Library item not found");
+
+        var dto = _mapper.Map<LibraryItemDto>(item);
+        return OperationResult<LibraryItemDto>.Success(dto);
+    }
+
+    public async Task<OperationResult<LibraryStatsDto>> GetLibraryStatsAsync()
+    {
+        var totalItems = await _unitOfWork.LibraryItems.CountAsync(i => !i.IsDeleted);
+        var totalSize = await _unitOfWork.LibraryItems.GetTotalSizeBytesAsync();
+
+        var items = await _unitOfWork.LibraryItems.GetActiveAsync();
+        var grouped = items.GroupBy(i => i.ItemType).ToDictionary(g => g.Key, g => g.Count());
+
+        var stats = new LibraryStatsDto
+        {
+            TotalItems = totalItems,
+            TotalSizeBytes = totalSize,
+            BooksCount = grouped.GetValueOrDefault(LibraryItemType.Book, 0),
+            FilesCount = grouped.GetValueOrDefault(LibraryItemType.File, 0),
+            VideosCount = grouped.GetValueOrDefault(LibraryItemType.Video, 0),
+            LinksCount = grouped.GetValueOrDefault(LibraryItemType.Link, 0),
+            NotesCount = grouped.GetValueOrDefault(LibraryItemType.Note, 0)
+        };
+
+        return OperationResult<LibraryStatsDto>.Success(stats);
+    }
+
+    public async Task<OperationResult<IEnumerable<LibraryItemDto>>> GetLatestLibraryItemsAsync(int count)
+    {
+        var items = await _unitOfWork.LibraryItems.GetActiveAsync();
+        var latest = items
+            .OrderByDescending(i => i.CreatedAt)
+            .Take(count)
+            .ToList();
+
+        var dtos = _mapper.Map<IEnumerable<LibraryItemDto>>(latest);
+        return OperationResult<IEnumerable<LibraryItemDto>>.Success(dtos);
+    }
+
     public async Task<OperationResult<PagedResult<LibraryItemDto>>> GetLibraryItemsAsync(GetLibraryFilter filter)
     {
         var query = (await _unitOfWork.LibraryItems.GetActiveAsync()).AsQueryable();
