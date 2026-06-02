@@ -111,6 +111,19 @@ public class UserService : IUserService
         return OperationResult.Success(isActive ? "User activated successfully" : "User deactivated successfully");
     }
 
+    public async Task<OperationResult> UpdateProfilePhotoAsync(int userId, string photoUrl)
+    {
+        var user = await _unitOfWork.Users.GetByIdAsync(userId);
+        if (user == null || user.IsDeleted)
+            return OperationResult.Failure($"User with id {userId} not found");
+
+        user.ProfilePictureUrl = photoUrl;
+        user.UpdatedAt = DateTime.UtcNow;
+        _unitOfWork.Users.Update(user);
+        await _unitOfWork.SaveChangesAsync();
+        return OperationResult.Success("Profile photo updated successfully");
+    }
+
     public async Task<OperationResult> DeleteUserAsync(int id)
     {
         var user = await _unitOfWork.Users.GetByIdAsync(id);

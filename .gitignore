@@ -20,3 +20,4 @@ Thumbs.db
 /backend/Project.API/appsettings.json
 /tests/SchoolLink.Tests
 /backend/Project.API/logs
+/backend/Project.DAL/Migrations

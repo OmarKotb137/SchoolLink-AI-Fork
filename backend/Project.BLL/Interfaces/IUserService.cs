@@ -15,4 +15,5 @@ public interface IUserService
     Task<OperationResult<PagedResult<UserDto>>> SearchUsersAsync(string searchTerm, PaginationFilter filter);
     Task<OperationResult> SetUserActiveStatusAsync(int userId, bool isActive);
     Task<OperationResult> DeleteUserAsync(int id);
+    Task<OperationResult> UpdateProfilePhotoAsync(int userId, string photoUrl);
 }

@@ -63,12 +63,15 @@ try
 
     var app = builder.Build();
 
+    await SeedData.Initialize(app.Services);
+
     if (app.Environment.IsDevelopment())
     {
         app.UseSwagger();
         app.UseSwaggerUI();
     }
 
+    app.UseStaticFiles();
     app.UseMiddleware<ExceptionMiddleware>();
     app.UseCors("AllowAngular");
     app.UseHttpsRedirection();
