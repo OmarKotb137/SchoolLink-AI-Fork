@@ -1,5 +1,5 @@
-using SchoolLink.Domain.Entities;
-using SchoolLink.Domain.Enums;
+using Project.Domain.Entities;
+using Project.Domain.Enums;
 
 namespace Project.DAL.Interfaces.Repositories.Timetable;
 
