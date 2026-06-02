@@ -101,6 +101,35 @@ public class RoomService : IRoomService
             "تم جلب الغرف بنجاح");
     }
 
+    public async Task<OperationResult<IEnumerable<RoomDto>>> GetRoomsByTypeAsync(RoomType type)
+    {
+        var rooms = await _unitOfWork.Rooms.GetByTypeAsync(type);
+        var list = rooms.Where(r => !r.IsDeleted);
+
+        return OperationResult<IEnumerable<RoomDto>>.Success(
+            _mapper.Map<IEnumerable<RoomDto>>(list),
+            "تم جلب الغرف حسب النوع بنجاح");
+    }
+
+    public async Task<OperationResult<IEnumerable<TimetableSlotDto>>> GetRoomScheduleAsync(int roomId, SchoolDay day)
+    {
+        var room = await _unitOfWork.Rooms.GetByIdAsync(roomId);
+        if (room is null || room.IsDeleted)
+            return OperationResult<IEnumerable<TimetableSlotDto>>.Failure("الغرفة غير موجودة");
+
+        var allTimetables = await _unitOfWork.Timetables.FindAsync(t => !t.IsDeleted);
+        var schedule = new List<TimetableSlot>();
+
+        foreach (var tt in allTimetables)
+        {
+            var slots = await _unitOfWork.TimetableSlots.GetByDayWithDetailsAsync(tt.Id, day);
+            schedule.AddRange(slots.Where(s => !s.IsDeleted && s.RoomId == roomId));
+        }
+
+        var dtos = _mapper.Map<IEnumerable<TimetableSlotDto>>(schedule.OrderBy(s => s.PeriodNumber));
+        return OperationResult<IEnumerable<TimetableSlotDto>>.Success(dtos, "تم جلب جدول الغرفة بنجاح");
+    }
+
     public async Task<OperationResult<IEnumerable<RoomDto>>> GetAvailableRoomsAsync(
         SchoolDay day,
         int periodNumber,

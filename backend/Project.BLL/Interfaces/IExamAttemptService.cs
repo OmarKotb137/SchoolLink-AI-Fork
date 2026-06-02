@@ -10,5 +10,7 @@ namespace Project.BLL.Interfaces
         Task<OperationResult<GetExamAttemptDto>> StartAttemptAsync(CreateExamAttemptDto dto);
         Task<OperationResult<GetExamAttemptDto>> SubmitAttemptAsync(SubmitExamAttemptDto dto);
         Task<OperationResult> GradeAttemptAsync(int attemptId);
+        Task<OperationResult<List<ExamAttemptSummaryDto>>> GetStudentAttemptsAsync(int enrollmentId, int examId);
+        Task<OperationResult> AutoGradeAsync(int attemptId);
     }
 }

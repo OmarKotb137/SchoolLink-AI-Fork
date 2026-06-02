@@ -12,6 +12,7 @@ namespace Project.Domain.Entities
         public bool IsAutoGraded { get; set; } = false;
         public bool IsAIGenerated { get; set; } = false;
         public EvaluationCategory Category { get; set; }
+        public bool IsPublished { get; set; } = false;
 
         // Navigation Properties
         public ClassSubjectTeacher ClassSubjectTeacher { get; set; } = null!;

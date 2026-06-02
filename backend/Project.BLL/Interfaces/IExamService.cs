@@ -12,5 +12,7 @@ namespace Project.BLL.Interfaces
         Task<OperationResult> DeleteAsync(int id);
         Task<OperationResult> PublishAsync(int id);
         Task<OperationResult> UnPublishAsync(int id);
+        Task<OperationResult<List<ExamSummaryDto>>> GetExamsByStudentAsync(int enrollmentId);
+        Task<OperationResult<List<ExamSummaryDto>>> GetUpcomingExamsAsync(int classId, int academicYearId);
     }
 }

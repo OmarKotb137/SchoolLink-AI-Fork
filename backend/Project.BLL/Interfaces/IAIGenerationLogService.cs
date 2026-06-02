@@ -10,5 +10,7 @@ namespace Project.BLL.Interfaces
         Task<OperationResult<GetAIGenerationLogDto>> GetByIdAsync(int id);
         Task<OperationResult<GetAIGenerationLogDto>> CreateAsync(CreateAIGenerationLogDto dto);
         Task<OperationResult<AIGenerationLogSummaryDto>> GetSummaryAsync();
+        Task<OperationResult> DeleteAsync(int id);
+        Task<OperationResult> DeleteOlderThanAsync(DateTime cutoff);
     }
 }

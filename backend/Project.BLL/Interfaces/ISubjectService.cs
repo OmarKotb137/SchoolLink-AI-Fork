@@ -10,4 +10,7 @@ public interface ISubjectService
     Task<OperationResult>                          DeleteSubjectAsync(int id);
     Task<OperationResult<SubjectDto>>              GetSubjectByIdAsync(int id);
     Task<OperationResult<IEnumerable<SubjectDto>>> GetAllSubjectsAsync();
+    Task<OperationResult<IEnumerable<SubjectDto>>> GetSubjectsByGradeLevelAsync(int gradeLevelId);
+    Task<OperationResult<IEnumerable<SubjectDto>>> GetSubjectsByTeacherAsync(int teacherId, int academicYearId);
+    Task<OperationResult<IEnumerable<SubjectDto>>> SearchSubjectsAsync(string term);
 }

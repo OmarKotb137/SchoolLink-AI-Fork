@@ -12,4 +12,6 @@ public interface IAcademicYearService
     Task<OperationResult>                               SetCurrentAcademicYearAsync(int id);
     Task<OperationResult<AcademicYearDto>>              GetCurrentAcademicYearAsync();
     Task<OperationResult<IEnumerable<AcademicYearDto>>> GetAllAcademicYearsAsync();
+    Task<OperationResult<AcademicYearDto>>              GetAcademicYearByDateAsync(DateTime date);
+    Task<OperationResult>                               ArchiveAcademicYearAsync(int id);
 }

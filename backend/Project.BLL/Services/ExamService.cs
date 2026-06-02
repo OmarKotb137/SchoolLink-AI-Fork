@@ -4,7 +4,7 @@ using Project.BLL.DTOs.Exam;
 using Project.BLL.Interfaces;
 using Project.DAL.Interfaces;
 using Project.Domain.Entities;
-using Project.Domain.Entities;
+using Project.Domain.Enums;
 
 namespace Project.BLL.Services
 {
@@ -109,23 +109,54 @@ namespace Project.BLL.Services
             return OperationResult.Success("Exam published successfully");
         }
 
-        public async Task<OperationResult> UnPublishAsync(int id)
-        {
-            var exam = await _unitOfWork.Exams.GetByIdAsync(id);
+    public async Task<OperationResult> UnPublishAsync(int id)
+    {
+        var exam = await _unitOfWork.Exams.GetByIdAsync(id);
 
-            if (exam == null || exam.IsDeleted)
-                return OperationResult.Failure("Exam not found");
+        if (exam == null || exam.IsDeleted)
+            return OperationResult.Failure("Exam not found");
 
-            if (!exam.IsPublished)
-                return OperationResult.Failure("Exam is not published");
+        if (!exam.IsPublished)
+            return OperationResult.Failure("Exam is not published");
 
-            exam.IsPublished = false;
-            exam.UpdatedAt = DateTime.UtcNow;
+        exam.IsPublished = false;
+        exam.UpdatedAt = DateTime.UtcNow;
 
-            _unitOfWork.Exams.Update(exam);
-            await _unitOfWork.SaveChangesAsync(CancellationToken.None);
+        _unitOfWork.Exams.Update(exam);
+        await _unitOfWork.SaveChangesAsync(CancellationToken.None);
 
-            return OperationResult.Success("Exam unpublished successfully");
-        }
+        return OperationResult.Success("Exam unpublished successfully");
     }
+
+    public async Task<OperationResult<List<ExamSummaryDto>>> GetExamsByStudentAsync(int enrollmentId)
+    {
+        var enrollment = await _unitOfWork.StudentEnrollments.GetByIdAsync(enrollmentId);
+        if (enrollment == null || enrollment.IsDeleted)
+            return OperationResult<List<ExamSummaryDto>>.Failure("Enrollment not found", 404);
+
+        var classSubjectTeachers = await _unitOfWork.ClassSubjectTeachers
+            .GetByClassAndYearAsync(enrollment.ClassId, enrollment.AcademicYearId);
+
+        var result = new List<ExamSummaryDto>();
+        foreach (var cst in classSubjectTeachers)
+        {
+            var exams = await _unitOfWork.Exams.GetByClassSubjectTeacherIdAsync(cst.Id);
+            var dtos = _mapper.Map<List<ExamSummaryDto>>(exams.Where(e => !e.IsDeleted));
+            result.AddRange(dtos);
+        }
+
+        return OperationResult<List<ExamSummaryDto>>.Success(result, "Exams retrieved successfully");
+    }
+
+    public async Task<OperationResult<List<ExamSummaryDto>>> GetUpcomingExamsAsync(int classId, int academicYearId)
+    {
+        var classEntity = await _unitOfWork.Classes.GetByIdAsync(classId);
+        if (classEntity == null || classEntity.IsDeleted)
+            return OperationResult<List<ExamSummaryDto>>.Failure("Class not found", 404);
+
+        var exams = await _unitOfWork.Exams.GetUpcomingByClassAsync(classId, 7);
+        var dtos = _mapper.Map<List<ExamSummaryDto>>(exams.Where(e => !e.IsDeleted));
+        return OperationResult<List<ExamSummaryDto>>.Success(dtos, "Upcoming exams retrieved successfully");
+    }
+}
 }

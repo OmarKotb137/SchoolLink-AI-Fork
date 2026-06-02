@@ -96,5 +96,31 @@ namespace Project.BLL.Services
 
             return OperationResult<AIGenerationLogSummaryDto>.Success(summary);
         }
+
+        public async Task<OperationResult> DeleteAsync(int id)
+        {
+            var log = await _unitOfWork.AIGenerationLogs.GetByIdAsync(id);
+            if (log == null || log.IsDeleted)
+                return OperationResult.Failure("Log not found", 404);
+
+            _unitOfWork.AIGenerationLogs.SoftDelete(log);
+            await _unitOfWork.SaveChangesAsync(CancellationToken.None);
+
+            return OperationResult.Success("Log deleted successfully");
+        }
+
+        public async Task<OperationResult> DeleteOlderThanAsync(DateTime cutoff)
+        {
+            var all = await _unitOfWork.AIGenerationLogs.GetByDateRangeAsync(DateTime.MinValue, cutoff);
+            var toDelete = all.Where(l => !l.IsDeleted).ToList();
+
+            if (toDelete.Count == 0)
+                return OperationResult.Success("No logs to delete");
+
+            _unitOfWork.AIGenerationLogs.SoftDeleteRange(toDelete);
+            await _unitOfWork.SaveChangesAsync(CancellationToken.None);
+
+            return OperationResult.Success($"{toDelete.Count} logs deleted successfully");
+        }
     }
 }

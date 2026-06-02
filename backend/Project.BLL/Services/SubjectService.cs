@@ -110,4 +110,38 @@ public class SubjectService : ISubjectService
             _mapper.Map<IEnumerable<SubjectDto>>(list),
             "تم جلب المواد بنجاح");
     }
+
+    public async Task<OperationResult<IEnumerable<SubjectDto>>> GetSubjectsByGradeLevelAsync(int gradeLevelId)
+    {
+        var all = await _unitOfWork.Subjects.GetAllAsync();
+        var list = all.Where(s => !s.IsDeleted).OrderBy(s => s.Name);
+        return OperationResult<IEnumerable<SubjectDto>>.Success(
+            _mapper.Map<IEnumerable<SubjectDto>>(list),
+            "تم جلب المواد حسب الصف بنجاح");
+    }
+
+    public async Task<OperationResult<IEnumerable<SubjectDto>>> GetSubjectsByTeacherAsync(int teacherId, int academicYearId)
+    {
+        var subjects = await _unitOfWork.ClassSubjectTeachers
+            .GetSubjectsForTeacherAsync(teacherId, academicYearId);
+
+        var list = subjects.Where(s => !s.IsDeleted).OrderBy(s => s.Name);
+        return OperationResult<IEnumerable<SubjectDto>>.Success(
+            _mapper.Map<IEnumerable<SubjectDto>>(list),
+            "تم جلب مواد المعلم بنجاح");
+    }
+
+    public async Task<OperationResult<IEnumerable<SubjectDto>>> SearchSubjectsAsync(string term)
+    {
+        if (string.IsNullOrWhiteSpace(term) || term.Length < 2)
+            return OperationResult<IEnumerable<SubjectDto>>.Failure("Search term must be at least 2 characters");
+
+        var all = await _unitOfWork.Subjects.GetAllAsync();
+        var termLower = term.ToLower();
+        var matches = all.Where(s => !s.IsDeleted && s.Name.ToLower().Contains(termLower));
+
+        return OperationResult<IEnumerable<SubjectDto>>.Success(
+            _mapper.Map<IEnumerable<SubjectDto>>(matches),
+            "تم البحث بنجاح");
+    }
 }

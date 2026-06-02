@@ -3,7 +3,7 @@ using Common.Results;
 using Project.BLL.DTOs;
 using Project.BLL.Interfaces;
 using Project.DAL.Interfaces;
-using   Project.Domain.Entities;
+using Project.Domain.Entities;
 
 namespace Project.BLL.Services;
 
@@ -125,5 +125,32 @@ public class ClassService : IClassService
         return OperationResult<ClassDto>.Success(
             _mapper.Map<ClassDto>(entity),
             "تم جلب الفصل بنجاح");
+    }
+
+    public async Task<OperationResult<IEnumerable<ClassDto>>> GetClassesByGradeLevelAsync(int gradeLevelId)
+    {
+        var classes = await _unitOfWork.Classes.FindAsync(c => c.GradeLevelId == gradeLevelId && !c.IsDeleted);
+        return OperationResult<IEnumerable<ClassDto>>.Success(
+            _mapper.Map<IEnumerable<ClassDto>>(classes),
+            "تم جلب الفصول بنجاح");
+    }
+
+    public async Task<OperationResult<ClassDto>> GetClassWithStudentsAsync(int classId)
+    {
+        var entity = await _unitOfWork.Classes.GetByIdWithIncludesAsync(classId);
+        if (entity is null || entity.IsDeleted)
+            return OperationResult<ClassDto>.Failure("الفصل غير موجود");
+
+        return OperationResult<ClassDto>.Success(
+            _mapper.Map<ClassDto>(entity),
+            "تم جلب الفصل مع الطلاب بنجاح");
+    }
+
+    public async Task<OperationResult<IEnumerable<ClassDto>>> GetClassesByTeacherAsync(int teacherId, int academicYearId)
+    {
+        var classes = await _unitOfWork.ClassSubjectTeachers.GetClassesForTeacherAsync(teacherId, academicYearId);
+        return OperationResult<IEnumerable<ClassDto>>.Success(
+            _mapper.Map<IEnumerable<ClassDto>>(classes),
+            "تم جلب فصول المعلم بنجاح");
     }
 }

@@ -10,4 +10,5 @@ public interface IGradeLevelService
     Task<OperationResult>                             DeleteGradeLevelAsync(int id);
     Task<OperationResult<GradeLevelDto>>              GetGradeLevelByIdAsync(int id);
     Task<OperationResult<IEnumerable<GradeLevelDto>>> GetAllGradeLevelsAsync();
+    Task<OperationResult<GradeLevelDto>>             GetGradeLevelWithClassesAsync(int id);
 }

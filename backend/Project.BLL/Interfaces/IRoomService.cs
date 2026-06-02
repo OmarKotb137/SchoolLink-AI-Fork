@@ -12,4 +12,6 @@ public interface IRoomService
     Task<OperationResult<RoomDto>>              GetRoomByIdAsync(int id);
     Task<OperationResult<IEnumerable<RoomDto>>> GetAllRoomsAsync();
     Task<OperationResult<IEnumerable<RoomDto>>> GetAvailableRoomsAsync(SchoolDay day, int periodNumber, RoomType? type = null);
+    Task<OperationResult<IEnumerable<RoomDto>>> GetRoomsByTypeAsync(RoomType type);
+    Task<OperationResult<IEnumerable<TimetableSlotDto>>> GetRoomScheduleAsync(int roomId, SchoolDay day);
 }

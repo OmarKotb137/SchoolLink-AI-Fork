@@ -4,6 +4,7 @@ using Project.BLL.DTOs.ExamAttempt;
 using Project.BLL.Interfaces;
 using Project.DAL.Interfaces;
 using Project.Domain.Entities;
+using Project.Domain.Enums;
 
 namespace Project.BLL.Services
 {
@@ -144,7 +145,66 @@ namespace Project.BLL.Services
             return OperationResult<GetExamAttemptDto>.Success(resultDto, "Exam submitted successfully");
         }
 
-        public async Task<OperationResult> GradeAttemptAsync(int attemptId)
+        public async Task<OperationResult<List<ExamAttemptSummaryDto>>> GetStudentAttemptsAsync(int enrollmentId, int examId)
+    {
+        var enrollment = await _unitOfWork.StudentEnrollments.GetByIdAsync(enrollmentId);
+        if (enrollment == null || enrollment.IsDeleted)
+            return OperationResult<List<ExamAttemptSummaryDto>>.Failure("Enrollment not found", 404);
+
+        var allAttempts = await _unitOfWork.StudentExamAttempts.GetByEnrollmentIdAsync(enrollmentId);
+        var filtered = allAttempts.Where(a => a.ExamId == examId && !a.IsDeleted).ToList();
+
+        var dtos = _mapper.Map<List<ExamAttemptSummaryDto>>(filtered);
+        return OperationResult<List<ExamAttemptSummaryDto>>.Success(dtos, "Student attempts retrieved successfully");
+    }
+
+    public async Task<OperationResult> AutoGradeAsync(int attemptId)
+    {
+        var attempt = await _unitOfWork.StudentExamAttempts
+            .GetWithAnswersAsync(attemptId, CancellationToken.None);
+
+        if (attempt == null || attempt.IsDeleted)
+            return OperationResult.Failure("Attempt not found", 404);
+
+        if (attempt.SubmittedAt == null)
+            return OperationResult.Failure("Attempt has not been submitted yet");
+
+        if (attempt.IsGraded)
+            return OperationResult.Failure("Attempt is already graded");
+
+        var exam = await _unitOfWork.Exams.GetWithQuestionsAsync(attempt.ExamId, CancellationToken.None);
+        if (exam == null)
+            return OperationResult.Failure("Exam not found", 404);
+
+        decimal totalScore = 0;
+        foreach (var answer in attempt.Answers)
+        {
+            var question = exam.Questions.FirstOrDefault(q => q.Id == answer.QuestionId);
+            if (question == null) continue;
+
+            if (question.QuestionType is QuestionType.MultipleChoice or QuestionType.TrueFalse)
+            {
+                var isCorrect = !string.IsNullOrEmpty(question.CorrectAnswer) &&
+                                answer.AnswerText?.Trim().Equals(question.CorrectAnswer.Trim(), StringComparison.OrdinalIgnoreCase) == true;
+
+                answer.IsCorrect = isCorrect;
+                answer.PointsEarned = isCorrect ? question.Points : 0;
+                totalScore += answer.PointsEarned;
+                _unitOfWork.StudentExamAnswers.Update(answer);
+            }
+        }
+
+        attempt.Score = totalScore;
+        attempt.IsGraded = true;
+        attempt.UpdatedAt = DateTime.UtcNow;
+
+        _unitOfWork.StudentExamAttempts.Update(attempt);
+        await _unitOfWork.SaveChangesAsync(CancellationToken.None);
+
+        return OperationResult.Success("Attempt auto-graded successfully");
+    }
+
+    public async Task<OperationResult> GradeAttemptAsync(int attemptId)
         {
             var attempt = await _unitOfWork.StudentExamAttempts
                 .GetWithAnswersAsync(attemptId, CancellationToken.None);

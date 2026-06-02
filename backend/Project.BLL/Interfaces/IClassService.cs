@@ -10,4 +10,7 @@ public interface IClassService
     Task<OperationResult>                        DeleteClassAsync(int id);
     Task<OperationResult<IEnumerable<ClassDto>>> GetAllClassesAsync(GetClassesFilter filter);
     Task<OperationResult<ClassDto>>              GetClassByIdAsync(int id);
+    Task<OperationResult<IEnumerable<ClassDto>>> GetClassesByGradeLevelAsync(int gradeLevelId);
+    Task<OperationResult<ClassDto>>              GetClassWithStudentsAsync(int classId);
+    Task<OperationResult<IEnumerable<ClassDto>>> GetClassesByTeacherAsync(int teacherId, int academicYearId);
 }

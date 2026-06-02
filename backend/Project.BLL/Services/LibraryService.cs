@@ -197,6 +197,44 @@ public class LibraryService : ILibraryService
         return OperationResult<IEnumerable<LibraryItemDto>>.Success(dtos);
     }
 
+    public async Task<OperationResult<PagedResult<LibraryItemDto>>> GetLibraryItemsBySubjectAsync(int subjectId, PaginationFilter filter)
+    {
+        var items = await _unitOfWork.LibraryItems.GetBySubjectIdAsync(subjectId);
+        var filtered = items.Where(i => !i.IsDeleted && i.IsActive)
+            .OrderByDescending(i => i.CreatedAt).ToList();
+
+        var totalCount = filtered.Count;
+        var paged = filtered.Skip((filter.Page - 1) * filter.PageSize).Take(filter.PageSize).ToList();
+        var dtos = _mapper.Map<IEnumerable<LibraryItemDto>>(paged);
+
+        return OperationResult<PagedResult<LibraryItemDto>>.Success(new PagedResult<LibraryItemDto>
+        {
+            Items = dtos,
+            TotalCount = totalCount,
+            Page = filter.Page,
+            PageSize = filter.PageSize
+        });
+    }
+
+    public async Task<OperationResult<PagedResult<LibraryItemDto>>> GetLibraryItemsByUploaderAsync(int uploaderId, PaginationFilter filter)
+    {
+        var items = await _unitOfWork.LibraryItems.GetByUploaderIdAsync(uploaderId);
+        var filtered = items.Where(i => !i.IsDeleted)
+            .OrderByDescending(i => i.CreatedAt).ToList();
+
+        var totalCount = filtered.Count;
+        var paged = filtered.Skip((filter.Page - 1) * filter.PageSize).Take(filter.PageSize).ToList();
+        var dtos = _mapper.Map<IEnumerable<LibraryItemDto>>(paged);
+
+        return OperationResult<PagedResult<LibraryItemDto>>.Success(new PagedResult<LibraryItemDto>
+        {
+            Items = dtos,
+            TotalCount = totalCount,
+            Page = filter.Page,
+            PageSize = filter.PageSize
+        });
+    }
+
     public async Task<OperationResult> DeleteLibraryItemAsync(int id, int callerUserId)
     {
         var item = await _unitOfWork.LibraryItems.GetByIdAsync(id);

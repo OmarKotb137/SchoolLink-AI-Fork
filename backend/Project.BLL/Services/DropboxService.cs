@@ -188,6 +188,62 @@ public class DropboxService : IDropboxService
             new AuthenticationHeaderValue("Bearer", _currentAccessToken);
     }
 
+    public async Task<OperationResult<IEnumerable<string>>> ListFilesAsync(string? folder = null)
+    {
+        var path = folder ?? "";
+        var body = new
+        {
+            path,
+            recursive = false,
+            include_media_info = false,
+            include_deleted = false,
+            include_has_explicit_shared_members = false
+        };
+
+        var response = await SendWithRetryAsync(
+            new HttpRequestMessage(HttpMethod.Post, "https://api.dropboxapi.com/2/files/list_folder")
+            {
+                Content = JsonContent.Create(body)
+            });
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var error = await response.Content.ReadAsStringAsync();
+            return OperationResult<IEnumerable<string>>.Failure($"Dropbox list failed: {error}");
+        }
+
+        var result = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var entries = result.GetProperty("entries");
+        var files = new List<string>();
+
+        foreach (var entry in entries.EnumerateArray())
+        {
+            files.Add(entry.GetProperty("path_display").GetString()!);
+        }
+
+        return OperationResult<IEnumerable<string>>.Success(files, "Files listed successfully");
+    }
+
+    public async Task<OperationResult<Stream>> DownloadFileAsync(string path)
+    {
+        var apiArg = JsonSerializer.Serialize(new { path });
+
+        var request = new HttpRequestMessage(HttpMethod.Post, "https://content.dropboxapi.com/2/files/download")
+        {
+            Headers = { { "Dropbox-API-Arg", apiArg } }
+        };
+
+        var response = await SendWithRetryAsync(request);
+        if (!response.IsSuccessStatusCode)
+        {
+            var error = await response.Content.ReadAsStringAsync();
+            return OperationResult<Stream>.Failure($"Dropbox download failed: {error}");
+        }
+
+        var stream = await response.Content.ReadAsStreamAsync();
+        return OperationResult<Stream>.Success(stream, "File downloaded successfully");
+    }
+
     private static async Task<HttpRequestMessage> CloneRequestAsync(HttpRequestMessage request)
     {
         var clone = new HttpRequestMessage(request.Method, request.RequestUri);

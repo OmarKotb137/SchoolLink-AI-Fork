@@ -117,6 +117,32 @@ namespace Project.BLL.Services
             return OperationResult<GetAssignmentSubmissionDto>.Success(resultDto, "Submission created successfully");
         }
 
+        public async Task<OperationResult<List<AssignmentSubmissionSummaryDto>>> GetByStudentAsync(int enrollmentId)
+        {
+            var submissions = await _unitOfWork.StudentAssignmentSubmissions.GetByEnrollmentIdAsync(enrollmentId);
+            var dtos = _mapper.Map<List<AssignmentSubmissionSummaryDto>>(submissions);
+            return OperationResult<List<AssignmentSubmissionSummaryDto>>.Success(dtos);
+        }
+
+        public async Task<OperationResult> ReopenAsync(int submissionId)
+        {
+            var submission = await _unitOfWork.StudentAssignmentSubmissions.GetByIdAsync(submissionId);
+            if (submission == null || submission.IsDeleted)
+                return OperationResult.Failure("Submission not found", 404);
+
+            if (!submission.IsGraded)
+                return OperationResult.Failure("Submission has not been graded yet");
+
+            submission.IsGraded = false;
+            submission.Score = null;
+            submission.UpdatedAt = DateTime.UtcNow;
+
+            _unitOfWork.StudentAssignmentSubmissions.Update(submission);
+            await _unitOfWork.SaveChangesAsync();
+
+            return OperationResult.Success("Submission reopened successfully");
+        }
+
         public async Task<OperationResult> GradeAsync(int submissionId)
         {
             var submission = await _unitOfWork.StudentAssignmentSubmissions
@@ -142,6 +168,39 @@ namespace Project.BLL.Services
             await _unitOfWork.SaveChangesAsync();
 
             return OperationResult.Success("Submission graded successfully");
+        }
+
+        public async Task<OperationResult<GetAssignmentSubmissionDto>> GradeSubmissionAsync(GradeSubmissionRequest request)
+        {
+            var submission = await _unitOfWork.StudentAssignmentSubmissions
+                .GetWithAnswersAsync(request.SubmissionId);
+
+            if (submission == null || submission.IsDeleted)
+                return OperationResult<GetAssignmentSubmissionDto>.Failure("Submission not found", 404);
+
+            if (submission.IsGraded)
+                return OperationResult<GetAssignmentSubmissionDto>.Failure("Submission already graded");
+
+            foreach (var grade in request.AnswerGrades)
+            {
+                var answer = submission.Answers.FirstOrDefault(a => a.QuestionId == grade.QuestionId);
+                if (answer == null) continue;
+
+                answer.PointsEarned = grade.PointsEarned;
+                answer.AIFeedback = grade.AiFeedback;
+                answer.IsCorrect = grade.PointsEarned > 0;
+                _unitOfWork.StudentAssignmentAnswers.Update(answer);
+            }
+
+            submission.Score = request.TotalScore;
+            submission.IsGraded = true;
+            submission.UpdatedAt = DateTime.UtcNow;
+
+            _unitOfWork.StudentAssignmentSubmissions.Update(submission);
+            await _unitOfWork.SaveChangesAsync();
+
+            var dto = _mapper.Map<GetAssignmentSubmissionDto>(submission);
+            return OperationResult<GetAssignmentSubmissionDto>.Success(dto, "Submission graded successfully");
         }
     }
 }

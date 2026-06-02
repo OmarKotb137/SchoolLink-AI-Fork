@@ -1,4 +1,3 @@
-using Project.Domain.Enums;
 using System.ComponentModel.DataAnnotations;
 using Project.Domain.Enums;
 

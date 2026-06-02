@@ -204,4 +204,41 @@ public class UserService : IUserService
         await _unitOfWork.SaveChangesAsync();
         return OperationResult.Success("User deleted successfully");
     }
+
+    public async Task<OperationResult<UserDto>> GetUserByEmailAsync(string email)
+    {
+        var user = await _unitOfWork.Users.GetByEmailAsync(email);
+        if (user == null || user.IsDeleted)
+            return OperationResult<UserDto>.Failure($"User with email {email} not found");
+
+        var dto = _mapper.Map<UserDto>(user);
+        return OperationResult<UserDto>.Success(dto, "User retrieved successfully");
+    }
+
+    public async Task<OperationResult<IEnumerable<UserDto>>> GetStudentsByParentAsync(int parentId)
+    {
+        var parent = await _unitOfWork.Users.GetByIdAsync(parentId);
+        if (parent == null || parent.IsDeleted)
+            return OperationResult<IEnumerable<UserDto>>.Failure("Parent not found");
+
+        var links = await _unitOfWork.ParentStudents.GetWithStudentDetailsByParentAsync(parentId);
+        var students = links.Where(l => !l.IsDeleted && l.Student != null && !l.Student.IsDeleted)
+                            .Select(l => l.Student!);
+
+        var dtos = _mapper.Map<IEnumerable<UserDto>>(students);
+        return OperationResult<IEnumerable<UserDto>>.Success(dtos, "Students retrieved successfully");
+    }
+
+    public async Task<OperationResult<IEnumerable<UserDto>>> ExportUsersAsync(UserRole? role = null)
+    {
+        IReadOnlyList<User> users;
+        if (role.HasValue)
+            users = await _unitOfWork.Users.GetByRoleAsync(role.Value);
+        else
+            users = await _unitOfWork.Users.GetAllAsync();
+
+        var filtered = users.Where(u => !u.IsDeleted).OrderBy(u => u.FullName);
+        var dtos = _mapper.Map<IEnumerable<UserDto>>(filtered);
+        return OperationResult<IEnumerable<UserDto>>.Success(dtos, "Users exported successfully");
+    }
 }

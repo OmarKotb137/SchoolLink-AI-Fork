@@ -165,4 +165,32 @@ public class AcademicYearService : IAcademicYearService
             _mapper.Map<IEnumerable<AcademicYearDto>>(years),
             "تم جلب السنوات الدراسية بنجاح");
     }
+
+    public async Task<OperationResult<AcademicYearDto>> GetAcademicYearByDateAsync(DateTime date)
+    {
+        var all = await _unitOfWork.AcademicYears.GetAllOrderedByStartDateAsync();
+        var dateOnly = DateOnly.FromDateTime(date);
+        var year = all.FirstOrDefault(y => !y.IsDeleted && y.StartDate <= dateOnly && y.EndDate >= dateOnly);
+        if (year is null)
+            return OperationResult<AcademicYearDto>.Failure("لا توجد سنة دراسية تطابق هذا التاريخ");
+
+        return OperationResult<AcademicYearDto>.Success(
+            _mapper.Map<AcademicYearDto>(year),
+            "تم جلب السنة الدراسية بنجاح");
+    }
+
+    public async Task<OperationResult> ArchiveAcademicYearAsync(int id)
+    {
+        var entity = await _unitOfWork.AcademicYears.GetByIdAsync(id);
+        if (entity is null || entity.IsDeleted)
+            return OperationResult.Failure("السنة الدراسية غير موجودة");
+
+        if (entity.IsCurrent)
+            return OperationResult.Failure("لا يمكن أرشفة السنة الدراسية الحالية");
+
+        _unitOfWork.AcademicYears.SoftDelete(entity);
+        await _unitOfWork.SaveChangesAsync();
+
+        return OperationResult.Success("تم أرشفة السنة الدراسية بنجاح");
+    }
 }

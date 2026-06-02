@@ -41,6 +41,14 @@ namespace Project.BLL.Mapping
 
             // CreateAssignmentQuestionOptionDto → AssignmentQuestionOption
             CreateMap<CreateAssignmentQuestionOptionDto, AssignmentQuestionOption>();
+
+            // Assignment → AssignmentSummaryDto
+            CreateMap<Assignment, AssignmentSummaryDto>()
+                .ForMember(d => d.SubjectName, o => o.MapFrom(s => s.ClassSubjectTeacher.Subject.Name))
+                .ForMember(d => d.ClassName, o => o.MapFrom(s => s.ClassSubjectTeacher.Class.Name))
+                .ForMember(d => d.TeacherName, o => o.MapFrom(s => s.ClassSubjectTeacher.Teacher.FullName))
+                .ForMember(d => d.Category, o => o.MapFrom(s => s.Category.ToString()))
+                .ForMember(d => d.QuestionsCount, o => o.MapFrom(s => s.Questions.Count(q => !q.IsDeleted)));
         }
     }
 }

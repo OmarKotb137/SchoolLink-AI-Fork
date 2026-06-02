@@ -109,4 +109,14 @@ public class GradeLevelService : IGradeLevelService
             _mapper.Map<IEnumerable<GradeLevelDto>>(list),
             "تم جلب الصفوف الدراسية بنجاح");
     }
+
+    public async Task<OperationResult<GradeLevelDto>> GetGradeLevelWithClassesAsync(int id)
+    {
+        var entity = await _unitOfWork.GradeLevels.GetByIdAsync(id);
+        if (entity is null || entity.IsDeleted)
+            return OperationResult<GradeLevelDto>.Failure("الصف الدراسي غير موجود");
+
+        var dto = _mapper.Map<GradeLevelDto>(entity);
+        return OperationResult<GradeLevelDto>.Success(dto, "تم جلب الصف الدراسي مع الفصول بنجاح");
+    }
 }

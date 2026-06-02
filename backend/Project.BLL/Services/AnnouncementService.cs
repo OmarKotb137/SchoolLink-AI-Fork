@@ -1,6 +1,7 @@
 using AutoMapper;
 using Common.Results;
 using Project.BLL.DTOs.Announcements;
+using Project.BLL.DTOs.Common;
 using Project.BLL.Interfaces;
 using Project.DAL.Interfaces;
 using Project.Domain.Entities;
@@ -133,5 +134,41 @@ public class AnnouncementService : IAnnouncementService
             .OrderByDescending(a => a.CreatedAt));
 
         return OperationResult<IEnumerable<AnnouncementDto>>.Success(dtos);
+    }
+
+    public async Task<OperationResult<IEnumerable<AnnouncementDto>>> SearchAnnouncementsAsync(string term)
+    {
+        if (string.IsNullOrWhiteSpace(term) || term.Length < 2)
+            return OperationResult<IEnumerable<AnnouncementDto>>.Failure("Search term must be at least 2 characters");
+
+        var all = await _unitOfWork.Announcements.GetActiveAsync();
+        var termLower = term.ToLower();
+        var matches = all.Where(a => a.Title.ToLower().Contains(termLower) ||
+                                     (a.Body != null && a.Body.ToLower().Contains(termLower)));
+
+        var dtos = _mapper.Map<IEnumerable<AnnouncementDto>>(matches.OrderByDescending(a => a.CreatedAt));
+        return OperationResult<IEnumerable<AnnouncementDto>>.Success(dtos);
+    }
+
+    public async Task<OperationResult<PagedResult<AnnouncementDto>>> GetAnnouncementsByAuthorAsync(int authorId, PaginationFilter filter)
+    {
+        var author = await _unitOfWork.Users.GetByIdAsync(authorId);
+        if (author == null)
+            return OperationResult<PagedResult<AnnouncementDto>>.Failure("Author not found");
+
+        var announcements = await _unitOfWork.Announcements.GetByAuthorIdAsync(authorId);
+        var filtered = announcements.Where(a => !a.IsDeleted).OrderByDescending(a => a.CreatedAt).ToList();
+
+        var totalCount = filtered.Count;
+        var paged = filtered.Skip((filter.Page - 1) * filter.PageSize).Take(filter.PageSize).ToList();
+        var dtos = _mapper.Map<IEnumerable<AnnouncementDto>>(paged);
+
+        return OperationResult<PagedResult<AnnouncementDto>>.Success(new PagedResult<AnnouncementDto>
+        {
+            Items = dtos,
+            TotalCount = totalCount,
+            Page = filter.Page,
+            PageSize = filter.PageSize
+        });
     }
 }
