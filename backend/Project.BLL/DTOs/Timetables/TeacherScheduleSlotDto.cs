@@ -12,4 +12,5 @@ public class TeacherScheduleSlotDto
     public TimeOnly EndTime               { get; set; }
     public int?     ClassSubjectTeacherId { get; set; }
     public string?  SubjectName           { get; set; }
+    public string?  RoomName              { get; set; }
 }

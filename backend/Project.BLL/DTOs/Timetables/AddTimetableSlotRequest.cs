@@ -24,4 +24,5 @@ public class AddTimetableSlotRequest
 
     public int?  ClassSubjectTeacherId { get; set; }
     public bool  IsBreak               { get; set; } = false;
+    public int?  RoomId               { get; set; }
 }

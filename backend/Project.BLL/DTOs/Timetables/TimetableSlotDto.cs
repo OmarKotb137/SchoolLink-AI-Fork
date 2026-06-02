@@ -12,4 +12,6 @@ public class TimetableSlotDto
     public int?     ClassSubjectTeacherId  { get; set; }
     public string?  SubjectName            { get; set; }
     public string?  TeacherName            { get; set; }
+    public int?     RoomId                 { get; set; }
+    public string?  RoomName               { get; set; }
 }

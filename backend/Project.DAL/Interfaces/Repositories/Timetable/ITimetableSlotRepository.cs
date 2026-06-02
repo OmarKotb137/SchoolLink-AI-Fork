@@ -1,4 +1,4 @@
-﻿using SchoolLink.Domain.Entities;
+using SchoolLink.Domain.Entities;
 using SchoolLink.Domain.Enums;
 using System.Linq.Expressions;
 
@@ -19,16 +19,25 @@ public interface ITimetableSlotRepository : IRepository<TimetableSlot>
 
     Task<bool> HasConflictAsync(int timetableId, SchoolDay day, int periodNumber, CancellationToken ct = default);
     Task<bool> HasConflictAsync(int timetableId, SchoolDay day, int periodNumber, int excludedSlotId, CancellationToken ct = default);
+
     Task<bool> HasTeacherConflictAsync(int teacherId, int academicYearId, SchoolDay day, int periodNumber, CancellationToken ct = default);
     Task<bool> HasTeacherConflictAsync(int teacherId, int academicYearId, SchoolDay day, int periodNumber, int excludedSlotId, CancellationToken ct = default);
+
+    Task<bool> HasRoomConflictAsync(int roomId, SchoolDay day, int periodNumber, CancellationToken ct = default);
+    Task<bool> HasRoomConflictAsync(int roomId, SchoolDay day, int periodNumber, int excludedSlotId, CancellationToken ct = default);
+    Task<bool> HasRoomConflictAgainstActiveTimetablesAsync(
+        int roomId,
+        SchoolDay day,
+        int periodNumber,
+        int timetableId,
+        CancellationToken ct = default);
 
     Task BulkReplaceAsync(int timetableId, IEnumerable<TimetableSlot> slots, CancellationToken ct = default);
 
     /// <summary>
-    /// يجيب TimetableSlot بـ ClassSubjectTeacher → Subject + Teacher محملين.
+    /// يجيب TimetableSlot بـ ClassSubjectTeacher → Subject + Teacher + Room محملين.
     /// يُستخدم في AddTimetableSlotAsync و UpdateTimetableSlotAsync بعد الـ save
-    /// لإرجاع SubjectName و TeacherName في الـ DTO.
+    /// لإرجاع SubjectName و TeacherName و RoomName في الـ DTO.
     /// </summary>
     Task<TimetableSlot?> GetByIdWithDetailsAsync(int slotId, CancellationToken ct = default);
 }
-

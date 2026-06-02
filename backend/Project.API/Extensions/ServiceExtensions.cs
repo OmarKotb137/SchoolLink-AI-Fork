@@ -38,6 +38,7 @@ public static class ServiceExtensions
         services.AddScoped<IClassService, ClassService>();
         services.AddScoped<IClassSubjectTeacherService, ClassSubjectTeacherService>();
         services.AddScoped<ITimetableService, TimetableService>();
+        services.AddScoped<IRoomService, RoomService>();
 
 
         services.AddAutoMapper(typeof(UserMappingProfile).Assembly);

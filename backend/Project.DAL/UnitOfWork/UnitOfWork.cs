@@ -67,6 +67,7 @@ public class UnitOfWork : IUnitOfWork
         IAIGenerationLogRepository             aiGenerationLogs,
         ISchoolProfileRepository               schoolProfiles,
 
+        IRoomRepository                        rooms,
         ITimetableRepository                   timetables,
         ITimetableSlotRepository               timetableSlots,
 
@@ -128,6 +129,7 @@ public class UnitOfWork : IUnitOfWork
         SchoolProfiles               = schoolProfiles;
 
         // Section H
+        Rooms                        = rooms;
         Timetables                   = timetables;
         TimetableSlots               = timetableSlots;
 
@@ -189,6 +191,7 @@ public class UnitOfWork : IUnitOfWork
     public ISchoolProfileRepository               SchoolProfiles               { get; }
 
     // Section H: Timetable
+    public IRoomRepository                        Rooms                        { get; }
     public ITimetableRepository                   Timetables                   { get; }
     public ITimetableSlotRepository               TimetableSlots               { get; }
 

@@ -52,7 +52,8 @@ public class AppDbContext : DbContext
     public DbSet<AIGenerationLog> AIGenerationLogs => Set<AIGenerationLog>();
     public DbSet<SchoolProfile> SchoolProfiles => Set<SchoolProfile>();
     
-    public DbSet<Timetable> Timetables => Set<Timetable>();
+    public DbSet<Room>          Rooms          => Set<Room>();
+    public DbSet<Timetable>     Timetables     => Set<Timetable>();
     public DbSet<TimetableSlot> TimetableSlots => Set<TimetableSlot>();
     
     public DbSet<StudyPlan> StudyPlans => Set<StudyPlan>();

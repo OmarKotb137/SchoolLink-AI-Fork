@@ -23,4 +23,5 @@ public class UpdateTimetableSlotRequest
 
     public int?  ClassSubjectTeacherId { get; set; }
     public bool  IsBreak               { get; set; }
+    public int?  RoomId               { get; set; }
 }

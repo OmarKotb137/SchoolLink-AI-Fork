@@ -65,6 +65,7 @@ public interface IUnitOfWork : IDisposable, IAsyncDisposable
     ISchoolProfileRepository               SchoolProfiles               { get; }
 
     // Section H: Timetable
+    IRoomRepository                        Rooms                        { get; }
     ITimetableRepository                   Timetables                   { get; }
     ITimetableSlotRepository               TimetableSlots               { get; }
 

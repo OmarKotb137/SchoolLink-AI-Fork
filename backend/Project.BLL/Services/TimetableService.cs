@@ -76,7 +76,22 @@ public class TimetableService : ITimetableService
         if (!hasSlots)
             return OperationResult.Failure("لا يمكن تفعيل جدول دراسي بدون حصص");
 
-        // 3. Transaction: deactivate current timetable, then activate this one
+        // 3. Rooms are reserved only on activation, so validate the draft now.
+        var draftSlots = await _unitOfWork.TimetableSlots.GetByTimetableIdAsync(timetableId);
+        foreach (var slot in draftSlots.Where(s => s.RoomId.HasValue))
+        {
+            if (await _unitOfWork.TimetableSlots.HasRoomConflictAgainstActiveTimetablesAsync(
+                    slot.RoomId!.Value,
+                    slot.DayOfWeek,
+                    slot.PeriodNumber,
+                    timetableId))
+            {
+                return OperationResult.Failure(
+                    $"لا يمكن تفعيل الجدول لأن الغرفة '{slot.Room?.Name ?? slot.RoomId.Value.ToString()}' محجوزة في نفس اليوم ونفس الحصة");
+            }
+        }
+
+        // 4. Transaction: deactivate current timetable, then activate this one
         await _unitOfWork.ExecuteInTransactionAsync(async () =>
         {
             await _unitOfWork.Timetables.DeactivateByClassAndYearAsync(
@@ -174,7 +189,15 @@ public class TimetableService : ITimetableService
                     "المعلم لديه حصة أخرى في نفس اليوم ونفس الرقم");
         }
 
-        // 5. Create slot
+        // 5. Validate room (optional)
+        if (request.RoomId.HasValue)
+        {
+            var room = await _unitOfWork.Rooms.GetByIdAsync(request.RoomId.Value);
+            if (room is null || room.IsDeleted)
+                return OperationResult<TimetableSlotDto>.Failure("الغرفة غير موجودة");
+        }
+
+        // 6. Create slot
         var slot = new TimetableSlot
         {
             TimetableId           = request.TimetableId,
@@ -183,10 +206,11 @@ public class TimetableService : ITimetableService
             StartTime             = request.StartTime,
             EndTime               = request.EndTime,
             IsBreak               = request.IsBreak,
-            ClassSubjectTeacherId = request.ClassSubjectTeacherId
+            ClassSubjectTeacherId = request.ClassSubjectTeacherId,
+            RoomId                = request.RoomId
         };
 
-        // 6. Persist
+        // 7. Persist
         await _unitOfWork.TimetableSlots.AddAsync(slot);
         await _unitOfWork.SaveChangesAsync();
 
@@ -251,19 +275,28 @@ public class TimetableService : ITimetableService
                     "المعلم لديه حصة أخرى في نفس اليوم ونفس الرقم");
         }
 
-        // 5. Apply updates
+        // 5. Validate room (optional)
+        if (request.RoomId.HasValue)
+        {
+            var room = await _unitOfWork.Rooms.GetByIdAsync(request.RoomId.Value);
+            if (room is null || room.IsDeleted)
+                return OperationResult<TimetableSlotDto>.Failure("الغرفة غير موجودة");
+        }
+
+        // 6. Apply updates
         slot.DayOfWeek             = request.DayOfWeek;
         slot.PeriodNumber          = request.PeriodNumber;
         slot.StartTime             = request.StartTime;
         slot.EndTime               = request.EndTime;
         slot.IsBreak               = request.IsBreak;
         slot.ClassSubjectTeacherId = request.IsBreak ? null : request.ClassSubjectTeacherId;
+        slot.RoomId                = request.RoomId;
         slot.UpdatedAt             = DateTime.UtcNow;
 
         _unitOfWork.TimetableSlots.Update(slot);
         await _unitOfWork.SaveChangesAsync();
 
-        // 6. Reload with details for SubjectName and TeacherName
+        // 7. Reload with details for SubjectName, TeacherName, and RoomName
         var withDetails = await _unitOfWork.TimetableSlots.GetByIdWithDetailsAsync(slot.Id);
 
         return OperationResult<TimetableSlotDto>.Success(
@@ -366,7 +399,8 @@ public class TimetableService : ITimetableService
             StartTime             = slot.StartTime,
             EndTime               = slot.EndTime,
             ClassSubjectTeacherId = slot.ClassSubjectTeacherId,
-            SubjectName           = slot.ClassSubjectTeacher?.Subject.Name
+            SubjectName           = slot.ClassSubjectTeacher?.Subject.Name,
+            RoomName              = slot.Room?.Name
         });
 
         return OperationResult<IEnumerable<TeacherScheduleSlotDto>>.Success(

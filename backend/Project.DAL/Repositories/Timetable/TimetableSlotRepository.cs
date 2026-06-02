@@ -1,8 +1,8 @@
 using Microsoft.EntityFrameworkCore;
+using Project.DAL.Context;
 using Project.DAL.Interfaces.Repositories.Timetable;
 using SchoolLink.Domain.Entities;
 using SchoolLink.Domain.Enums;
-using Project.DAL.Context;
 
 namespace Project.DAL.Repositories.Timetable;
 
@@ -20,6 +20,7 @@ public class TimetableSlotRepository : Repository<TimetableSlot>, ITimetableSlot
                 .ThenInclude(cst => cst!.Subject)
             .Include(s => s.ClassSubjectTeacher)
                 .ThenInclude(cst => cst!.Teacher)
+            .Include(s => s.Room)
             .OrderBy(s => s.DayOfWeek)
             .ThenBy(s => s.PeriodNumber)
             .ToListAsync(ct);
@@ -33,6 +34,7 @@ public class TimetableSlotRepository : Repository<TimetableSlot>, ITimetableSlot
                 .ThenInclude(cst => cst!.Subject)
             .Include(s => s.ClassSubjectTeacher)
                 .ThenInclude(cst => cst!.Teacher)
+            .Include(s => s.Room)
             .OrderBy(s => s.DayOfWeek)
             .ThenBy(s => s.PeriodNumber)
             .ToListAsync(ct);
@@ -66,6 +68,7 @@ public class TimetableSlotRepository : Repository<TimetableSlot>, ITimetableSlot
                 .ThenInclude(cst => cst!.Subject)
             .Include(s => s.ClassSubjectTeacher)
                 .ThenInclude(cst => cst!.Teacher)
+            .Include(s => s.Room)
             .OrderBy(s => s.PeriodNumber)
             .ToListAsync(ct);
 
@@ -75,6 +78,7 @@ public class TimetableSlotRepository : Repository<TimetableSlot>, ITimetableSlot
         CancellationToken ct = default)
         => await _context.TimetableSlots
             .Where(s => s.ClassSubjectTeacherId == classSubjectTeacherId)
+            .Include(s => s.Room)
             .OrderBy(s => s.DayOfWeek)
             .ThenBy(s => s.PeriodNumber)
             .ToListAsync(ct);
@@ -86,18 +90,21 @@ public class TimetableSlotRepository : Repository<TimetableSlot>, ITimetableSlot
         CancellationToken ct = default)
         => await _context.TimetableSlots
             .Where(s =>
-                s.ClassSubjectTeacher != null                                        &&
-                s.ClassSubjectTeacher.TeacherId      == teacherId                   &&
+                s.ClassSubjectTeacher != null                                       &&
+                s.ClassSubjectTeacher.TeacherId      == teacherId                  &&
                 s.ClassSubjectTeacher.AcademicYearId == academicYearId             &&
                 s.Timetable.IsActive)
             .Include(s => s.ClassSubjectTeacher)
                 .ThenInclude(cst => cst!.Subject)
             .Include(s => s.Timetable)
                 .ThenInclude(t => t.Class)
+            .Include(s => s.Room)
             .OrderBy(s => s.DayOfWeek)
             .ThenBy(s => s.PeriodNumber)
             .ToListAsync(ct);
 
+
+    // ── Slot conflict ──────────────────────────────────────────────────────────
 
     public async Task<bool> HasConflictAsync(
         int timetableId,
@@ -118,10 +125,13 @@ public class TimetableSlotRepository : Repository<TimetableSlot>, ITimetableSlot
         CancellationToken ct = default)
         => await _context.TimetableSlots
             .AnyAsync(s =>
-                s.Id          != excludedSlotId &&
-                s.TimetableId == timetableId    &&
-                s.DayOfWeek   == day            &&
+                s.Id           != excludedSlotId &&
+                s.TimetableId  == timetableId    &&
+                s.DayOfWeek    == day            &&
                 s.PeriodNumber == periodNumber, ct);
+
+
+    // ── Teacher conflict ───────────────────────────────────────────────────────
 
     public async Task<bool> HasTeacherConflictAsync(
         int teacherId,
@@ -131,11 +141,11 @@ public class TimetableSlotRepository : Repository<TimetableSlot>, ITimetableSlot
         CancellationToken ct = default)
         => await _context.TimetableSlots
             .AnyAsync(s =>
-                s.ClassSubjectTeacher != null                          &&
-                s.ClassSubjectTeacher.TeacherId      == teacherId      &&
-                s.ClassSubjectTeacher.AcademicYearId == academicYearId &&
-                s.Timetable.IsActive                                   &&
-                s.DayOfWeek    == day                                  &&
+                s.ClassSubjectTeacher != null                           &&
+                s.ClassSubjectTeacher.TeacherId      == teacherId       &&
+                s.ClassSubjectTeacher.AcademicYearId == academicYearId  &&
+                s.Timetable.IsActive                                    &&
+                s.DayOfWeek    == day                                   &&
                 s.PeriodNumber == periodNumber, ct);
 
     public async Task<bool> HasTeacherConflictAsync(
@@ -147,14 +157,57 @@ public class TimetableSlotRepository : Repository<TimetableSlot>, ITimetableSlot
         CancellationToken ct = default)
         => await _context.TimetableSlots
             .AnyAsync(s =>
-                s.Id          != excludedSlotId                        &&
-                s.ClassSubjectTeacher != null                          &&
-                s.ClassSubjectTeacher.TeacherId      == teacherId      &&
-                s.ClassSubjectTeacher.AcademicYearId == academicYearId &&
-                s.Timetable.IsActive                                   &&
-                s.DayOfWeek    == day                                  &&
+                s.Id          != excludedSlotId                         &&
+                s.ClassSubjectTeacher != null                           &&
+                s.ClassSubjectTeacher.TeacherId      == teacherId       &&
+                s.ClassSubjectTeacher.AcademicYearId == academicYearId  &&
+                s.Timetable.IsActive                                    &&
+                s.DayOfWeek    == day                                   &&
                 s.PeriodNumber == periodNumber, ct);
 
+
+    // ── Room conflict ──────────────────────────────────────────────────────────
+
+    public async Task<bool> HasRoomConflictAsync(
+        int roomId,
+        SchoolDay day,
+        int periodNumber,
+        CancellationToken ct = default)
+        => await _context.TimetableSlots
+            .AnyAsync(s =>
+                s.RoomId       == roomId        &&
+                s.DayOfWeek    == day           &&
+                s.PeriodNumber == periodNumber, ct);
+
+    public async Task<bool> HasRoomConflictAsync(
+        int roomId,
+        SchoolDay day,
+        int periodNumber,
+        int excludedSlotId,
+        CancellationToken ct = default)
+        => await _context.TimetableSlots
+            .AnyAsync(s =>
+                s.Id           != excludedSlotId &&
+                s.RoomId       == roomId         &&
+                s.DayOfWeek    == day            &&
+                s.PeriodNumber == periodNumber, ct);
+
+    public async Task<bool> HasRoomConflictAgainstActiveTimetablesAsync(
+        int roomId,
+        SchoolDay day,
+        int periodNumber,
+        int timetableId,
+        CancellationToken ct = default)
+        => await _context.TimetableSlots
+            .AnyAsync(s =>
+                s.RoomId       == roomId         &&
+                s.DayOfWeek    == day            &&
+                s.PeriodNumber == periodNumber   &&
+                s.TimetableId  != timetableId    &&
+                s.Timetable.IsActive, ct);
+
+
+    // ── Bulk ──────────────────────────────────────────────────────────────────
 
     public async Task BulkReplaceAsync(
         int timetableId,
@@ -172,6 +225,8 @@ public class TimetableSlotRepository : Repository<TimetableSlot>, ITimetableSlot
     }
 
 
+    // ── Details ───────────────────────────────────────────────────────────────
+
     public async Task<TimetableSlot?> GetByIdWithDetailsAsync(
         int slotId,
         CancellationToken ct = default)
@@ -180,5 +235,6 @@ public class TimetableSlotRepository : Repository<TimetableSlot>, ITimetableSlot
                 .ThenInclude(cst => cst!.Subject)
             .Include(s => s.ClassSubjectTeacher)
                 .ThenInclude(cst => cst!.Teacher)
+            .Include(s => s.Room)
             .FirstOrDefaultAsync(s => s.Id == slotId, ct);
 }

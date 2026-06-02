@@ -53,6 +53,15 @@ public class MappingProfile : Profile
                     ? s.ClassSubjectTeacher.Subject.Name : null))
             .ForMember(d => d.TeacherName,
                 opt => opt.MapFrom(s => s.ClassSubjectTeacher != null
-                    ? s.ClassSubjectTeacher.Teacher.FullName : null));
+                    ? s.ClassSubjectTeacher.Teacher.FullName : null))
+            .ForMember(d => d.RoomName,
+                opt => opt.MapFrom(s => s.Room != null ? s.Room.Name : null));
+
+        // Room
+        CreateMap<Room, RoomDto>()
+            .ForMember(d => d.Type,
+                opt => opt.MapFrom(s => s.Type.ToString()));
+        CreateMap<CreateRoomRequest, Room>();
+        CreateMap<UpdateRoomRequest, Room>();
     }
 }
