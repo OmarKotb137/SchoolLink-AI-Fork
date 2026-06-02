@@ -1,7 +1,7 @@
 using Common.Results;
 using Project.BLL.DTOs.Common;
 using Project.BLL.DTOs.Users;
-using SchoolLink.Domain.Enums;
+using Project.Domain.Enums;
 
 namespace Project.BLL.Interfaces;
 

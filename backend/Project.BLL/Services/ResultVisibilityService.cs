@@ -3,8 +3,8 @@ using Common.Results;
 using Project.BLL.DTOs.ResultVisibility;
 using Project.BLL.Interfaces;
 using Project.DAL.Interfaces;
-using SchoolLink.Domain.Entities;
-using SchoolLink.Domain.Enums;
+using Project.Domain.Entities;
+using Project.Domain.Enums;
 
 namespace Project.BLL.Services;
 

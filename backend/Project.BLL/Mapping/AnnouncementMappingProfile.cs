@@ -1,7 +1,6 @@
 using AutoMapper;
 using Project.BLL.DTOs.Announcements;
-using SchoolLink.Domain.Entities;
-
+using Project.Domain.Entities;
 namespace Project.BLL.Mapping;
 
 public class AnnouncementMappingProfile : Profile

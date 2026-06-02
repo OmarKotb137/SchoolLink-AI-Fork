@@ -1,5 +1,5 @@
-﻿using SchoolLink.Domain.Entities;
-using SchoolLink.Domain.Enums;
+﻿using Project.Domain.Entities;
+using Project.Domain.Enums;
 using System.Linq.Expressions;
 
 namespace Project.DAL.Interfaces.Repositories.Timetable;

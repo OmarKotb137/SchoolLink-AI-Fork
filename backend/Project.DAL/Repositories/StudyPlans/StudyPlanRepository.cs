@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Project.DAL.Interfaces.Repositories.StudyPlans;
-using SchoolLink.Domain.Entities;
+using Project.Domain.Entities;
 using Project.DAL.Context;
 
 namespace Project.DAL.Repositories.StudyPlans;

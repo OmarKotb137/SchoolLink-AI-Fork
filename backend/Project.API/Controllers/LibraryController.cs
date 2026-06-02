@@ -41,7 +41,7 @@ public class LibraryController : ControllerBase
         {
             Title = title,
             Description = description,
-            ItemType = (SchoolLink.Domain.Enums.LibraryItemType)itemType,
+            ItemType = (Project.Domain.Enums.LibraryItemType)itemType,
             FileUrl = dropboxResult.Data,
             SubjectId = subjectId,
             GradeLevelId = gradeLevelId,

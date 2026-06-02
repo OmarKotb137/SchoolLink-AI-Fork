@@ -4,8 +4,8 @@ using Project.BLL.DTOs.Common;
 using Project.BLL.DTOs.Library;
 using Project.BLL.Interfaces;
 using Project.DAL.Interfaces;
-using SchoolLink.Domain.Entities;
-using SchoolLink.Domain.Enums;
+using Project.Domain.Entities;
+using Project.Domain.Enums;
 
 namespace Project.BLL.Services;
 

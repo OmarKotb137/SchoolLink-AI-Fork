@@ -1,16 +1,16 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Project.DAL.Interfaces.Repositories.Timetable;
-using SchoolLink.Domain.Entities;
+using Project.Domain.Entities;
 using Project.DAL.Context;
 
 namespace Project.DAL.Repositories.Timetable;
 
-public class TimetableRepository : Repository<SchoolLink.Domain.Entities.Timetable>, ITimetableRepository
+public class TimetableRepository : Repository<Project.Domain.Entities.Timetable>, ITimetableRepository
 {
     public TimetableRepository(AppDbContext context) : base(context) { }
 
 
-    public async Task<SchoolLink.Domain.Entities.Timetable?> GetActiveByClassAndYearAsync(
+    public async Task<Project.Domain.Entities.Timetable?> GetActiveByClassAndYearAsync(
         int classId,
         int academicYearId,
         CancellationToken ct = default)
@@ -31,7 +31,7 @@ public class TimetableRepository : Repository<SchoolLink.Domain.Entities.Timetab
                 t.IsActive, ct);
 
 
-    public async Task<IReadOnlyList<SchoolLink.Domain.Entities.Timetable>> GetByClassAndYearAsync(
+    public async Task<IReadOnlyList<Project.Domain.Entities.Timetable>> GetByClassAndYearAsync(
         int classId,
         int academicYearId,
         CancellationToken ct = default)
@@ -43,7 +43,7 @@ public class TimetableRepository : Repository<SchoolLink.Domain.Entities.Timetab
             .ToListAsync(ct);
 
 
-    public async Task<SchoolLink.Domain.Entities.Timetable?> GetWithSlotsAsync(
+    public async Task<Project.Domain.Entities.Timetable?> GetWithSlotsAsync(
         int timetableId,
         CancellationToken ct = default)
         => await _context.Timetables

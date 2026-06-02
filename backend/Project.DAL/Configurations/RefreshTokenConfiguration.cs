@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using SchoolLink.Domain.Entities;
+using Project.Domain.Entities;
 
 namespace Project.DAL.Configurations;
 
