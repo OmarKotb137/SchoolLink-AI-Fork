@@ -3,7 +3,7 @@ using Common.Results;
 using Project.BLL.DTOs.SchoolProfiles;
 using Project.BLL.Interfaces;
 using Project.DAL.Interfaces;
-using SchoolLink.Domain.Entities;
+using Project.Domain.Entities;
 
 namespace Project.BLL.Services;
 

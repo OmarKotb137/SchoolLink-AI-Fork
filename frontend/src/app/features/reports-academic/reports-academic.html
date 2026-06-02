@@ -1,0 +1,155 @@
+﻿    <app-sidebar [(isOpen)]="sidebarOpen" />
+    <div class="main-content">
+      <app-topbar userName="أحمد" />
+      <main class="flex-1">
+        <header class="fixed top-0 left-0 lg:right-72 z-40 bg-surface-container-lowest/80 backdrop-blur-md border-b border-outline-variant h-20 flex items-center justify-between px-4 lg:px-gutter-desktop">
+          <div class="flex items-center gap-4">
+            <div class="relative">
+              <span class="absolute inset-y-0 right-3 flex items-center text-outline"><span class="material-symbols-outlined">search</span></span>
+              <input class="pr-10 pl-4 py-2 bg-surface-container-low border-none rounded-full text-label-md focus:ring-2 focus:ring-primary-container w-64" placeholder="بحث في التقارير..." type="text"/>
+            </div>
+            <select class="bg-surface-container-low border-none rounded-full text-label-md px-4 py-2 focus:ring-2 focus:ring-primary-container">
+              <option>الفصل الدراسي الثاني</option>
+              <option>الفصل الدراسي الأول</option>
+            </select>
+          </div>
+          <div class="flex items-center gap-6">
+            <div class="flex items-center gap-4 text-on-surface-variant">
+              <span class="material-symbols-outlined cursor-pointer hover:text-primary transition-colors">notifications</span>
+              <span class="material-symbols-outlined cursor-pointer hover:text-primary transition-colors">settings</span>
+            </div>
+            <div class="flex items-center gap-3 border-r pr-6 border-outline-variant">
+              <div class="text-left"><p class="text-label-md font-bold text-on-surface">أحمد السعدي</p><p class="text-label-sm text-outline">مدير المدرسة</p></div>
+              <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">أ</div>
+            </div>
+          </div>
+        </header>
+        <div class="pt-20 pb-10 px-8 max-w-full">
+          <div class="flex justify-between items-end mb-5">
+            <div>
+              <nav class="flex text-label-sm text-outline mb-2 gap-2"><span>التقارير</span><span>/</span><span class="text-primary">التقرير الدراسي</span></nav>
+              <h2 class="text-headline-lg font-headline-lg text-on-surface">التقرير الدراسي - سجل الرصد</h2>
+              <p class="text-body-md text-on-surface-variant mt-1">بيانات مبنية على درجات سجل الرصد للمعلم</p>
+            </div>
+            <button class="flex items-center gap-2 px-6 py-2.5 bg-surface-container-high border border-outline-variant rounded-lg text-label-md font-bold hover:bg-surface-variant transition-colors">
+              <span class="material-symbols-outlined">download</span> تحميل PDF
+            </button>
+          </div>
+          <div class="flex gap-4 mb-6 flex-wrap">
+            <select class="bg-white border border-outline-variant rounded-lg px-4 py-2.5 text-label-md">
+              <option>الصف الأول الإعدادي</option>
+              <option>الصف الثاني الإعدادي</option>
+              <option>الصف الثالث الإعدادي</option>
+            </select>
+            <select class="bg-white border border-outline-variant rounded-lg px-4 py-2.5 text-label-md">
+              <option>شهر فبراير</option>
+              <option>شهر مارس</option>
+              <option>شهر أبريل</option>
+            </select>
+            <button class="bg-primary text-on-primary px-6 py-2.5 rounded-lg text-label-md font-bold hover:opacity-90 transition-opacity">عرض التقرير</button>
+          </div>
+          <div class="grid grid-cols-12 gap-4 mb-4">
+            <div class="col-span-12 lg:col-span-3 bg-white rounded-xl border border-outline-variant p-4 shadow-sm">
+              <p class="text-label-sm text-outline">المعدل العام</p>
+              <p class="text-display-lg font-display-lg text-primary mt-1">76%</p>
+              <div class="w-full bg-surface-container-low h-2 rounded-full mt-2"><div class="bg-primary h-2 rounded-full" style="width:76%"></div></div>
+            </div>
+            <div class="col-span-12 lg:col-span-3 bg-white rounded-xl border border-outline-variant p-widget-padding shadow-sm">
+              <p class="text-label-sm text-outline">متوسط الأداء المنزلي</p>
+              <p class="text-headline-md font-headline-md text-on-surface mt-1">8.5 / 10</p>
+              <div class="w-full bg-surface-container-low h-2 rounded-full mt-2"><div class="bg-secondary h-2 rounded-full" style="width:85%"></div></div>
+            </div>
+            <div class="col-span-12 lg:col-span-3 bg-white rounded-xl border border-outline-variant p-widget-padding shadow-sm">
+              <p class="text-label-sm text-outline">متوسط التقييم الأسبوعي</p>
+              <p class="text-headline-md font-headline-md text-on-surface mt-1">16 / 20</p>
+              <div class="w-full bg-surface-container-low h-2 rounded-full mt-2"><div class="bg-secondary h-2 rounded-full" style="width:80%"></div></div>
+            </div>
+            <div class="col-span-12 lg:col-span-3 bg-white rounded-xl border border-outline-variant p-widget-padding shadow-sm">
+              <p class="text-label-sm text-outline">السلوك والمواظبة</p>
+              <p class="text-headline-md font-headline-md text-on-surface mt-1">9 / 10</p>
+              <div class="w-full bg-surface-container-low h-2 rounded-full mt-2"><div class="bg-secondary h-2 rounded-full" style="width:90%"></div></div>
+            </div>
+          </div>
+          <div class="bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden mb-4">
+            <div class="p-4 border-b border-outline-variant flex justify-between items-center">
+              <h3 class="text-headline-sm font-headline-sm text-on-surface">سجل الرصد الأسبوعي</h3>
+              <span class="text-label-sm text-outline">الفصل الدراسي الثاني - 14 أسبوع</span>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-label-md">
+                <thead>
+                  <tr class="bg-surface-container-low border-b border-outline-variant">
+                    <th class="text-right p-3 text-outline font-bold">الطالب</th>
+                    <th class="text-center p-3 text-outline font-bold">الأسبوع 1</th>
+                    <th class="text-center p-3 text-outline font-bold">الأسبوع 2</th>
+                    <th class="text-center p-3 text-outline font-bold">الأسبوع 3</th>
+                    <th class="text-center p-3 text-outline font-bold">الأسبوع 4</th>
+                    <th class="text-center p-3 text-outline font-bold">متوسط فبراير</th>
+                    <th class="text-center p-3 text-outline font-bold">الاختبار الشهري</th>
+                    <th class="text-center p-3 text-outline font-bold">المجموع</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="border-b border-outline-variant/30 hover:bg-surface-container-low/30">
+                    <td class="p-3 font-bold text-on-surface">أحمد علي</td>
+                    <td class="text-center p-3">28</td>
+                    <td class="text-center p-3">30</td>
+                    <td class="text-center p-3">29</td>
+                    <td class="text-center p-3">27</td>
+                    <td class="text-center p-3 font-bold text-primary">28.5</td>
+                    <td class="text-center p-3">13</td>
+                    <td class="text-center p-3 font-bold">41.5</td>
+                  </tr>
+                  <tr class="border-b border-outline-variant/30 hover:bg-surface-container-low/30">
+                    <td class="p-3 font-bold text-on-surface">سارة محمود</td>
+                    <td class="text-center p-3">32</td>
+                    <td class="text-center p-3">35</td>
+                    <td class="text-center p-3">33</td>
+                    <td class="text-center p-3">34</td>
+                    <td class="text-center p-3 font-bold text-primary">33.5</td>
+                    <td class="text-center p-3">14</td>
+                    <td class="text-center p-3 font-bold">47.5</td>
+                  </tr>
+                  <tr class="border-b border-outline-variant/30 hover:bg-surface-container-low/30">
+                    <td class="p-3 font-bold text-on-surface">يوسف حسن</td>
+                    <td class="text-center p-3">22</td>
+                    <td class="text-center p-3">24</td>
+                    <td class="text-center p-3">20</td>
+                    <td class="text-center p-3">25</td>
+                    <td class="text-center p-3 font-bold text-primary">22.75</td>
+                    <td class="text-center p-3">10</td>
+                    <td class="text-center p-3 font-bold">32.75</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="grid grid-cols-12 gap-4">
+            <div class="col-span-12 lg:col-span-6 bg-white rounded-xl border border-outline-variant shadow-sm p-4">
+              <h3 class="text-headline-sm font-headline-sm text-on-surface mb-4">الدرجات المجمعة</h3>
+              <div class="space-y-3">
+                <div><div class="flex justify-between text-label-sm mb-1"><span>متوسط شهر فبراير</span><span class="font-bold">28.5 / 40</span></div><div class="w-full bg-surface-container-low h-2 rounded-full"><div class="bg-primary h-2 rounded-full" style="width:71%"></div></div></div>
+                <div><div class="flex justify-between text-label-sm mb-1"><span>متوسط شهر مارس</span><span class="font-bold">31 / 40</span></div><div class="w-full bg-surface-container-low h-2 rounded-full"><div class="bg-primary h-2 rounded-full" style="width:77%"></div></div></div>
+                <div><div class="flex justify-between text-label-sm mb-1"><span>متوسط شهر أبريل</span><span class="font-bold">33 / 40</span></div><div class="w-full bg-surface-container-low h-2 rounded-full"><div class="bg-primary h-2 rounded-full" style="width:82%"></div></div></div>
+                <div><div class="flex justify-between text-label-sm mb-1"><span>الاختبار الشهري الأول</span><span class="font-bold">13 / 15</span></div><div class="w-full bg-surface-container-low h-2 rounded-full"><div class="bg-secondary h-2 rounded-full" style="width:86%"></div></div></div>
+                <div><div class="flex justify-between text-label-sm mb-1"><span>الاختبار الشهري الثاني</span><span class="font-bold">12 / 15</span></div><div class="w-full bg-surface-container-low h-2 rounded-full"><div class="bg-secondary h-2 rounded-full" style="width:80%"></div></div></div>
+                <div class="pt-2 border-t border-outline-variant"><div class="flex justify-between text-label-md font-bold"><span>مجموع الأعمال التحريرية</span><span>58 / 70</span></div></div>
+              </div>
+            </div>
+            <div class="col-span-12 lg:col-span-6 bg-white rounded-xl border border-outline-variant shadow-sm p-6">
+              <h3 class="text-headline-sm font-headline-sm text-on-surface mb-4">الدرجة النهائية</h3>
+              <div class="flex items-center justify-center h-48">
+                <div class="text-center">
+                  <p class="text-label-md text-outline mb-2">درجة آخر العام</p>
+                  <p class="text-6xl font-black text-primary">88</p>
+                  <p class="text-label-md text-outline mt-2">من 100</p>
+                  <div class="mt-4 inline-flex items-center gap-2 bg-green-50 text-green-700 px-4 py-2 rounded-full text-label-sm font-bold">
+                    <span class="material-symbols-outlined" style="font-size:16px">check_circle</span> تقدير: ممتاز
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>

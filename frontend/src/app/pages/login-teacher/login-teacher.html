@@ -1,0 +1,49 @@
+<body style="font-family:'IBM Plex Sans Arabic',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f4f9f7;padding:20px">
+  <div style="display:flex;width:100%;max-width:880px;background:#fff;border-radius:36px;box-shadow:0 30px 60px -15px rgba(13,122,95,.12);overflow:hidden;min-height:520px">
+    <div style="padding:48px 40px;flex:1;display:flex;flex-direction:column;justify-content:center">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:36px">
+        <div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#0d7a5f,#0f9b7a);display:flex;align-items:center;justify-content:center">
+          <span class="material-symbols-outlined" style="color:#fff;font-size:22px;font-variation-settings:'FILL'1">school</span>
+        </div>
+        <div><h1 style="font-size:18px;font-weight:800;color:#1e293b">SchoolLink AI</h1><p style="font-size:11px;color:#94a3b8">منصة التعليم الذكية</p></div>
+      </div>
+      <h2 style="font-size:24px;font-weight:700;color:#1e293b;margin-bottom:4px">تسجيل دخول المعلم</h2>
+      <p style="font-size:14px;color:#94a3b8;margin-bottom:28px">أهلاً بك في منصة المعلمين</p>
+      <form #f="ngForm" (ngSubmit)="handleLogin(f)">
+        <div style="margin-bottom:14px">
+          <label style="display:block;font-size:12px;font-weight:600;color:#64748b;margin-bottom:5px">البريد الإلكتروني</label>
+          <div style="position:relative">
+            <span class="material-symbols-outlined" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:18px">mail</span>
+            <input ngModel name="email" type="text" placeholder="البريد الإلكتروني" style="width:100%;padding:13px 42px 13px 14px;border:1.5px solid #e2e8f0;border-radius:12px;font-size:13px;outline:none;font-family:inherit;background:#f8fafc;color:#1e293b">
+          </div>
+        </div>
+        <div style="margin-bottom:14px">
+          <label style="display:block;font-size:12px;font-weight:600;color:#64748b;margin-bottom:5px">كلمة المرور</label>
+          <div style="position:relative">
+            <span class="material-symbols-outlined" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:18px">lock</span>
+            <input ngModel name="password" #pwd type="password" placeholder="كلمة المرور" style="width:100%;padding:13px 42px 13px 14px;border:1.5px solid #e2e8f0;border-radius:12px;font-size:13px;outline:none;font-family:inherit;background:#f8fafc;color:#1e293b">
+            <button type="button" (click)="togglePwd(pwd)" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:#94a3b8;cursor:pointer;padding:0">
+              <span class="material-symbols-outlined" style="font-size:18px">visibility</span>
+            </button>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin:16px 0 20px">
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#94a3b8;cursor:pointer"><input type="checkbox" style="width:14px;height:14px;accent-color:#0d7a5f"> تذكرني</label>
+          <a href="#" style="font-size:12px;color:#0d7a5f;text-decoration:none;font-weight:600">نسيت كلمة المرور؟</a>
+        </div>
+        <button type="submit" style="width:100%;padding:14px;border:none;border-radius:12px;background:linear-gradient(135deg,#0d7a5f,#0f9b7a);color:#fff;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+          <span class="material-symbols-outlined" style="font-size:18px">login</span> دخول المعلم
+        </button>
+      </form>
+    </div>
+    <div style="width:280px;background:linear-gradient(160deg,#0d7a5f,#064233);position:relative;padding:48px 28px;display:flex;flex-direction:column;justify-content:center">
+      <div style="position:relative;z-index:1;text-align:center">
+        <div style="width:72px;height:72px;border-radius:20px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;margin:0 auto 20px">
+          <span class="material-symbols-outlined" style="color:#fff;font-size:36px;font-variation-settings:'FILL'1">auto_stories</span>
+        </div>
+        <h3 style="font-size:26px;font-weight:800;color:#fff;line-height:1.3;margin-bottom:8px">مرحباً<br>بالمعلم</h3>
+        <p style="color:rgba(255,255,255,.5);font-size:13px;line-height:1.7">إدارة الفصول، متابعة الطلاب، وإعداد الامتحانات والواجبات</p>
+      </div>
+    </div>
+  </div>
+</body>

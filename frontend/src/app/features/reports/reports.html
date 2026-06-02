@@ -1,0 +1,198 @@
+﻿    <app-sidebar [(isOpen)]="sidebarOpen" />
+    <div class="main-content">
+      <app-topbar userName="أحمد" />
+      <main class="flex-1 min-h-screen">
+        <header class="fixed top-0 left-0 right-72 z-40 bg-surface-container-lowest/80 backdrop-blur-md border-b border-outline-variant h-20 flex items-center justify-between px-gutter-desktop">
+          <div class="flex items-center gap-4">
+            <div class="relative">
+              <span class="absolute inset-y-0 right-3 flex items-center text-outline">
+                <span class="material-symbols-outlined">search</span>
+              </span>
+              <input class="pr-10 pl-4 py-2 bg-surface-container-low border-none rounded-full text-label-md focus:ring-2 focus:ring-primary-container w-64" placeholder="البحث عن المواد أو التقارير..." type="text"/>
+            </div>
+          </div>
+          <div class="flex items-center gap-6">
+            <div class="flex items-center gap-4 text-on-surface-variant">
+              <span class="material-symbols-outlined cursor-pointer hover:text-primary transition-colors">notifications</span>
+              <span class="material-symbols-outlined cursor-pointer hover:text-primary transition-colors">settings</span>
+            </div>
+            <div class="flex items-center gap-3 border-r pr-6 border-outline-variant">
+              <div class="text-left">
+                <p class="text-label-md font-bold text-on-surface">أحمد السعدي</p>
+                <p class="text-label-sm text-outline">ولي أمر الطالب: ياسين</p>
+              </div>
+              <img alt="Profile" class="w-10 h-10 rounded-full border-2 border-primary-fixed" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD3-5anRqjPXK9FdNGZATWKBIGgbNC0PO1f937hzpcXQaijJfZiNCyyKyfQbXtSnOyOKtSoWGOuLaAyoI8BhKJP4FPXJvL1HKzu1nmPOWVBd6EfHf4nzXIqsrWI8CBNih9-aUlixvxRFgIXQ8b0sPqSOoujd1gJVaGpCQ4ngppDzZZJWaEQXb_HmnX4DCkdX7m_XOdRdmss1vrmqH5zY8eS0qjOBUk-WsJaXQ2LmYmmQuGMC3rN2-5UkkS3ryROQtnQD7OsFb_awzM"/>
+            </div>
+          </div>
+        </header>
+        <div class="pt-28 pb-12 px-gutter-desktop max-w-7xl mx-auto">
+          <div class="flex justify-between items-end mb-8">
+            <div>
+              <nav class="flex text-label-sm text-outline mb-2 gap-2">
+                <span>التقارير</span><span>/</span><span class="text-primary">التقرير الشهري</span>
+              </nav>
+              <h2 class="text-headline-lg font-headline-lg text-on-surface">تقرير الأداء لشهر أبريل 2026</h2>
+              <p class="text-body-md text-on-surface-variant mt-1">الطالب: ياسين أحمد السعدي - الصف العاشر</p>
+            </div>
+            <button class="flex items-center gap-2 px-6 py-2.5 bg-surface-container-high border border-outline-variant rounded-lg text-label-md font-bold hover:bg-surface-variant transition-colors">
+              <span class="material-symbols-outlined">download</span> تحميل بصيغة PDF
+            </button>
+          </div>
+          <div class="grid grid-cols-12 gap-6">
+            <div class="col-span-12 lg:col-span-4 bg-white rounded-xl border border-outline-variant p-widget-padding flex flex-col justify-between shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
+              <div>
+                <p class="text-label-md font-bold text-outline">المعدل العام للشهر</p>
+                <div class="flex items-baseline gap-4 mt-2">
+                  <span class="text-display-lg font-display-lg text-primary">76%</span>
+                  <span class="flex items-center gap-1 text-green-600 bg-green-50 px-2 py-0.5 rounded-full text-label-sm">
+                    <span class="material-symbols-outlined text-sm">trending_up</span> +5% عن الشهر السابق
+                  </span>
+                </div>
+              </div>
+              <div class="mt-8 space-y-3">
+                <div class="flex justify-between text-label-sm">
+                  <span class="text-outline">الهدف الفصلي: 85%</span>
+                  <span class="text-primary font-bold">باقي 9%</span>
+                </div>
+                <div class="w-full bg-surface-container-low h-2.5 rounded-full">
+                  <div class="bg-primary h-2.5 rounded-full" style="width: 76%"></div>
+                </div>
+              </div>
+            </div>
+            <div class="col-span-12 lg:col-span-4 bg-white rounded-xl border border-outline-variant p-widget-padding shadow-sm flex items-center justify-between group hover:shadow-md transition-shadow">
+              <div class="flex items-center gap-4">
+                <div class="w-14 h-14 rounded-full bg-tertiary-fixed flex items-center justify-center text-on-tertiary-fixed">
+                  <span class="material-symbols-outlined text-3xl">calendar_today</span>
+                </div>
+                <div>
+                  <p class="text-label-sm text-outline">نسبة الحضور</p>
+                  <p class="text-headline-md font-headline-md text-on-surface">28 / 30 يوم</p>
+                </div>
+              </div>
+              <div class="text-right">
+                <span class="text-label-md font-bold text-tertiary">93%</span>
+                <p class="text-[10px] text-outline">منتظم</p>
+              </div>
+            </div>
+            <div class="col-span-12 lg:col-span-4 bg-white rounded-xl border border-outline-variant p-widget-padding shadow-sm flex items-center justify-between group hover:shadow-md transition-shadow">
+              <div class="flex items-center gap-4">
+                <div class="w-14 h-14 rounded-full bg-secondary-fixed flex items-center justify-center text-on-secondary-fixed">
+                  <span class="material-symbols-outlined text-3xl">assignment_turned_in</span>
+                </div>
+                <div>
+                  <p class="text-label-sm text-outline">إكمال الواجبات</p>
+                  <p class="text-headline-md font-headline-md text-on-surface">18 / 20 واجب</p>
+                </div>
+              </div>
+              <div class="text-right">
+                <span class="text-label-md font-bold text-secondary">90%</span>
+                <p class="text-[10px] text-outline">نشط جداً</p>
+              </div>
+            </div>
+            <div class="col-span-12 lg:col-span-8 bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden">
+              <div class="p-6 border-b border-outline-variant flex justify-between items-center">
+                <h3 class="text-headline-sm font-headline-sm text-on-surface">توزيع الدرجات حسب المواد</h3>
+                <span class="text-label-sm text-outline">الفصل الدراسي الثاني</span>
+              </div>
+              <div class="p-6">
+                <div class="space-y-6">
+                  <div class="flex items-center gap-6">
+                    <div class="w-32 text-label-md font-bold text-on-surface">الرياضيات</div>
+                    <div class="flex-1 bg-surface-container-low h-3 rounded-full overflow-hidden"><div class="bg-primary h-3 rounded-full" style="width: 82%"></div></div>
+                    <div class="w-20 text-center"><span class="inline-block px-3 py-1 bg-green-100 text-green-800 rounded-full text-label-sm font-bold">ممتاز (82%)</span></div>
+                  </div>
+                  <div class="flex items-center gap-6">
+                    <div class="w-32 text-label-md font-bold text-on-surface">اللغة العربية</div>
+                    <div class="flex-1 bg-surface-container-low h-3 rounded-full overflow-hidden"><div class="bg-primary h-3 rounded-full" style="width: 89%"></div></div>
+                    <div class="w-20 text-center"><span class="inline-block px-3 py-1 bg-green-100 text-green-800 rounded-full text-label-sm font-bold">ممتاز (89%)</span></div>
+                  </div>
+                  <div class="flex items-center gap-6">
+                    <div class="w-32 text-label-md font-bold text-on-surface">اللغة الإنجليزية</div>
+                    <div class="flex-1 bg-surface-container-low h-3 rounded-full overflow-hidden"><div class="bg-secondary-container h-3 rounded-full" style="width: 68%"></div></div>
+                    <div class="w-20 text-center"><span class="inline-block px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-label-sm font-bold">جيد (68%)</span></div>
+                  </div>
+                  <div class="flex items-center gap-6">
+                    <div class="w-32 text-label-md font-bold text-on-surface">العلوم</div>
+                    <div class="flex-1 bg-surface-container-low h-3 rounded-full overflow-hidden"><div class="bg-primary h-3 rounded-full" style="width: 74%"></div></div>
+                    <div class="w-20 text-center"><span class="inline-block px-3 py-1 bg-green-100 text-green-800 rounded-full text-label-sm font-bold">ممتاز (74%)</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-span-12 lg:col-span-4 space-y-6">
+              <div class="glass-ai rounded-xl p-widget-padding ai-gradient-border shadow-lg relative overflow-hidden">
+                <div class="flex items-center gap-2 mb-4">
+                  <span class="material-symbols-outlined text-secondary">psychology</span>
+                  <h3 class="text-label-md font-bold text-on-surface">نقاط القوة (AI)</h3>
+                </div>
+                <ul class="space-y-3">
+                  <li class="flex items-start gap-2">
+                    <span class="material-symbols-outlined text-green-600 text-sm mt-1">check_circle</span>
+                    <p class="text-label-md text-on-surface-variant">تفوق ملحوظ في حل المعادلات التربيعية.</p>
+                  </li>
+                  <li class="flex items-start gap-2">
+                    <span class="material-symbols-outlined text-green-600 text-sm mt-1">check_circle</span>
+                    <p class="text-label-md text-on-surface-variant">قدرة عالية على التحليل الأدبي للنصوص العربية.</p>
+                  </li>
+                </ul>
+              </div>
+              <div class="bg-surface-container-low rounded-xl p-widget-padding border border-outline-variant shadow-sm">
+                <div class="flex items-center gap-2 mb-4 text-error">
+                  <span class="material-symbols-outlined">error_outline</span>
+                  <h3 class="text-label-md font-bold">مجالات التحسين</h3>
+                </div>
+                <ul class="space-y-3">
+                  <li class="flex items-start gap-2">
+                    <span class="material-symbols-outlined text-error text-sm mt-1">warning</span>
+                    <p class="text-label-md text-on-surface-variant">تحتاج القواعد النحوية في اللغة الإنجليزية إلى مراجعة.</p>
+                  </li>
+                  <li class="flex items-start gap-2">
+                    <span class="material-symbols-outlined text-error text-sm mt-1">warning</span>
+                    <p class="text-label-md text-on-surface-variant">إدارة الوقت أثناء الاختبارات العلمية.</p>
+                  </li>
+                </ul>
+              </div>
+            </div>
+            <div class="col-span-12 bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden">
+              <div class="p-6 bg-surface-container-lowest border-b border-outline-variant flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-lg bg-primary-container flex items-center justify-center text-on-primary-container">
+                    <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+                  </div>
+                  <div>
+                    <h3 class="text-headline-sm font-headline-sm text-on-surface">توصيات التحسين الذكية</h3>
+                    <p class="text-label-sm text-outline">خطة عمل مخصصة لياسين بناءً على بيانات الشهر</p>
+                  </div>
+                </div>
+              </div>
+              <div class="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="p-4 rounded-xl border-2 border-dashed border-outline-variant bg-surface-bright flex flex-col items-center text-center group hover:border-primary hover:bg-primary-container/5 transition-all">
+                  <div class="w-12 h-12 rounded-full bg-white shadow-sm flex items-center justify-center mb-4 text-primary group-hover:scale-110 transition-transform">
+                    <span class="material-symbols-outlined">book_5</span>
+                  </div>
+                  <h4 class="text-label-md font-bold mb-2">مراجعة مكثفة: Grammar</h4>
+                  <p class="text-label-sm text-on-surface-variant">تخصيص 20 دقيقة يومياً لتمارين قواعد اللغة الإنجليزية عبر منصة SchoolLink.</p>
+                  <button class="mt-4 text-primary font-bold text-label-sm flex items-center gap-1">ابدأ التدريب <span class="material-symbols-outlined text-xs rtl-mirror">arrow_forward</span></button>
+                </div>
+                <div class="p-4 rounded-xl border-2 border-dashed border-outline-variant bg-surface-bright flex flex-col items-center text-center group hover:border-primary hover:bg-primary-container/5 transition-all">
+                  <div class="w-12 h-12 rounded-full bg-white shadow-sm flex items-center justify-center mb-4 text-secondary group-hover:scale-110 transition-transform">
+                    <span class="material-symbols-outlined">timer</span>
+                  </div>
+                  <h4 class="text-label-md font-bold mb-2">استراتيجية الاختبارات</h4>
+                  <p class="text-label-sm text-on-surface-variant">محاكاة اختبار علوم لمدة 45 دقيقة لتحسين سرعة الإجابة والدقة في المختبر الافتراضي.</p>
+                  <button class="mt-4 text-secondary font-bold text-label-sm flex items-center gap-1">عرض الفيديو الإرشادي <span class="material-symbols-outlined text-xs rtl-mirror">arrow_forward</span></button>
+                </div>
+                <div class="p-4 rounded-xl border-2 border-dashed border-outline-variant bg-surface-bright flex flex-col items-center text-center group hover:border-primary hover:bg-primary-container/5 transition-all">
+                  <div class="w-12 h-12 rounded-full bg-white shadow-sm flex items-center justify-center mb-4 text-tertiary group-hover:scale-110 transition-transform">
+                    <span class="material-symbols-outlined">forum</span>
+                  </div>
+                  <h4 class="text-label-md font-bold mb-2">جلسة نقاش إثرائية</h4>
+                  <p class="text-label-sm text-on-surface-variant">الانضمام إلى مجموعة النقاش "رواد اللغة العربية" لتعزيز مهارات النقد البلاغي.</p>
+                  <button class="mt-4 text-tertiary font-bold text-label-sm flex items-center gap-1">انضم الآن <span class="material-symbols-outlined text-xs rtl-mirror">arrow_forward</span></button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>

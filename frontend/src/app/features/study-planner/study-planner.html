@@ -1,0 +1,265 @@
+    <app-sidebar [(isOpen)]="sidebarOpen" />
+    <div class="main-content">
+      <app-topbar userName="أحمد" />
+      <main class="pt-24 px-margin-mobile md:px-margin-desktop pb-margin-desktop">
+        <!-- Header + Week -->
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 pr-4 md:pr-10">
+          <div>
+            <h1 class="text-2xl font-bold text-on-surface">خطة المذاكرة</h1>
+            <p class="text-sm text-on-surface-variant mt-1">الأسبوع الحالي · 26 مايو - 1 يونيو 2026</p>
+          </div>
+          <div class="flex gap-3 items-center">
+            <div class="flex items-center gap-2 bg-white rounded-xl border border-outline-variant/20 px-3 py-2 shadow-sm">
+              <span class="material-symbols-outlined text-sm text-on-surface-variant">bedtime</span>
+              <select [ngModel]="restDayIndex()" (ngModelChange)="restDayIndex.set($event)" class="text-sm font-bold text-on-surface bg-transparent border-none outline-none cursor-pointer">
+                <option [ngValue]="null">بدون يوم راحة</option>
+                @for (day of days; track $index) {
+                  <option [ngValue]="$index">يوم الراحة: {{ day }}</option>
+                }
+              </select>
+            </div>
+            <button class="flex items-center gap-2 px-4 py-2.5 bg-white rounded-xl border border-outline-variant/20 text-sm font-bold text-on-surface-variant hover:bg-surface-container transition-all shadow-sm">
+              <span class="material-symbols-outlined text-lg">save</span>حفظ الخطة
+            </button>
+            <button class="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-l from-primary to-tertiary text-white rounded-xl text-sm font-bold shadow-lg shadow-primary/20 hover:shadow-primary/30 active:scale-[0.97] transition-all">
+              <span class="material-symbols-outlined text-lg" style="font-variation-settings:'FILL'1;">auto_awesome</span>اقتراح AI
+            </button>
+          </div>
+        </div>
+
+        <!-- Schedule Table -->
+        <div class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.04)] overflow-hidden border border-outline-variant/10">
+          <div class="overflow-x-auto custom-scrollbar">
+            <table class="w-full min-w-[900px] border-collapse">
+              <thead>
+                <tr>
+                  <th class="py-4 px-3 text-center font-bold text-xs text-on-surface-variant uppercase tracking-wider bg-gradient-to-b from-primary/[0.03] to-transparent border-b border-outline-variant/10 w-28">الفترة</th>
+                  @for (day of daysBeforeRest(); track $index) {
+                    <th class="py-4 px-3 text-center font-bold text-xs text-on-surface-variant bg-gradient-to-b from-sky-500/[0.03] to-transparent border-b border-outline-variant/10">{{ day }}</th>
+                  }
+                  @if (restDayIndex() !== null) {
+                    <th class="py-4 px-3 text-center font-bold text-xs text-on-surface-variant bg-gradient-to-b from-emerald-500/[0.03] to-transparent border-b border-outline-variant/10 bg-surface-container-low">{{ days[restDayIndex()!] }}</th>
+                  }
+                  @for (day of daysAfterRest(); track $index) {
+                    <th class="py-4 px-3 text-center font-bold text-xs text-on-surface-variant bg-gradient-to-b from-sky-500/[0.03] to-transparent border-b border-outline-variant/10">{{ day }}</th>
+                  }
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-outline-variant/[0.04]">
+                @for (period of periods; track $index; let pi = $index) {
+                  <tr>
+                    <td class="p-4 text-center border-l border-outline-variant/5"
+                        [style.background]="'linear-gradient(to right, ' + period.color + '08, transparent)'">
+                      <div class="flex flex-col items-stretch justify-center gap-2 py-3">
+                        <div class="flex items-center gap-2">
+                          <div class="w-[36px] h-[36px] rounded-xl flex items-center justify-center shrink-0 ring-1"
+                               [style.background]="period.color + '18'"
+                               [style.borderColor]="period.color + '14'">
+                            <span class="material-symbols-outlined text-lg" [style.color]="period.color" style="font-variation-settings:'FILL'1;">{{ period.icon }}</span>
+                          </div>
+                          <div class="flex flex-col items-start">
+                            <p class="font-bold text-[12px] leading-tight" [style.color]="period.color">{{ period.label }}</p>
+                          </div>
+                        </div>
+                        <div class="h-px" [style.background]="'linear-gradient(to right, ' + period.color + '26, transparent)'"></div>
+                        <div class="flex justify-center">
+                          <span #timeSpan (click)="openTimePopup(timeSpan)"
+                                class="time-chip"
+                                [style.color]="period.color"
+                                [style.background]="period.color + '0d'"
+                                [style.borderColor]="period.color + '1a'">
+                            {{ period.start }} - {{ period.end }}
+                          </span>
+                        </div>
+                      </div>
+                    </td>
+                    @for (day of daysBeforeRest(); track $index; let colDi = $index) {
+                      @let s = getSession(pi, colDi);
+                      <td class="p-1.5 align-top">
+                        @if (s.session) {
+                          <div class="h-full rounded-xl p-2.5 hover:shadow-md transition-all cursor-pointer group"
+                               [class.opacity-50]="completed().has(s.key)"
+                               [style.background]="'linear-gradient(135deg, ' + s.session.color + '0f, transparent)'"
+                               [style.borderRight]="'3px solid ' + s.session.colorBorder">
+                            <div class="flex items-start justify-between mb-1">
+                              <span class="font-bold text-xs" [style.color]="s.session.color">{{ s.session.subject }}</span>
+                              <input type="checkbox"
+                                     class="rounded-sm w-3.5 h-3.5 cursor-pointer"
+                                     [checked]="completed().has(s.key)" (change)="toggleComplete(s.key, $event)"
+                                     [style.accentColor]="s.session.color" />
+                            </div>
+                            <p class="text-xs text-on-surface font-medium leading-tight mb-1.5">{{ s.session.topic }}</p>
+                            @if (s.session.weak) {
+                              <span class="bg-error/10 text-error text-[9px] font-bold px-1 py-px rounded mb-1.5 inline-block">ضعف</span>
+                            }
+                            <div class="flex items-center justify-between">
+                              <span class="text-[10px] text-on-surface-variant flex items-center gap-0.5"><span class="material-symbols-outlined text-[11px]">schedule</span>{{ s.session.duration }}</span>
+                              <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <span class="material-symbols-outlined text-sm text-on-surface-variant hover:text-primary">edit</span>
+                                <span class="material-symbols-outlined text-sm text-on-surface-variant hover:text-error">delete</span>
+                              </div>
+                            </div>
+                          </div>
+                        } @else {
+                          <div class="h-full min-h-[80px] rounded-xl border border-dashed p-2 hover:shadow-sm transition-all cursor-pointer group"
+                               [style.background]="'linear-gradient(135deg, ' + period.color + '05, transparent)'"
+                               [style.borderColor]="'#c3c6d633'">
+                            <button class="w-full h-full flex items-center justify-center transition-all"
+                                    [style.color]="'#c3c6d6'">
+                              <span class="material-symbols-outlined text-lg">add</span>
+                            </button>
+                          </div>
+                        }
+                      </td>
+                    }
+                    @if (restDayIndex() !== null && pi === 0) {
+                      <td class="p-1.5 align-top bg-surface-container-low" [attr.rowspan]="periods.length">
+                        <div class="h-full flex flex-col items-center justify-center text-center opacity-40 py-10">
+                          <span class="text-4xl mb-2">😴</span>
+                          <p class="text-label-lg font-bold text-on-surface-variant">يوم راحة</p>
+                        </div>
+                      </td>
+                    }
+                    @for (day of daysAfterRest(); track $index; let colDi = $index) {
+                      @let actualDi = (restDayIndex() ?? 0) + 1 + colDi;
+                      @let s = getSession(pi, actualDi);
+                      <td class="p-1.5 align-top">
+                        @if (s.session) {
+                          <div class="h-full rounded-xl p-2.5 hover:shadow-md transition-all cursor-pointer group"
+                               [class.opacity-50]="completed().has(s.key)"
+                               [style.background]="'linear-gradient(135deg, ' + s.session.color + '0f, transparent)'"
+                               [style.borderRight]="'3px solid ' + s.session.colorBorder">
+                            <div class="flex items-start justify-between mb-1">
+                              <span class="font-bold text-xs" [style.color]="s.session.color">{{ s.session.subject }}</span>
+                              <input type="checkbox"
+                                     class="rounded-sm w-3.5 h-3.5 cursor-pointer"
+                                     [checked]="completed().has(s.key)" (change)="toggleComplete(s.key, $event)"
+                                     [style.accentColor]="s.session.color" />
+                            </div>
+                            <p class="text-xs text-on-surface font-medium leading-tight mb-1.5">{{ s.session.topic }}</p>
+                            @if (s.session.weak) {
+                              <span class="bg-error/10 text-error text-[9px] font-bold px-1 py-px rounded mb-1.5 inline-block">ضعف</span>
+                            }
+                            <div class="flex items-center justify-between">
+                              <span class="text-[10px] text-on-surface-variant flex items-center gap-0.5"><span class="material-symbols-outlined text-[11px]">schedule</span>{{ s.session.duration }}</span>
+                              <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <span class="material-symbols-outlined text-sm text-on-surface-variant hover:text-primary">edit</span>
+                                <span class="material-symbols-outlined text-sm text-on-surface-variant hover:text-error">delete</span>
+                              </div>
+                            </div>
+                          </div>
+                        } @else {
+                          <div class="h-full min-h-[80px] rounded-xl border border-dashed p-2 hover:shadow-sm transition-all cursor-pointer group"
+                               [style.background]="'linear-gradient(135deg, ' + period.color + '05, transparent)'"
+                               [style.borderColor]="'#c3c6d633'">
+                            <button class="w-full h-full flex items-center justify-center transition-all"
+                                    [style.color]="'#c3c6d6'">
+                              <span class="material-symbols-outlined text-lg">add</span>
+                            </button>
+                          </div>
+                        }
+                      </td>
+                    }
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Bottom Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mt-5 pr-4 md:pr-10">
+          <div class="bg-white/80 backdrop-blur-sm rounded-2xl p-5 border border-outline-variant/10 flex items-center gap-5">
+            <div class="relative w-28 h-28 shrink-0" style="background: conic-gradient(#432f9c 0% 35%, #003d9b 35% 65%, #00687b 65% 88%, #10b981 88% 100%); border-radius: 50%;">
+              <div class="absolute inset-3 bg-white/80 backdrop-blur rounded-full flex flex-col items-center justify-center text-center">
+                <span class="text-xl font-bold text-primary">8.5h</span>
+                <span class="text-[9px] text-on-surface-variant">إجمالي</span>
+              </div>
+            </div>
+            <div class="space-y-2.5 flex-1">
+              <div class="flex items-center justify-between text-xs"><span class="flex items-center gap-1.5"><div class="w-2 h-2 rounded-full bg-tertiary"></div>إنجليزي</span><span class="font-bold">35%</span></div>
+              <div class="flex items-center justify-between text-xs"><span class="flex items-center gap-1.5"><div class="w-2 h-2 rounded-full bg-primary"></div>رياضيات</span><span class="font-bold">30%</span></div>
+              <div class="flex items-center justify-between text-xs"><span class="flex items-center gap-1.5"><div class="w-2 h-2 rounded-full bg-secondary"></div>علوم</span><span class="font-bold">23%</span></div>
+              <div class="flex items-center justify-between text-xs"><span class="flex items-center gap-1.5"><div class="w-2 h-2 rounded-full bg-emerald-500"></div>عربي</span><span class="font-bold">12%</span></div>
+            </div>
+          </div>
+
+          <div class="bg-white/80 backdrop-blur-sm rounded-2xl p-5 border border-outline-variant/10 flex flex-col justify-center items-center text-center gap-3">
+            <p class="text-sm text-on-surface-variant font-medium">الجلسات المكتملة</p>
+            <p class="text-3xl font-bold text-primary">{{ completedCount() }} <span class="text-lg text-on-surface-variant font-normal">/ {{ totalSessions() }}</span></p>
+            <div class="w-full bg-surface-container/80 rounded-full h-2.5 max-w-xs">
+              <div class="bg-gradient-to-l from-primary to-tertiary h-full rounded-full transition-all duration-1000" [style.width.%]="completionPct()"></div>
+            </div>
+            <p class="text-xs text-on-surface-variant">أكملت {{ completionPct() }}% من خطة هذا الأسبوع</p>
+          </div>
+
+          <div class="bg-white/80 backdrop-blur-sm rounded-2xl p-5 border border-outline-variant/10 relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-1 h-full bg-gradient-to-b from-primary to-tertiary"></div>
+            <div class="flex items-center gap-3 mb-4">
+              <div class="w-10 h-10 rounded-xl bg-tertiary/10 flex items-center justify-center">
+                <span class="material-symbols-outlined text-tertiary" style="font-variation-settings:'FILL'1;">auto_awesome</span>
+              </div>
+              <div>
+                <p class="font-bold text-tertiary text-label-lg">توصية AI</p>
+                <p class="text-[11px] text-on-surface-variant">اقتراح ذكي</p>
+              </div>
+            </div>
+            <p class="text-sm text-on-surface leading-relaxed mb-4">زد مذاكرة الإنجليزي إلى 4 ساعات — امتحانك بعد 5 أيام</p>
+            <div class="flex items-center justify-between text-xs text-on-surface-variant">
+              <span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">event_upcoming</span>الامتحان: 5 يونيو</span>
+              <span class="bg-error/10 text-error font-bold px-2 py-0.5 rounded-full">80% جاهزية</span>
+            </div>
+            <button class="w-full mt-4 py-2.5 bg-gradient-to-l from-primary to-tertiary text-white rounded-xl text-sm font-bold shadow-md hover:shadow-lg active:scale-[0.97] transition-all">تطبيق التوصية</button>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- Time Editor Popup -->
+    @if (timePopupVisible()) {
+      <div class="time-popup-overlay show" (click)="closeTimePopup()"></div>
+      <div class="time-popup show">
+        <div class="flex items-center gap-2 mb-4">
+          <div class="w-8 h-8 rounded-lg bg-primary/[0.08] flex items-center justify-center">
+            <span class="material-symbols-outlined text-primary text-sm" style="font-variation-settings:'FILL'1;">schedule</span>
+          </div>
+          <span class="font-bold text-sm text-on-surface">تعديل الوقت</span>
+        </div>
+        <div class="space-y-3">
+          <div>
+            <label class="text-[11px] font-bold text-on-surface-variant mb-1.5 block">وقت البداية</label>
+            <div class="flex gap-2">
+              <select [(ngModel)]="editStartHour" class="flex-1 px-3 py-2 rounded-xl border border-outline-variant/30 bg-surface text-sm font-bold text-on-surface focus:ring-2 focus:ring-primary/20 outline-none">
+                @for (h of hours; track h) { <option [value]="h">{{ h }}</option> }
+              </select>
+              <span class="text-on-surface-variant self-center">:</span>
+              <select [(ngModel)]="editStartMin" class="flex-1 px-3 py-2 rounded-xl border border-outline-variant/30 bg-surface text-sm font-bold text-on-surface focus:ring-2 focus:ring-primary/20 outline-none">
+                @for (m of minutes; track m) { <option [value]="m">{{ m }}</option> }
+              </select>
+              <select [(ngModel)]="editStartPeriod" class="w-16 px-2 py-2 rounded-xl border border-outline-variant/30 bg-surface text-sm font-bold text-on-surface focus:ring-2 focus:ring-primary/20 outline-none">
+                <option value="ص">ص</option><option value="م">م</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label class="text-[11px] font-bold text-on-surface-variant mb-1.5 block">وقت النهاية</label>
+            <div class="flex gap-2">
+              <select [(ngModel)]="editEndHour" class="flex-1 px-3 py-2 rounded-xl border border-outline-variant/30 bg-surface text-sm font-bold text-on-surface focus:ring-2 focus:ring-primary/20 outline-none">
+                @for (h of hours; track h) { <option [value]="h">{{ h }}</option> }
+              </select>
+              <span class="text-on-surface-variant self-center">:</span>
+              <select [(ngModel)]="editEndMin" class="flex-1 px-3 py-2 rounded-xl border border-outline-variant/30 bg-surface text-sm font-bold text-on-surface focus:ring-2 focus:ring-primary/20 outline-none">
+                @for (m of minutes; track m) { <option [value]="m">{{ m }}</option> }
+              </select>
+              <select [(ngModel)]="editEndPeriod" class="w-16 px-2 py-2 rounded-xl border border-outline-variant/30 bg-surface text-sm font-bold text-on-surface focus:ring-2 focus:ring-primary/20 outline-none">
+                <option value="ص">ص</option><option value="م">م</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="flex gap-2 mt-4">
+          <button (click)="closeTimePopup()" class="flex-1 py-2.5 rounded-xl border border-outline-variant/30 text-sm font-bold text-on-surface-variant hover:bg-surface-container transition-all">إلغاء</button>
+          <button (click)="saveTimePopup()" class="flex-1 py-2.5 rounded-xl bg-gradient-to-l from-primary to-tertiary text-white text-sm font-bold shadow-md hover:shadow-lg active:scale-[0.97] transition-all">حفظ</button>
+        </div>
+      </div>
+    }

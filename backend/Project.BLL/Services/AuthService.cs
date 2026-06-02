@@ -9,7 +9,7 @@ using Microsoft.IdentityModel.Tokens;
 using Project.BLL.DTOs.Auth;
 using Project.BLL.Interfaces;
 using Project.DAL.Interfaces;
-using SchoolLink.Domain.Entities;
+using Project.Domain.Entities;
 
 namespace Project.BLL.Services;
 

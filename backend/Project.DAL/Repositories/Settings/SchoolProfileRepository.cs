@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Project.DAL.Context;
 using Project.DAL.Interfaces.Repositories.Settings;
-using SchoolLink.Domain.Entities;
+using Project.Domain.Entities;
 
 namespace Project.DAL.Repositories.Settings;
 

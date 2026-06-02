@@ -1,4 +1,4 @@
-﻿namespace SchoolLink.Domain.Enums
+﻿namespace Project.Domain.Enums
 {
     public enum EvaluationCategory
     {

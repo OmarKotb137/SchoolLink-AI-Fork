@@ -4,7 +4,7 @@ using Project.BLL.DTOs.Common;
 using Project.BLL.DTOs.Notifications;
 using Project.BLL.Interfaces;
 using Project.DAL.Interfaces;
-using SchoolLink.Domain.Entities;
+using Project.Domain.Entities;
 
 namespace Project.BLL.Services;
 

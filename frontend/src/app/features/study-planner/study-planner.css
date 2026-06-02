@@ -1,0 +1,30 @@
+.custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #c3c6d6; border-radius: 10px; }
+
+.time-popup {
+  position: fixed;
+  z-index: 999;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 12px 48px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.06);
+  border: 1px solid rgba(0,0,0,0.04);
+  padding: 20px;
+  width: 280px;
+  direction: rtl;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+.time-popup.show { display: block; }
+.time-popup-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 998;
+  background: rgba(0,0,0,0.3);
+  backdrop-filter: blur(4px);
+}
+.time-popup-overlay.show { display: block; }
+
+.time-chip { font-size: 10px; font-family: monospace; font-weight: 700; padding: 4px 8px; border-radius: 6px; border-width: 1px; cursor: pointer; transition: all 0.2s ease; }
+.time-chip:hover { opacity: 0.8; transform: scale(1.05); }

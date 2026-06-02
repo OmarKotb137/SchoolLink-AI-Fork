@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Project.DAL.Context;
-using SchoolLink.Domain.Entities;
-using SchoolLink.Domain.Enums;
+using Project.Domain.Entities;
+using Project.Domain.Enums;
 
 namespace Project.API.Extensions;
 

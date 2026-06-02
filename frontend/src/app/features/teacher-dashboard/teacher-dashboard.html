@@ -1,0 +1,60 @@
+    <app-sidebar [(isOpen)]="sidebarOpen" />
+    <div class="main-content">
+      <app-topbar userName="أحمد" />
+      <main class="p-gutter-desktop">
+        <div class="flex flex-col gap-gutter-desktop">
+          <!-- Welcome + Stats -->
+          <div class="bg-gradient-to-l from-primary to-[#1a4a9e] rounded-3xl p-widget-padding text-white">
+            <h1 class="text-2xl font-bold mb-2">مرحباً بك، أستاذ أحمد! 📚</h1>
+            <p class="text-white/70 mb-6">اليوم لديك 5 حصص دراسية و 3 واجبات بانتظار التصحيح</p>
+            <div class="grid grid-cols-3 gap-4">
+              <div class="bg-white/10 rounded-2xl p-4 text-center">
+                <p class="text-2xl font-bold">5</p>
+                <p class="text-sm text-white/70">الحصص اليوم</p>
+              </div>
+              <div class="bg-white/10 rounded-2xl p-4 text-center">
+                <p class="text-2xl font-bold">42</p>
+                <p class="text-sm text-white/70">الطلاب</p>
+              </div>
+              <div class="bg-white/10 rounded-2xl p-4 text-center">
+                <p class="text-2xl font-bold">3</p>
+                <p class="text-sm text-white/70">واجبات للتصحيح</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Class list -->
+            <div class="lg:col-span-2 bg-surface-container-lowest rounded-2xl p-widget-padding shadow-sm border border-outline-variant/20">
+              <h3 class="font-headline-md mb-4">فصولي الدراسية</h3>
+              @for (cls of classes; track cls.name) {
+                <div class="flex items-center justify-between p-4 bg-surface-container-low rounded-xl mb-3">
+                  <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center" [class]="cls.color">
+                      <span class="material-symbols-outlined text-white text-sm">group</span>
+                    </div>
+                    <div>
+                      <p class="font-label-md font-bold">{{ cls.name }}</p>
+                      <p class="text-[11px] text-outline">{{ cls.count }} طالب</p>
+                    </div>
+                  </div>
+                  <button class="px-4 py-2 bg-primary/10 text-primary rounded-xl text-label-sm font-bold">عرض</button>
+                </div>
+              }
+            </div>
+            <!-- Upcoming tasks -->
+            <div class="bg-surface-container-lowest rounded-2xl p-widget-padding shadow-sm border border-outline-variant/20">
+              <h3 class="font-headline-md mb-4">المهام القادمة</h3>
+              @for (task of tasks; track task) {
+                <div class="flex items-center gap-3 p-3 border-r-2 border-secondary bg-secondary/5 rounded-lg mb-3">
+                  <div>
+                    <p class="font-label-sm font-bold">{{ task }}</p>
+                    <p class="text-[10px] text-outline">التسليم: قريباً</p>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>

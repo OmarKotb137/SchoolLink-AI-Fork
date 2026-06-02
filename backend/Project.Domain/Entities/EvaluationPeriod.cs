@@ -1,6 +1,6 @@
-﻿using SchoolLink.Domain.Enums;
+﻿using Project.Domain.Enums;
 
-namespace SchoolLink.Domain.Entities
+namespace Project.Domain.Entities
 {
     public class EvaluationPeriod : BaseEntity
     {

@@ -1,0 +1,27 @@
+.sdbr-inner {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  direction: rtl;
+}
+
+.sdbr::-webkit-scrollbar {
+  width: 5px;
+}
+.sdbr::-webkit-scrollbar-track {
+  background: transparent;
+}
+.sdbr::-webkit-scrollbar-thumb {
+  background: #c5c5d3;
+  border-radius: 999px;
+  transition: background 0.2s;
+}
+.sdbr::-webkit-scrollbar-thumb:hover {
+  background: #757682;
+}
+.sdbr {
+  scrollbar-width: thin;
+  scrollbar-color: #c5c5d3 transparent;
+}
+
+

@@ -1,0 +1,56 @@
+    <app-sidebar [(isOpen)]="sidebarOpen" />
+    <div class="main-content">
+      <app-topbar userName="أحمد" />
+      <main class="p-gutter-desktop">
+        <div class="flex flex-col gap-gutter-desktop">
+          <!-- Children Overview -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            @for (child of children; track child.name) {
+              <div class="bg-surface-container-lowest rounded-3xl p-widget-padding shadow-sm border border-outline-variant/20">
+                <div class="flex items-center gap-4 mb-4">
+                  <div class="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-primary text-2xl">person</span>
+                  </div>
+                  <div>
+                    <h3 class="font-headline-md font-bold">{{ child.name }}</h3>
+                    <p class="text-label-sm text-outline">{{ child.grade }} - {{ child.class }}</p>
+                  </div>
+                </div>
+                <div class="flex items-center gap-4 mb-4">
+                  <div class="flex-1 bg-surface-container-low rounded-full h-2">
+                    <div class="bg-primary h-2 rounded-full" [style.width.%]="child.performance"></div>
+                  </div>
+                  <span class="font-bold text-primary">{{ child.performance }}%</span>
+                </div>
+                <div class="grid grid-cols-3 gap-3 text-center">
+                  <div class="bg-surface-container-low rounded-xl p-3"><p class="font-bold text-primary">{{ child.grades.last }}</p><p class="text-[10px] text-outline">الدرجة الأخيرة</p></div>
+                  <div class="bg-surface-container-low rounded-xl p-3"><p class="font-bold text-green-600">{{ child.grades.total }}</p><p class="text-[10px] text-outline">المجموع</p></div>
+                  <div class="bg-surface-container-low rounded-xl p-3"><p class="font-bold text-amber-600">{{ child.absences }}</p><p class="text-[10px] text-outline">الغياب</p></div>
+                </div>
+              </div>
+            }
+          </div>
+
+          <!-- AI Insights -->
+          <div class="bg-gradient-to-l from-primary to-[#432f9c] rounded-3xl p-widget-padding text-white">
+            <div class="flex items-center gap-3 mb-4">
+              <span class="material-symbols-outlined text-3xl">auto_awesome</span>
+              <h3 class="font-headline-md">تحليل الذكاء الاصطناعي</h3>
+            </div>
+            <p class="text-white/80 mb-4">يظهر تحليل أداء أبنائك تحسناً ملحوظاً في المواد العلمية. ننصح بتعزيز مهارات اللغة العربية.</p>
+            <button class="px-6 py-2 bg-white text-primary rounded-xl font-bold text-label-sm">عرض التقرير الكامل</button>
+          </div>
+
+          <!-- Recent Activity -->
+          <div class="bg-surface-container-lowest rounded-3xl p-widget-padding shadow-sm border border-outline-variant/20">
+            <h3 class="font-headline-md mb-4">آخر الأنشطة</h3>
+            @for (activity of activities; track activity) {
+              <div class="flex items-center gap-3 p-3 border-b border-outline-variant/10">
+                <span class="material-symbols-outlined text-primary text-sm">circle</span>
+                <p class="text-label-sm">{{ activity }}</p>
+              </div>
+            }
+          </div>
+        </div>
+      </main>
+    </div>

@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Project.BLL.DTOs.ResultVisibility;
 using Project.BLL.Interfaces;
-using SchoolLink.Domain.Enums;
+using Project.Domain.Enums;
 
 namespace Project.API.Controllers;
 

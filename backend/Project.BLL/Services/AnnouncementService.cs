@@ -3,7 +3,7 @@ using Common.Results;
 using Project.BLL.DTOs.Announcements;
 using Project.BLL.Interfaces;
 using Project.DAL.Interfaces;
-using SchoolLink.Domain.Entities;
+using Project.Domain.Entities;
 
 namespace Project.BLL.Services;
 
@@ -24,8 +24,8 @@ public class AnnouncementService : IAnnouncementService
         if (author == null || author.IsDeleted)
             return OperationResult<AnnouncementDto>.Failure("Author not found");
 
-        if (author.Role != SchoolLink.Domain.Enums.UserRole.Admin &&
-            author.Role != SchoolLink.Domain.Enums.UserRole.Teacher)
+        if (author.Role != Project.Domain.Enums.UserRole.Admin &&
+            author.Role != Project.Domain.Enums.UserRole.Teacher)
             return OperationResult<AnnouncementDto>.Failure("Only Admins and Teachers can create announcements");
 
         if (request.ExpiresAt.HasValue && request.ExpiresAt <= DateTime.UtcNow)
@@ -61,8 +61,8 @@ public class AnnouncementService : IAnnouncementService
         if (caller == null || caller.IsDeleted)
             return OperationResult<AnnouncementDto>.Failure("Caller not found");
 
-        if (caller.Role != SchoolLink.Domain.Enums.UserRole.Admin &&
-            caller.Role != SchoolLink.Domain.Enums.UserRole.Teacher)
+        if (caller.Role != Project.Domain.Enums.UserRole.Admin &&
+            caller.Role != Project.Domain.Enums.UserRole.Teacher)
             return OperationResult<AnnouncementDto>.Failure("Only Admins and Teachers can update announcements");
 
         if (request.ExpiresAt.HasValue && request.ExpiresAt <= DateTime.UtcNow)
@@ -93,7 +93,7 @@ public class AnnouncementService : IAnnouncementService
         if (caller == null || caller.IsDeleted)
             return OperationResult.Failure("Caller not found");
 
-        if (caller.Role != SchoolLink.Domain.Enums.UserRole.Admin && announcement.AuthorId != callerUserId)
+        if (caller.Role != Project.Domain.Enums.UserRole.Admin && announcement.AuthorId != callerUserId)
             return OperationResult.Failure("Only the author or an Admin can delete this announcement");
 
         _unitOfWork.Announcements.SoftDelete(announcement);

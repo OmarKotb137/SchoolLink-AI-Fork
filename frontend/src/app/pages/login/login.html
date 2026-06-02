@@ -1,0 +1,70 @@
+<div class="min-h-screen flex items-center justify-center p-4" style="background:linear-gradient(135deg, #faf8ff 0%, #e8edff 50%, #f0e6ff 100%);">
+  <div class="w-full max-w-5xl flex flex-col lg:flex-row rounded-3xl shadow-2xl overflow-hidden" style="background:rgba(255,255,255,0.85);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.5);">
+    <!-- Brand Side -->
+    <div class="lg:w-5/12 bg-gradient-to-br from-primary to-[#6B7280] p-10 text-white flex flex-col justify-between relative overflow-hidden">
+      <div class="absolute -top-20 -right-20 w-64 h-64 bg-white/5 rounded-full blur-3xl"></div>
+      <div class="absolute -bottom-20 -left-20 w-48 h-48 bg-white/5 rounded-full blur-3xl"></div>
+      <div class="relative z-10">
+        <div class="flex items-center gap-3 mb-8">
+          <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+            <span class="material-symbols-outlined text-white text-3xl" style="font-variation-settings:'FILL'1;">school</span>
+          </div>
+          <div>
+            <h1 class="text-2xl font-bold">SchoolLink AI</h1>
+            <p class="text-sm text-white/70">EduConnect Platform</p>
+          </div>
+        </div>
+        <h2 class="text-3xl font-bold mb-4">مرحباً بك</h2>
+        <p class="text-white/80 text-lg leading-relaxed">اختر دورك وسجل الدخول لإدارة العملية التعليمية بكفاءة مع تقنيات الذكاء الاصطناعي.</p>
+      </div>
+      <div class="relative z-10 mt-8">
+        <div class="flex -space-x-2 rtl:space-x-reverse mb-4">
+          <div class="w-10 h-10 rounded-full bg-white/20 border-2 border-white/30 flex items-center justify-center text-sm font-bold">أ</div>
+          <div class="w-10 h-10 rounded-full bg-white/20 border-2 border-white/30 flex items-center justify-center text-sm font-bold">م</div>
+          <div class="w-10 h-10 rounded-full bg-white/20 border-2 border-white/30 flex items-center justify-center text-sm font-bold">ط</div>
+          <div class="w-10 h-10 rounded-full bg-white/20 border-2 border-white/30 flex items-center justify-center text-sm font-bold">و</div>
+        </div>
+        <p class="text-white/60 text-sm">انضم إلى أكثر من ١٠٠٠+ مؤسسة تعليمية</p>
+      </div>
+    </div>
+
+    <!-- Role Selection -->
+    <div class="lg:w-7/12 p-8 lg:p-12 flex flex-col justify-center">
+      <div class="mb-8">
+        <h3 class="text-2xl font-bold text-on-surface mb-2">تسجيل الدخول</h3>
+        <p class="text-on-surface-variant">اختر فئة الدخول المناسبة لك</p>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <a routerLink="/login-staff" class="group block no-underline">
+          <div class="relative overflow-hidden rounded-2xl border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-transparent p-8 text-center transition-all hover:shadow-xl hover:border-primary/40 hover:-translate-y-1">
+            <div class="absolute -top-8 -right-8 w-24 h-24 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-all"></div>
+            <div class="w-16 h-16 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto mb-4">
+              <span class="material-symbols-outlined text-3xl" style="font-variation-settings:'FILL'1;">admin_panel_settings</span>
+            </div>
+            <h4 class="text-xl font-bold text-on-surface mb-2">الكادر التعليمي</h4>
+            <p class="text-sm text-on-surface-variant leading-relaxed">للمديرين والمدرسين — إدارة النظام، الفصول، الدرجات، والتقارير</p>
+            <span class="inline-flex items-center gap-1 mt-4 text-sm font-bold text-primary group-hover:gap-2 transition-all">
+              دخول <span class="material-symbols-outlined text-lg">arrow_back</span>
+            </span>
+          </div>
+        </a>
+        <a routerLink="/login-guardian" class="group block no-underline">
+          <div class="relative overflow-hidden rounded-2xl border-2 border-secondary/20 bg-gradient-to-br from-secondary/5 to-transparent p-8 text-center transition-all hover:shadow-xl hover:border-secondary/40 hover:-translate-y-1">
+            <div class="absolute -top-8 -right-8 w-24 h-24 bg-secondary/5 rounded-full blur-2xl group-hover:bg-secondary/10 transition-all"></div>
+            <div class="w-16 h-16 rounded-2xl bg-secondary/10 text-secondary flex items-center justify-center mx-auto mb-4">
+              <span class="material-symbols-outlined text-3xl" style="font-variation-settings:'FILL'1;">diversity_3</span>
+            </div>
+            <h4 class="text-xl font-bold text-on-surface mb-2">الطلاب وأولياء الأمور</h4>
+            <p class="text-sm text-on-surface-variant leading-relaxed">للطلاب وأولياء الأمور — متابعة الدرجات، الجدول، والواجبات</p>
+            <span class="inline-flex items-center gap-1 mt-4 text-sm font-bold text-secondary group-hover:gap-2 transition-all">
+              دخول <span class="material-symbols-outlined text-lg">arrow_back</span>
+            </span>
+          </div>
+        </a>
+      </div>
+      <div class="text-center mt-8 pt-6 border-t border-outline/20">
+        <p class="text-sm text-on-surface-variant">ليس لديك حساب؟ <a href="#" class="text-primary font-bold hover:underline">تواصل مع الإدارة</a></p>
+      </div>
+    </div>
+  </div>
+</div>

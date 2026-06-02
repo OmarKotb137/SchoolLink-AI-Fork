@@ -1,6 +1,6 @@
 using AutoMapper;
 using Project.BLL.DTOs;
-using SchoolLink.Domain.Entities;
+using Project.Domain.Entities;
 
 namespace Project.BLL.Mapping;
 

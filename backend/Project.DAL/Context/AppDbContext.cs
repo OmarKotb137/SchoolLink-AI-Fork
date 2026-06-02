@@ -1,5 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using SchoolLink.Domain.Entities;
+using Project.Domain.Entities;
 
 namespace Project.DAL.Context;
 

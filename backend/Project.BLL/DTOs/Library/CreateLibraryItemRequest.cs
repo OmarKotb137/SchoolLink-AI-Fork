@@ -1,5 +1,5 @@
+using Project.Domain.Enums;
 using System.ComponentModel.DataAnnotations;
-using SchoolLink.Domain.Enums;
 
 namespace Project.BLL.DTOs.Library;
 

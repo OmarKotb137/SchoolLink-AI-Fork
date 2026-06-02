@@ -1,5 +1,6 @@
+using Project.Domain.Enums;
 using System.ComponentModel.DataAnnotations;
-using SchoolLink.Domain.Enums;
+using Project.Domain.Enums;
 
 namespace Project.BLL.DTOs.Announcements;
 

@@ -1,0 +1,7 @@
+<app-sidebar [menuItems]="menuItems()" [(isOpen)]="sidebarOpen" />
+<div class="main-content">
+  <app-topbar />
+  <main class="p-gutter-desktop">
+    <router-outlet />
+  </main>
+</div>

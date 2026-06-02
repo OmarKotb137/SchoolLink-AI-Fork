@@ -1,4 +1,4 @@
-﻿namespace SchoolLink.Domain.Entities
+﻿namespace Project.Domain.Entities
 {
     public class StudentEvaluation : BaseEntity
     {

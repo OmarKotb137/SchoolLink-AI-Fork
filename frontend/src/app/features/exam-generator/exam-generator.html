@@ -1,0 +1,276 @@
+    <app-sidebar [(isOpen)]="sidebarOpen" />
+    <div class="main-content">
+      <app-topbar userName="أحمد" />
+      <main class="p-gutter-desktop">
+        <div class="max-w-[1600px] mx-auto flex flex-col gap-6">
+          <!-- Header Section -->
+          <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-4">
+            <div>
+              <div class="flex items-center gap-2 text-on-surface-variant mb-2">
+                <span class="material-symbols-outlined text-[18px]">science</span>
+                <span class="font-label-sm text-label-sm uppercase tracking-wider">حزمة AI الأكاديمية</span>
+              </div>
+              <h1 class="font-headline-lg text-headline-lg text-on-surface">مولد الامتحانات بالذكاء الاصطناعي</h1>
+              <p class="font-body-md text-body-md text-on-surface-variant mt-1 max-w-2xl">قم بإنشاء تقييمات شاملة ومخصصة لمناهجك الدراسية باستخدام أحدث تقنيات الذكاء الاصطناعي.</p>
+            </div>
+            <div class="flex gap-3">
+              <button class="px-4 py-2 rounded-lg border border-outline-variant text-on-surface font-label-md text-label-md hover:bg-surface-container-low transition-colors flex items-center gap-2">
+                <span class="material-symbols-outlined text-[20px]">history</span>
+                السجل
+              </button>
+            </div>
+          </div>
+
+          <!-- Bento Grid Layout -->
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter-desktop items-start">
+            <!-- Left Column: Settings Form -->
+            <div class="lg:col-span-4 flex flex-col gap-6">
+              <div class="bg-surface-container-lowest rounded-xl border border-outline-variant shadow-[0_4px_8px_-2px_rgba(0,0,0,0.05)] overflow-hidden">
+                <div class="p-6 flex flex-col gap-6">
+                  <h3 class="font-headline-md text-headline-md text-primary flex items-center gap-2">
+                    <span class="material-symbols-outlined icon-fill" style="font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;">tune</span>
+                    الإعدادات
+                  </h3>
+
+                  <!-- Subject -->
+                  <div class="flex flex-col gap-2">
+                    <label class="font-label-md text-label-md text-on-surface font-semibold">المادة الدراسية</label>
+                    <div class="relative">
+                      <select class="w-full appearance-none bg-surface border border-outline-variant rounded-lg py-3 px-4 pr-10 font-body-md text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all">
+                        <option disabled selected value="">اختر المادة...</option>
+                        <option value="math">الرياضيات</option>
+                        <option value="science">العلوم</option>
+                        <option value="history">التاريخ</option>
+                        <option value="literature">اللغة العربية</option>
+                        <option value="cs">علوم الحاسوب</option>
+                      </select>
+                      <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-on-surface-variant">
+                        <span class="material-symbols-outlined">arrow_drop_down</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- Topic -->
+                  <div class="flex flex-col gap-2">
+                    <label class="font-label-md text-label-md text-on-surface font-semibold">الموضوع المحدد</label>
+                    <input class="w-full bg-surface border border-outline-variant rounded-lg py-3 px-4 font-body-md text-body-md text-on-surface placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all" placeholder="مثال: المعادلات التربيعية، البناء الضوئي" type="text" />
+                  </div>
+
+                  <!-- Difficulty -->
+                  <div class="flex flex-col gap-2">
+                    <label class="font-label-md text-label-md text-on-surface font-semibold">مستوى الصعوبة</label>
+                    <div class="flex bg-surface-container p-1 rounded-lg">
+                      <button class="flex-1 py-2 px-4 rounded-md font-label-md text-label-md text-on-surface-variant hover:text-on-surface transition-colors">سهل</button>
+                      <button class="flex-1 py-2 px-4 rounded-md font-label-md text-label-md bg-surface-container-lowest text-primary shadow-sm font-bold transition-all">متوسط</button>
+                      <button class="flex-1 py-2 px-4 rounded-md font-label-md text-label-md text-on-surface-variant hover:text-on-surface transition-colors">صعب</button>
+                    </div>
+                  </div>
+
+                  <!-- Question Count -->
+                  <div class="flex flex-col gap-2">
+                    <div class="flex justify-between items-center">
+                      <label class="font-label-md text-label-md text-on-surface font-semibold">عدد الأسئلة</label>
+                      <span class="font-label-md text-label-md text-secondary font-bold bg-secondary-fixed px-2 py-0.5 rounded-full">15</span>
+                    </div>
+                    <input class="w-full h-2 bg-surface-container-highest rounded-lg appearance-none cursor-pointer accent-secondary" max="50" min="5" type="range" value="15" />
+                    <div class="flex justify-between font-label-sm text-label-sm text-outline mt-1">
+                      <span>5</span>
+                      <span>50</span>
+                    </div>
+                  </div>
+
+                  <!-- Template Selector -->
+                  <div class="flex flex-col gap-2">
+                    <label class="font-label-md text-label-md text-on-surface font-semibold">قالب الامتحان</label>
+                    <div class="grid grid-cols-2 gap-2">
+                      <button class="flex flex-col items-center gap-1 p-3 rounded-lg border-2 border-primary bg-primary-fixed/10 text-primary font-bold transition-all">
+                        <span class="material-symbols-outlined">quiz</span>
+                        <span class="text-[10px] font-bold">اختيار من متعدد</span>
+                      </button>
+                      <button class="flex flex-col items-center gap-1 p-3 rounded-lg border border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary transition-all">
+                        <span class="material-symbols-outlined">edit_note</span>
+                        <span class="text-[10px]">مقالي</span>
+                      </button>
+                      <button class="flex flex-col items-center gap-1 p-3 rounded-lg border border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary transition-all">
+                        <span class="material-symbols-outlined">pending_actions</span>
+                        <span class="text-[10px]">صح وخطأ</span>
+                      </button>
+                      <button class="flex flex-col items-center gap-1 p-3 rounded-lg border border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary transition-all">
+                        <span class="material-symbols-outlined">drag_indicator</span>
+                        <span class="text-[10px]">توصيل</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div class="p-6 pt-0 mt-4">
+                  <button class="w-full relative group overflow-hidden rounded-lg p-[1px]">
+                    <span class="absolute inset-0 bg-gradient-to-r from-primary via-[#6B7280] to-primary opacity-80 group-hover:opacity-100 transition-opacity duration-300"></span>
+                    <div class="relative bg-surface-container-lowest hover:bg-transparent transition-colors duration-300 rounded-[7px] py-3 px-6 flex items-center justify-center gap-2 group-hover:text-on-primary text-primary">
+                      <span class="font-label-md text-label-md font-bold z-10">إنشاء الامتحان</span>
+                      <span class="material-symbols-outlined text-[20px] z-10 group-hover:animate-pulse">auto_awesome</span>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Informational Card -->
+              <div class="bg-primary-fixed-dim/20 rounded-xl p-4 border border-primary-fixed flex gap-3">
+                <span class="material-symbols-outlined text-primary mt-0.5">info</span>
+                <div>
+                  <h4 class="font-label-md text-label-md text-primary-container font-bold mb-1">توافق AI مع المنهج</h4>
+                  <p class="font-body-md text-[14px] text-on-surface-variant leading-snug">يتم تعيين الأسئلة تلقائياً وفقاً للأطر التعليمية المعتمدة بناءً على المادة ومستوى الصعوبة المحدد.</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Column: Live Preview Area -->
+            <div class="lg:col-span-8 flex flex-col h-full">
+              <div class="relative flex-1 bg-surface-container-lowest rounded-xl border border-outline-variant shadow-[0_8px_24px_-8px_rgba(0,0,0,0.08)] overflow-hidden flex flex-col min-h-[600px]">
+                <!-- Gradient Top Border -->
+                <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary to-[#6B7280]"></div>
+
+                <!-- Preview Header -->
+                <div class="p-widget-padding border-b border-surface-container-high bg-[#F5F3FF]/30 backdrop-blur-md flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-secondary-fixed flex items-center justify-center text-secondary">
+                      <span class="material-symbols-outlined icon-fill" style="font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;">description</span>
+                    </div>
+                    <div>
+                      <h2 class="font-headline-md text-[20px] text-on-surface font-bold flex items-center gap-2">
+                        اختبار منتصف الفصل: المعادلات التربيعية
+                        <span class="material-symbols-outlined text-secondary text-[18px]">auto_awesome</span>
+                      </h2>
+                      <div class="flex items-center gap-2 text-outline font-label-sm text-label-sm mt-1">
+                        <span class="bg-surface-container-high px-2 py-0.5 rounded text-on-surface-variant">الرياضيات</span>
+                        <span>•</span>
+                        <span>مستوى متوسط</span>
+                        <span>•</span>
+                        <span>15 سؤالاً</span>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Action Buttons -->
+                  <div class="flex items-center gap-2 w-full sm:w-auto">
+                    <button class="flex-1 sm:flex-none px-3 py-2 rounded-lg border border-outline-variant text-on-surface hover:bg-surface-container-low transition-colors">
+                      <span class="material-symbols-outlined">bookmark_border</span>
+                    </button>
+                    <button class="flex-1 sm:flex-none px-3 py-2 rounded-lg border border-outline-variant text-on-surface hover:bg-surface-container-low transition-colors flex items-center justify-center gap-2">
+                      <span class="material-symbols-outlined text-[18px]">download</span>
+                      <span class="font-label-md text-label-md hidden sm:inline">بي دي إف</span>
+                    </button>
+                    <button class="flex-1 sm:flex-none px-4 py-2 rounded-lg bg-primary text-on-primary font-label-md text-label-md hover:bg-primary-container transition-colors flex items-center justify-center gap-2 shadow-sm">
+                      <span class="material-symbols-outlined text-[18px]">send</span>
+                      <span>إرسال</span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Content Tabs -->
+                <div class="flex border-b border-surface-container-high bg-surface px-widget-padding">
+                  <button class="px-4 py-3 font-label-md text-label-md text-primary font-bold border-b-2 border-primary">
+                    معاينة الامتحان
+                  </button>
+                  <button class="px-4 py-3 font-label-md text-label-md text-on-surface-variant hover:text-on-surface transition-colors">
+                    نموذج الإجابة
+                  </button>
+                  <button class="px-4 py-3 font-label-md text-label-md text-on-surface-variant hover:text-on-surface transition-colors">
+                    معايير التصحيح
+                  </button>
+                </div>
+
+                <!-- Preview Canvas -->
+                <div class="p-widget-padding overflow-y-auto flex-1 bg-surface-bright pb-12">
+                  <!-- Section A: Multiple Choice -->
+                  <div class="mb-8">
+                    <h3 class="font-headline-md text-[18px] text-on-surface border-b border-outline-variant pb-2 mb-4">الجزء أ: اختيار من متعدد (10 درجات)</h3>
+                    <div class="flex flex-col gap-6">
+                      <!-- Q1 -->
+                      <div class="group">
+                        <div class="flex gap-3">
+                          <span class="font-bold text-primary w-6 shrink-0">1.</span>
+                          <div class="flex-1">
+                            <p class="font-body-md text-on-surface mb-3">أي مما يلي يمثل الصيغة القياسية للمعادلة التربيعية؟</p>
+                            <div class="flex flex-col gap-2">
+                              <label class="flex items-center gap-3 p-3 rounded-lg border border-outline-variant hover:border-primary hover:bg-surface-container-lowest cursor-pointer transition-all">
+                                <input class="text-primary focus:ring-primary w-4 h-4" name="q1" type="radio" />
+                                <span class="font-body-md text-on-surface">أ) y = mx + b</span>
+                              </label>
+                              <label class="flex items-center gap-3 p-3 rounded-lg border border-primary bg-primary-fixed/10 cursor-pointer transition-all">
+                                <input checked class="text-primary focus:ring-primary w-4 h-4" name="q1" type="radio" />
+                                <span class="font-body-md text-on-surface">ب) ax² + bx + c = 0</span>
+                                <span class="material-symbols-outlined text-primary mr-auto text-[18px]">check_circle</span>
+                              </label>
+                              <label class="flex items-center gap-3 p-3 rounded-lg border border-outline-variant hover:border-primary hover:bg-surface-container-lowest cursor-pointer transition-all">
+                                <input class="text-primary focus:ring-primary w-4 h-4" name="q1" type="radio" />
+                                <span class="font-body-md text-on-surface">ج) y = a(x - h)² + k</span>
+                              </label>
+                              <label class="flex items-center gap-3 p-3 rounded-lg border border-outline-variant hover:border-primary hover:bg-surface-container-lowest cursor-pointer transition-all">
+                                <input class="text-primary focus:ring-primary w-4 h-4" name="q1" type="radio" />
+                                <span class="font-body-md text-on-surface">د) x² + y² = r²</span>
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <!-- Q2 -->
+                      <div class="group">
+                        <div class="flex gap-3">
+                          <span class="font-bold text-primary w-6 shrink-0">2.</span>
+                          <div class="flex-1">
+                            <p class="font-body-md text-on-surface mb-3">إذا كان المميز (b² - 4ac) للمعادلة التربيعية سالباً، فما طبيعة جذورها؟</p>
+                            <div class="flex flex-col gap-2">
+                              <label class="flex items-center gap-3 p-3 rounded-lg border border-outline-variant hover:border-primary hover:bg-surface-container-lowest cursor-pointer transition-all">
+                                <input class="text-primary focus:ring-primary w-4 h-4" name="q2" type="radio" />
+                                <span class="font-body-md text-on-surface">أ) جذران حقيقيان مختلفان</span>
+                              </label>
+                              <label class="flex items-center gap-3 p-3 rounded-lg border border-outline-variant hover:border-primary hover:bg-surface-container-lowest cursor-pointer transition-all">
+                                <input class="text-primary focus:ring-primary w-4 h-4" name="q2" type="radio" />
+                                <span class="font-body-md text-on-surface">ب) جذر حقيقي مكرر</span>
+                              </label>
+                              <label class="flex items-center gap-3 p-3 rounded-lg border border-outline-variant hover:border-primary hover:bg-surface-container-lowest cursor-pointer transition-all">
+                                <input class="text-primary focus:ring-primary w-4 h-4" name="q2" type="radio" />
+                                <span class="font-body-md text-on-surface">ج) جذران مركبان (غير حقيقيين)</span>
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Section B: Essay -->
+                  <div>
+                    <h3 class="font-headline-md text-[18px] text-on-surface border-b border-outline-variant pb-2 mb-4">الجزء ب: أسئلة مقالية (15 درجة)</h3>
+                    <div class="flex flex-col gap-6">
+                      <div class="group">
+                        <div class="flex gap-3">
+                          <span class="font-bold text-primary w-6 shrink-0">11.</span>
+                          <div class="flex-1">
+                            <p class="font-body-md text-on-surface mb-2">أطلق مقذوف إلى الأعلى. يُعطى ارتفاعه h (بالأمتار) بعد t ثانية بالمعادلة: <strong>h(t) = -4.9t² + 20t + 1.5</strong>.</p>
+                            <p class="font-body-md text-on-surface mb-3">أ) احسب أقصى ارتفاع يصل إليه المقذوف.<br/>ب) كم من الوقت يستغرق المقذوف ليصل إلى الأرض؟</p>
+                            <div class="w-full h-32 border-2 border-dashed border-outline-variant rounded-lg bg-surface flex items-center justify-center mt-2">
+                              <span class="text-outline font-label-md">مساحة عمل الطالب</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Fixed Bottom Bar -->
+                <div class="bg-surface-container-lowest border-t border-outline-variant p-4 flex justify-between items-center shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+                  <span class="font-label-sm text-label-sm text-outline flex items-center gap-1">
+                    <span class="material-symbols-outlined text-[16px]">check_circle</span>
+                    تم الحفظ تلقائياً منذ دقيقتين
+                  </span>
+                  <button class="flex items-center gap-2 text-primary hover:text-primary-container font-label-md text-label-md font-bold transition-colors">
+                    إضافة سؤال مخصص
+                    <span class="material-symbols-outlined">add</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>

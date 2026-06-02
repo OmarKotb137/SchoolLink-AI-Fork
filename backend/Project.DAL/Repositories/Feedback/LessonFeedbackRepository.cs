@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Project.DAL.Interfaces.Repositories.Feedback;
-using SchoolLink.Domain.Entities;
-using SchoolLink.Domain.Enums;
+using Project.Domain.Entities;
+using Project.Domain.Enums;
 using Project.DAL.Context;
 
 namespace Project.DAL.Repositories.Feedback;

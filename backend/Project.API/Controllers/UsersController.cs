@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Project.BLL.DTOs.Common;
 using Project.BLL.DTOs.Users;
 using Project.BLL.Interfaces;
-using SchoolLink.Domain.Enums;
+using Project.Domain.Enums;
 
 namespace Project.API.Controllers;
 
@@ -50,7 +50,7 @@ public class UsersController : ControllerBase
     }
 
     [HttpGet("role/{role}")]
-    public async Task<IActionResult> GetByRole(UserRole role, [FromQuery] PaginationFilter filter)
+    public async Task<IActionResult> GetByRole(Project.Domain.Enums.UserRole role, [FromQuery] PaginationFilter filter)
     {
         var result = await _userService.GetUsersByRoleAsync(role, filter);
         if (!result.IsSuccess)
