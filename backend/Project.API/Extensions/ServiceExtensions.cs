@@ -28,7 +28,17 @@ public static class ServiceExtensions
         services.AddScoped<IConversationService, ConversationService>();
         services.AddScoped<IResultVisibilityService, ResultVisibilityService>();
         services.AddScoped<ILibraryService, LibraryService>();
+        services.AddScoped<ISchoolProfileService, SchoolProfileService>();
         services.AddHttpClient<IDropboxService, DropboxService>();
+
+
+        services.AddScoped<IAcademicYearService, AcademicYearService>();
+        services.AddScoped<IGradeLevelService, GradeLevelService>();
+        services.AddScoped<ISubjectService, SubjectService>();
+        services.AddScoped<IClassService, ClassService>();
+        services.AddScoped<IClassSubjectTeacherService, ClassSubjectTeacherService>();
+        services.AddScoped<ITimetableService, TimetableService>();
+
 
         services.AddAutoMapper(typeof(UserMappingProfile).Assembly);
 

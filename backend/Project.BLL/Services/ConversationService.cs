@@ -183,6 +183,117 @@ public class ConversationService : IConversationService
         return OperationResult<ConversationDto>.Success(dto, "Subject group conversation created successfully");
     }
 
+    public async Task<OperationResult> DeleteConversationAsync(int conversationId, int userId)
+    {
+        var conversation = await _unitOfWork.Conversations.GetByIdAsync(conversationId);
+        if (conversation == null || conversation.IsDeleted)
+            return OperationResult.Failure("Conversation not found");
+
+        var isParticipant = await _unitOfWork.ConversationParticipants.IsParticipantAsync(conversationId, userId);
+        if (!isParticipant)
+            return OperationResult.Failure("User is not a participant in this conversation");
+
+        _unitOfWork.Conversations.SoftDelete(conversation);
+        await _unitOfWork.SaveChangesAsync();
+        return OperationResult.Success("Conversation deleted successfully");
+    }
+
+    public async Task<OperationResult<ConversationDto>> UpdateConversationTitleAsync(int conversationId, string title, int userId)
+    {
+        var conversation = await _unitOfWork.Conversations.GetByIdAsync(conversationId);
+        if (conversation == null || conversation.IsDeleted)
+            return OperationResult<ConversationDto>.Failure("Conversation not found");
+
+        if (conversation.Type != ConversationType.Group)
+            return OperationResult<ConversationDto>.Failure("Can only update title of group conversations");
+
+        var isParticipant = await _unitOfWork.ConversationParticipants.IsParticipantAsync(conversationId, userId);
+        if (!isParticipant)
+            return OperationResult<ConversationDto>.Failure("User is not a participant in this conversation");
+
+        if (string.IsNullOrWhiteSpace(title))
+            return OperationResult<ConversationDto>.Failure("Title cannot be empty");
+
+        conversation.Title = title;
+        conversation.UpdatedAt = DateTime.UtcNow;
+        _unitOfWork.Conversations.Update(conversation);
+        await _unitOfWork.SaveChangesAsync();
+
+        var dto = await MapConversationWithParticipantsAsync(conversation);
+        return OperationResult<ConversationDto>.Success(dto, "Title updated successfully");
+    }
+
+    public async Task<OperationResult<IEnumerable<ConversationParticipantDto>>> GetConversationParticipantsAsync(int conversationId, int userId)
+    {
+        var conversation = await _unitOfWork.Conversations.GetByIdAsync(conversationId);
+        if (conversation == null || conversation.IsDeleted)
+            return OperationResult<IEnumerable<ConversationParticipantDto>>.Failure("Conversation not found");
+
+        var isParticipant = await _unitOfWork.ConversationParticipants.IsParticipantAsync(conversationId, userId);
+        if (!isParticipant)
+            return OperationResult<IEnumerable<ConversationParticipantDto>>.Failure("User is not a participant in this conversation");
+
+        var participants = await _unitOfWork.ConversationParticipants.GetByConversationIdAsync(conversationId);
+        var dtos = new List<ConversationParticipantDto>();
+        foreach (var p in participants)
+        {
+            var pDto = _mapper.Map<ConversationParticipantDto>(p);
+            var user = await _unitOfWork.Users.GetByIdAsync(p.UserId);
+            pDto.UserName = user?.FullName ?? "";
+            dtos.Add(pDto);
+        }
+
+        return OperationResult<IEnumerable<ConversationParticipantDto>>.Success(dtos);
+    }
+
+    public async Task<OperationResult> MarkConversationAsReadAsync(int conversationId, int userId)
+    {
+        var conversation = await _unitOfWork.Conversations.GetByIdAsync(conversationId);
+        if (conversation == null || conversation.IsDeleted)
+            return OperationResult.Failure("Conversation not found");
+
+        var isParticipant = await _unitOfWork.ConversationParticipants.IsParticipantAsync(conversationId, userId);
+        if (!isParticipant)
+            return OperationResult.Failure("User is not a participant in this conversation");
+
+        await _unitOfWork.ConversationParticipants.UpdateLastReadAtAsync(conversationId, userId, DateTime.UtcNow);
+        return OperationResult.Success("Conversation marked as read");
+    }
+
+    public async Task<OperationResult<IEnumerable<ConversationDto>>> SearchConversationsAsync(int userId, string term)
+    {
+        var user = await _unitOfWork.Users.GetByIdAsync(userId);
+        if (user == null)
+            return OperationResult<IEnumerable<ConversationDto>>.Failure("User not found");
+
+        var conversations = await _unitOfWork.Conversations.GetWithLastMessageAsync(userId);
+        var filtered = conversations
+            .Where(c => c.Title != null && c.Title.Contains(term, StringComparison.OrdinalIgnoreCase));
+
+        var dtos = new List<ConversationDto>();
+        foreach (var conversation in filtered)
+        {
+            var dto = await MapConversationWithParticipantsAsync(conversation);
+            dtos.Add(dto);
+        }
+
+        return OperationResult<IEnumerable<ConversationDto>>.Success(dtos);
+    }
+
+    public async Task<OperationResult<ConversationDto>> GetConversationByIdAsync(int conversationId, int requestingUserId)
+    {
+        var conversation = await _unitOfWork.Conversations.GetWithParticipantsAsync(conversationId);
+        if (conversation == null || conversation.IsDeleted)
+            return OperationResult<ConversationDto>.Failure("Conversation not found");
+
+        var isParticipant = await _unitOfWork.ConversationParticipants.IsParticipantAsync(conversationId, requestingUserId);
+        if (!isParticipant)
+            return OperationResult<ConversationDto>.Failure("User is not a participant in this conversation");
+
+        var dto = await MapConversationWithParticipantsAsync(conversation);
+        return OperationResult<ConversationDto>.Success(dto);
+    }
+
     public async Task<OperationResult<IEnumerable<ConversationDto>>> GetUserConversationsAsync(int userId)
     {
         var user = await _unitOfWork.Users.GetByIdAsync(userId);

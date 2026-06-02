@@ -15,7 +15,8 @@ namespace Project.DAL.Configurations
                 .HasMaxLength(20);
 
             builder.HasIndex(x => new { x.GradeLevelId, x.AcademicYearId, x.Name })
-                .IsUnique();
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
 
             builder.HasOne(x => x.GradeLevel)
                 .WithMany()

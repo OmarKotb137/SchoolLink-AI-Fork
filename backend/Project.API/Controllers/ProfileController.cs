@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Project.BLL.DTOs.Users;
 using Project.BLL.Interfaces;
 
 namespace Project.API.Controllers;
@@ -17,6 +18,39 @@ public class ProfileController : ControllerBase
         _userService = userService;
     }
 
+    [HttpGet("me")]
+    public async Task<IActionResult> GetMe()
+    {
+        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var result = await _userService.GetUserByIdAsync(userId);
+        if (!result.IsSuccess)
+            return NotFound(result);
+        return Ok(result);
+    }
+
+    [HttpPut]
+    public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileRequest request)
+    {
+        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var result = await _userService.UpdateProfileAsync(userId, request);
+        if (!result.IsSuccess)
+            return BadRequest(result);
+        return Ok(result);
+    }
+
+    [HttpDelete("photo")]
+    public async Task<IActionResult> DeletePhoto()
+    {
+        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var result = await _userService.DeleteProfilePhotoAsync(userId);
+        if (!result.IsSuccess)
+            return BadRequest(result);
+        return Ok(result);
+    }
+
+    private static readonly string[] AllowedPhotoExtensions = { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+    private static readonly string[] AllowedPhotoMimeTypes = { "image/jpeg", "image/png", "image/gif", "image/webp" };
+
     [HttpPost("upload-photo/{userId}")]
     public async Task<IActionResult> UploadPhoto(int userId, IFormFile file)
     {
@@ -29,10 +63,15 @@ public class ProfileController : ControllerBase
         if (file == null || file.Length == 0)
             return BadRequest(new { error = "No file provided" });
 
-        var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+        if (file.Length > 5 * 1024 * 1024)
+            return BadRequest(new { error = "Photo size must not exceed 5 MB" });
+
         var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
-        if (!allowedExtensions.Contains(ext))
+        if (!AllowedPhotoExtensions.Contains(ext))
             return BadRequest(new { error = "Only image files are allowed (jpg, jpeg, png, gif, webp)" });
+
+        if (!AllowedPhotoMimeTypes.Contains(file.ContentType.ToLowerInvariant()))
+            return BadRequest(new { error = "Invalid image MIME type" });
 
         var fileName = $"{userId}_{Guid.NewGuid()}{ext}";
         var dir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "profiles");

@@ -21,7 +21,8 @@ namespace Project.DAL.Configurations
                 .HasColumnType("date");
 
             builder.HasIndex(x => x.Name)
-                .IsUnique();
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
 
             builder.HasQueryFilter(x => !x.IsDeleted);
         }

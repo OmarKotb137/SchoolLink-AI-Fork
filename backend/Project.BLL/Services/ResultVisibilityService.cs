@@ -65,4 +65,43 @@ public class ResultVisibilityService : IResultVisibilityService
         var isVisible = await _unitOfWork.ResultVisibilitySettings.IsVisibleAsync(academicYearId, term);
         return OperationResult<bool>.Success(isVisible);
     }
+
+    public async Task<OperationResult<IEnumerable<ResultVisibilityDto>>> GetAllSettingsAsync()
+    {
+        var settings = await _unitOfWork.ResultVisibilitySettings.FindAsync(s => true);
+        var dtos = _mapper.Map<IEnumerable<ResultVisibilityDto>>(settings);
+        return OperationResult<IEnumerable<ResultVisibilityDto>>.Success(dtos);
+    }
+
+    public async Task<OperationResult<ResultVisibilityDto>> UpdateVisibilitySettingAsync(int id, UpdateVisibilityRequest request)
+    {
+        var setting = await _unitOfWork.ResultVisibilitySettings.GetByIdAsync(id);
+        if (setting == null)
+            return OperationResult<ResultVisibilityDto>.Failure("Visibility setting not found");
+
+        if (request.VisibleFrom.HasValue && request.VisibleUntil.HasValue &&
+            request.VisibleFrom >= request.VisibleUntil)
+            return OperationResult<ResultVisibilityDto>.Failure("VisibleFrom must be before VisibleUntil");
+
+        setting.IsVisible = request.IsVisible;
+        setting.VisibleFrom = request.VisibleFrom;
+        setting.VisibleUntil = request.VisibleUntil;
+        setting.UpdatedAt = DateTime.UtcNow;
+        _unitOfWork.ResultVisibilitySettings.Update(setting);
+        await _unitOfWork.SaveChangesAsync();
+
+        var dto = _mapper.Map<ResultVisibilityDto>(setting);
+        return OperationResult<ResultVisibilityDto>.Success(dto, "Visibility setting updated successfully");
+    }
+
+    public async Task<OperationResult> DeleteVisibilitySettingAsync(int id)
+    {
+        var setting = await _unitOfWork.ResultVisibilitySettings.GetByIdAsync(id);
+        if (setting == null)
+            return OperationResult.Failure("Visibility setting not found");
+
+        _unitOfWork.ResultVisibilitySettings.SoftDelete(setting);
+        await _unitOfWork.SaveChangesAsync();
+        return OperationResult.Success("Visibility setting deleted successfully");
+    }
 }

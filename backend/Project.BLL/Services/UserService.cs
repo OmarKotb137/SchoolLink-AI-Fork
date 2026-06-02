@@ -124,6 +124,73 @@ public class UserService : IUserService
         return OperationResult.Success("Profile photo updated successfully");
     }
 
+    public async Task<OperationResult<UserStatsDto>> GetUserStatsAsync()
+    {
+        var total = await _unitOfWork.Users.CountAsync(u => !u.IsDeleted);
+        var admins = await _unitOfWork.Users.GetCountByRoleAsync(UserRole.Admin);
+        var teachers = await _unitOfWork.Users.GetCountByRoleAsync(UserRole.Teacher);
+        var students = await _unitOfWork.Users.GetCountByRoleAsync(UserRole.Student);
+        var parents = await _unitOfWork.Users.GetCountByRoleAsync(UserRole.Parent);
+
+        var stats = new UserStatsDto
+        {
+            Total = total,
+            Admins = admins,
+            Teachers = teachers,
+            Students = students,
+            Parents = parents
+        };
+
+        return OperationResult<UserStatsDto>.Success(stats);
+    }
+
+    public async Task<OperationResult> BulkDeleteUsersAsync(List<int> userIds)
+    {
+        foreach (var id in userIds)
+        {
+            var user = await _unitOfWork.Users.GetByIdAsync(id);
+            if (user == null) continue;
+
+            user.IsDeleted = true;
+            user.IsActive = false;
+            user.UpdatedAt = DateTime.UtcNow;
+            _unitOfWork.Users.Update(user);
+        }
+
+        await _unitOfWork.SaveChangesAsync();
+        return OperationResult.Success($"{userIds.Count} users deleted successfully");
+    }
+
+    public async Task<OperationResult<UserDto>> UpdateProfileAsync(int userId, UpdateProfileRequest request)
+    {
+        var user = await _unitOfWork.Users.GetByIdAsync(userId);
+        if (user == null)
+            return OperationResult<UserDto>.Failure("User not found");
+
+        user.FullName = request.FullName;
+        user.Phone = request.Phone;
+        user.UpdatedAt = DateTime.UtcNow;
+        _unitOfWork.Users.Update(user);
+        await _unitOfWork.SaveChangesAsync();
+
+        var dto = _mapper.Map<UserDto>(user);
+        return OperationResult<UserDto>.Success(dto, "Profile updated successfully");
+    }
+
+    public async Task<OperationResult> DeleteProfilePhotoAsync(int userId)
+    {
+        var user = await _unitOfWork.Users.GetByIdAsync(userId);
+        if (user == null)
+            return OperationResult.Failure("User not found");
+
+        user.ProfilePictureUrl = null;
+        user.UpdatedAt = DateTime.UtcNow;
+        _unitOfWork.Users.Update(user);
+        await _unitOfWork.SaveChangesAsync();
+
+        return OperationResult.Success("Profile photo removed successfully");
+    }
+
     public async Task<OperationResult> DeleteUserAsync(int id)
     {
         var user = await _unitOfWork.Users.GetByIdAsync(id);

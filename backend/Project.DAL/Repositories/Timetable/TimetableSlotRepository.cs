@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Project.DAL.Interfaces.Repositories.Timetable;
 using Project.Domain.Entities;
 using Project.Domain.Enums;
@@ -110,6 +110,51 @@ public class TimetableSlotRepository : Repository<TimetableSlot>, ITimetableSlot
                 s.DayOfWeek    == day           &&
                 s.PeriodNumber == periodNumber, ct);
 
+    public async Task<bool> HasConflictAsync(
+        int timetableId,
+        SchoolDay day,
+        int periodNumber,
+        int excludedSlotId,
+        CancellationToken ct = default)
+        => await _context.TimetableSlots
+            .AnyAsync(s =>
+                s.Id          != excludedSlotId &&
+                s.TimetableId == timetableId    &&
+                s.DayOfWeek   == day            &&
+                s.PeriodNumber == periodNumber, ct);
+
+    public async Task<bool> HasTeacherConflictAsync(
+        int teacherId,
+        int academicYearId,
+        SchoolDay day,
+        int periodNumber,
+        CancellationToken ct = default)
+        => await _context.TimetableSlots
+            .AnyAsync(s =>
+                s.ClassSubjectTeacher != null                          &&
+                s.ClassSubjectTeacher.TeacherId      == teacherId      &&
+                s.ClassSubjectTeacher.AcademicYearId == academicYearId &&
+                s.Timetable.IsActive                                   &&
+                s.DayOfWeek    == day                                  &&
+                s.PeriodNumber == periodNumber, ct);
+
+    public async Task<bool> HasTeacherConflictAsync(
+        int teacherId,
+        int academicYearId,
+        SchoolDay day,
+        int periodNumber,
+        int excludedSlotId,
+        CancellationToken ct = default)
+        => await _context.TimetableSlots
+            .AnyAsync(s =>
+                s.Id          != excludedSlotId                        &&
+                s.ClassSubjectTeacher != null                          &&
+                s.ClassSubjectTeacher.TeacherId      == teacherId      &&
+                s.ClassSubjectTeacher.AcademicYearId == academicYearId &&
+                s.Timetable.IsActive                                   &&
+                s.DayOfWeek    == day                                  &&
+                s.PeriodNumber == periodNumber, ct);
+
 
     public async Task BulkReplaceAsync(
         int timetableId,
@@ -125,7 +170,15 @@ public class TimetableSlotRepository : Repository<TimetableSlot>, ITimetableSlot
 
         await _context.TimetableSlots.AddRangeAsync(slots, ct);
     }
+
+
+    public async Task<TimetableSlot?> GetByIdWithDetailsAsync(
+        int slotId,
+        CancellationToken ct = default)
+        => await _context.TimetableSlots
+            .Include(s => s.ClassSubjectTeacher)
+                .ThenInclude(cst => cst!.Subject)
+            .Include(s => s.ClassSubjectTeacher)
+                .ThenInclude(cst => cst!.Teacher)
+            .FirstOrDefaultAsync(s => s.Id == slotId, ct);
 }
-
-
-

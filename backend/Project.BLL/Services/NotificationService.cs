@@ -1,5 +1,6 @@
 using AutoMapper;
 using Common.Results;
+using Project.BLL.DTOs.Common;
 using Project.BLL.DTOs.Notifications;
 using Project.BLL.Interfaces;
 using Project.DAL.Interfaces;
@@ -49,6 +50,16 @@ public class NotificationService : INotificationService
         return OperationResult<IEnumerable<NotificationDto>>.Success(dtos);
     }
 
+    public async Task<OperationResult<NotificationDto>> GetNotificationByIdAsync(int notificationId, int userId)
+    {
+        var notification = await _unitOfWork.Notifications.GetByIdAsync(notificationId);
+        if (notification == null || notification.UserId != userId)
+            return OperationResult<NotificationDto>.Failure("Notification not found or does not belong to this user");
+
+        var dto = _mapper.Map<NotificationDto>(notification);
+        return OperationResult<NotificationDto>.Success(dto);
+    }
+
     public async Task<OperationResult<int>> GetUnreadCountAsync(int userId)
     {
         var user = await _unitOfWork.Users.GetByIdAsync(userId);
@@ -77,6 +88,70 @@ public class NotificationService : INotificationService
 
         await _unitOfWork.Notifications.MarkAllAsReadAsync(userId);
         return OperationResult.Success("All notifications marked as read");
+    }
+
+    public async Task<OperationResult<PagedResult<NotificationDto>>> GetNotificationsByUserPagedAsync(int userId, PaginationFilter filter)
+    {
+        var user = await _unitOfWork.Users.GetByIdAsync(userId);
+        if (user == null)
+            return OperationResult<PagedResult<NotificationDto>>.Failure("User not found");
+
+        var notifications = await _unitOfWork.Notifications.GetByUserIdPagedAsync(userId, filter.Page, filter.PageSize);
+        var totalCount = await _unitOfWork.Notifications.CountAsync(n => n.UserId == userId);
+        var dtos = _mapper.Map<IEnumerable<NotificationDto>>(notifications);
+
+        var paged = new PagedResult<NotificationDto>
+        {
+            Items = dtos,
+            TotalCount = totalCount,
+            Page = filter.Page,
+            PageSize = filter.PageSize
+        };
+
+        return OperationResult<PagedResult<NotificationDto>>.Success(paged);
+    }
+
+    public async Task<OperationResult> SendBulkNotificationAsync(SendBulkNotificationRequest request)
+    {
+        var notifications = new List<Notification>();
+        foreach (var userId in request.UserIds)
+        {
+            var user = await _unitOfWork.Users.GetByIdAsync(userId);
+            if (user == null || user.IsDeleted || !user.IsActive)
+                continue;
+
+            notifications.Add(new Notification
+            {
+                UserId = userId,
+                Title = request.Title,
+                Body = request.Body,
+                Type = request.Type,
+                DataJson = request.DataJson
+            });
+        }
+
+        if (notifications.Count == 0)
+            return OperationResult.Failure("No valid recipients found");
+
+        await _unitOfWork.Notifications.BulkAddAsync(notifications);
+        await _unitOfWork.SaveChangesAsync();
+
+        return OperationResult.Success($"Notifications sent to {notifications.Count} users");
+    }
+
+    public async Task<OperationResult> DeleteBulkNotificationsAsync(List<int> notificationIds, int userId)
+    {
+        foreach (var id in notificationIds)
+        {
+            var notification = await _unitOfWork.Notifications.GetByIdAsync(id);
+            if (notification == null || notification.UserId != userId)
+                continue;
+
+            _unitOfWork.Notifications.SoftDelete(notification);
+        }
+
+        await _unitOfWork.SaveChangesAsync();
+        return OperationResult.Success($"{notificationIds.Count} notifications deleted");
     }
 
     public async Task<OperationResult> DeleteNotificationAsync(int notificationId, int userId)

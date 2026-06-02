@@ -101,6 +101,17 @@ public class AnnouncementService : IAnnouncementService
         return OperationResult.Success("Announcement deleted successfully");
     }
 
+    public async Task<OperationResult<IEnumerable<AnnouncementDto>>> GetExpiredAnnouncementsAsync(int callerUserId)
+    {
+        var caller = await _unitOfWork.Users.GetByIdAsync(callerUserId);
+        if (caller == null)
+            return OperationResult<IEnumerable<AnnouncementDto>>.Failure("Caller not found");
+
+        var announcements = await _unitOfWork.Announcements.GetExpiredAsync();
+        var dtos = _mapper.Map<IEnumerable<AnnouncementDto>>(announcements.OrderByDescending(a => a.CreatedAt));
+        return OperationResult<IEnumerable<AnnouncementDto>>.Success(dtos);
+    }
+
     public async Task<OperationResult<IEnumerable<AnnouncementDto>>> GetActiveAnnouncementsAsync(GetAnnouncementsFilter filter)
     {
         var caller = await _unitOfWork.Users.GetByIdAsync(filter.CallerUserId);

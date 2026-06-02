@@ -19,6 +19,33 @@ public interface IClassSubjectTeacherRepository : IRepository<ClassSubjectTeache
 
     Task<ClassSubjectTeacher?>               GetWithDetailsAsync(int classSubjectTeacherId, CancellationToken ct = default);
     Task<IReadOnlyList<ClassSubjectTeacher>> GetByClassWithTeacherAsync(int classId, int academicYearId, CancellationToken ct = default);
+
+    /// <summary>
+    /// يجيب ClassSubjectTeacher بـ Class + Subject + Teacher + AcademicYear كلهم محملين.
+    /// يُستخدم في AssignTeacherAsync بعد الـ save لبناء الـ DTO الكامل.
+    /// (GetWithDetailsAsync الموجودة مش بتجيب AcademicYear)
+    /// </summary>
+    Task<ClassSubjectTeacher?> GetWithAllDetailsAsync(int id, CancellationToken ct = default);
+
+    /// <summary>
+    /// يجيب كل assignments لـ class معينة مع Class + Subject + Teacher + AcademicYear محملين.
+    /// يُستخدم في GetByClassAsync.
+    /// (GetByClassWithTeacherAsync الموجودة مش بتجيب Class و AcademicYear)
+    /// </summary>
+    Task<IReadOnlyList<ClassSubjectTeacher>> GetByClassWithAllDetailsAsync(
+        int classId,
+        int academicYearId,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// يجيب كل assignments لـ teacher معين مع Class + Subject + Teacher + AcademicYear محملين.
+    /// يُستخدم في GetByTeacherAsync.
+    /// (GetByTeacherAndYearAsync الموجودة مش بتجيب Teacher و AcademicYear)
+    /// </summary>
+    Task<IReadOnlyList<ClassSubjectTeacher>> GetByTeacherWithAllDetailsAsync(
+        int teacherId,
+        int academicYearId,
+        CancellationToken ct = default);
 }
 
 
