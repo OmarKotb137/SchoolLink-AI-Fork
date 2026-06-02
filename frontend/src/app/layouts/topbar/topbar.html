@@ -1,0 +1,62 @@
+<header class="topbar">
+  <div class="flex items-center gap-4">
+    @if (showSearch()) {
+      <div class="search-box">
+        <span class="material-symbols-outlined search-icon">search</span>
+        <input class="search-input" placeholder="بحث..." type="text"/>
+      </div>
+    }
+  </div>
+  <div class="flex items-center gap-3">
+    @if (showNotifications()) {
+      <button class="topbar-icon-btn">
+        <span class="material-symbols-outlined">notifications</span>
+        @if (notificationDot()) {
+          <span class="notif-dot"></span>
+        }
+      </button>
+    }
+    @if (showSettings()) {
+      <button class="topbar-icon-btn">
+        <span class="material-symbols-outlined">settings</span>
+      </button>
+    }
+    @if (showAvatar()) {
+      <div class="flex items-center gap-2">
+        <div class="avatar-ring">
+          <img alt="User avatar" class="avatar-img"
+               src="https://lh3.googleusercontent.com/aida-public/AB6AXuAN4unMckodCs5g4LHVoMsjVqqcibeKvRpkgZbmfv5E6sc7o8g7HGyxYuhVzjbsHn60lTec0kpRzhBwirCwV1jMt0tlapmILzS-9_t1P_hCGSAm6B5sq-hwySr89MJvuiAnrZSbcACVF-UWBM79eHa2iMjRAlHOy5bBejGokUCJqU50MpIgSu_GBmC89XlEZNDJmNwcTawOOrFTRqtWXxuyiL9Z8-6Cdpy9qTlzGT6BfGxDtZ0F8hiWuje7715i-BGs_3mx2_ajPTw"/>
+        </div>
+        <div class="hidden md:block">
+          <p class="text-label-sm font-bold text-on-surface leading-tight">{{ userName() }}</p>
+          @if (userRole()) {
+            <p class="text-[10px] text-outline leading-tight">{{ userRole() }}</p>
+          }
+        </div>
+      </div>
+    }
+  </div>
+</header>
+<nav class="bottom-nav">
+  @let h = navItems().home;
+  @let c = navItems().chat;
+  @let n = navItems().notif;
+  <a class="bottom-nav-item"
+     [class.active]="h && router.isActive(h.route, false)"
+     (click)="navigate(h?.route || '/')">
+    <span class="material-symbols-outlined">{{ h?.icon || 'dashboard' }}</span>
+    <span>الرئيسية</span>
+  </a>
+  <a class="bottom-nav-item"
+     [class.active]="c && router.isActive(c.route, false)"
+     (click)="navigate(c?.route || '/chat')">
+    <span class="material-symbols-outlined">{{ c?.icon || 'chat' }}</span>
+    <span>المحادثات</span>
+  </a>
+  <a class="bottom-nav-item"
+     [class.active]="n && router.isActive(n.route, false)"
+     (click)="navigate(n?.route || '/notifications')">
+    <span class="material-symbols-outlined">{{ n?.icon || 'notifications' }}</span>
+    <span>الإشعارات</span>
+  </a>
+</nav>

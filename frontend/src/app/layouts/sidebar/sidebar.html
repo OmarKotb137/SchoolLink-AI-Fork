@@ -1,0 +1,43 @@
+<aside class="sdbr" [class.open]="isOpen()">
+  <div class="sdbr-inner">
+    <div class="p-6 flex flex-col items-center border-b border-outline-variant/30">
+      <div class="w-16 h-16 bg-primary rounded-xl flex items-center justify-center text-on-primary mb-4 shadow-lg shadow-primary/20">
+        <span class="material-symbols-outlined text-4xl" style="font-variation-settings: 'FILL' 1;">school</span>
+      </div>
+      <h2 class="font-headline-md text-headline-md text-primary font-bold">SchoolLink AI</h2>
+      <p class="font-body-md text-body-md text-on-surface-variant">نظام الإدارة الذكي</p>
+    </div>
+    <nav style="display:flex;flex-direction:column;gap:2px;flex:1;overflow-y:auto;">
+      @for (item of items(); track item.label) {
+        <a class="sdbr-item"
+           (click)="navigate(item.route)"
+           [routerLink]="item.route"
+           routerLinkActive="active"
+           [routerLinkActiveOptions]="{exact: true}">
+          <span class="material-symbols-outlined ico">{{ item.icon }}</span>
+          <span>{{ item.label }}</span>
+        </a>
+      }
+    </nav>
+    <div>
+      <div class="sdbr-hr"></div>
+      <button class="sdbr-ai-btn" (click)="onAiConsult()">
+        <span class="material-symbols-outlined ai-icon">auto_awesome</span>
+        <span>استشارة الذكاء الاصطناعي</span>
+      </button>
+      <a class="sdbr-out" routerLink="/login">
+        <span class="material-symbols-outlined" style="font-size:18px;">logout</span>
+        <span>تسجيل الخروج</span>
+      </a>
+    </div>
+  </div>
+</aside>
+
+<button id="menuToggle" (click)="toggle()">
+  <span class="material-symbols-outlined">menu</span>
+</button>
+
+@if (isOpen()) {
+  <div id="sidebarOverlay" class="show" (click)="toggle()"></div>
+}
+

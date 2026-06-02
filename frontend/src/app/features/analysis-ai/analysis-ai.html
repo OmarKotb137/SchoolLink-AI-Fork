@@ -1,0 +1,150 @@
+﻿    <app-sidebar [(isOpen)]="sidebarOpen" />
+    <div class="main-content">
+      <app-topbar userName="أحمد" />
+      <main class="flex-1 flex flex-col min-h-screen relative">
+        <header class="fixed top-0 right-0 lg:right-[280px] left-0 z-40 bg-surface-container-lowest/80 backdrop-blur-md border-b border-outline-variant shadow-sm h-20 flex items-center justify-between px-gutter-mobile md:px-gutter-desktop w-full lg:w-[calc(100%-280px)] mr-auto">
+          <div class="hidden md:flex relative w-96">
+            <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+            <input class="w-full bg-surface-container-low border border-outline-variant rounded-full py-2 pr-10 pl-4 text-body-md font-body-md focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" placeholder="بحث في التحليلات..." type="text"/>
+          </div>
+          <div class="flex items-center gap-4">
+            <button class="text-on-surface-variant hover:bg-surface-container-low p-2 rounded-full transition-colors duration-200">
+              <span class="material-symbols-outlined">auto_awesome</span>
+            </button>
+            <button class="text-on-surface-variant hover:bg-surface-container-low p-2 rounded-full transition-colors duration-200 relative">
+              <span class="material-symbols-outlined">notifications</span>
+              <span class="absolute top-1 right-1 w-2 h-2 bg-error rounded-full"></span>
+            </button>
+            <button class="text-on-surface-variant hover:bg-surface-container-low p-2 rounded-full transition-colors duration-200">
+              <span class="material-symbols-outlined">settings</span>
+            </button>
+          </div>
+        </header>
+        <div class="pt-24 px-gutter-mobile md:px-gutter-desktop pb-container-margin flex-1 flex flex-col gap-6 max-w-7xl mx-auto w-full">
+          <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div>
+              <h2 class="text-headline-lg-mobile md:text-headline-lg font-headline-lg font-bold text-on-surface">التحليلات المتقدمة</h2>
+              <p class="text-body-md font-body-md text-on-surface-variant mt-1">نظرة شاملة على الأداء الأكاديمي للربع الحالي.</p>
+            </div>
+            <div class="flex items-center gap-3">
+              <select class="bg-surface border border-outline-variant rounded-lg px-4 py-2 text-label-md font-label-md text-on-surface focus:outline-none focus:border-primary">
+                <option>آخر 3 أشهر</option>
+                <option>آخر 6 أشهر</option>
+                <option>العام الدراسي الحالي</option>
+              </select>
+              <button class="bg-surface border border-outline-variant rounded-lg px-4 py-2 flex items-center gap-2 hover:bg-surface-container-low transition-colors">
+                <span class="material-symbols-outlined text-[18px]">download</span>
+                <span class="text-label-md font-label-md">تصدير التقرير</span>
+              </button>
+            </div>
+          </div>
+          <div class="bg-[#f5f3ff] rounded-xl p-widget-padding ai-gradient-border shadow-sm flex flex-col md:flex-row items-start md:items-center gap-4 relative overflow-hidden">
+            <div class="w-12 h-12 rounded-full bg-secondary-fixed flex items-center justify-center shrink-0 z-10">
+              <span class="material-symbols-outlined text-secondary">insights</span>
+            </div>
+            <div class="z-10 flex-1">
+              <h3 class="text-headline-sm font-headline-sm font-bold text-primary mb-1 flex items-center gap-2">
+                ملخص الذكاء الاصطناعي <span class="text-xs bg-primary-fixed text-on-primary-fixed px-2 py-0.5 rounded-full">محدث</span>
+              </h3>
+              <p class="text-body-md font-body-md text-on-surface-variant">يظهر تحليل البيانات تحسناً بنسبة 12% في درجات الرياضيات لطلاب الصف العاشر، بينما تتطلب مادة الفيزياء في الصف الحادي عشر انتباهاً فورياً بسبب انخفاض معدلات المشاركة بنسبة 8% خلال الشهر الماضي.</p>
+            </div>
+            <button class="shrink-0 z-10 bg-primary text-on-primary px-4 py-2 rounded-lg text-label-md font-label-md hover:bg-primary/90 transition-colors">عرض التفاصيل</button>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+            <div class="md:col-span-8 bg-surface rounded-xl border border-outline-variant shadow-sm p-container-margin flex flex-col">
+              <div class="flex justify-between items-center mb-6">
+                <h3 class="text-headline-sm font-headline-sm font-semibold text-on-surface">مؤشر الأداء العام</h3>
+                <div class="flex gap-2">
+                  <span class="flex items-center gap-1 text-label-sm text-on-surface-variant"><div class="w-3 h-3 rounded-full bg-primary"></div> الرياضيات</span>
+                  <span class="flex items-center gap-1 text-label-sm text-on-surface-variant"><div class="w-3 h-3 rounded-full bg-secondary"></div> العلوم</span>
+                </div>
+              </div>
+              <div class="flex-1 min-h-[300px] w-full bg-surface-container-low rounded-lg relative overflow-hidden border border-dashed border-outline-variant flex items-center justify-center">
+                <span class="text-on-surface-variant font-label-md z-10 bg-surface/80 px-4 py-2 rounded backdrop-blur-sm">مخطط تفاعلي - اتجاهات الأداء (3 أشهر)</span>
+              </div>
+            </div>
+            <div class="md:col-span-4 flex flex-col gap-6">
+              <div class="bg-surface rounded-xl border border-outline-variant shadow-sm p-container-margin flex-1">
+                <h3 class="text-headline-sm font-headline-sm font-semibold text-on-surface mb-4 flex items-center gap-2">
+                  <span class="material-symbols-outlined text-error">warning</span> تتطلب الانتباه
+                </h3>
+                <ul class="space-y-4">
+                  <li class="flex items-center justify-between p-3 bg-error-container/30 rounded-lg">
+                    <div>
+                      <p class="text-label-md font-label-md font-bold text-on-surface">الفيزياء - 11 علمي</p>
+                      <p class="text-label-sm text-on-surface-variant">انخفاض في درجات الاختبار الأخير</p>
+                    </div>
+                    <span class="bg-error text-on-error px-2 py-1 rounded text-[10px] font-bold">-8%</span>
+                  </li>
+                  <li class="flex items-center justify-between p-3 bg-surface-container-low rounded-lg">
+                    <div>
+                      <p class="text-label-md font-label-md font-bold text-on-surface">اللغة العربية - 9 ب</p>
+                      <p class="text-label-sm text-on-surface-variant">تأخر في تسليم الواجبات</p>
+                    </div>
+                    <span class="bg-surface-variant text-on-surface-variant px-2 py-1 rounded text-[10px] font-bold">15 طالب</span>
+                  </li>
+                </ul>
+              </div>
+              <div class="bg-surface rounded-xl border border-outline-variant shadow-sm p-container-margin flex-1">
+                <h3 class="text-headline-sm font-headline-sm font-semibold text-on-surface mb-4 flex items-center gap-2">
+                  <span class="material-symbols-outlined text-primary">emoji_events</span> أفضل أداء
+                </h3>
+                <div class="space-y-3">
+                  <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-primary-fixed text-on-primary-fixed-variant flex items-center justify-center font-bold text-sm">أحمد</div>
+                    <div class="flex-1">
+                      <div class="flex justify-between"><p class="text-label-md font-label-md text-on-surface">الرياضيات المتقدمة</p><p class="text-label-sm font-bold text-primary">98%</p></div>
+                      <div class="w-full bg-surface-container-highest h-1.5 rounded-full mt-1"><div class="bg-primary h-1.5 rounded-full" style="width: 98%"></div></div>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-secondary-fixed text-on-secondary-fixed-variant flex items-center justify-center font-bold text-sm">سارة</div>
+                    <div class="flex-1">
+                      <div class="flex justify-between"><p class="text-label-md font-label-md text-on-surface">علوم الحاسوب</p><p class="text-label-sm font-bold text-secondary">95%</p></div>
+                      <div class="w-full bg-surface-container-highest h-1.5 rounded-full mt-1"><div class="bg-secondary h-1.5 rounded-full" style="width: 95%"></div></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="md:col-span-12 bg-surface rounded-xl border border-outline-variant shadow-sm p-container-margin">
+              <div class="flex justify-between items-center mb-6">
+                <h3 class="text-headline-sm font-headline-sm font-semibold text-on-surface">توزيع الدرجات حسب المادة</h3>
+                <button class="text-label-sm font-label-sm text-primary hover:underline">عرض التقرير المفصل</button>
+              </div>
+              <div class="h-[280px] w-full flex items-end gap-6 justify-around pt-8 border-b border-outline-variant relative">
+                <div class="absolute inset-0 flex flex-col justify-between pb-8">
+                  <div class="border-t border-dashed border-outline-variant/30 w-full"></div>
+                  <div class="border-t border-dashed border-outline-variant/30 w-full"></div>
+                  <div class="border-t border-dashed border-outline-variant/30 w-full"></div>
+                  <div class="border-t border-dashed border-outline-variant/30 w-full"></div>
+                </div>
+                <div class="absolute right-0 top-0 bottom-8 w-10 flex flex-col justify-between text-label-sm text-on-surface-variant">
+                  <span>100</span><span>75</span><span>50</span><span>25</span><span>0</span>
+                </div>
+                <div class="flex flex-col items-center gap-2 w-16 z-10 mr-12">
+                  <div class="w-14 bg-gradient-to-t from-primary to-primary-fixed rounded-t-lg h-[85%] relative group hover:brightness-110 transition-all duration-300 cursor-pointer shadow-sm" style="min-height: 20px;"></div>
+                  <div class="flex flex-col items-center mt-2"><span class="text-label-sm text-on-surface-variant font-medium">الرياضيات</span></div>
+                </div>
+                <div class="flex flex-col items-center gap-2 w-16 z-10">
+                  <div class="w-14 bg-gradient-to-t from-secondary to-[#a978ff] rounded-t-lg h-[72%] relative group hover:brightness-110 transition-all duration-300 cursor-pointer shadow-sm" style="min-height: 20px;"></div>
+                  <div class="flex flex-col items-center mt-2"><span class="text-label-sm text-on-surface-variant font-medium">الفيزياء</span></div>
+                </div>
+                <div class="flex flex-col items-center gap-2 w-16 z-10">
+                  <div class="w-14 bg-gradient-to-t from-primary to-primary-fixed rounded-t-lg h-[92%] relative group hover:brightness-110 transition-all duration-300 cursor-pointer shadow-sm" style="min-height: 20px;"></div>
+                  <div class="flex flex-col items-center mt-2"><span class="text-label-sm text-on-surface-variant font-medium">البرمجة</span></div>
+                </div>
+                <div class="flex flex-col items-center gap-2 w-16 z-10">
+                  <div class="w-14 bg-gradient-to-t from-secondary to-[#a978ff] rounded-t-lg h-[65%] relative group hover:brightness-110 transition-all duration-300 cursor-pointer shadow-sm" style="min-height: 20px;"></div>
+                  <div class="flex flex-col items-center mt-2"><span class="text-label-sm text-on-surface-variant font-medium">الكيمياء</span></div>
+                </div>
+                <div class="flex flex-col items-center gap-2 w-16 z-10">
+                  <div class="w-14 bg-gradient-to-t from-primary to-primary-fixed rounded-t-lg h-[88%] relative group hover:brightness-110 transition-all duration-300 cursor-pointer shadow-sm" style="min-height: 20px;"></div>
+                  <div class="flex flex-col items-center mt-2"><span class="text-label-sm text-on-surface-variant font-medium">اللغات</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>

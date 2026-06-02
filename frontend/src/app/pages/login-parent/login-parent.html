@@ -1,0 +1,34 @@
+<body style="font-family:'IBM Plex Sans Arabic',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#fffbeb;padding:20px;position:relative">
+  <div style="width:100%;max-width:420px;background:#fff;border-radius:32px;padding:48px 40px;box-shadow:0 30px 60px -15px rgba(217,119,6,.1);position:relative">
+    <div style="text-align:center;margin-bottom:32px">
+      <div style="width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,#f59e0b,#d97706);display:flex;align-items:center;justify-content:center;margin:0 auto 16px">
+        <span class="material-symbols-outlined" style="color:#fff;font-size:28px;font-variation-settings:'FILL'1">family_history</span>
+      </div>
+      <h1 style="font-size:20px;font-weight:800;color:#1e293b">SchoolLink AI</h1>
+      <p style="font-size:12px;color:#94a3b8">بوابة ولي الأمر</p>
+    </div>
+    <h2 style="font-size:22px;font-weight:700;color:#1e293b;margin-bottom:4px;text-align:center">تسجيل الدخول</h2>
+    <p style="font-size:13px;color:#94a3b8;margin-bottom:28px;text-align:center">لمتابعة أداء أبنائك الدراسي</p>
+    <form #f="ngForm" (ngSubmit)="handleLogin(f)">
+      <div style="margin-bottom:14px">
+        <label style="display:block;font-size:12px;font-weight:600;color:#64748b;margin-bottom:5px">رقم الهاتف أو البريد</label>
+        <input ngModel name="email" type="text" placeholder="أدخل رقم الهاتف أو البريد" style="width:100%;padding:13px 16px;border:1.5px solid #e2e8f0;border-radius:12px;font-size:13px;outline:none;font-family:inherit;background:#f8fafc;color:#1e293b">
+      </div>
+      <div style="margin-bottom:14px">
+        <label style="display:block;font-size:12px;font-weight:600;color:#64748b;margin-bottom:5px">كلمة المرور</label>
+        <div style="position:relative">
+          <input ngModel name="password" #pwd type="password" placeholder="كلمة المرور" style="width:100%;padding:13px 16px;border:1.5px solid #e2e8f0;border-radius:12px;font-size:13px;outline:none;font-family:inherit;background:#f8fafc;color:#1e293b">
+          <button type="button" (click)="togglePwd(pwd)" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:#94a3b8;cursor:pointer;padding:0">
+            <span class="material-symbols-outlined" style="font-size:18px">visibility</span>
+          </button>
+        </div>
+      </div>
+      <button type="submit" style="width:100%;padding:14px;border:none;border-radius:12px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+        <span class="material-symbols-outlined" style="font-size:18px">login</span> دخول ولي الأمر
+      </button>
+      <div style="text-align:center;margin-top:16px">
+        <a href="#" style="font-size:12px;color:#d97706;text-decoration:none">نسيت كلمة المرور؟</a>
+      </div>
+    </form>
+  </div>
+</body>

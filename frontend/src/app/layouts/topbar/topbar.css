@@ -1,0 +1,129 @@
+.topbar {
+  background: rgba(250, 248, 255, 0.8);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(197, 197, 211, 0.3);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 24px;
+  height: 64px;
+  direction: rtl;
+}
+.search-box {
+  display: none;
+  position: relative;
+}
+@media (min-width: 768px) {
+  .search-box {
+    display: flex;
+  }
+}
+.search-input {
+  padding-right: 40px;
+  padding-left: 16px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  background: #f4f3fa;
+  border: none;
+  border-radius: 999px;
+  font-size: 13px;
+  width: 240px;
+  transition: all 0.2s;
+  direction: rtl;
+}
+.search-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0, 35, 111, 0.15);
+}
+.search-icon {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #757682;
+  font-size: 20px;
+  pointer-events: none;
+}
+.topbar-icon-btn {
+  padding: 8px;
+  border-radius: 999px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #444651;
+  transition: all 0.2s;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.topbar-icon-btn:hover {
+  background: #e9e7ef;
+}
+.notif-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+  background: #ba1a1a;
+  border-radius: 999px;
+  border: 2px solid #faf8ff;
+}
+.avatar-ring {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 2px solid rgba(30, 58, 138, 0.3);
+  overflow: hidden;
+}
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.bottom-nav {
+  display: none;
+  direction: rtl;
+  justify-content: space-around;
+  align-items: center;
+  padding: 0 4px;
+  background: #fff;
+  border-bottom: 1px solid rgba(197, 197, 211, 0.3);
+}
+.bottom-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 20px;
+  border-radius: 12px;
+  color: #757682;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.2s;
+  cursor: pointer;
+  min-width: 80px;
+}
+.bottom-nav-item .material-symbols-outlined {
+  font-size: 28px;
+  transition: all 0.2s;
+}
+.bottom-nav-item.active {
+  color: #00236f;
+}
+.bottom-nav-item.active .material-symbols-outlined {
+  font-variation-settings: 'FILL' 1;
+}
+.bottom-nav-item:hover {
+  background: #f4f3fa;
+}
+@media (max-width: 1023px) {
+  .bottom-nav {
+    display: flex;
+  }
+}

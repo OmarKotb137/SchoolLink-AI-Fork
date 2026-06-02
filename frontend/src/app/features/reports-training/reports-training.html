@@ -1,0 +1,163 @@
+﻿    <app-sidebar [(isOpen)]="sidebarOpen" />
+    <div class="main-content">
+      <app-topbar userName="أحمد" />
+      <main class="flex-1">
+        <header class="fixed top-0 left-0 lg:right-72 z-40 bg-surface-container-lowest/80 backdrop-blur-md border-b border-outline-variant h-20 flex items-center justify-between px-4 lg:px-gutter-desktop">
+          <div class="flex items-center gap-4">
+            <div class="relative">
+              <span class="absolute inset-y-0 right-3 flex items-center text-outline"><span class="material-symbols-outlined">search</span></span>
+              <input class="pr-10 pl-4 py-2 bg-surface-container-low border-none rounded-full text-label-md focus:ring-2 focus:ring-primary-container w-64" placeholder="بحث في التقارير..." type="text"/>
+            </div>
+            <span class="inline-flex items-center gap-1.5 bg-primary/10 text-primary px-3 py-1.5 rounded-full text-label-sm font-bold"><span class="material-symbols-outlined" style="font-size:14px">auto_awesome</span> AI</span>
+          </div>
+          <div class="flex items-center gap-6">
+            <div class="flex items-center gap-4 text-on-surface-variant">
+              <span class="material-symbols-outlined cursor-pointer hover:text-primary transition-colors">notifications</span>
+              <span class="material-symbols-outlined cursor-pointer hover:text-primary transition-colors">settings</span>
+            </div>
+            <div class="flex items-center gap-3 border-r pr-6 border-outline-variant">
+              <div class="text-left"><p class="text-label-md font-bold text-on-surface">نظام AI</p><p class="text-label-sm text-outline">تقرير تفاعلي</p></div>
+              <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary"><span class="material-symbols-outlined" style="font-variation-settings:'FILL'1">auto_awesome</span></div>
+            </div>
+          </div>
+        </header>
+        <div class="pt-20 pb-10 px-8 max-w-full">
+          <div class="flex justify-between items-end mb-5">
+            <div>
+              <nav class="flex text-label-sm text-outline mb-2 gap-2"><span>التقارير</span><span>/</span><span class="text-primary">التقرير التدريبي</span></nav>
+              <h2 class="text-headline-lg font-headline-lg text-on-surface">تقرير الأداء التدريبي</h2>
+              <p class="text-body-md text-on-surface-variant mt-1">مبني على التفاعل في المنصة: الواجبات والامتحانات والمشاركة</p>
+            </div>
+            <button class="flex items-center gap-2 px-6 py-2.5 bg-surface-container-high border border-outline-variant rounded-lg text-label-md font-bold hover:bg-surface-variant transition-colors">
+              <span class="material-symbols-outlined">download</span> تصدير
+            </button>
+          </div>
+          <div class="glass-ai rounded-xl p-4 ai-glow mb-4">
+            <div class="flex items-center gap-2 mb-3">
+              <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary"><span class="material-symbols-outlined" style="font-size:18px;font-variation-settings:'FILL'1">psychology</span></div>
+              <div><h3 class="text-label-md font-bold text-on-surface">نظرة عامة من AI</h3><p class="text-label-sm text-outline">تحليل ذكي للأداء</p></div>
+            </div>
+            <div class="grid grid-cols-12 gap-3">
+              <div class="col-span-12 md:col-span-4 bg-white rounded-xl border border-outline-variant p-3 text-center">
+                <p class="text-label-sm text-outline">معدل إنجاز الواجبات</p>
+                <p class="text-2xl font-black text-primary mt-1">85%</p>
+                <p class="text-label-sm text-green-600 mt-1">+8%</p>
+              </div>
+              <div class="col-span-12 md:col-span-4 bg-white rounded-xl border border-outline-variant p-3 text-center">
+                <p class="text-label-sm text-outline">معدل الامتحانات</p>
+                <p class="text-2xl font-black text-secondary mt-1">72%</p>
+                <p class="text-label-sm text-green-600 mt-1">+5%</p>
+              </div>
+              <div class="col-span-12 md:col-span-4 bg-white rounded-xl border border-outline-variant p-3 text-center">
+                <p class="text-label-sm text-outline">المشاركة</p>
+                <p class="text-2xl font-black text-tertiary mt-1">92%</p>
+                <p class="text-label-sm text-green-600 mt-1">نشط جداً</p>
+              </div>
+            </div>
+          </div>
+          <div class="grid grid-cols-12 gap-4 mb-4">
+            <div class="col-span-12 lg:col-span-6 bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden">
+              <div class="p-3 border-b border-outline-variant flex items-center gap-2">
+                <span class="material-symbols-outlined text-secondary">assignment</span>
+                <h3 class="text-headline-sm font-headline-sm text-on-surface">آخر الواجبات</h3>
+              </div>
+              <div class="divide-y divide-outline-variant/30">
+                <div class="flex items-center justify-between p-3 hover:bg-surface-container-low/30">
+                  <div><p class="text-label-md font-bold text-on-surface">تمارين الرياضيات</p><p class="text-label-sm text-outline">٢٥ أبريل</p></div>
+                  <span class="inline-flex items-center gap-1 bg-green-50 text-green-700 px-2 py-0.5 rounded-full text-label-sm font-bold"><span class="material-symbols-outlined" style="font-size:14px">check_circle</span> تم</span>
+                </div>
+                <div class="flex items-center justify-between p-3 hover:bg-surface-container-low/30">
+                  <div><p class="text-label-md font-bold text-on-surface">بحث العلوم</p><p class="text-label-sm text-outline">٢٢ أبريل</p></div>
+                  <span class="inline-flex items-center gap-1 bg-green-50 text-green-700 px-2 py-0.5 rounded-full text-label-sm font-bold"><span class="material-symbols-outlined" style="font-size:14px">check_circle</span> تم</span>
+                </div>
+                <div class="flex items-center justify-between p-3 hover:bg-surface-container-low/30">
+                  <div><p class="text-label-md font-bold text-on-surface">تلخيص قصة - عربي</p><p class="text-label-sm text-outline">١٨ أبريل</p></div>
+                  <span class="inline-flex items-center gap-1 bg-yellow-50 text-yellow-700 px-2 py-0.5 rounded-full text-label-sm font-bold"><span class="material-symbols-outlined" style="font-size:14px">schedule</span> متأخر</span>
+                </div>
+                <div class="flex items-center justify-between p-3 hover:bg-surface-container-low/30">
+                  <div><p class="text-label-md font-bold text-on-surface">قطعة نحو - إنجليزي</p><p class="text-label-sm text-outline">١٥ أبريل</p></div>
+                  <span class="inline-flex items-center gap-1 bg-red-50 text-red-700 px-2 py-0.5 rounded-full text-label-sm font-bold"><span class="material-symbols-outlined" style="font-size:14px">cancel</span> لم يسلم</span>
+                </div>
+              </div>
+            </div>
+            <div class="col-span-12 lg:col-span-6 bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden">
+              <div class="p-5 border-b border-outline-variant flex items-center gap-3">
+                <span class="material-symbols-outlined text-secondary">quiz</span>
+                <h3 class="text-headline-sm font-headline-sm text-on-surface">نتائج الامتحانات التفاعلية</h3>
+              </div>
+              <div class="divide-y divide-outline-variant/30">
+                <div class="flex items-center justify-between p-3 hover:bg-surface-container-low/30">
+                  <div><p class="text-label-md font-bold text-on-surface">امتحان الرياضيات</p><p class="text-label-sm text-outline">٢٠ سؤال</p></div>
+                  <div class="text-center"><p class="text-label-md font-bold text-green-700">16/20</p></div>
+                </div>
+                <div class="flex items-center justify-between p-3 hover:bg-surface-container-low/30">
+                  <div><p class="text-label-md font-bold text-on-surface">امتحان العلوم</p><p class="text-label-sm text-outline">١٥ سؤال</p></div>
+                  <div class="text-center"><p class="text-label-md font-bold text-green-700">13/15</p></div>
+                </div>
+                <div class="flex items-center justify-between p-3 hover:bg-surface-container-low/30">
+                  <div><p class="text-label-md font-bold text-on-surface">امتحان اللغة العربية</p><p class="text-label-sm text-outline">٢٥ سؤال</p></div>
+                  <div class="text-center"><p class="text-label-md font-bold text-yellow-700">18/25</p></div>
+                </div>
+                <div class="flex items-center justify-between p-3 hover:bg-surface-container-low/30">
+                  <div><p class="text-label-md font-bold text-on-surface">امتحان إنجليزي</p><p class="text-label-sm text-outline">١٠ سؤال</p></div>
+                  <div class="text-center"><p class="text-label-md font-bold text-red-700">5/10</p></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="grid grid-cols-12 gap-4">
+            <div class="col-span-12 lg:col-span-5 glass-ai rounded-xl p-4 ai-glow">
+              <div class="flex items-center gap-2 mb-3">
+                <span class="material-symbols-outlined text-primary" style="font-variation-settings:'FILL'1">auto_awesome</span>
+                <h3 class="text-label-md font-bold text-on-surface">تحليلات AI</h3>
+              </div>
+              <div class="space-y-2">
+                <div class="bg-white rounded-xl border border-outline-variant p-3">
+                  <div class="flex items-start gap-2">
+                    <div class="w-7 h-7 rounded-lg bg-green-100 flex items-center justify-center text-green-700 flex-shrink-0"><span class="material-symbols-outlined" style="font-size:14px">trending_up</span></div>
+                    <div><p class="text-label-sm font-bold text-on-surface">تحسن في الرياضيات</p><p class="text-label-xs text-outline">ارتفاع ١٢٪ في نتائج الامتحانات</p></div>
+                  </div>
+                </div>
+                <div class="bg-white rounded-xl border border-outline-variant p-3">
+                  <div class="flex items-start gap-2">
+                    <div class="w-7 h-7 rounded-lg bg-red-100 flex items-center justify-center text-red-700 flex-shrink-0"><span class="material-symbols-outlined" style="font-size:14px">trending_down</span></div>
+                    <div><p class="text-label-sm font-bold text-on-surface">ضعف في قواعد الإنجليزية</p><p class="text-label-xs text-outline">يُنصح بمراجعة الأفعال المساعدة</p></div>
+                  </div>
+                </div>
+                <div class="bg-white rounded-xl border border-outline-variant p-3">
+                  <div class="flex items-start gap-2">
+                    <div class="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center text-blue-700 flex-shrink-0"><span class="material-symbols-outlined" style="font-size:14px">lightbulb</span></div>
+                    <div><p class="text-label-sm font-bold text-on-surface">التزام عالي بالواجبات</p><p class="text-label-xs text-outline">٨٥٪ تم تسليمها في الوقت المحدد</p></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-span-12 lg:col-span-7 bg-white rounded-xl border border-outline-variant shadow-sm p-4">
+              <h3 class="text-headline-sm font-headline-sm text-on-surface mb-3">توصيات AI</h3>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div class="p-3 rounded-xl border-2 border-dashed border-outline-variant hover:border-primary hover:bg-primary-container/5 transition-all">
+                  <div class="flex items-center gap-2 mb-1"><span class="material-symbols-outlined text-primary" style="font-size:18px">book_5</span><h4 class="text-label-md font-bold">مراجعة Grammar</h4></div>
+                  <p class="text-label-sm text-outline">تخصيص ٢٠ دقيقة يومياً لتمارين قواعد اللغة الإنجليزية</p>
+                  <button class="mt-2 text-primary font-bold text-label-sm flex items-center gap-1">ابدأ <span class="material-symbols-outlined text-xs" style="transform:scaleX(-1)">arrow_forward</span></button>
+                </div>
+                <div class="p-3 rounded-xl border-2 border-dashed border-outline-variant hover:border-secondary hover:bg-secondary-container/5 transition-all">
+                  <div class="flex items-center gap-2 mb-1"><span class="material-symbols-outlined text-secondary" style="font-size:18px">timer</span><h4 class="text-label-md font-bold">اختبار تفاعلي</h4></div>
+                  <p class="text-label-sm text-outline">محاكاة اختبار علوم لمدة ٤٥ دقيقة</p>
+                  <button class="mt-2 text-secondary font-bold text-label-sm flex items-center gap-1">ابدأ <span class="material-symbols-outlined text-xs" style="transform:scaleX(-1)">arrow_forward</span></button>
+                </div>
+                <div class="p-3 rounded-xl border-2 border-dashed border-outline-variant hover:border-tertiary hover:bg-tertiary-container/5 transition-all">
+                  <div class="flex items-center gap-2 mb-1"><span class="material-symbols-outlined text-tertiary" style="font-size:18px">forum</span><h4 class="text-label-md font-bold">جلسة نقاش</h4></div>
+                  <p class="text-label-sm text-outline">انضم لرواد اللغة العربية</p>
+                  <button class="mt-2 text-tertiary font-bold text-label-sm flex items-center gap-1">انضم <span class="material-symbols-outlined text-xs" style="transform:scaleX(-1)">arrow_forward</span></button>
+                </div>
+                <div class="p-3 rounded-xl border-2 border-dashed border-outline-variant hover:border-primary hover:bg-primary-container/5 transition-all">
+                  <div class="flex items-center gap-2 mb-1"><span class="material-symbols-outlined text-primary" style="font-size:18px">emoji_events</span><h4 class="text-label-md font-bold">التحدي الأسبوعي</h4></div>
+                  <p class="text-label-sm text-outline">تنافس مع زملائك في الرياضيات</p>
+                  <button class="mt-2 text-primary font-bold text-label-sm flex items-center gap-1">اشترك <span class="material-symbols-outlined text-xs" style="transform:scaleX(-1)">arrow_forward</span></button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>

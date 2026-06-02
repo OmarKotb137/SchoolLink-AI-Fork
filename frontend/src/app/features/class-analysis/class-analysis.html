@@ -1,0 +1,257 @@
+    <app-sidebar [(isOpen)]="sidebarOpen" />
+    <div class="main-content">
+      <app-topbar userName="أحمد" />
+      <main class="p-gutter-desktop">
+        <div class="space-y-gutter-desktop">
+          <!-- Page Header -->
+          <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div>
+              <nav class="flex gap-2 text-label-sm text-on-surface-variant mb-2">
+                <span>التحليلات</span>
+                <span>/</span>
+                <span class="text-primary font-bold">الصف العاشر - أ</span>
+              </nav>
+              <h1 class="text-headline-lg font-headline-lg text-primary">تحليلات أداء الفصل العاشر - أ</h1>
+            </div>
+            <div class="flex gap-3">
+              <button class="px-4 py-2 bg-surface-container-high rounded-lg text-label-md font-bold flex items-center gap-2">
+                <span class="material-symbols-outlined">calendar_today</span>
+                الفصل الدراسي الأول
+              </button>
+              <button class="px-4 py-2 bg-secondary text-on-secondary rounded-lg text-label-md font-bold flex items-center gap-2 shadow-md">
+                <span class="material-symbols-outlined">download</span>
+                تصدير التقرير
+              </button>
+            </div>
+          </div>
+
+          <!-- Bento Grid: Key Metrics -->
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div class="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant shadow-sm flex flex-col justify-between">
+              <div class="flex justify-between items-start">
+                <div class="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                  <span class="material-symbols-outlined">grade</span>
+                </div>
+                <span class="text-label-sm text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded">+4.2%</span>
+              </div>
+              <div class="mt-4">
+                <p class="text-label-md text-on-surface-variant">متوسط الفصل</p>
+                <p class="text-headline-md font-bold text-on-surface">88.5 / 100</p>
+              </div>
+            </div>
+            <div class="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant shadow-sm flex flex-col justify-between">
+              <div class="flex justify-between items-start">
+                <div class="w-12 h-12 rounded-lg bg-secondary/10 flex items-center justify-center text-secondary">
+                  <span class="material-symbols-outlined">trending_up</span>
+                </div>
+                <span class="text-label-sm text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded">أداء متميز</span>
+              </div>
+              <div class="mt-4">
+                <p class="text-label-md text-on-surface-variant">الطلاب المتفوقون</p>
+                <p class="text-headline-md font-bold text-on-surface">12 <span class="text-body-md font-normal text-on-surface-variant">طالباً</span></p>
+              </div>
+            </div>
+            <div class="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant shadow-sm flex flex-col justify-between border-b-4 border-b-error">
+              <div class="flex justify-between items-start">
+                <div class="w-12 h-12 rounded-lg bg-error/10 flex items-center justify-center text-error">
+                  <span class="material-symbols-outlined">warning</span>
+                </div>
+                <span class="text-label-sm text-error font-bold bg-error-container/20 px-2 py-1 rounded">يتطلب تدخل</span>
+              </div>
+              <div class="mt-4">
+                <p class="text-label-md text-on-surface-variant">طلاب تحت الخطر</p>
+                <p class="text-headline-md font-bold text-on-surface">4 <span class="text-body-md font-normal text-on-surface-variant">طلاب</span></p>
+              </div>
+            </div>
+            <div class="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant shadow-sm flex flex-col justify-between">
+              <div class="flex justify-between items-start">
+                <div class="w-12 h-12 rounded-lg bg-tertiary-container/20 flex items-center justify-center text-tertiary-fixed-dim">
+                  <span class="material-symbols-outlined">event_available</span>
+                </div>
+                <span class="text-label-sm text-on-surface-variant font-bold bg-surface-container px-2 py-1 rounded">مستقر</span>
+              </div>
+              <div class="mt-4">
+                <p class="text-label-md text-on-surface-variant">نسبة الحضور</p>
+                <p class="text-headline-md font-bold text-on-surface">94.2%</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Main Grid Layout -->
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter-desktop">
+            <!-- Left Column -->
+            <div class="lg:col-span-8 space-y-gutter-desktop">
+              <!-- Attendance Trends -->
+              <div class="bg-surface-container-lowest p-widget-padding rounded-xl border border-outline-variant shadow-sm h-[400px] flex flex-col">
+                <div class="flex justify-between items-center mb-6">
+                  <h3 class="text-headline-md font-bold text-on-surface">اتجاهات الحضور الشهري</h3>
+                  <div class="flex gap-2">
+                    <span class="flex items-center gap-1 text-label-sm"><span class="w-3 h-3 bg-primary rounded-full"></span> الحضور</span>
+                    <span class="flex items-center gap-1 text-label-sm"><span class="w-3 h-3 bg-error rounded-full"></span> الغياب</span>
+                  </div>
+                </div>
+                <div class="flex-1 flex items-end justify-between gap-4 px-4 pb-4">
+                  <div class="w-full flex flex-col items-center gap-2">
+                    <div class="w-full h-[180px] bg-primary/10 rounded-t-lg relative">
+                      <div class="absolute bottom-0 left-0 right-0 h-[85%] bg-primary rounded-t-lg"></div>
+                    </div>
+                    <span class="text-label-sm">سبتمبر</span>
+                  </div>
+                  <div class="w-full flex flex-col items-center gap-2">
+                    <div class="w-full h-[180px] bg-primary/10 rounded-t-lg relative">
+                      <div class="absolute bottom-0 left-0 right-0 h-[92%] bg-primary rounded-t-lg"></div>
+                    </div>
+                    <span class="text-label-sm">أكتوبر</span>
+                  </div>
+                  <div class="w-full flex flex-col items-center gap-2">
+                    <div class="w-full h-[180px] bg-primary/10 rounded-t-lg relative">
+                      <div class="absolute bottom-0 left-0 right-0 h-[80%] bg-primary rounded-t-lg"></div>
+                    </div>
+                    <span class="text-label-sm">نوفمبر</span>
+                  </div>
+                  <div class="w-full flex flex-col items-center gap-2">
+                    <div class="w-full h-[180px] bg-primary/10 rounded-t-lg relative">
+                      <div class="absolute bottom-0 left-0 right-0 h-[94%] bg-primary rounded-t-lg"></div>
+                    </div>
+                    <span class="text-label-sm">ديسمبر</span>
+                  </div>
+                  <div class="w-full flex flex-col items-center gap-2">
+                    <div class="w-full h-[180px] bg-primary/10 rounded-t-lg relative">
+                      <div class="absolute bottom-0 left-0 right-0 h-[88%] bg-primary rounded-t-lg"></div>
+                    </div>
+                    <span class="text-label-sm">يناير</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Comparison Chart: Class vs School -->
+              <div class="bg-surface-container-lowest p-widget-padding rounded-xl border border-outline-variant shadow-sm">
+                <h3 class="text-headline-md font-bold text-on-surface mb-6">أداء المواد: الفصل مقابل متوسط المدرسة</h3>
+                <div class="space-y-6">
+                  <div class="space-y-2">
+                    <div class="flex justify-between text-label-md">
+                      <span>الرياضيات</span>
+                      <span class="text-primary font-bold">82% <small class="text-on-surface-variant font-normal">(المدرسة: 75%)</small></span>
+                    </div>
+                    <div class="h-3 w-full bg-surface-container rounded-full overflow-hidden relative">
+                      <div class="absolute h-full bg-primary-fixed w-[75%]"></div>
+                      <div class="absolute h-full bg-primary w-[82%] opacity-80"></div>
+                    </div>
+                  </div>
+                  <div class="space-y-2">
+                    <div class="flex justify-between text-label-md">
+                      <span>العلوم والفيزياء</span>
+                      <span class="text-primary font-bold">91% <small class="text-on-surface-variant font-normal">(المدرسة: 88%)</small></span>
+                    </div>
+                    <div class="h-3 w-full bg-surface-container rounded-full overflow-hidden relative">
+                      <div class="absolute h-full bg-primary-fixed w-[88%]"></div>
+                      <div class="absolute h-full bg-primary w-[91%] opacity-80"></div>
+                    </div>
+                  </div>
+                  <div class="space-y-2">
+                    <div class="flex justify-between text-label-md">
+                      <span>اللغة العربية</span>
+                      <span class="text-error font-bold">74% <small class="text-on-surface-variant font-normal">(المدرسة: 81%)</small></span>
+                    </div>
+                    <div class="h-3 w-full bg-surface-container rounded-full overflow-hidden relative">
+                      <div class="absolute h-full bg-primary-fixed w-[81%]"></div>
+                      <div class="absolute h-full bg-error w-[74%] opacity-80"></div>
+                    </div>
+                  </div>
+                  <div class="space-y-2">
+                    <div class="flex justify-between text-label-md">
+                      <span>التاريخ</span>
+                      <span class="text-primary font-bold">88% <small class="text-on-surface-variant font-normal">(المدرسة: 85%)</small></span>
+                    </div>
+                    <div class="h-3 w-full bg-surface-container rounded-full overflow-hidden relative">
+                      <div class="absolute h-full bg-primary-fixed w-[85%]"></div>
+                      <div class="absolute h-full bg-primary w-[88%] opacity-80"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Column -->
+            <div class="lg:col-span-4 space-y-gutter-desktop">
+              <!-- AI Action Plan Widget -->
+              <div class="ai-glass-card ai-gradient-border p-widget-padding rounded-xl shadow-lg" style="background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(226, 232, 240, 0.8);">
+                <div class="flex items-center gap-2 mb-4">
+                  <span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+                  <h3 class="text-headline-md font-bold text-primary">خطة عمل AI للفصل</h3>
+                </div>
+                <div class="space-y-4">
+                  <div class="p-3 bg-secondary-fixed/30 rounded-lg border border-secondary/10">
+                    <p class="text-label-md font-bold text-secondary mb-1">تحسين اللغة العربية</p>
+                    <p class="text-label-sm text-on-surface-variant">تخصيص ساعة إضافية للمراجعة النحوية يوم الخميس، أداء الفصل في هذا الجزء تحديداً منخفض بنسبة 15%.</p>
+                  </div>
+                  <div class="p-3 bg-surface-container-low rounded-lg border border-outline-variant">
+                    <p class="text-label-md font-bold text-primary mb-1">دعم الطلاب تحت الخطر</p>
+                    <p class="text-label-sm text-on-surface-variant">تم تحديد 4 طلاب يحتاجون لمتابعة فردية في مادة الفيزياء لضمان استمرارية التقدم.</p>
+                  </div>
+                  <button class="w-full text-secondary font-bold text-label-md py-2 flex items-center justify-center gap-2 hover:underline">
+                    عرض التفاصيل كاملة
+                    <span class="material-symbols-outlined">arrow_back</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Heatmap: Weakness Analysis -->
+              <div class="bg-surface-container-lowest p-widget-padding rounded-xl border border-outline-variant shadow-sm">
+                <h3 class="text-headline-sm font-bold text-on-surface mb-4">خريطة ضعف المهارات</h3>
+                <div class="grid grid-cols-2 gap-3">
+                  <div class="p-4 bg-error/10 border border-error/20 rounded-lg text-center">
+                    <p class="text-[10px] text-error font-bold">النحو العربي</p>
+                    <p class="text-headline-sm font-bold text-error">حرجة</p>
+                  </div>
+                  <div class="p-4 bg-tertiary-container/10 border border-tertiary/20 rounded-lg text-center">
+                    <p class="text-[10px] text-tertiary font-bold">تفاضل و تكامل</p>
+                    <p class="text-headline-sm font-bold text-tertiary">متوسطة</p>
+                  </div>
+                  <div class="p-4 bg-secondary-container/10 border border-secondary/20 rounded-lg text-center">
+                    <p class="text-[10px] text-secondary font-bold">كيمياء عضوية</p>
+                    <p class="text-headline-sm font-bold text-secondary">منخفضة</p>
+                  </div>
+                  <div class="p-4 bg-primary-container/10 border border-primary/20 rounded-lg text-center">
+                    <p class="text-[10px] text-primary font-bold">تحدث إنجليزية</p>
+                    <p class="text-headline-sm font-bold text-primary">آمنة</p>
+                  </div>
+                </div>
+                <p class="text-label-sm text-on-surface-variant mt-4 text-center">يعتمد التحليل على نتائج آخر 3 اختبارات قصيرة.</p>
+              </div>
+
+              <!-- Top Students Leaderboard -->
+              <div class="bg-surface-container-lowest p-widget-padding rounded-xl border border-outline-variant shadow-sm">
+                <h3 class="text-headline-sm font-bold text-on-surface mb-4">الطلاب الأكثر تميزاً</h3>
+                <div class="space-y-4">
+                  <div class="flex items-center gap-3">
+                    <img class="w-10 h-10 rounded-full object-cover" alt="أحمد محمود" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDB8xukwccNu9vHDfKR2W9Jgc10DOi_X2zS_lNEr-cSSmLz43LMBwDIsIdoSOt8mx8qPBZGO9yJv9OEqsWM80PdoKI4Foj1his_W0xYeQ0V__HXQ1Yxvr4HHoY2lPV7iL9Q6jWWTyF40SlcNa4CXRUuBsUq_UwAoexKh7xy-Wua8ar-IgYd24HZuwHPwrZv7J0AhERU95vQqMrMPVpNFeyixVx2Of8o0nFKV8Y84lVYdP4I5QdXpfPERXUZyb231b7AOvqNkR5CJWs"/>
+                    <div class="flex-1">
+                      <p class="text-label-md font-bold">أحمد محمود</p>
+                      <p class="text-label-sm text-on-surface-variant">المعدل: 98.4%</p>
+                    </div>
+                    <span class="material-symbols-outlined text-yellow-500" style="font-variation-settings: 'FILL' 1;">emoji_events</span>
+                  </div>
+                  <div class="flex items-center gap-3">
+                    <img class="w-10 h-10 rounded-full object-cover" alt="ليلى خالد" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA7Olbjd7LonzwNs-KrL2a4u45a5MX3clGTc5sU7E21_j48RlcgIukCR2KxO9OrxxVyEpxhIKFKHQc3WX6LFih4V8XDgqnqXuXgY2VPJHur-p90Z-rOfLpA78CZ-l2RVq487ooqqvGPCp7wPKbs4Y-EKcgw5sAcz7mfUVI5DnagMoN4yIC7x87KLOuidzF6wboplLo7cDr85im2lROQ7rGXHMTcpbRbkXL1-bjyLbwcRSLvQjDaJWs7HcJz1VIEK7bc0VQGlRNFYaE"/>
+                    <div class="flex-1">
+                      <p class="text-label-md font-bold">ليلى خالد</p>
+                      <p class="text-label-sm text-on-surface-variant">المعدل: 97.2%</p>
+                    </div>
+                    <span class="material-symbols-outlined text-slate-400" style="font-variation-settings: 'FILL' 1;">emoji_events</span>
+                  </div>
+                  <div class="flex items-center gap-3">
+                    <img class="w-10 h-10 rounded-full object-cover" alt="نور الزهراء" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAsTDivOIjs2QEzYSo3600PnnOVblyIMWesSSybLJMqGaF5IO7li3pxxt6U3RicmS34rRgt1x0CQmp5y9dps9-Qb8MFCAXkzLKKJB8bAdqOcd07rQYkYhsDOjm3DaJH-HQ0UWV4o2U0QFihTq_IISCoF-_9c5JNle9bI7Q2VZqgyNRtGdmbfKnqVpIweM3csI4LQ8mM4Ge7n9cEJyrwgrZIGwogzsJzUgqz9jtLixcZrOXwo9zUOIHk2wNQIobW9bxgDUd_viqJbZM"/>
+                    <div class="flex-1">
+                      <p class="text-label-md font-bold">نور الزهراء</p>
+                      <p class="text-label-sm text-on-surface-variant">المعدل: 96.8%</p>
+                    </div>
+                    <span class="material-symbols-outlined text-amber-700" style="font-variation-settings: 'FILL' 1;">emoji_events</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>

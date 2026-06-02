@@ -1,0 +1,105 @@
+    <app-sidebar [(isOpen)]="sidebarOpen" />
+    <div class="main-content">
+      <app-topbar userName="أحمد" />
+      <main class="p-gutter-desktop">
+        <div class="flex flex-col gap-gutter-desktop">
+          <!-- Hero Section -->
+          <section class="bg-surface-container-lowest rounded-3xl p-widget-padding shadow-sm flex flex-col items-center text-center">
+            <h1 class="font-headline-lg text-headline-lg text-on-surface mb-2">مرحباً بك، أحمد! 👋</h1>
+            <p class="text-on-surface-variant font-body-md text-body-md mb-8">أداؤك الأكاديمي في تحسن مستمر. إليك نظرة سريعة على تقدمك.</p>
+            <div class="relative w-64 h-64 mb-6">
+              <svg class="w-full h-full -rotate-90" viewBox="0 0 36 36">
+                <circle class="stroke-surface-container-high" cx="18" cy="18" fill="none" r="15.9155" stroke-width="2.5"></circle>
+                <circle class="stroke-primary" cx="18" cy="18" fill="none" r="15.9155" stroke-dasharray="88, 100" stroke-linecap="round" stroke-width="2.5"></circle>
+              </svg>
+              <div class="absolute inset-0 flex flex-col items-center justify-center">
+                <span class="text-6xl font-bold text-primary">88%</span>
+                <span class="text-on-surface-variant font-headline-md">مستوى ممتاز</span>
+                <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-label-sm font-bold mt-2">+12% تحسن</span>
+              </div>
+            </div>
+            <div class="grid grid-cols-3 gap-8 w-full max-w-2xl border-t border-outline-variant/30 pt-6">
+              <div><p class="text-on-surface-variant font-label-sm">ترتيب الفصل</p><p class="font-headline-md text-primary">#4</p></div>
+              <div><p class="text-on-surface-variant font-label-sm">ساعات الدراسة</p><p class="font-headline-md text-primary">24.5</p></div>
+              <div><p class="text-on-surface-variant font-label-sm">المهام المكتملة</p><p class="font-headline-md text-primary">92%</p></div>
+            </div>
+          </section>
+
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <!-- Left Column -->
+            <div class="lg:col-span-8 flex flex-col gap-6">
+              <div class="bg-surface-container-lowest border border-outline-variant/30 rounded-3xl p-widget-padding shadow-sm">
+                <h3 class="font-headline-md mb-6">اتجاهات التقدم (آخر 3 أشهر)</h3>
+                <div class="h-64 flex items-end justify-between gap-2 px-2">
+                  <div class="flex-1 bg-surface-container-low h-[40%] rounded-t-lg relative group"></div>
+                  <div class="flex-1 bg-surface-container-low h-[65%] rounded-t-lg relative group"></div>
+                  <div class="flex-1 bg-primary h-[88%] rounded-t-lg relative group"></div>
+                </div>
+              </div>
+              <!-- AI Insights -->
+              <div class="bg-inverse-surface text-inverse-on-surface rounded-3xl p-widget-padding shadow-xl">
+                <div class="flex items-center gap-3 mb-6">
+                  <span class="material-symbols-outlined text-secondary-fixed-dim" style="font-variation-settings:'FILL'1">auto_awesome</span>
+                  <h3 class="font-headline-md">تحليل الذكاء الاصطناعي للأداء</h3>
+                </div>
+                <div class="grid md:grid-cols-2 gap-6">
+                  <div>
+                    <p class="text-secondary-fixed-dim font-bold text-label-md border-b border-white/10 pb-2">أقوى نقاط التميز</p>
+                    <div class="flex flex-wrap gap-2 mt-4">
+                      <span class="bg-white/10 px-4 py-2 rounded-xl text-label-sm">اللغة العربية (نحو)</span>
+                      <span class="bg-white/10 px-4 py-2 rounded-xl text-label-sm">الكيمياء العضوية</span>
+                    </div>
+                  </div>
+                  <div>
+                    <p class="text-error-container font-bold text-label-md border-b border-white/10 pb-2">مجالات تتطلب التركيز</p>
+                    <div class="flex flex-wrap gap-2 mt-4">
+                      <span class="bg-white/10 px-4 py-2 rounded-xl text-label-sm">تطبيقات التفاضل</span>
+                      <span class="bg-white/10 px-4 py-2 rounded-xl text-label-sm">فيزياء الكم</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Right Column -->
+            <div class="lg:col-span-4 flex flex-col gap-6">
+              <div class="bg-surface-container-lowest border border-outline-variant/30 rounded-3xl p-widget-padding">
+                <h3 class="font-label-md font-bold mb-4 flex items-center gap-2"><span class="material-symbols-outlined text-secondary text-sm">task_alt</span> خطة اليوم</h3>
+                <div class="space-y-3">
+                  <div class="flex items-center justify-between p-3 bg-surface-container-low rounded-xl">
+                    <div><p class="font-label-md">مراجعة قوانين نيوتن</p><p class="text-[10px] text-outline">20 دقيقة • فيزياء</p></div>
+                    <span class="material-symbols-outlined text-outline">radio_button_unchecked</span>
+                  </div>
+                  <div class="flex items-center justify-between p-3 bg-surface-container-low rounded-xl">
+                    <div><p class="font-label-md">حل مسائل التكامل</p><p class="text-[10px] text-outline">45 دقيقة • رياضيات</p></div>
+                    <span class="material-symbols-outlined text-outline">radio_button_unchecked</span>
+                  </div>
+                </div>
+              </div>
+              <div class="bg-surface-container-lowest border border-outline-variant/30 rounded-3xl p-widget-padding">
+                <h3 class="font-label-md font-bold mb-4 flex items-center gap-2"><span class="material-symbols-outlined text-primary text-sm">assignment</span> الواجبات المستحقة</h3>
+                <div class="space-y-3">
+                  <div class="p-3 border-r-2 border-error bg-error/5 rounded-lg">
+                    <p class="font-label-sm font-bold">تقرير المختبر: الكيمياء</p>
+                    <p class="text-[10px] text-error">ينتهي غداً • 10:00 م</p>
+                  </div>
+                  <div class="p-3 border-r-2 border-secondary bg-secondary/5 rounded-lg">
+                    <p class="font-label-sm font-bold">تطبيق النحو: الاستثناء</p>
+                    <p class="text-[10px] text-outline">الخميس القادم • 08:00 ص</p>
+                  </div>
+                </div>
+              </div>
+              <div class="bg-primary text-on-primary rounded-3xl p-6">
+                <h3 class="font-label-md font-bold mb-2">المكتبة الذكية</h3>
+                <p class="text-[11px] opacity-70 mb-4">أكثر من 5,000 مورد تعليمي مدعوم بالذكاء الاصطناعي.</p>
+                <button class="w-full py-2 bg-white text-primary rounded-xl text-label-sm font-bold">تصفح الموارد</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+    <!-- Floating AI Button -->
+    <button class="fixed bottom-8 left-8 w-16 h-16 bg-secondary text-on-secondary rounded-full shadow-2xl flex items-center justify-center group active:scale-95 transition-transform z-50">
+      <span class="material-symbols-outlined text-3xl group-hover:rotate-12 transition-transform" style="font-variation-settings:'FILL'1">auto_awesome</span>
+      <span class="absolute -top-12 right-0 bg-inverse-surface text-inverse-on-surface px-4 py-2 rounded-xl text-label-md font-label-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">اسأل المساعد الذكي</span>
+    </button>
