@@ -23,18 +23,18 @@ public class ResultVisibilityService : IResultVisibilityService
     {
         var academicYear = await _unitOfWork.AcademicYears.GetByIdAsync(request.AcademicYearId);
         if (academicYear == null || academicYear.IsDeleted)
-            return OperationResult<ResultVisibilityDto>.Failure("Academic year not found");
+            return OperationResult<ResultVisibilityDto>.Failure("السنة الدراسية غير موجودة");
 
         var admin = await _unitOfWork.Users.GetByIdAsync(request.ControlledById);
         if (admin == null || admin.IsDeleted || !admin.IsActive)
-            return OperationResult<ResultVisibilityDto>.Failure("Admin user not found or inactive");
+            return OperationResult<ResultVisibilityDto>.Failure("المستخدم غير موجود أو غير نشط");
 
         if (admin.Role != UserRole.Admin)
-            return OperationResult<ResultVisibilityDto>.Failure("Only Admins can control result visibility");
+            return OperationResult<ResultVisibilityDto>.Failure("فقط المشرفون يمكنهم التحكم في إظهار النتائج");
 
         if (request.VisibleFrom.HasValue && request.VisibleUntil.HasValue &&
             request.VisibleFrom >= request.VisibleUntil)
-            return OperationResult<ResultVisibilityDto>.Failure("VisibleFrom must be before VisibleUntil");
+            return OperationResult<ResultVisibilityDto>.Failure("تاريخ الظهور يجب أن يكون قبل تاريخ الانتهاء");
 
         var setting = new ResultVisibilitySetting
         {
@@ -50,7 +50,7 @@ public class ResultVisibilityService : IResultVisibilityService
         await _unitOfWork.SaveChangesAsync();
 
         var dto = _mapper.Map<ResultVisibilityDto>(setting);
-        return OperationResult<ResultVisibilityDto>.Success(dto, "Visibility setting saved successfully");
+        return OperationResult<ResultVisibilityDto>.Success(dto, "تم حفظ إعدادات إظهار النتائج بنجاح");
     }
 
     public async Task<OperationResult<IEnumerable<ResultVisibilityDto>>> GetSettingsByAcademicYearAsync(int academicYearId)
@@ -76,12 +76,12 @@ public class ResultVisibilityService : IResultVisibilityService
     public async Task<OperationResult<ResultVisibilityDto>> UpdateVisibilitySettingAsync(int id, UpdateVisibilityRequest request)
     {
         var setting = await _unitOfWork.ResultVisibilitySettings.GetByIdAsync(id);
-        if (setting == null)
-            return OperationResult<ResultVisibilityDto>.Failure("Visibility setting not found");
+        if (setting == null || setting.IsDeleted)
+            return OperationResult<ResultVisibilityDto>.Failure("إعدادات إظهار النتائج غير موجودة");
 
         if (request.VisibleFrom.HasValue && request.VisibleUntil.HasValue &&
             request.VisibleFrom >= request.VisibleUntil)
-            return OperationResult<ResultVisibilityDto>.Failure("VisibleFrom must be before VisibleUntil");
+            return OperationResult<ResultVisibilityDto>.Failure("تاريخ الظهور يجب أن يكون قبل تاريخ الانتهاء");
 
         setting.IsVisible = request.IsVisible;
         setting.VisibleFrom = request.VisibleFrom;
@@ -91,17 +91,17 @@ public class ResultVisibilityService : IResultVisibilityService
         await _unitOfWork.SaveChangesAsync();
 
         var dto = _mapper.Map<ResultVisibilityDto>(setting);
-        return OperationResult<ResultVisibilityDto>.Success(dto, "Visibility setting updated successfully");
+        return OperationResult<ResultVisibilityDto>.Success(dto, "تم تحديث إعدادات إظهار النتائج بنجاح");
     }
 
     public async Task<OperationResult> DeleteVisibilitySettingAsync(int id)
     {
         var setting = await _unitOfWork.ResultVisibilitySettings.GetByIdAsync(id);
-        if (setting == null)
-            return OperationResult.Failure("Visibility setting not found");
+        if (setting == null || setting.IsDeleted)
+            return OperationResult.Failure("إعدادات إظهار النتائج غير موجودة");
 
         _unitOfWork.ResultVisibilitySettings.SoftDelete(setting);
         await _unitOfWork.SaveChangesAsync();
-        return OperationResult.Success("Visibility setting deleted successfully");
+        return OperationResult.Success("تم حذف إعدادات إظهار النتائج بنجاح");
     }
 }

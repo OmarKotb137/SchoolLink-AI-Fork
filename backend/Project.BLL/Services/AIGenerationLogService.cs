@@ -23,7 +23,7 @@ namespace Project.BLL.Services
             var log = await _unitOfWork.AIGenerationLogs.GetByIdAsync(id);
 
             if (log == null || log.IsDeleted)
-                return OperationResult<GetAIGenerationLogDto>.Failure("Log not found", 404);
+                return OperationResult<GetAIGenerationLogDto>.Failure("السجل غير موجود", 404);
 
             var dto = _mapper.Map<GetAIGenerationLogDto>(log);
             return OperationResult<GetAIGenerationLogDto>.Success(dto);
@@ -42,7 +42,7 @@ namespace Project.BLL.Services
             var user = await _unitOfWork.Users.GetByIdAsync(userId);
 
             if (user == null || user.IsDeleted)
-                return OperationResult<List<GetAIGenerationLogDto>>.Failure("User not found", 404);
+                return OperationResult<List<GetAIGenerationLogDto>>.Failure("المستخدم غير موجود", 404);
 
             var logs = await _unitOfWork.AIGenerationLogs.GetByUserIdAsync(userId);
 
@@ -55,17 +55,17 @@ namespace Project.BLL.Services
             var user = await _unitOfWork.Users.GetByIdAsync(dto.UserId);
 
             if (user == null || user.IsDeleted)
-                return OperationResult<GetAIGenerationLogDto>.Failure("User not found", 404);
+                return OperationResult<GetAIGenerationLogDto>.Failure("المستخدم غير موجود", 404);
 
             var validTypes = new[] { "exam_generation", "grading", "chatbot", "analysis", "study_plan" };
             if (!validTypes.Contains(dto.OperationType))
-                return OperationResult<GetAIGenerationLogDto>.Failure("Invalid operation type", 400);
+                return OperationResult<GetAIGenerationLogDto>.Failure("نوع العملية غير صالح", 400);
 
             if (dto.TokensUsed.HasValue && dto.TokensUsed < 0)
-                return OperationResult<GetAIGenerationLogDto>.Failure("TokensUsed must be non-negative", 400);
+                return OperationResult<GetAIGenerationLogDto>.Failure("يجب أن تكون قيمة TokensUsed غير سالبة", 400);
 
             if (dto.LatencyMs.HasValue && dto.LatencyMs < 0)
-                return OperationResult<GetAIGenerationLogDto>.Failure("LatencyMs must be non-negative", 400);
+                return OperationResult<GetAIGenerationLogDto>.Failure("يجب أن تكون قيمة LatencyMs غير سالبة", 400);
 
             var log = _mapper.Map<AIGenerationLog>(dto);
 
@@ -75,7 +75,7 @@ namespace Project.BLL.Services
             var resultDto = _mapper.Map<GetAIGenerationLogDto>(log);
             resultDto.UserName = user.FullName;
 
-            return OperationResult<GetAIGenerationLogDto>.Success(resultDto, "Log created successfully");
+            return OperationResult<GetAIGenerationLogDto>.Success(resultDto, "تم إنشاء السجل بنجاح");
         }
 
         public async Task<OperationResult<AIGenerationLogSummaryDto>> GetSummaryAsync()
@@ -101,12 +101,12 @@ namespace Project.BLL.Services
         {
             var log = await _unitOfWork.AIGenerationLogs.GetByIdAsync(id);
             if (log == null || log.IsDeleted)
-                return OperationResult.Failure("Log not found", 404);
+                return OperationResult.Failure("السجل غير موجود", 404);
 
             _unitOfWork.AIGenerationLogs.SoftDelete(log);
             await _unitOfWork.SaveChangesAsync(CancellationToken.None);
 
-            return OperationResult.Success("Log deleted successfully");
+            return OperationResult.Success("تم حذف السجل بنجاح");
         }
 
         public async Task<OperationResult> DeleteOlderThanAsync(DateTime cutoff)
@@ -115,12 +115,12 @@ namespace Project.BLL.Services
             var toDelete = all.Where(l => !l.IsDeleted).ToList();
 
             if (toDelete.Count == 0)
-                return OperationResult.Success("No logs to delete");
+                return OperationResult.Success("لا توجد سجلات للحذف");
 
             _unitOfWork.AIGenerationLogs.SoftDeleteRange(toDelete);
             await _unitOfWork.SaveChangesAsync(CancellationToken.None);
 
-            return OperationResult.Success($"{toDelete.Count} logs deleted successfully");
+            return OperationResult.Success($"تم حذف {toDelete.Count} سجل/سجلات بنجاح");
         }
     }
 }

@@ -22,19 +22,23 @@ public class UserService : IUserService
 
     public async Task<OperationResult<UserDto>> CreateUserAsync(CreateUserRequest request)
     {
+        var existing = await _unitOfWork.Users.GetByEmailAsync(request.Email);
+        if (existing != null)
+            return OperationResult<UserDto>.Failure("يوجد مستخدم مسجل بهذا البريد الإلكتروني بالفعل");
+
         var user = _mapper.Map<User>(request);
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
         await _unitOfWork.Users.AddAsync(user);
         await _unitOfWork.SaveChangesAsync();
         var userDto = _mapper.Map<UserDto>(user);
-        return OperationResult<UserDto>.Success(userDto, "User created successfully");
+        return OperationResult<UserDto>.Success(userDto, "تم إنشاء المستخدم بنجاح");
     }
 
     public async Task<OperationResult<UserDto>> UpdateUserAsync(UpdateUserRequest request)
     {
         var user = await _unitOfWork.Users.GetByIdAsync(request.UserId);
-        if (user == null)
-            return OperationResult<UserDto>.Failure($"User with id {request.UserId} not found");
+        if (user == null || user.IsDeleted)
+            return OperationResult<UserDto>.Failure($"لم يتم العثور على مستخدم بالمعرف {request.UserId}");
 
         user.FullName = request.FullName;
         user.Phone = request.Phone ?? user.Phone;
@@ -43,22 +47,22 @@ public class UserService : IUserService
         _unitOfWork.Users.Update(user);
         await _unitOfWork.SaveChangesAsync();
         var userDto = _mapper.Map<UserDto>(user);
-        return OperationResult<UserDto>.Success(userDto, "User updated successfully");
+        return OperationResult<UserDto>.Success(userDto, "تم تحديث المستخدم بنجاح");
     }
 
     public async Task<OperationResult<UserDto>> GetUserByIdAsync(int id)
     {
         var user = await _unitOfWork.Users.GetByIdAsync(id);
-        if (user == null)
-            return OperationResult<UserDto>.Failure($"User with id {id} not found");
+        if (user == null || user.IsDeleted)
+            return OperationResult<UserDto>.Failure($"لم يتم العثور على مستخدم بالمعرف {id}");
 
         var userDto = _mapper.Map<UserDto>(user);
-        return OperationResult<UserDto>.Success(userDto, "User retrieved successfully");
+        return OperationResult<UserDto>.Success(userDto, "تم استرجاع المستخدم بنجاح");
     }
 
     public async Task<OperationResult<PagedResult<UserDto>>> GetAllUsersAsync(GetUsersFilter filter)
     {
-        var users = await _unitOfWork.Users.GetAllAsync();
+        var users = await _unitOfWork.Users.FindAsync(u => !u.IsDeleted);
         var userDtos = _mapper.Map<IEnumerable<UserDto>>(users);
         var paged = new PagedResult<UserDto>
         {
@@ -67,12 +71,12 @@ public class UserService : IUserService
             Page = filter.Page,
             PageSize = filter.PageSize
         };
-        return OperationResult<PagedResult<UserDto>>.Success(paged, "Users retrieved successfully");
+        return OperationResult<PagedResult<UserDto>>.Success(paged, "تم استرجاع المستخدمين بنجاح");
     }
 
     public async Task<OperationResult<PagedResult<UserDto>>> GetUsersByRoleAsync(UserRole role, PaginationFilter filter)
     {
-        var users = await _unitOfWork.Users.GetByRoleAsync(role);
+        var users = await _unitOfWork.Users.FindAsync(u => u.Role == role && !u.IsDeleted);
         var userDtos = _mapper.Map<IEnumerable<UserDto>>(users);
         var paged = new PagedResult<UserDto>
         {
@@ -81,12 +85,12 @@ public class UserService : IUserService
             Page = filter.Page,
             PageSize = filter.PageSize
         };
-        return OperationResult<PagedResult<UserDto>>.Success(paged, $"Users with role {role} retrieved successfully");
+        return OperationResult<PagedResult<UserDto>>.Success(paged, $"تم استرجاع المستخدمين ذوي الدور {role} بنجاح");
     }
 
     public async Task<OperationResult<PagedResult<UserDto>>> SearchUsersAsync(string searchTerm, PaginationFilter filter)
     {
-        var users = await _unitOfWork.Users.SearchByNameAsync(searchTerm);
+        var users = await _unitOfWork.Users.FindAsync(u => u.FullName.Contains(searchTerm) && !u.IsDeleted);
         var userDtos = _mapper.Map<IEnumerable<UserDto>>(users);
         var paged = new PagedResult<UserDto>
         {
@@ -95,33 +99,33 @@ public class UserService : IUserService
             Page = filter.Page,
             PageSize = filter.PageSize
         };
-        return OperationResult<PagedResult<UserDto>>.Success(paged, "Search completed successfully");
+        return OperationResult<PagedResult<UserDto>>.Success(paged, "تم إكمال البحث بنجاح");
     }
 
     public async Task<OperationResult> SetUserActiveStatusAsync(int userId, bool isActive)
     {
         var user = await _unitOfWork.Users.GetByIdAsync(userId);
-        if (user == null)
-            return OperationResult.Failure($"User with id {userId} not found");
+        if (user == null || user.IsDeleted)
+            return OperationResult.Failure($"لم يتم العثور على مستخدم بالمعرف {userId}");
 
         user.IsActive = isActive;
         user.UpdatedAt = DateTime.UtcNow;
         _unitOfWork.Users.Update(user);
         await _unitOfWork.SaveChangesAsync();
-        return OperationResult.Success(isActive ? "User activated successfully" : "User deactivated successfully");
+        return OperationResult.Success(isActive ? "تم تنشيط المستخدم بنجاح" : "تم إلغاء تنشيط المستخدم بنجاح");
     }
 
     public async Task<OperationResult> UpdateProfilePhotoAsync(int userId, string photoUrl)
     {
         var user = await _unitOfWork.Users.GetByIdAsync(userId);
         if (user == null || user.IsDeleted)
-            return OperationResult.Failure($"User with id {userId} not found");
+            return OperationResult.Failure($"لم يتم العثور على مستخدم بالمعرف {userId}");
 
         user.ProfilePictureUrl = photoUrl;
         user.UpdatedAt = DateTime.UtcNow;
         _unitOfWork.Users.Update(user);
         await _unitOfWork.SaveChangesAsync();
-        return OperationResult.Success("Profile photo updated successfully");
+        return OperationResult.Success("تم تحديث الصورة الشخصية بنجاح");
     }
 
     public async Task<OperationResult<UserStatsDto>> GetUserStatsAsync()
@@ -158,14 +162,14 @@ public class UserService : IUserService
         }
 
         await _unitOfWork.SaveChangesAsync();
-        return OperationResult.Success($"{userIds.Count} users deleted successfully");
+        return OperationResult.Success($"تم حذف {userIds.Count} مستخدمين بنجاح");
     }
 
     public async Task<OperationResult<UserDto>> UpdateProfileAsync(int userId, UpdateProfileRequest request)
     {
         var user = await _unitOfWork.Users.GetByIdAsync(userId);
-        if (user == null)
-            return OperationResult<UserDto>.Failure("User not found");
+        if (user == null || user.IsDeleted)
+            return OperationResult<UserDto>.Failure("المستخدم غير موجود");
 
         user.FullName = request.FullName;
         user.Phone = request.Phone;
@@ -174,59 +178,59 @@ public class UserService : IUserService
         await _unitOfWork.SaveChangesAsync();
 
         var dto = _mapper.Map<UserDto>(user);
-        return OperationResult<UserDto>.Success(dto, "Profile updated successfully");
+        return OperationResult<UserDto>.Success(dto, "تم تحديث الملف الشخصي بنجاح");
     }
 
     public async Task<OperationResult> DeleteProfilePhotoAsync(int userId)
     {
         var user = await _unitOfWork.Users.GetByIdAsync(userId);
-        if (user == null)
-            return OperationResult.Failure("User not found");
+        if (user == null || user.IsDeleted)
+            return OperationResult.Failure("المستخدم غير موجود");
 
         user.ProfilePictureUrl = null;
         user.UpdatedAt = DateTime.UtcNow;
         _unitOfWork.Users.Update(user);
         await _unitOfWork.SaveChangesAsync();
 
-        return OperationResult.Success("Profile photo removed successfully");
+        return OperationResult.Success("تم إزالة الصورة الشخصية بنجاح");
     }
 
     public async Task<OperationResult> DeleteUserAsync(int id)
     {
         var user = await _unitOfWork.Users.GetByIdAsync(id);
-        if (user == null)
-            return OperationResult.Failure($"User with id {id} not found");
+        if (user == null || user.IsDeleted)
+            return OperationResult.Failure($"لم يتم العثور على مستخدم بالمعرف {id}");
 
         user.IsDeleted = true;
         user.IsActive = false;
         user.UpdatedAt = DateTime.UtcNow;
         _unitOfWork.Users.Update(user);
         await _unitOfWork.SaveChangesAsync();
-        return OperationResult.Success("User deleted successfully");
+        return OperationResult.Success("تم حذف المستخدم بنجاح");
     }
 
     public async Task<OperationResult<UserDto>> GetUserByEmailAsync(string email)
     {
         var user = await _unitOfWork.Users.GetByEmailAsync(email);
         if (user == null || user.IsDeleted)
-            return OperationResult<UserDto>.Failure($"User with email {email} not found");
+            return OperationResult<UserDto>.Failure($"لم يتم العثور على مستخدم بالبريد الإلكتروني {email}");
 
         var dto = _mapper.Map<UserDto>(user);
-        return OperationResult<UserDto>.Success(dto, "User retrieved successfully");
+        return OperationResult<UserDto>.Success(dto, "تم استرجاع المستخدم بنجاح");
     }
 
     public async Task<OperationResult<IEnumerable<UserDto>>> GetStudentsByParentAsync(int parentId)
     {
         var parent = await _unitOfWork.Users.GetByIdAsync(parentId);
         if (parent == null || parent.IsDeleted)
-            return OperationResult<IEnumerable<UserDto>>.Failure("Parent not found");
+            return OperationResult<IEnumerable<UserDto>>.Failure("لم يتم العثور على ولي الأمر");
 
         var links = await _unitOfWork.ParentStudents.GetWithStudentDetailsByParentAsync(parentId);
         var students = links.Where(l => !l.IsDeleted && l.Student != null && !l.Student.IsDeleted)
                             .Select(l => l.Student!);
 
         var dtos = _mapper.Map<IEnumerable<UserDto>>(students);
-        return OperationResult<IEnumerable<UserDto>>.Success(dtos, "Students retrieved successfully");
+        return OperationResult<IEnumerable<UserDto>>.Success(dtos, "تم استرجاع الطلاب بنجاح");
     }
 
     public async Task<OperationResult<IEnumerable<UserDto>>> ExportUsersAsync(UserRole? role = null)
@@ -239,6 +243,6 @@ public class UserService : IUserService
 
         var filtered = users.Where(u => !u.IsDeleted).OrderBy(u => u.FullName);
         var dtos = _mapper.Map<IEnumerable<UserDto>>(filtered);
-        return OperationResult<IEnumerable<UserDto>>.Success(dtos, "Users exported successfully");
+        return OperationResult<IEnumerable<UserDto>>.Success(dtos, "تم تصدير المستخدمين بنجاح");
     }
 }

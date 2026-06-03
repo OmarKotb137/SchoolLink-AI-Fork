@@ -23,20 +23,20 @@ public class NotificationService : INotificationService
     {
         var user = await _unitOfWork.Users.GetByIdAsync(request.UserId);
         if (user == null || user.IsDeleted || !user.IsActive)
-            return OperationResult.Failure("Target user not found or inactive");
+            return OperationResult.Failure("المستخدم المستهدف غير موجود أو غير نشط");
 
         var notification = _mapper.Map<Notification>(request);
         await _unitOfWork.Notifications.AddAsync(notification);
         await _unitOfWork.SaveChangesAsync();
 
-        return OperationResult.Success("Notification sent successfully");
+        return OperationResult.Success("تم إرسال الإشعار بنجاح");
     }
 
     public async Task<OperationResult<IEnumerable<NotificationDto>>> GetNotificationsByUserAsync(int userId, bool onlyUnread)
     {
         var user = await _unitOfWork.Users.GetByIdAsync(userId);
-        if (user == null)
-            return OperationResult<IEnumerable<NotificationDto>>.Failure("User not found");
+        if (user == null || user.IsDeleted)
+            return OperationResult<IEnumerable<NotificationDto>>.Failure("المستخدم غير موجود");
 
         IReadOnlyList<Notification> notifications;
         if (onlyUnread)
@@ -54,7 +54,7 @@ public class NotificationService : INotificationService
     {
         var notification = await _unitOfWork.Notifications.GetByIdAsync(notificationId);
         if (notification == null || notification.UserId != userId)
-            return OperationResult<NotificationDto>.Failure("Notification not found or does not belong to this user");
+            return OperationResult<NotificationDto>.Failure("الإشعار غير موجود أو لا يخص هذا المستخدم");
 
         var dto = _mapper.Map<NotificationDto>(notification);
         return OperationResult<NotificationDto>.Success(dto);
@@ -63,8 +63,8 @@ public class NotificationService : INotificationService
     public async Task<OperationResult<int>> GetUnreadCountAsync(int userId)
     {
         var user = await _unitOfWork.Users.GetByIdAsync(userId);
-        if (user == null)
-            return OperationResult<int>.Failure("User not found");
+        if (user == null || user.IsDeleted)
+            return OperationResult<int>.Failure("المستخدم غير موجود");
 
         var count = await _unitOfWork.Notifications.GetUnreadCountAsync(userId);
         return OperationResult<int>.Success(count);
@@ -74,27 +74,27 @@ public class NotificationService : INotificationService
     {
         var notification = await _unitOfWork.Notifications.GetByIdAsync(notificationId);
         if (notification == null || notification.UserId != userId)
-            return OperationResult.Failure("Notification not found or does not belong to this user");
+            return OperationResult.Failure("الإشعار غير موجود أو لا يخص هذا المستخدم");
 
         await _unitOfWork.Notifications.MarkAsReadAsync(notificationId);
-        return OperationResult.Success("Notification marked as read");
+        return OperationResult.Success("تم تحديد الإشعار كمقروء");
     }
 
     public async Task<OperationResult> MarkAllNotificationsAsReadAsync(int userId)
     {
         var user = await _unitOfWork.Users.GetByIdAsync(userId);
-        if (user == null)
-            return OperationResult.Failure("User not found");
+        if (user == null || user.IsDeleted)
+            return OperationResult.Failure("المستخدم غير موجود");
 
         await _unitOfWork.Notifications.MarkAllAsReadAsync(userId);
-        return OperationResult.Success("All notifications marked as read");
+        return OperationResult.Success("تم تحديد جميع الإشعارات كمقروءة");
     }
 
     public async Task<OperationResult<PagedResult<NotificationDto>>> GetNotificationsByUserPagedAsync(int userId, PaginationFilter filter)
     {
         var user = await _unitOfWork.Users.GetByIdAsync(userId);
-        if (user == null)
-            return OperationResult<PagedResult<NotificationDto>>.Failure("User not found");
+        if (user == null || user.IsDeleted)
+            return OperationResult<PagedResult<NotificationDto>>.Failure("المستخدم غير موجود");
 
         var notifications = await _unitOfWork.Notifications.GetByUserIdPagedAsync(userId, filter.Page, filter.PageSize);
         var totalCount = await _unitOfWork.Notifications.CountAsync(n => n.UserId == userId);
@@ -131,12 +131,12 @@ public class NotificationService : INotificationService
         }
 
         if (notifications.Count == 0)
-            return OperationResult.Failure("No valid recipients found");
+            return OperationResult.Failure("لا يوجد مستلمون صالحون");
 
         await _unitOfWork.Notifications.BulkAddAsync(notifications);
         await _unitOfWork.SaveChangesAsync();
 
-        return OperationResult.Success($"Notifications sent to {notifications.Count} users");
+        return OperationResult.Success($"تم إرسال الإشعارات إلى {notifications.Count} مستخدمين");
     }
 
     public async Task<OperationResult> DeleteBulkNotificationsAsync(List<int> notificationIds, int userId)
@@ -151,17 +151,17 @@ public class NotificationService : INotificationService
         }
 
         await _unitOfWork.SaveChangesAsync();
-        return OperationResult.Success($"{notificationIds.Count} notifications deleted");
+        return OperationResult.Success($"تم حذف {notificationIds.Count} إشعار");
     }
 
     public async Task<OperationResult> DeleteNotificationAsync(int notificationId, int userId)
     {
         var notification = await _unitOfWork.Notifications.GetByIdAsync(notificationId);
         if (notification == null || notification.UserId != userId)
-            return OperationResult.Failure("Notification not found or does not belong to this user");
+            return OperationResult.Failure("الإشعار غير موجود أو لا يخص هذا المستخدم");
 
         _unitOfWork.Notifications.SoftDelete(notification);
         await _unitOfWork.SaveChangesAsync();
-        return OperationResult.Success("Notification deleted successfully");
+        return OperationResult.Success("تم حذف الإشعار بنجاح");
     }
 }

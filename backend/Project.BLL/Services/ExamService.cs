@@ -33,7 +33,7 @@ namespace Project.BLL.Services
             var exam = await _unitOfWork.Exams.GetWithQuestionsAsync(id, CancellationToken.None);
 
             if (exam == null || exam.IsDeleted)
-                return OperationResult<GetExamDto>.Failure("Exam not found", 404);
+                return OperationResult<GetExamDto>.Failure("الامتحان غير موجود", 404);
 
             var dto = _mapper.Map<GetExamDto>(exam);
             return OperationResult<GetExamDto>.Success(dto);
@@ -45,7 +45,7 @@ namespace Project.BLL.Services
                 .GetByIdAsync(dto.ClassSubjectTeacherId);
 
             if (classSubjectTeacher == null || classSubjectTeacher.IsDeleted)
-                return OperationResult<ExamSummaryDto>.Failure("ClassSubjectTeacher not found", 404);
+                return OperationResult<ExamSummaryDto>.Failure("المادة غير موجودة", 404);
 
             var exam = _mapper.Map<Exam>(dto);
 
@@ -53,7 +53,7 @@ namespace Project.BLL.Services
             await _unitOfWork.SaveChangesAsync(CancellationToken.None);
 
             var resultDto = _mapper.Map<ExamSummaryDto>(exam);
-            return OperationResult<ExamSummaryDto>.Success(resultDto, "Exam created successfully");
+            return OperationResult<ExamSummaryDto>.Success(resultDto, "تم إنشاء الامتحان بنجاح");
         }
 
         public async Task<OperationResult<ExamSummaryDto>> UpdateAsync(UpdateExamDto dto)
@@ -61,7 +61,7 @@ namespace Project.BLL.Services
             var exam = await _unitOfWork.Exams.GetByIdAsync(dto.Id);
 
             if (exam == null || exam.IsDeleted)
-                return OperationResult<ExamSummaryDto>.Failure("Exam not found", 404);
+                return OperationResult<ExamSummaryDto>.Failure("الامتحان غير موجود", 404);
 
             exam.Title = dto.Title;
             exam.StartTime = dto.StartTime;
@@ -74,7 +74,7 @@ namespace Project.BLL.Services
             await _unitOfWork.SaveChangesAsync(CancellationToken.None);
 
             var resultDto = _mapper.Map<ExamSummaryDto>(exam);
-            return OperationResult<ExamSummaryDto>.Success(resultDto, "Exam updated successfully");
+            return OperationResult<ExamSummaryDto>.Success(resultDto, "تم تحديث الامتحان بنجاح");
         }
 
         public async Task<OperationResult> DeleteAsync(int id)
@@ -82,12 +82,12 @@ namespace Project.BLL.Services
             var exam = await _unitOfWork.Exams.GetByIdAsync(id);
 
             if (exam == null || exam.IsDeleted)
-                return OperationResult.Failure("Exam not found");
+                return OperationResult.Failure("الامتحان غير موجود");
 
             _unitOfWork.Exams.SoftDelete(exam);
             await _unitOfWork.SaveChangesAsync(CancellationToken.None);
 
-            return OperationResult.Success("Exam deleted successfully");
+            return OperationResult.Success("تم حذف الامتحان بنجاح");
         }
 
         public async Task<OperationResult> PublishAsync(int id)
@@ -95,10 +95,10 @@ namespace Project.BLL.Services
             var exam = await _unitOfWork.Exams.GetByIdAsync(id);
 
             if (exam == null || exam.IsDeleted)
-                return OperationResult.Failure("Exam not found");
+                return OperationResult.Failure("الامتحان غير موجود");
 
             if (exam.IsPublished)
-                return OperationResult.Failure("Exam is already published");
+                return OperationResult.Failure("الامتحان منشور بالفعل");
 
             exam.IsPublished = true;
             exam.UpdatedAt = DateTime.UtcNow;
@@ -106,18 +106,18 @@ namespace Project.BLL.Services
             _unitOfWork.Exams.Update(exam);
             await _unitOfWork.SaveChangesAsync(CancellationToken.None);
 
-            return OperationResult.Success("Exam published successfully");
+            return OperationResult.Success("تم نشر الامتحان بنجاح");
         }
 
     public async Task<OperationResult> UnPublishAsync(int id)
     {
         var exam = await _unitOfWork.Exams.GetByIdAsync(id);
 
-        if (exam == null || exam.IsDeleted)
-            return OperationResult.Failure("Exam not found");
+            if (exam == null || exam.IsDeleted)
+                return OperationResult.Failure("الامتحان غير موجود");
 
-        if (!exam.IsPublished)
-            return OperationResult.Failure("Exam is not published");
+            if (!exam.IsPublished)
+                return OperationResult.Failure("الامتحان غير منشور");
 
         exam.IsPublished = false;
         exam.UpdatedAt = DateTime.UtcNow;
@@ -125,38 +125,38 @@ namespace Project.BLL.Services
         _unitOfWork.Exams.Update(exam);
         await _unitOfWork.SaveChangesAsync(CancellationToken.None);
 
-        return OperationResult.Success("Exam unpublished successfully");
+        return OperationResult.Success("تم إلغاء نشر الامتحان بنجاح");
     }
 
     public async Task<OperationResult<List<ExamSummaryDto>>> GetExamsByStudentAsync(int enrollmentId)
     {
         var enrollment = await _unitOfWork.StudentEnrollments.GetByIdAsync(enrollmentId);
         if (enrollment == null || enrollment.IsDeleted)
-            return OperationResult<List<ExamSummaryDto>>.Failure("Enrollment not found", 404);
+            return OperationResult<List<ExamSummaryDto>>.Failure("التسجيل غير موجود", 404);
 
-        var classSubjectTeachers = await _unitOfWork.ClassSubjectTeachers
+        var csts = await _unitOfWork.ClassSubjectTeachers
             .GetByClassAndYearAsync(enrollment.ClassId, enrollment.AcademicYearId);
 
-        var result = new List<ExamSummaryDto>();
-        foreach (var cst in classSubjectTeachers)
-        {
-            var exams = await _unitOfWork.Exams.GetByClassSubjectTeacherIdAsync(cst.Id);
-            var dtos = _mapper.Map<List<ExamSummaryDto>>(exams.Where(e => !e.IsDeleted));
-            result.AddRange(dtos);
-        }
+        var cstIds = csts.Select(c => c.Id).ToList();
+        if (cstIds.Count == 0)
+            return OperationResult<List<ExamSummaryDto>>.Success(new List<ExamSummaryDto>());
 
-        return OperationResult<List<ExamSummaryDto>>.Success(result, "Exams retrieved successfully");
+        var allExams = await _unitOfWork.Exams
+            .FindAsync(e => cstIds.Contains(e.ClassSubjectTeacherId) && !e.IsDeleted);
+
+        var dtos = _mapper.Map<List<ExamSummaryDto>>(allExams);
+        return OperationResult<List<ExamSummaryDto>>.Success(dtos, "تم جلب الامتحانات بنجاح");
     }
 
     public async Task<OperationResult<List<ExamSummaryDto>>> GetUpcomingExamsAsync(int classId, int academicYearId)
     {
         var classEntity = await _unitOfWork.Classes.GetByIdAsync(classId);
         if (classEntity == null || classEntity.IsDeleted)
-            return OperationResult<List<ExamSummaryDto>>.Failure("Class not found", 404);
+            return OperationResult<List<ExamSummaryDto>>.Failure("الفصل غير موجود", 404);
 
         var exams = await _unitOfWork.Exams.GetUpcomingByClassAsync(classId, 7);
         var dtos = _mapper.Map<List<ExamSummaryDto>>(exams.Where(e => !e.IsDeleted));
-        return OperationResult<List<ExamSummaryDto>>.Success(dtos, "Upcoming exams retrieved successfully");
+        return OperationResult<List<ExamSummaryDto>>.Success(dtos, "تم جلب الامتحانات القادمة بنجاح");
     }
 }
 }

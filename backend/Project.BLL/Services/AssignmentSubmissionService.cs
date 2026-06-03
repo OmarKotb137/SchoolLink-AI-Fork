@@ -24,7 +24,7 @@ namespace Project.BLL.Services
             var submission = await _unitOfWork.StudentAssignmentSubmissions.GetWithAnswersAsync(id);
 
             if (submission == null || submission.IsDeleted)
-                return OperationResult<GetAssignmentSubmissionDto>.Failure("Submission not found", 404);
+                return OperationResult<GetAssignmentSubmissionDto>.Failure("لم يتم العثور على التسليم", 404);
 
             var dto = _mapper.Map<GetAssignmentSubmissionDto>(submission);
             return OperationResult<GetAssignmentSubmissionDto>.Success(dto);
@@ -35,7 +35,7 @@ namespace Project.BLL.Services
             var assignment = await _unitOfWork.Assignments.GetByIdAsync(assignmentId);
 
             if (assignment == null || assignment.IsDeleted)
-                return OperationResult<List<AssignmentSubmissionSummaryDto>>.Failure("Assignment not found", 404);
+                return OperationResult<List<AssignmentSubmissionSummaryDto>>.Failure("لم يتم العثور على الواجب", 404);
 
             var submissions = await _unitOfWork.StudentAssignmentSubmissions
                 .GetByAssignmentIdAsync(assignmentId);
@@ -46,26 +46,22 @@ namespace Project.BLL.Services
 
         public async Task<OperationResult<GetAssignmentSubmissionDto>> SubmitAsync(CreateAssignmentSubmissionDto dto)
         {
-            // Check enrollment exists
             var enrollment = await _unitOfWork.StudentEnrollments.GetByIdAsync(dto.EnrollmentId);
             if (enrollment == null || enrollment.IsDeleted)
-                return OperationResult<GetAssignmentSubmissionDto>.Failure("Enrollment not found", 404);
+                return OperationResult<GetAssignmentSubmissionDto>.Failure("لم يتم العثور على التسجيل", 404);
 
-            // Check assignment exists
             var assignment = await _unitOfWork.Assignments.GetWithQuestionsAsync(dto.AssignmentId);
             if (assignment == null || assignment.IsDeleted)
-                return OperationResult<GetAssignmentSubmissionDto>.Failure("Assignment not found", 404);
+                return OperationResult<GetAssignmentSubmissionDto>.Failure("لم يتم العثور على الواجب", 404);
 
-            // Check due date
             if (assignment.DueDate.HasValue && assignment.DueDate < DateTime.UtcNow)
-                return OperationResult<GetAssignmentSubmissionDto>.Failure("Assignment due date has passed");
+                return OperationResult<GetAssignmentSubmissionDto>.Failure("لقد انتهى موعد تسليم الواجب");
 
-            // Check already submitted
             var existingSubmission = await _unitOfWork.StudentAssignmentSubmissions
                 .GetByEnrollmentAndAssignmentAsync(dto.EnrollmentId, dto.AssignmentId);
 
-            if (existingSubmission != null)
-                return OperationResult<GetAssignmentSubmissionDto>.Failure("Assignment already submitted");
+            if (existingSubmission != null && !existingSubmission.IsDeleted)
+                return OperationResult<GetAssignmentSubmissionDto>.Failure("تم تقديم الواجب مسبقاً");
 
             // Create submission
             var submission = new StudentAssignmentSubmission
@@ -114,7 +110,7 @@ namespace Project.BLL.Services
             await _unitOfWork.SaveChangesAsync();
 
             var resultDto = _mapper.Map<GetAssignmentSubmissionDto>(submission);
-            return OperationResult<GetAssignmentSubmissionDto>.Success(resultDto, "Submission created successfully");
+            return OperationResult<GetAssignmentSubmissionDto>.Success(resultDto, "تم إنشاء التسليم بنجاح");
         }
 
         public async Task<OperationResult<List<AssignmentSubmissionSummaryDto>>> GetByStudentAsync(int enrollmentId)
@@ -128,10 +124,10 @@ namespace Project.BLL.Services
         {
             var submission = await _unitOfWork.StudentAssignmentSubmissions.GetByIdAsync(submissionId);
             if (submission == null || submission.IsDeleted)
-                return OperationResult.Failure("Submission not found", 404);
+                return OperationResult.Failure("لم يتم العثور على التسليم", 404);
 
             if (!submission.IsGraded)
-                return OperationResult.Failure("Submission has not been graded yet");
+                return OperationResult.Failure("لم يتم تصحيح التسليم بعد");
 
             submission.IsGraded = false;
             submission.Score = null;
@@ -140,7 +136,7 @@ namespace Project.BLL.Services
             _unitOfWork.StudentAssignmentSubmissions.Update(submission);
             await _unitOfWork.SaveChangesAsync();
 
-            return OperationResult.Success("Submission reopened successfully");
+            return OperationResult.Success("تم إعادة فتح التسليم بنجاح");
         }
 
         public async Task<OperationResult> GradeAsync(int submissionId)
@@ -149,10 +145,10 @@ namespace Project.BLL.Services
                 .GetWithAnswersAsync(submissionId);
 
             if (submission == null || submission.IsDeleted)
-                return OperationResult.Failure("Submission not found");
+                return OperationResult.Failure("لم يتم العثور على التسليم");
 
             if (submission.IsGraded)
-                return OperationResult.Failure("Submission already graded");
+                return OperationResult.Failure("تم تصحيح التسليم مسبقاً");
 
             decimal totalPoints = 0;
             foreach (var answer in submission.Answers)
@@ -167,7 +163,7 @@ namespace Project.BLL.Services
             _unitOfWork.StudentAssignmentSubmissions.Update(submission);
             await _unitOfWork.SaveChangesAsync();
 
-            return OperationResult.Success("Submission graded successfully");
+            return OperationResult.Success("تم تصحيح التسليم بنجاح");
         }
 
         public async Task<OperationResult<GetAssignmentSubmissionDto>> GradeSubmissionAsync(GradeSubmissionRequest request)
@@ -176,10 +172,10 @@ namespace Project.BLL.Services
                 .GetWithAnswersAsync(request.SubmissionId);
 
             if (submission == null || submission.IsDeleted)
-                return OperationResult<GetAssignmentSubmissionDto>.Failure("Submission not found", 404);
+                return OperationResult<GetAssignmentSubmissionDto>.Failure("لم يتم العثور على التسليم", 404);
 
             if (submission.IsGraded)
-                return OperationResult<GetAssignmentSubmissionDto>.Failure("Submission already graded");
+                return OperationResult<GetAssignmentSubmissionDto>.Failure("تم تصحيح التسليم مسبقاً");
 
             foreach (var grade in request.AnswerGrades)
             {
@@ -200,7 +196,7 @@ namespace Project.BLL.Services
             await _unitOfWork.SaveChangesAsync();
 
             var dto = _mapper.Map<GetAssignmentSubmissionDto>(submission);
-            return OperationResult<GetAssignmentSubmissionDto>.Success(dto, "Submission graded successfully");
+            return OperationResult<GetAssignmentSubmissionDto>.Success(dto, "تم تصحيح التسليم بنجاح");
         }
     }
 }

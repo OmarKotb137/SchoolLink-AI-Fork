@@ -30,16 +30,16 @@ public class AuthService : IAuthService
     {
         var user = await _unitOfWork.Users.GetByEmailAsync(request.Email);
         if (user == null)
-            return OperationResult<AuthResponseDto>.Failure("Invalid email or password");
+            return OperationResult<AuthResponseDto>.Failure("البريد الإلكتروني أو كلمة المرور غير صحيحة");
 
         if (user.IsDeleted)
-            return OperationResult<AuthResponseDto>.Failure("This account has been deleted");
+            return OperationResult<AuthResponseDto>.Failure("تم حذف هذا الحساب");
 
         if (!user.IsActive)
-            return OperationResult<AuthResponseDto>.Failure("This account is inactive. Contact an administrator");
+            return OperationResult<AuthResponseDto>.Failure("هذا الحساب غير نشط. اتصل بالمسؤول");
 
         if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
-            return OperationResult<AuthResponseDto>.Failure("Invalid email or password");
+            return OperationResult<AuthResponseDto>.Failure("البريد الإلكتروني أو كلمة المرور غير صحيحة");
 
         var accessToken = GenerateAccessToken(user);
         var refreshToken = await GenerateAndStoreRefreshTokenAsync(user.Id);
@@ -48,25 +48,28 @@ public class AuthService : IAuthService
         {
             AccessToken = accessToken,
             RefreshToken = refreshToken.Token,
-            Expiry = DateTime.UtcNow.AddMinutes(double.Parse(_configuration["Jwt:ExpiryInMinutes"] ?? "60")),
+            Expiry = DateTime.UtcNow.AddMinutes(GetConfigDouble("Jwt:ExpiryInMinutes", 60)),
             UserId = user.Id,
             FullName = user.FullName,
             Role = user.Role.ToString()
-        }, "Login successful");
+        }, "تم تسجيل الدخول بنجاح");
     }
 
     public async Task<OperationResult<AuthResponseDto>> RefreshTokenAsync(RefreshTokenRequest request)
     {
         var storedToken = await _unitOfWork.RefreshTokens.GetByTokenAsync(request.RefreshToken);
         if (storedToken == null)
-            return OperationResult<AuthResponseDto>.Failure("Invalid refresh token");
+            return OperationResult<AuthResponseDto>.Failure("رمز التحديث غير صالح");
 
         if (storedToken.ExpiresAt < DateTime.UtcNow)
-            return OperationResult<AuthResponseDto>.Failure("Refresh token has expired");
+            return OperationResult<AuthResponseDto>.Failure("انتهت صلاحية رمز التحديث");
+
+        if (storedToken.IsRevoked)
+            return OperationResult<AuthResponseDto>.Failure("تم إلغاء رمز التحديث");
 
         var user = await _unitOfWork.Users.GetByIdAsync(storedToken.UserId);
         if (user == null || user.IsDeleted || !user.IsActive)
-            return OperationResult<AuthResponseDto>.Failure("User account is unavailable");
+            return OperationResult<AuthResponseDto>.Failure("حساب المستخدم غير متاح");
 
         storedToken.IsRevoked = true;
         storedToken.RevokedAt = DateTime.UtcNow;
@@ -79,47 +82,47 @@ public class AuthService : IAuthService
         {
             AccessToken = newAccessToken,
             RefreshToken = newRefreshToken.Token,
-            Expiry = DateTime.UtcNow.AddMinutes(double.Parse(_configuration["Jwt:ExpiryInMinutes"] ?? "60")),
+            Expiry = DateTime.UtcNow.AddMinutes(GetConfigDouble("Jwt:ExpiryInMinutes", 60)),
             UserId = user.Id,
             FullName = user.FullName,
             Role = user.Role.ToString()
-        }, "Token refreshed successfully");
+        }, "تم تحديث الرمز بنجاح");
     }
 
     public async Task<OperationResult> LogoutAsync(LogoutRequest request, int callerUserId)
     {
         var storedToken = await _unitOfWork.RefreshTokens.GetByTokenAsync(request.RefreshToken);
         if (storedToken == null)
-            return OperationResult.Failure("Refresh token not found");
+            return OperationResult.Failure("رمز التحديث غير موجود");
 
         if (storedToken.UserId != callerUserId)
-            return OperationResult.Failure("Refresh token does not belong to the current user");
+            return OperationResult.Failure("رمز التحديث لا ينتمي إلى المستخدم الحالي");
 
         storedToken.IsRevoked = true;
         storedToken.RevokedAt = DateTime.UtcNow;
         _unitOfWork.RefreshTokens.Update(storedToken);
         await _unitOfWork.SaveChangesAsync();
 
-        return OperationResult.Success("Logged out successfully");
+        return OperationResult.Success("تم تسجيل الخروج بنجاح");
     }
 
     public async Task<OperationResult> ChangePasswordAsync(ChangePasswordRequest request)
     {
         var user = await _unitOfWork.Users.GetByIdAsync(request.UserId);
         if (user == null || user.IsDeleted)
-            return OperationResult.Failure("User not found");
+            return OperationResult.Failure("المستخدم غير موجود");
 
         if (!BCrypt.Net.BCrypt.Verify(request.CurrentPassword, user.PasswordHash))
-            return OperationResult.Failure("Current password is incorrect");
+            return OperationResult.Failure("كلمة المرور الحالية غير صحيحة");
 
         if (request.NewPassword != request.ConfirmNewPassword)
-            return OperationResult.Failure("New password and confirmation do not match");
+            return OperationResult.Failure("كلمة المرور الجديدة وتأكيدها غير متطابقين");
 
         if (request.NewPassword.Length < 6)
-            return OperationResult.Failure("New password must be at least 6 characters");
+            return OperationResult.Failure("يجب أن تتكون كلمة المرور الجديدة من 6 أحرف على الأقل");
 
         if (request.CurrentPassword == request.NewPassword)
-            return OperationResult.Failure("New password must differ from current password");
+            return OperationResult.Failure("يجب أن تختلف كلمة المرور الجديدة عن كلمة المرور الحالية");
 
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
         user.UpdatedAt = DateTime.UtcNow;
@@ -128,7 +131,7 @@ public class AuthService : IAuthService
         await _unitOfWork.RefreshTokens.RevokeAllForUserAsync(request.UserId);
         await _unitOfWork.SaveChangesAsync();
 
-        return OperationResult.Success("Password changed successfully");
+        return OperationResult.Success("تم تغيير كلمة المرور بنجاح");
     }
 
     private string GenerateAccessToken(User user)
@@ -145,7 +148,7 @@ public class AuthService : IAuthService
             new Claim(ClaimTypes.Email, user.Email)
         };
 
-        var expiry = DateTime.UtcNow.AddMinutes(double.Parse(jwtSettings["ExpiryInMinutes"] ?? "60"));
+        var expiry = DateTime.UtcNow.AddMinutes(GetConfigDouble("Jwt:ExpiryInMinutes", 60));
 
         var token = new JwtSecurityToken(
             issuer: jwtSettings["Issuer"],
@@ -169,7 +172,7 @@ public class AuthService : IAuthService
             UserId = userId,
             Token = Convert.ToBase64String(randomBytes),
             ExpiresAt = DateTime.UtcNow.AddDays(
-                double.Parse(_configuration["Jwt:RefreshTokenExpiryInDays"] ?? "7")),
+                GetConfigDouble("Jwt:RefreshTokenExpiryInDays", 7)),
             IsRevoked = false
         };
 
@@ -177,5 +180,11 @@ public class AuthService : IAuthService
         await _unitOfWork.SaveChangesAsync();
 
         return refreshToken;
+    }
+
+    private double GetConfigDouble(string key, double defaultValue)
+    {
+        var value = _configuration[key];
+        return double.TryParse(value, out var result) ? result : defaultValue;
     }
 }

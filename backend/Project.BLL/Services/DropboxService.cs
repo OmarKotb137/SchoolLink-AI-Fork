@@ -58,7 +58,7 @@ public class DropboxService : IDropboxService
         if (!linkResult.IsSuccess)
             return linkResult;
 
-        return OperationResult<string>.Success(linkResult.Data!, "File uploaded successfully");
+        return OperationResult<string>.Success(linkResult.Data!, "تم رفع الملف بنجاح");
     }
 
     public async Task<OperationResult<string>> GetSharedLinkAsync(string path)
@@ -76,7 +76,7 @@ public class DropboxService : IDropboxService
             var result = await response.Content.ReadFromJsonAsync<JsonElement>();
             var url = result.GetProperty("url").GetString()!;
             var directUrl = url.Replace("?dl=0", "?dl=1").Replace("www.dropbox.com", "dl.dropboxusercontent.com");
-            return OperationResult<string>.Success(directUrl, "Shared link created");
+            return OperationResult<string>.Success(directUrl, "تم إنشاء الرابط المشترك");
         }
 
         var errorJson = await response.Content.ReadAsStringAsync();
@@ -97,7 +97,7 @@ public class DropboxService : IDropboxService
                 {
                     var url = links[0].GetProperty("url").GetString()!;
                     var directUrl = url.Replace("?dl=0", "?dl=1").Replace("www.dropbox.com", "dl.dropboxusercontent.com");
-                    return OperationResult<string>.Success(directUrl, "Shared link retrieved");
+                    return OperationResult<string>.Success(directUrl, "تم استرجاع الرابط المشترك");
                 }
             }
         }
@@ -116,7 +116,7 @@ public class DropboxService : IDropboxService
             });
 
         if (response.IsSuccessStatusCode)
-            return OperationResult.Success("File deleted from Dropbox");
+            return OperationResult.Success("تم حذف الملف من دروب بوكس");
 
         var error = await response.Content.ReadAsStringAsync();
         return OperationResult.Failure($"Dropbox delete failed: {error}");
@@ -221,7 +221,7 @@ public class DropboxService : IDropboxService
             files.Add(entry.GetProperty("path_display").GetString()!);
         }
 
-        return OperationResult<IEnumerable<string>>.Success(files, "Files listed successfully");
+        return OperationResult<IEnumerable<string>>.Success(files, "تم عرض الملفات بنجاح");
     }
 
     public async Task<OperationResult<Stream>> DownloadFileAsync(string path)
@@ -241,7 +241,7 @@ public class DropboxService : IDropboxService
         }
 
         var stream = await response.Content.ReadAsStreamAsync();
-        return OperationResult<Stream>.Success(stream, "File downloaded successfully");
+        return OperationResult<Stream>.Success(stream, "تم تحميل الملف بنجاح");
     }
 
     private static async Task<HttpRequestMessage> CloneRequestAsync(HttpRequestMessage request)

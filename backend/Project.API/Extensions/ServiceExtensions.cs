@@ -39,7 +39,11 @@ public static class ServiceExtensions
         services.AddScoped<IClassSubjectTeacherService, ClassSubjectTeacherService>();
         services.AddScoped<ITimetableService, TimetableService>();
         services.AddScoped<IRoomService, RoomService>();
-
+        services.AddScoped<IAssignmentService, AssignmentService>();
+        services.AddScoped<IAssignmentSubmissionService, AssignmentSubmissionService>();
+        services.AddScoped<IExamService, ExamService>();
+        services.AddScoped<IExamAttemptService, ExamAttemptService>();
+        services.AddScoped<IAIGenerationLogService, AIGenerationLogService>();
 
         services.AddAutoMapper(typeof(UserMappingProfile).Assembly);
 

@@ -15,6 +15,7 @@ namespace Project.BLL.Interfaces
         Task<OperationResult> PublishAsync(int id);
         Task<OperationResult> UnPublishAsync(int id);
         Task<OperationResult<AssignmentDto>> AddQuestionAsync(CreateAssignmentQuestionDto dto);
+        Task<OperationResult> UpdateQuestionAsync(UpdateAssignmentQuestionDto dto);
         Task<OperationResult> DeleteQuestionAsync(int questionId);
         Task<OperationResult<List<AssignmentDto>>> GetByTeacherAsync(int teacherId, int academicYearId);
         Task<OperationResult<IEnumerable<AssignmentSummaryDto>>> GetAssignmentsByClassSubjectTeacherAsync(int classSubjectTeacherId, EvaluationCategory? category = null);

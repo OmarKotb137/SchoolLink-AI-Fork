@@ -139,6 +139,7 @@ public class TimetableService : ITimetableService
             var slots = await _unitOfWork.TimetableSlots.GetByTimetableIdAsync(timetableId);
             _unitOfWork.TimetableSlots.SoftDeleteRange(slots);
             _unitOfWork.Timetables.SoftDelete(timetable);
+            await _unitOfWork.SaveChangesAsync();
         });
 
         return OperationResult.Success("تم حذف الجدول الدراسي بنجاح");

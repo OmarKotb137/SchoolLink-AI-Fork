@@ -24,11 +24,11 @@ public class ConversationService : IConversationService
     {
         var initiator = await _unitOfWork.Users.GetByIdAsync(request.InitiatorUserId);
         if (initiator == null || initiator.IsDeleted || !initiator.IsActive)
-            return OperationResult<ConversationDto>.Failure("Initiator user not found or inactive");
+            return OperationResult<ConversationDto>.Failure("المستخدم البادئ غير موجود أو غير نشط");
 
         var target = await _unitOfWork.Users.GetByIdAsync(request.TargetUserId);
         if (target == null || target.IsDeleted || !target.IsActive)
-            return OperationResult<ConversationDto>.Failure("Target user not found or inactive");
+            return OperationResult<ConversationDto>.Failure("المستخدم المستهدف غير موجود أو غير نشط");
 
         var existing = await _unitOfWork.Conversations.GetDirectConversationAsync(
             request.InitiatorUserId, request.TargetUserId);
@@ -36,7 +36,7 @@ public class ConversationService : IConversationService
         if (existing != null)
         {
             var existingDto = await MapConversationWithParticipantsAsync(existing);
-            return OperationResult<ConversationDto>.Success(existingDto, "Existing conversation returned");
+            return OperationResult<ConversationDto>.Success(existingDto, "تم إرجاع المحادثة الموجودة");
         }
 
         var conversation = new Conversation
@@ -68,20 +68,20 @@ public class ConversationService : IConversationService
         await _unitOfWork.SaveChangesAsync();
 
         var dto = await MapConversationWithParticipantsAsync(conversation);
-        return OperationResult<ConversationDto>.Success(dto, "Conversation created successfully");
+        return OperationResult<ConversationDto>.Success(dto, "تم إنشاء المحادثة بنجاح");
     }
 
     public async Task<OperationResult<ConversationDto>> CreateGroupConversationAsync(CreateGroupConversationRequest request)
     {
         var creator = await _unitOfWork.Users.GetByIdAsync(request.CreatorUserId);
         if (creator == null || creator.IsDeleted || !creator.IsActive)
-            return OperationResult<ConversationDto>.Failure("Creator not found or inactive");
+            return OperationResult<ConversationDto>.Failure("المنشئ غير موجود أو غير نشط");
 
         if (creator.Role == UserRole.Student || creator.Role == UserRole.Parent)
-            return OperationResult<ConversationDto>.Failure("Only Admins and Teachers can create group conversations");
+            return OperationResult<ConversationDto>.Failure("يمكن للمشرفين والمعلمين فقط إنشاء محادثات جماعية");
 
         if (request.ParticipantUserIds.Count < 2)
-            return OperationResult<ConversationDto>.Failure("At least 2 participants are required");
+            return OperationResult<ConversationDto>.Failure("يجب أن يكون هناك مشاركان على الأقل");
 
         var allUserIds = new List<int> { request.CreatorUserId };
         allUserIds.AddRange(request.ParticipantUserIds);
@@ -90,7 +90,7 @@ public class ConversationService : IConversationService
         {
             var user = await _unitOfWork.Users.GetByIdAsync(userId);
             if (user == null || user.IsDeleted || !user.IsActive)
-                return OperationResult<ConversationDto>.Failure($"User with id {userId} not found or inactive");
+                return OperationResult<ConversationDto>.Failure($"المستخدم بالمعرف {userId} غير موجود أو غير نشط");
         }
 
         var conversation = new Conversation
@@ -114,31 +114,31 @@ public class ConversationService : IConversationService
         await _unitOfWork.SaveChangesAsync();
 
         var dto = await MapConversationWithParticipantsAsync(conversation);
-        return OperationResult<ConversationDto>.Success(dto, "Group conversation created successfully");
+        return OperationResult<ConversationDto>.Success(dto, "تم إنشاء المحادثة الجماعية بنجاح");
     }
 
     public async Task<OperationResult<ConversationDto>> CreateSubjectGroupConversationAsync(CreateSubjectGroupConversationRequest request)
     {
         var creator = await _unitOfWork.Users.GetByIdAsync(request.CreatorUserId);
         if (creator == null || creator.IsDeleted || !creator.IsActive)
-            return OperationResult<ConversationDto>.Failure("Creator not found or inactive");
+            return OperationResult<ConversationDto>.Failure("المنشئ غير موجود أو غير نشط");
 
         if (creator.Role != UserRole.Admin && creator.Role != UserRole.Teacher)
-            return OperationResult<ConversationDto>.Failure("Only Admins and Teachers can create subject group conversations");
+            return OperationResult<ConversationDto>.Failure("يمكن للمشرفين والمعلمين فقط إنشاء محادثات جماعية للمواد");
 
         var subject = await _unitOfWork.Subjects.GetByIdAsync(request.SubjectId);
         if (subject == null || subject.IsDeleted)
-            return OperationResult<ConversationDto>.Failure("Subject not found");
+            return OperationResult<ConversationDto>.Failure("المادة غير موجودة");
 
         var schoolClass = await _unitOfWork.Classes.GetByIdAsync(request.ClassId);
         if (schoolClass == null || schoolClass.IsDeleted)
-            return OperationResult<ConversationDto>.Failure("Class not found");
+            return OperationResult<ConversationDto>.Failure("الفصل غير موجود");
 
         var cst = await _unitOfWork.ClassSubjectTeachers.GetByClassSubjectAndYearAsync(
             request.ClassId, request.SubjectId, request.AcademicYearId);
 
         if (cst == null)
-            return OperationResult<ConversationDto>.Failure("No teacher assigned to this subject in this class");
+            return OperationResult<ConversationDto>.Failure("لا يوجد معلم مخصص لهذه المادة في هذا الفصل");
 
         var enrollments = await _unitOfWork.StudentEnrollments.GetActiveByClassAsync(
             request.ClassId, request.AcademicYearId);
@@ -180,39 +180,39 @@ public class ConversationService : IConversationService
         await _unitOfWork.SaveChangesAsync();
 
         var dto = await MapConversationWithParticipantsAsync(conversation);
-        return OperationResult<ConversationDto>.Success(dto, "Subject group conversation created successfully");
+        return OperationResult<ConversationDto>.Success(dto, "تم إنشاء المحادثة الجماعية للمادة بنجاح");
     }
 
     public async Task<OperationResult> DeleteConversationAsync(int conversationId, int userId)
     {
         var conversation = await _unitOfWork.Conversations.GetByIdAsync(conversationId);
         if (conversation == null || conversation.IsDeleted)
-            return OperationResult.Failure("Conversation not found");
+            return OperationResult.Failure("المحادثة غير موجودة");
 
         var isParticipant = await _unitOfWork.ConversationParticipants.IsParticipantAsync(conversationId, userId);
         if (!isParticipant)
-            return OperationResult.Failure("User is not a participant in this conversation");
+            return OperationResult.Failure("المستخدم ليس مشتركا في هذه المحادثة");
 
         _unitOfWork.Conversations.SoftDelete(conversation);
         await _unitOfWork.SaveChangesAsync();
-        return OperationResult.Success("Conversation deleted successfully");
+        return OperationResult.Success("تم حذف المحادثة بنجاح");
     }
 
     public async Task<OperationResult<ConversationDto>> UpdateConversationTitleAsync(int conversationId, string title, int userId)
     {
         var conversation = await _unitOfWork.Conversations.GetByIdAsync(conversationId);
         if (conversation == null || conversation.IsDeleted)
-            return OperationResult<ConversationDto>.Failure("Conversation not found");
+            return OperationResult<ConversationDto>.Failure("المحادثة غير موجودة");
 
         if (conversation.Type != ConversationType.Group)
-            return OperationResult<ConversationDto>.Failure("Can only update title of group conversations");
+            return OperationResult<ConversationDto>.Failure("يمكن تحديث عنوان المحادثات الجماعية فقط");
 
         var isParticipant = await _unitOfWork.ConversationParticipants.IsParticipantAsync(conversationId, userId);
         if (!isParticipant)
-            return OperationResult<ConversationDto>.Failure("User is not a participant in this conversation");
+            return OperationResult<ConversationDto>.Failure("المستخدم ليس مشتركا في هذه المحادثة");
 
         if (string.IsNullOrWhiteSpace(title))
-            return OperationResult<ConversationDto>.Failure("Title cannot be empty");
+            return OperationResult<ConversationDto>.Failure("العنوان لا يمكن أن يكون فارغا");
 
         conversation.Title = title;
         conversation.UpdatedAt = DateTime.UtcNow;
@@ -220,28 +220,30 @@ public class ConversationService : IConversationService
         await _unitOfWork.SaveChangesAsync();
 
         var dto = await MapConversationWithParticipantsAsync(conversation);
-        return OperationResult<ConversationDto>.Success(dto, "Title updated successfully");
+        return OperationResult<ConversationDto>.Success(dto, "تم تحديث العنوان بنجاح");
     }
 
     public async Task<OperationResult<IEnumerable<ConversationParticipantDto>>> GetConversationParticipantsAsync(int conversationId, int userId)
     {
         var conversation = await _unitOfWork.Conversations.GetByIdAsync(conversationId);
         if (conversation == null || conversation.IsDeleted)
-            return OperationResult<IEnumerable<ConversationParticipantDto>>.Failure("Conversation not found");
+            return OperationResult<IEnumerable<ConversationParticipantDto>>.Failure("المحادثة غير موجودة");
 
         var isParticipant = await _unitOfWork.ConversationParticipants.IsParticipantAsync(conversationId, userId);
         if (!isParticipant)
-            return OperationResult<IEnumerable<ConversationParticipantDto>>.Failure("User is not a participant in this conversation");
+            return OperationResult<IEnumerable<ConversationParticipantDto>>.Failure("المستخدم ليس مشتركا في هذه المحادثة");
 
         var participants = await _unitOfWork.ConversationParticipants.GetByConversationIdAsync(conversationId);
-        var dtos = new List<ConversationParticipantDto>();
-        foreach (var p in participants)
+        var userIds = participants.Select(p => p.UserId).Distinct().ToList();
+        var users = await _unitOfWork.Users.FindAsync(u => userIds.Contains(u.Id));
+        var userDict = users.ToDictionary(u => u.Id, u => u.FullName);
+
+        var dtos = participants.Select(p =>
         {
-            var pDto = _mapper.Map<ConversationParticipantDto>(p);
-            var user = await _unitOfWork.Users.GetByIdAsync(p.UserId);
-            pDto.UserName = user?.FullName ?? "";
-            dtos.Add(pDto);
-        }
+            var dto = _mapper.Map<ConversationParticipantDto>(p);
+            dto.UserName = userDict.GetValueOrDefault(p.UserId, "");
+            return dto;
+        }).ToList();
 
         return OperationResult<IEnumerable<ConversationParticipantDto>>.Success(dtos);
     }
@@ -250,21 +252,21 @@ public class ConversationService : IConversationService
     {
         var conversation = await _unitOfWork.Conversations.GetByIdAsync(conversationId);
         if (conversation == null || conversation.IsDeleted)
-            return OperationResult.Failure("Conversation not found");
+            return OperationResult.Failure("المحادثة غير موجودة");
 
         var isParticipant = await _unitOfWork.ConversationParticipants.IsParticipantAsync(conversationId, userId);
         if (!isParticipant)
-            return OperationResult.Failure("User is not a participant in this conversation");
+            return OperationResult.Failure("المستخدم ليس مشتركا في هذه المحادثة");
 
         await _unitOfWork.ConversationParticipants.UpdateLastReadAtAsync(conversationId, userId, DateTime.UtcNow);
-        return OperationResult.Success("Conversation marked as read");
+        return OperationResult.Success("تم وضع علامة مقروءة على المحادثة");
     }
 
     public async Task<OperationResult<IEnumerable<ConversationDto>>> SearchConversationsAsync(int userId, string term)
     {
         var user = await _unitOfWork.Users.GetByIdAsync(userId);
-        if (user == null)
-            return OperationResult<IEnumerable<ConversationDto>>.Failure("User not found");
+        if (user == null || user.IsDeleted)
+            return OperationResult<IEnumerable<ConversationDto>>.Failure("المستخدم غير موجود");
 
         var conversations = await _unitOfWork.Conversations.GetWithLastMessageAsync(userId);
         var filtered = conversations
@@ -284,11 +286,11 @@ public class ConversationService : IConversationService
     {
         var conversation = await _unitOfWork.Conversations.GetWithParticipantsAsync(conversationId);
         if (conversation == null || conversation.IsDeleted)
-            return OperationResult<ConversationDto>.Failure("Conversation not found");
+            return OperationResult<ConversationDto>.Failure("المحادثة غير موجودة");
 
         var isParticipant = await _unitOfWork.ConversationParticipants.IsParticipantAsync(conversationId, requestingUserId);
         if (!isParticipant)
-            return OperationResult<ConversationDto>.Failure("User is not a participant in this conversation");
+            return OperationResult<ConversationDto>.Failure("المستخدم ليس مشتركا في هذه المحادثة");
 
         var dto = await MapConversationWithParticipantsAsync(conversation);
         return OperationResult<ConversationDto>.Success(dto);
@@ -298,7 +300,7 @@ public class ConversationService : IConversationService
     {
         var user = await _unitOfWork.Users.GetByIdAsync(userId);
         if (user == null || user.IsDeleted)
-            return OperationResult<IEnumerable<ConversationDto>>.Failure("User not found");
+            return OperationResult<IEnumerable<ConversationDto>>.Failure("المستخدم غير موجود");
 
         var conversations = await _unitOfWork.Conversations.GetWithLastMessageAsync(userId);
 
@@ -330,22 +332,22 @@ public class ConversationService : IConversationService
     {
         var conversation = await _unitOfWork.Conversations.GetByIdAsync(conversationId);
         if (conversation == null || conversation.IsDeleted)
-            return OperationResult.Failure("Conversation not found");
+            return OperationResult.Failure("المحادثة غير موجودة");
 
         if (conversation.Type != ConversationType.Group)
-            return OperationResult.Failure("Can only add participants to group conversations");
+            return OperationResult.Failure("يمكن إضافة مشاركين فقط إلى المحادثات الجماعية");
 
         var isCallerParticipant = await _unitOfWork.ConversationParticipants.IsParticipantAsync(conversationId, callerUserId);
         if (!isCallerParticipant)
-            return OperationResult.Failure("Caller is not a participant in this conversation");
+            return OperationResult.Failure("المتصل ليس مشتركا في هذه المحادثة");
 
         var user = await _unitOfWork.Users.GetByIdAsync(userId);
         if (user == null || user.IsDeleted || !user.IsActive)
-            return OperationResult.Failure("User not found or inactive");
+            return OperationResult.Failure("المستخدم غير موجود أو غير نشط");
 
         var alreadyParticipant = await _unitOfWork.ConversationParticipants.IsParticipantAsync(conversationId, userId);
         if (alreadyParticipant)
-            return OperationResult.Failure("User is already a participant");
+            return OperationResult.Failure("المستخدم مشترك بالفعل");
 
         var participant = new ConversationParticipant
         {
@@ -357,48 +359,48 @@ public class ConversationService : IConversationService
         await _unitOfWork.ConversationParticipants.AddAsync(participant);
         await _unitOfWork.SaveChangesAsync();
 
-        return OperationResult.Success("Participant added successfully");
+        return OperationResult.Success("تم إضافة المشترك بنجاح");
     }
 
     public async Task<OperationResult> RemoveParticipantAsync(int conversationId, int userId, int callerUserId)
     {
         var conversation = await _unitOfWork.Conversations.GetByIdAsync(conversationId);
         if (conversation == null || conversation.IsDeleted)
-            return OperationResult.Failure("Conversation not found");
+            return OperationResult.Failure("المحادثة غير موجودة");
 
         if (conversation.Type != ConversationType.Group)
-            return OperationResult.Failure("Can only remove participants from group conversations");
+            return OperationResult.Failure("يمكن إزالة مشاركين فقط من المحادثات الجماعية");
 
         var isCallerParticipant = await _unitOfWork.ConversationParticipants.IsParticipantAsync(conversationId, callerUserId);
         if (!isCallerParticipant)
-            return OperationResult.Failure("Caller is not a participant in this conversation");
+            return OperationResult.Failure("المتصل ليس مشتركا في هذه المحادثة");
 
         var participant = await _unitOfWork.ConversationParticipants
             .GetByConversationAndUserAsync(conversationId, userId);
 
         if (participant == null)
-            return OperationResult.Failure("User is not a participant in this conversation");
+            return OperationResult.Failure("المستخدم ليس مشتركا في هذه المحادثة");
 
         _unitOfWork.ConversationParticipants.SoftDelete(participant);
         await _unitOfWork.SaveChangesAsync();
 
-        return OperationResult.Success("Participant removed successfully");
+        return OperationResult.Success("تم إزالة المشترك بنجاح");
     }
 
     public async Task<OperationResult<MessageDto>> SendMessageAsync(SendMessageRequest request)
     {
         var conversation = await _unitOfWork.Conversations.GetByIdAsync(request.ConversationId);
         if (conversation == null || conversation.IsDeleted)
-            return OperationResult<MessageDto>.Failure("Conversation not found");
+            return OperationResult<MessageDto>.Failure("المحادثة غير موجودة");
 
         var isParticipant = await _unitOfWork.ConversationParticipants.IsParticipantAsync(
             request.ConversationId, request.SenderId);
 
         if (!isParticipant)
-            return OperationResult<MessageDto>.Failure("Sender is not a participant in this conversation");
+            return OperationResult<MessageDto>.Failure("المرسل ليس مشتركا في هذه المحادثة");
 
         if (string.IsNullOrWhiteSpace(request.Content))
-            return OperationResult<MessageDto>.Failure("Message content cannot be empty");
+            return OperationResult<MessageDto>.Failure("محتوى الرسالة لا يمكن أن يكون فارغا");
 
         var message = _mapper.Map<Message>(request);
         message.SentAt = DateTime.UtcNow;
@@ -414,7 +416,7 @@ public class ConversationService : IConversationService
         var dto = _mapper.Map<MessageDto>(message);
         dto.SenderName = sender?.FullName ?? "";
 
-        return OperationResult<MessageDto>.Success(dto, "Message sent successfully");
+        return OperationResult<MessageDto>.Success(dto, "تم إرسال الرسالة بنجاح");
     }
 
     public async Task<OperationResult<PagedResult<MessageDto>>> GetMessagesAsync(
@@ -422,13 +424,13 @@ public class ConversationService : IConversationService
     {
         var conversation = await _unitOfWork.Conversations.GetByIdAsync(conversationId);
         if (conversation == null || conversation.IsDeleted)
-            return OperationResult<PagedResult<MessageDto>>.Failure("Conversation not found");
+            return OperationResult<PagedResult<MessageDto>>.Failure("المحادثة غير موجودة");
 
         var isParticipant = await _unitOfWork.ConversationParticipants.IsParticipantAsync(
             conversationId, requestingUserId);
 
         if (!isParticipant)
-            return OperationResult<PagedResult<MessageDto>>.Failure("User is not a participant in this conversation");
+            return OperationResult<PagedResult<MessageDto>>.Failure("المستخدم ليس مشتركا في هذه المحادثة");
 
         var messages = await _unitOfWork.Messages.GetByConversationPagedAsync(
             conversationId, filter.Page, filter.PageSize);
@@ -458,16 +460,17 @@ public class ConversationService : IConversationService
         var participants = await _unitOfWork.ConversationParticipants
             .GetByConversationIdAsync(conversation.Id);
 
-        var participantDtos = new List<ConversationParticipantDto>();
-        foreach (var participant in participants)
-        {
-            var pDto = _mapper.Map<ConversationParticipantDto>(participant);
-            var user = await _unitOfWork.Users.GetByIdAsync(participant.UserId);
-            pDto.UserName = user?.FullName ?? "";
-            participantDtos.Add(pDto);
-        }
+        var userIds = participants.Select(p => p.UserId).Distinct().ToList();
+        var users = await _unitOfWork.Users.FindAsync(u => userIds.Contains(u.Id));
+        var userDict = users.ToDictionary(u => u.Id, u => u.FullName);
 
-        dto.Participants = participantDtos;
+        dto.Participants = participants.Select(p =>
+        {
+            var pDto = _mapper.Map<ConversationParticipantDto>(p);
+            pDto.UserName = userDict.GetValueOrDefault(p.UserId, "");
+            return pDto;
+        }).ToList();
+
         return dto;
     }
 }

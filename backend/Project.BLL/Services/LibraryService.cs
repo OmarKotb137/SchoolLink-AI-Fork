@@ -24,37 +24,37 @@ public class LibraryService : ILibraryService
     {
         var uploader = await _unitOfWork.Users.GetByIdAsync(request.UploadedById);
         if (uploader == null || uploader.IsDeleted)
-            return OperationResult<LibraryItemDto>.Failure("Uploader not found");
+            return OperationResult<LibraryItemDto>.Failure("لم يتم العثور على الرافع");
 
         if (uploader.Role != UserRole.Admin && uploader.Role != UserRole.Teacher)
-            return OperationResult<LibraryItemDto>.Failure("Only Admins and Teachers can upload library items");
+            return OperationResult<LibraryItemDto>.Failure("فقط المدراء والمدرسون يمكنهم رفع عناصر المكتبة");
 
         if (string.IsNullOrWhiteSpace(request.Title))
-            return OperationResult<LibraryItemDto>.Failure("Title is required");
+            return OperationResult<LibraryItemDto>.Failure("العنوان مطلوب");
 
         if (request.ItemType is LibraryItemType.Book or LibraryItemType.File or LibraryItemType.Video
             && string.IsNullOrWhiteSpace(request.FileUrl))
-            return OperationResult<LibraryItemDto>.Failure("FileUrl is required for this item type");
+            return OperationResult<LibraryItemDto>.Failure("رابط الملف مطلوب لهذا النوع من العناصر");
 
         if (request.SubjectId.HasValue)
         {
             var subject = await _unitOfWork.Subjects.GetByIdAsync(request.SubjectId.Value);
             if (subject == null || subject.IsDeleted)
-                return OperationResult<LibraryItemDto>.Failure("Subject not found");
+                return OperationResult<LibraryItemDto>.Failure("لم يتم العثور على المادة");
         }
 
         if (request.GradeLevelId.HasValue)
         {
             var gradeLevel = await _unitOfWork.GradeLevels.GetByIdAsync(request.GradeLevelId.Value);
             if (gradeLevel == null || gradeLevel.IsDeleted)
-                return OperationResult<LibraryItemDto>.Failure("GradeLevel not found");
+                return OperationResult<LibraryItemDto>.Failure("لم يتم العثور على المستوى الدراسي");
         }
 
         if (request.AcademicYearId.HasValue)
         {
             var year = await _unitOfWork.AcademicYears.GetByIdAsync(request.AcademicYearId.Value);
             if (year == null || year.IsDeleted)
-                return OperationResult<LibraryItemDto>.Failure("AcademicYear not found");
+                return OperationResult<LibraryItemDto>.Failure("لم يتم العثور على السنة الدراسية");
         }
 
         var item = _mapper.Map<LibraryItem>(request);
@@ -64,24 +64,24 @@ public class LibraryService : ILibraryService
         var dto = _mapper.Map<LibraryItemDto>(item);
         dto.UploadedByName = uploader.FullName;
 
-        return OperationResult<LibraryItemDto>.Success(dto, "Library item uploaded successfully");
+        return OperationResult<LibraryItemDto>.Success(dto, "تم رفع عنصر المكتبة بنجاح");
     }
 
     public async Task<OperationResult<LibraryItemDto>> UpdateLibraryItemAsync(UpdateLibraryItemRequest request)
     {
         var item = await _unitOfWork.LibraryItems.GetByIdAsync(request.Id);
         if (item == null || item.IsDeleted)
-            return OperationResult<LibraryItemDto>.Failure($"Library item with id {request.Id} not found");
+            return OperationResult<LibraryItemDto>.Failure($"عنصر المكتبة ذو المعرف {request.Id} غير موجود");
 
         var caller = await _unitOfWork.Users.GetByIdAsync(request.CallerUserId);
         if (caller == null || caller.IsDeleted)
-            return OperationResult<LibraryItemDto>.Failure("Caller not found");
+            return OperationResult<LibraryItemDto>.Failure("لم يتم العثور على المستدعي");
 
         if (caller.Role != UserRole.Admin && item.UploadedById != request.CallerUserId)
-            return OperationResult<LibraryItemDto>.Failure("Only the uploader or an Admin can update this item");
+            return OperationResult<LibraryItemDto>.Failure("فقط الرافع أو المدراء يمكنهم تحديث هذا العنصر");
 
         if (string.IsNullOrWhiteSpace(request.Title))
-            return OperationResult<LibraryItemDto>.Failure("Title is required");
+            return OperationResult<LibraryItemDto>.Failure("العنوان مطلوب");
 
         item.Title = request.Title;
         item.Description = request.Description;
@@ -92,14 +92,14 @@ public class LibraryService : ILibraryService
         await _unitOfWork.SaveChangesAsync();
 
         var dto = _mapper.Map<LibraryItemDto>(item);
-        return OperationResult<LibraryItemDto>.Success(dto, "Library item updated successfully");
+        return OperationResult<LibraryItemDto>.Success(dto, "تم تحديث عنصر المكتبة بنجاح");
     }
 
     public async Task<OperationResult<LibraryItemDto>> GetLibraryItemByIdAsync(int id)
     {
         var item = await _unitOfWork.LibraryItems.GetByIdAsync(id);
         if (item == null || item.IsDeleted)
-            return OperationResult<LibraryItemDto>.Failure("Library item not found");
+            return OperationResult<LibraryItemDto>.Failure("عنصر المكتبة غير موجود");
 
         var dto = _mapper.Map<LibraryItemDto>(item);
         return OperationResult<LibraryItemDto>.Success(dto);
@@ -184,7 +184,7 @@ public class LibraryService : ILibraryService
     public async Task<OperationResult<IEnumerable<LibraryItemDto>>> SearchLibraryAsync(string searchTerm, int gradeLevelId)
     {
         if (string.IsNullOrWhiteSpace(searchTerm) || searchTerm.Length < 2)
-            return OperationResult<IEnumerable<LibraryItemDto>>.Failure("Search term must be at least 2 characters");
+            return OperationResult<IEnumerable<LibraryItemDto>>.Failure("يجب أن يتكون مصطلح البحث من حرفين على الأقل");
 
         var results = await _unitOfWork.LibraryItems.SearchByTitleAsync(searchTerm);
 
@@ -239,17 +239,17 @@ public class LibraryService : ILibraryService
     {
         var item = await _unitOfWork.LibraryItems.GetByIdAsync(id);
         if (item == null || item.IsDeleted)
-            return OperationResult.Failure($"Library item with id {id} not found");
+            return OperationResult.Failure($"عنصر المكتبة ذو المعرف {id} غير موجود");
 
         var caller = await _unitOfWork.Users.GetByIdAsync(callerUserId);
         if (caller == null || caller.IsDeleted)
-            return OperationResult.Failure("Caller not found");
+            return OperationResult.Failure("لم يتم العثور على المستدعي");
 
         if (caller.Role != UserRole.Admin && item.UploadedById != callerUserId)
-            return OperationResult.Failure("Only the uploader or an Admin can delete this item");
+            return OperationResult.Failure("فقط الرافع أو المدراء يمكنهم حذف هذا العنصر");
 
         _unitOfWork.LibraryItems.SoftDelete(item);
         await _unitOfWork.SaveChangesAsync();
-        return OperationResult.Success("Library item deleted successfully");
+        return OperationResult.Success("تم حذف عنصر المكتبة بنجاح");
     }
 }

@@ -25,7 +25,7 @@ namespace Project.BLL.Services
                 .GetWithAnswersAsync(id, CancellationToken.None);
 
             if (attempt == null || attempt.IsDeleted)
-                return OperationResult<GetExamAttemptDto>.Failure("Attempt not found", 404);
+                return OperationResult<GetExamAttemptDto>.Failure("المحاولة غير موجودة", 404);
 
             var dto = _mapper.Map<GetExamAttemptDto>(attempt);
             return OperationResult<GetExamAttemptDto>.Success(dto);
@@ -36,7 +36,7 @@ namespace Project.BLL.Services
             var exam = await _unitOfWork.Exams.GetByIdAsync(examId);
 
             if (exam == null || exam.IsDeleted)
-                return OperationResult<List<ExamAttemptSummaryDto>>.Failure("Exam not found", 404);
+                return OperationResult<List<ExamAttemptSummaryDto>>.Failure("الامتحان غير موجود", 404);
 
             var attempts = await _unitOfWork.StudentExamAttempts
                 .GetByExamIdAsync(examId, CancellationToken.None);
@@ -51,28 +51,28 @@ namespace Project.BLL.Services
                 .GetByIdAsync(dto.EnrollmentId);
 
             if (enrollment == null || enrollment.IsDeleted)
-                return OperationResult<GetExamAttemptDto>.Failure("Enrollment not found", 404);
+                return OperationResult<GetExamAttemptDto>.Failure("التسجيل غير موجود", 404);
 
             var exam = await _unitOfWork.Exams.GetByIdAsync(dto.ExamId);
 
             if (exam == null || exam.IsDeleted)
-                return OperationResult<GetExamAttemptDto>.Failure("Exam not found", 404);
+                return OperationResult<GetExamAttemptDto>.Failure("الامتحان غير موجود", 404);
 
             if (!exam.IsPublished)
-                return OperationResult<GetExamAttemptDto>.Failure("Exam is not published", 400);
+                return OperationResult<GetExamAttemptDto>.Failure("الامتحان غير منشور", 400);
 
             var now = DateTime.UtcNow;
             if (exam.StartTime.HasValue && now < exam.StartTime)
-                return OperationResult<GetExamAttemptDto>.Failure("Exam has not started yet", 400);
+                return OperationResult<GetExamAttemptDto>.Failure("الامتحان لم يبدأ بعد", 400);
 
             if (exam.EndTime.HasValue && now > exam.EndTime)
-                return OperationResult<GetExamAttemptDto>.Failure("Exam has already ended", 400);
+                return OperationResult<GetExamAttemptDto>.Failure("الامتحان قد انتهى بالفعل", 400);
 
             var alreadyAttempted = await _unitOfWork.StudentExamAttempts
                 .HasAttemptedAsync(dto.EnrollmentId, dto.ExamId, CancellationToken.None);
 
             if (alreadyAttempted)
-                return OperationResult<GetExamAttemptDto>.Failure("Attempt already exists for this exam", 400);
+                return OperationResult<GetExamAttemptDto>.Failure("محاولة لهذا الامتحان موجودة بالفعل", 400);
 
             var attempt = new StudentExamAttempt
             {
@@ -86,7 +86,7 @@ namespace Project.BLL.Services
             await _unitOfWork.SaveChangesAsync(CancellationToken.None);
 
             var resultDto = _mapper.Map<GetExamAttemptDto>(attempt);
-            return OperationResult<GetExamAttemptDto>.Success(resultDto, "Exam attempt started successfully");
+            return OperationResult<GetExamAttemptDto>.Success(resultDto, "تم بدء المحاولة بنجاح");
         }
 
         public async Task<OperationResult<GetExamAttemptDto>> SubmitAttemptAsync(SubmitExamAttemptDto dto)
@@ -95,23 +95,23 @@ namespace Project.BLL.Services
                 .GetWithAnswersAsync(dto.AttemptId, CancellationToken.None);
 
             if (attempt == null || attempt.IsDeleted)
-                return OperationResult<GetExamAttemptDto>.Failure("Attempt not found", 404);
+                return OperationResult<GetExamAttemptDto>.Failure("المحاولة غير موجودة", 404);
 
             if (attempt.SubmittedAt != null)
-                return OperationResult<GetExamAttemptDto>.Failure("Attempt already submitted", 400);
+                return OperationResult<GetExamAttemptDto>.Failure("تم تقديم المحاولة بالفعل", 400);
 
             var exam = await _unitOfWork.Exams
                 .GetWithQuestionsAsync(attempt.ExamId, CancellationToken.None);
 
-            if (exam == null)
-                return OperationResult<GetExamAttemptDto>.Failure("Exam not found", 404);
+            if (exam == null || exam.IsDeleted)
+                return OperationResult<GetExamAttemptDto>.Failure("الامتحان غير موجود", 404);
 
             // check time limit
             if (exam.DurationMinutes.HasValue)
             {
                 var elapsed = (DateTime.UtcNow - attempt.StartedAt).TotalMinutes;
                 if (elapsed > exam.DurationMinutes.Value)
-                    return OperationResult<GetExamAttemptDto>.Failure("Exam time limit exceeded", 400);
+                    return OperationResult<GetExamAttemptDto>.Failure("تم تجاوز الوقت المحدد للامتحان", 400);
             }
 
             // save answers
@@ -142,20 +142,20 @@ namespace Project.BLL.Services
                 .GetWithAnswersAsync(attempt.Id, CancellationToken.None);
 
             var resultDto = _mapper.Map<GetExamAttemptDto>(updatedAttempt!);
-            return OperationResult<GetExamAttemptDto>.Success(resultDto, "Exam submitted successfully");
+            return OperationResult<GetExamAttemptDto>.Success(resultDto, "تم تقديم الامتحان بنجاح");
         }
 
         public async Task<OperationResult<List<ExamAttemptSummaryDto>>> GetStudentAttemptsAsync(int enrollmentId, int examId)
     {
         var enrollment = await _unitOfWork.StudentEnrollments.GetByIdAsync(enrollmentId);
         if (enrollment == null || enrollment.IsDeleted)
-            return OperationResult<List<ExamAttemptSummaryDto>>.Failure("Enrollment not found", 404);
+            return OperationResult<List<ExamAttemptSummaryDto>>.Failure("التسجيل غير موجود", 404);
 
         var allAttempts = await _unitOfWork.StudentExamAttempts.GetByEnrollmentIdAsync(enrollmentId);
         var filtered = allAttempts.Where(a => a.ExamId == examId && !a.IsDeleted).ToList();
 
         var dtos = _mapper.Map<List<ExamAttemptSummaryDto>>(filtered);
-        return OperationResult<List<ExamAttemptSummaryDto>>.Success(dtos, "Student attempts retrieved successfully");
+        return OperationResult<List<ExamAttemptSummaryDto>>.Success(dtos, "تم جلب محاولات الطالب بنجاح");
     }
 
     public async Task<OperationResult> AutoGradeAsync(int attemptId)
@@ -164,17 +164,17 @@ namespace Project.BLL.Services
             .GetWithAnswersAsync(attemptId, CancellationToken.None);
 
         if (attempt == null || attempt.IsDeleted)
-            return OperationResult.Failure("Attempt not found", 404);
+            return OperationResult.Failure("المحاولة غير موجودة", 404);
 
         if (attempt.SubmittedAt == null)
-            return OperationResult.Failure("Attempt has not been submitted yet");
+            return OperationResult.Failure("لم يتم تقديم المحاولة بعد");
 
         if (attempt.IsGraded)
-            return OperationResult.Failure("Attempt is already graded");
+            return OperationResult.Failure("تم تصحيح المحاولة بالفعل");
 
         var exam = await _unitOfWork.Exams.GetWithQuestionsAsync(attempt.ExamId, CancellationToken.None);
-        if (exam == null)
-            return OperationResult.Failure("Exam not found", 404);
+        if (exam == null || exam.IsDeleted)
+            return OperationResult.Failure("الامتحان غير موجود", 404);
 
         decimal totalScore = 0;
         foreach (var answer in attempt.Answers)
@@ -201,7 +201,7 @@ namespace Project.BLL.Services
         _unitOfWork.StudentExamAttempts.Update(attempt);
         await _unitOfWork.SaveChangesAsync(CancellationToken.None);
 
-        return OperationResult.Success("Attempt auto-graded successfully");
+        return OperationResult.Success("تم تصحيح المحاولة تلقائياً بنجاح");
     }
 
     public async Task<OperationResult> GradeAttemptAsync(int attemptId)
@@ -210,13 +210,13 @@ namespace Project.BLL.Services
                 .GetWithAnswersAsync(attemptId, CancellationToken.None);
 
             if (attempt == null || attempt.IsDeleted)
-                return OperationResult.Failure("Attempt not found");
+                return OperationResult.Failure("المحاولة غير موجودة");
 
             if (attempt.SubmittedAt == null)
-                return OperationResult.Failure("Attempt has not been submitted yet");
+                return OperationResult.Failure("لم يتم تقديم المحاولة بعد");
 
             if (attempt.IsGraded)
-                return OperationResult.Failure("Attempt is already graded");
+                return OperationResult.Failure("تم تصحيح المحاولة بالفعل");
 
             decimal totalScore = 0;
 
@@ -242,7 +242,7 @@ namespace Project.BLL.Services
             _unitOfWork.StudentExamAttempts.Update(attempt);
             await _unitOfWork.SaveChangesAsync(CancellationToken.None);
 
-            return OperationResult.Success("Attempt graded successfully");
+            return OperationResult.Success("تم تصحيح المحاولة بنجاح");
         }
     }
 }
