@@ -9,4 +9,5 @@ public interface IEvaluationTemplateService
     Task<OperationResult<EvaluationTemplateDto>> UpdateEvaluationTemplateAsync(UpdateEvaluationTemplateRequest request);
     Task<OperationResult<EvaluationTemplateDto>> GetTemplateByIdAsync(int id);
     Task<OperationResult<IEnumerable<EvaluationTemplateDto>>> GetTemplateByGradeLevelAsync(int gradeLevelId, int academicYearId);
+    Task<OperationResult> DeleteEvaluationTemplateAsync(int id);
 }

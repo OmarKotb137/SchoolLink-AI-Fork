@@ -11,6 +11,7 @@ namespace Project.Domain.Entities
         public ItemType ItemType { get; set; }
         public int DisplayOrder { get; set; }
         public bool IsVisible { get; set; } = true;
+        public AutoCalcType AutoCalcType { get; set; } = AutoCalcType.None;
 
         // Navigation Properties
         public EvaluationTemplate Template { get; set; } = null!;

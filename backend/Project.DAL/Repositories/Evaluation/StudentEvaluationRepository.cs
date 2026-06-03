@@ -45,6 +45,9 @@ public class StudentEvaluationRepository : Repository<StudentEvaluation>, IStude
                 se.EnrollmentId == enrollmentId &&
                 se.PeriodId == periodId)
             .Include(se => se.EvaluationItem)
+                .ThenInclude(e => e.Template)
+                    .ThenInclude(t => t.Subject)
+            .Include(se => se.Period)
             .OrderBy(se => se.EvaluationItem.DisplayOrder)
             .ToListAsync(ct);
 

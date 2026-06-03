@@ -9,5 +9,6 @@ public class CreateEvaluationItemRequest
     public decimal MaxScore { get; set; }
     public decimal Weight { get; set; } = 1;
     public ItemType ItemType { get; set; }
+    public AutoCalcType AutoCalcType { get; set; } = AutoCalcType.None;
     public int DisplayOrder { get; set; }
 }

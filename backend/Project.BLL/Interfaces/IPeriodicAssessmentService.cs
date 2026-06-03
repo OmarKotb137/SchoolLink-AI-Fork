@@ -7,5 +7,6 @@ public interface IPeriodicAssessmentService
 {
     Task<OperationResult<PeriodicAssessmentDto>> RecordPeriodicAssessmentAsync(RecordPeriodicAssessmentRequest request);
     Task<OperationResult<PeriodicAssessmentDto>> UpdatePeriodicAssessmentAsync(UpdatePeriodicAssessmentRequest request);
+    Task<OperationResult> DeletePeriodicAssessmentAsync(int id);
     Task<OperationResult<IEnumerable<PeriodicAssessmentDto>>> GetByEnrollmentAsync(int enrollmentId);
 }

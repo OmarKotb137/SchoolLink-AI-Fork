@@ -36,11 +36,12 @@ public class PeriodAverageService : IPeriodAverageService
             return OperationResult<PeriodAverageDto>.Failure("لا توجد درجات مسجلة لهذه الفترة");
 
         var totalScore = evaluations.Sum(e => e.Score ?? 0);
-        var evaluatedItems = await Task.WhenAll(
-            evaluations.Select(e => _unitOfWork.EvaluationItems.GetByIdAsync(e.EvaluationItemId)));
+        var itemIds = evaluations.Select(e => e.EvaluationItemId).Distinct().ToList();
+        var evaluatedItems = await _unitOfWork.EvaluationItems
+            .FindAsync(i => itemIds.Contains(i.Id));
         var totalMax = evaluatedItems
             .Where(i => i is not null && !i.IsDeleted)
-            .Sum(i => i!.MaxScore * i.Weight);
+            .Sum(i => i.MaxScore * i.Weight);
 
         var avgScore = totalMax > 0 ? (totalScore / totalMax) * 100 : 0;
 
@@ -72,6 +73,34 @@ public class PeriodAverageService : IPeriodAverageService
         return OperationResult<PeriodAverageDto>.Success(
             _mapper.Map<PeriodAverageDto>(existing),
             "تم حساب وحفظ متوسط الفترة بنجاح");
+    }
+
+    public async Task<OperationResult<IEnumerable<PeriodAverageDto>>> GetByClassAndPeriodAsync(int classId, int periodId)
+    {
+        var classEntity = await _unitOfWork.Classes.GetByIdAsync(classId);
+        if (classEntity is null || classEntity.IsDeleted)
+            return OperationResult<IEnumerable<PeriodAverageDto>>.Failure("الفصل غير موجود");
+
+        var period = await _unitOfWork.EvaluationPeriods.GetByIdAsync(periodId);
+        if (period is null || period.IsDeleted)
+            return OperationResult<IEnumerable<PeriodAverageDto>>.Failure("فترة التقييم غير موجودة");
+
+        var averages = await _unitOfWork.PeriodAverages.GetByClassAndPeriodAsync(classId, periodId);
+        return OperationResult<IEnumerable<PeriodAverageDto>>.Success(
+            _mapper.Map<IEnumerable<PeriodAverageDto>>(averages),
+            "تم جلب متوسطات الفصل بنجاح");
+    }
+
+    public async Task<OperationResult> DeletePeriodAverageAsync(int id)
+    {
+        var entity = await _unitOfWork.PeriodAverages.GetByIdAsync(id);
+        if (entity is null || entity.IsDeleted)
+            return OperationResult.Failure("متوسط الفترة غير موجود");
+
+        _unitOfWork.PeriodAverages.SoftDelete(entity);
+        await _unitOfWork.SaveChangesAsync();
+
+        return OperationResult.Success("تم حذف متوسط الفترة بنجاح");
     }
 
     public async Task<OperationResult<IEnumerable<PeriodAverageDto>>> GetByEnrollmentAsync(int enrollmentId)
