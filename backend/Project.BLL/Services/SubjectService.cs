@@ -146,7 +146,7 @@ public class SubjectService : ISubjectService
     public async Task<OperationResult<IEnumerable<SubjectDto>>> SearchSubjectsAsync(string term)
     {
         if (string.IsNullOrWhiteSpace(term) || term.Length < 2)
-            return OperationResult<IEnumerable<SubjectDto>>.Failure("Search term must be at least 2 characters");
+            return OperationResult<IEnumerable<SubjectDto>>.Failure("يجب أن تكون عبارة البحث حرفين على الأقل");
 
         var all = await _unitOfWork.Subjects.GetAllAsync();
         var termLower = term.ToLower();

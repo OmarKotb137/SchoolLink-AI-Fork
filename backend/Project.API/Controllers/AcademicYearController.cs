@@ -67,7 +67,7 @@ public class AcademicYearController : ControllerBase
     public async Task<IActionResult> Update(int id, [FromBody] UpdateAcademicYearRequest request)
     {
         if (id != request.Id)
-            return BadRequest("Route id does not match body id.");
+            return BadRequest("معرّف الرابط لا يطابق معرّف الطلب.");
 
         var result = await _academicYearService.UpdateAcademicYearAsync(request);
         if (!result.IsSuccess)

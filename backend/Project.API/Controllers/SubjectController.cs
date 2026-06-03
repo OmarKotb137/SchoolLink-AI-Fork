@@ -114,7 +114,7 @@ public class SubjectController : ControllerBase
     public async Task<IActionResult> Update(int id, [FromBody] UpdateSubjectRequest request)
     {
         if (id != request.Id)
-            return BadRequest("Route id does not match body id.");
+            return BadRequest("معرّف الرابط لا يطابق معرّف الطلب.");
 
         var result = await _subjectService.UpdateSubjectAsync(request);
         if (!result.IsSuccess)

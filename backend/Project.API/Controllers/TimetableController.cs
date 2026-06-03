@@ -267,7 +267,7 @@ public class TimetableController : ControllerBase
     public async Task<IActionResult> UpdateSlot(int slotId, [FromBody] UpdateTimetableSlotRequest request)
     {
         if (slotId != request.SlotId)
-            return BadRequest("Route id does not match body id.");
+            return BadRequest("معرّف الرابط لا يطابق معرّف الطلب.");
 
         var result = await _timetableService.UpdateTimetableSlotAsync(request);
         if (!result.IsSuccess)

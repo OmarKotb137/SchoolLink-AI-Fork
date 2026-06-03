@@ -147,7 +147,7 @@ public class ClassSubjectTeacherController : ControllerBase
     public async Task<IActionResult> UpdateAssignment(int id, [FromBody] UpdateTeacherAssignmentRequest request)
     {
         if (id != request.AssignmentId)
-            return BadRequest("Route id does not match body id.");
+            return BadRequest("معرّف الرابط لا يطابق معرّف الطلب.");
 
         var result = await _classSubjectTeacherService.UpdateTeacherAssignmentAsync(request);
         if (!result.IsSuccess)
