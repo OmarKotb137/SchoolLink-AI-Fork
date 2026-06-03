@@ -173,6 +173,16 @@ public class ClassController : ControllerBase
     }
 
     [Authorize(Roles = "Admin")]
+    [HttpPost("with-students")]
+    public async Task<IActionResult> CreateWithStudents([FromBody] CreateClassWithStudentsRequest request)
+    {
+        var result = await _classService.CreateClassWithStudentsAsync(request);
+        if (!result.IsSuccess)
+            return BadRequest(result);
+        return CreatedAtAction(nameof(GetById), new { id = result.Data!.Id }, result);
+    }
+
+    [Authorize(Roles = "Admin")]
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateClassRequest request)
     {

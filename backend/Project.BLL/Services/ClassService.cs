@@ -4,6 +4,7 @@ using Project.BLL.DTOs;
 using Project.BLL.Interfaces;
 using Project.DAL.Interfaces;
 using Project.Domain.Entities;
+using Project.Domain.Enums;
 
 namespace Project.BLL.Services;
 
@@ -152,5 +153,87 @@ public class ClassService : IClassService
         return OperationResult<IEnumerable<ClassDto>>.Success(
             _mapper.Map<IEnumerable<ClassDto>>(classes),
             "تم جلب فصول المعلم بنجاح");
+    }
+
+    public async Task<OperationResult<ClassDto>> CreateClassWithStudentsAsync(CreateClassWithStudentsRequest request)
+    {
+        var academicYear = await _unitOfWork.AcademicYears.GetCurrentAsync();
+        if (academicYear is null)
+            return OperationResult<ClassDto>.Failure("لا توجد سنة دراسية نشطة");
+
+        var entity = new SchoolClass
+        {
+            GradeLevelId = 1,
+            AcademicYearId = academicYear.Id,
+            Name = request.Name.Trim()
+        };
+
+        await _unitOfWork.Classes.AddAsync(entity);
+        await _unitOfWork.SaveChangesAsync();
+
+        foreach (var studentName in request.Students.Select(s => s.Trim()).Where(s => s.Length > 0))
+        {
+            var student = (await _unitOfWork.Students.FindAsync(s => s.FullName == studentName)).FirstOrDefault();
+            if (student is null)
+            {
+                student = new Student { FullName = studentName, IsActive = true };
+                await _unitOfWork.Students.AddAsync(student);
+                await _unitOfWork.SaveChangesAsync();
+            }
+
+            var exists = await _unitOfWork.StudentEnrollments.AnyAsync(e =>
+                e.StudentId == student.Id &&
+                e.ClassId == entity.Id &&
+                e.AcademicYearId == academicYear.Id);
+
+            if (!exists)
+            {
+                await _unitOfWork.StudentEnrollments.AddAsync(new StudentEnrollment
+                {
+                    StudentId = student.Id,
+                    ClassId = entity.Id,
+                    AcademicYearId = academicYear.Id,
+                    EnrolledAt = DateOnly.FromDateTime(DateTime.UtcNow)
+                });
+            }
+        }
+
+        await _unitOfWork.SaveChangesAsync();
+
+        if (!string.IsNullOrWhiteSpace(request.Subject) || !string.IsNullOrWhiteSpace(request.Teacher))
+        {
+            var subject = string.IsNullOrWhiteSpace(request.Subject)
+                ? null
+                : (await _unitOfWork.Subjects.FindAsync(s => s.Name == request.Subject.Trim())).FirstOrDefault();
+            var teacher = string.IsNullOrWhiteSpace(request.Teacher)
+                ? null
+                : (await _unitOfWork.Users.FindAsync(u => u.FullName == request.Teacher.Trim() && u.Role == UserRole.Teacher)).FirstOrDefault();
+
+            if (subject is not null && teacher is not null)
+            {
+                var exists = await _unitOfWork.ClassSubjectTeachers.AnyAsync(t =>
+                    t.ClassId == entity.Id &&
+                    t.SubjectId == subject.Id &&
+                    t.TeacherId == teacher.Id &&
+                    t.AcademicYearId == academicYear.Id);
+
+                if (!exists)
+                {
+                    await _unitOfWork.ClassSubjectTeachers.AddAsync(new ClassSubjectTeacher
+                    {
+                        ClassId = entity.Id,
+                        SubjectId = subject.Id,
+                        TeacherId = teacher.Id,
+                        AcademicYearId = academicYear.Id
+                    });
+                    await _unitOfWork.SaveChangesAsync();
+                }
+            }
+        }
+
+        var withIncludes = await _unitOfWork.Classes.GetByIdWithIncludesAsync(entity.Id);
+        return OperationResult<ClassDto>.Success(
+            _mapper.Map<ClassDto>(withIncludes),
+            "تم إنشاء الفصل مع الطلاب بنجاح");
     }
 }
