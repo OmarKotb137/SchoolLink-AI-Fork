@@ -4,10 +4,10 @@ namespace Project.BLL.DTOs.Auth;
 
 public class LoginRequest
 {
-    [Required(ErrorMessage = "Email is required")]
-    [EmailAddress(ErrorMessage = "Invalid email format")]
+    [Required(ErrorMessage = "البريد الإلكتروني مطلوب")]
+    [EmailAddress(ErrorMessage = "صيغة البريد الإلكتروني غير صحيحة")]
     public string Email { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Password is required")]
+    [Required(ErrorMessage = "كلمة المرور مطلوبة")]
     public string Password { get; set; } = string.Empty;
 }

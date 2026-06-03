@@ -1,3 +1,20 @@
+:host {
+  --primary: #0052CC;
+  --on-surface: #091E42;
+  --on-surface-variant: #434654;
+  --outline: #DFE1E6;
+  --surface-container: #e9edff;
+  --surface-container-low: #f1f3ff;
+  --surface-container-high: #e1e8ff;
+  --surface-container-lowest: #ffffff;
+  --bg-success: #E8F5F1;
+  --success: #36B37E;
+  --bg-danger: #FFF0ED;
+  --danger: #FF5630;
+  --primary-10: rgba(0, 82, 204, 0.1);
+  font-family: 'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, sans-serif;
+}
+
 /* Tab navigation */
 .grade-nav {
   scrollbar-width: none;
@@ -36,11 +53,42 @@
   background: #fff;
   border: 1px solid var(--outline, #DFE1E6);
   border-radius: 16px;
-  padding: 20px;
-  transition: box-shadow 0.2s;
+  padding: 28px;
+  transition: all 0.2s;
 }
 .grade-card:hover {
+  border-color: var(--primary, #0052CC);
   box-shadow: 0 8px 24px rgba(9, 30, 66, 0.08);
+}
+.grade-card h4 {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--on-surface, #091E42);
+}
+.grade-card p {
+  font-size: 12px;
+  color: var(--on-surface-variant, #434654);
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.grade-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.ca {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.ca button, .ca .grade-btn-primary-sm {
+  flex: 1;
+  justify-content: center;
 }
 
 .grade-box {
@@ -296,6 +344,10 @@
   background: rgba(0, 82, 204, 0.08);
   color: var(--primary, #0052CC);
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
 }
 
 /* Section title */
@@ -309,35 +361,42 @@
   margin-top: 16px;
 }
 
-/* Modal */
-.grade-overlay {
+/* Modal — TRY7 style */
+.grade-mo {
   position: fixed;
   inset: 0;
   z-index: 500;
   background: rgba(9, 30, 66, 0.5);
   backdrop-filter: blur(4px);
-}
-.grade-modal {
-  position: fixed;
-  inset: 0;
-  z-index: 501;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
-  pointer-events: none;
 }
-.grade-modal > * {
-  pointer-events: auto;
+.grade-md {
+  background: #fff;
+  border: 1px solid var(--outline, #DFE1E6);
+  border-radius: 16px;
+  max-height: 90vh;
+  overflow-y: auto;
+  width: 100%;
+  max-width: 520px;
+  box-shadow: 0 12px 32px rgba(9, 30, 66, 0.12);
+  animation: modalIn 0.25s ease;
 }
-.grade-modal-header {
+.grade-md.lg { max-width: 740px; }
+@keyframes modalIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.grade-md .mh {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px;
+  padding: 24px;
   border-bottom: 1px solid var(--outline, #DFE1E6);
 }
-.grade-modal-header h3 {
+.grade-md .mh h3 {
   font-size: 17px;
   font-weight: 700;
   color: var(--on-surface, #091E42);
@@ -345,7 +404,17 @@
   align-items: center;
   gap: 8px;
 }
-.grade-modal-close {
+.grade-md .mb {
+  padding: 24px;
+}
+.grade-md .mf {
+  padding: 16px 24px;
+  border-top: 1px solid var(--outline, #DFE1E6);
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.grade-xb {
   background: none;
   border: none;
   font-size: 18px;
@@ -359,21 +428,9 @@
   border-radius: 8px;
   transition: all 0.15s;
 }
-.grade-modal-close:hover {
+.grade-xb:hover {
   background: var(--bg-danger, #FFF0ED);
   color: var(--danger, #FF5630);
-}
-.grade-modal-body {
-  padding: 20px;
-  max-height: 60vh;
-  overflow-y: auto;
-}
-.grade-modal-footer {
-  padding: 16px 20px;
-  border-top: 1px solid var(--outline, #DFE1E6);
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
 }
 
 /* Export buttons */

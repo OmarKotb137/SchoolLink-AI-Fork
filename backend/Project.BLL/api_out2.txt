@@ -1,0 +1,16 @@
+Using launch settings from D:\ITI_2026\Final\SchoolLink-AI - 2\0\backend\Project.API\Properties\launchSettings.json...
+D:\ITI_2026\Final\SchoolLink-AI - 2\0\backend\Project.BLL\Project.BLL.csproj : warning NU1903: Package 'AutoMapper' 13.0.1 has a known high severity vulnerability, https://github.com/advisories/GHSA-rvv3-g6hj-g44x [D:\ITI_2026\Final\SchoolLink-AI - 2\0\backend\Project.API\Project.API.csproj]
+D:\ITI_2026\Final\SchoolLink-AI - 2\0\backend\Project.BLL\Project.BLL.csproj : warning NU1903: Package 'AutoMapper' 13.0.1 has a known high severity vulnerability, https://github.com/advisories/GHSA-rvv3-g6hj-g44x
+[14:18:22 INF] Starting SchoolLink API
+[14:18:25 INF] SchoolLink API is ready
+[14:18:25 INF] SchoolLink API is ready
+[14:18:25 INF] Now listening on: http://localhost:5002
+[14:18:25 INF] Now listening on: http://localhost:5002
+[14:18:25 INF] Application started. Press Ctrl+C to shut down.
+[14:18:25 INF] Application started. Press Ctrl+C to shut down.
+[14:18:25 INF] Hosting environment: Development
+[14:18:25 INF] Hosting environment: Development
+[14:18:25 INF] Content root path: D:\ITI_2026\Final\SchoolLink-AI - 2\0\backend\Project.API
+[14:18:25 INF] Content root path: D:\ITI_2026\Final\SchoolLink-AI - 2\0\backend\Project.API
+[14:20:00 WRN] Failed to determine the https port for redirect.
+[14:20:00 WRN] Failed to determine the https port for redirect.

@@ -5,7 +5,6 @@ using Project.BLL.Interfaces;
 
 namespace Project.API.Controllers;
 
-[Authorize(Roles = "Admin,Teacher")]
 [ApiController]
 [Route("api/[controller]")]
 public class PeriodicAssessmentsController : ControllerBase
