@@ -9,4 +9,6 @@ public interface IPeriodAverageService
     Task<OperationResult<IEnumerable<PeriodAverageDto>>> GetByEnrollmentAsync(int enrollmentId);
     Task<OperationResult<IEnumerable<PeriodAverageDto>>> GetByClassAndPeriodAsync(int classId, int periodId);
     Task<OperationResult> DeletePeriodAverageAsync(int id);
+    Task<OperationResult<PeriodAverageDto>> GetPeriodAverageByIdAsync(int id);
+    Task<OperationResult<int>> CalculateAllForClassAsync(int classId, int periodId);
 }

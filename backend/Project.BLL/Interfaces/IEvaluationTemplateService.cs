@@ -10,4 +10,8 @@ public interface IEvaluationTemplateService
     Task<OperationResult<EvaluationTemplateDto>> GetTemplateByIdAsync(int id);
     Task<OperationResult<IEnumerable<EvaluationTemplateDto>>> GetTemplateByGradeLevelAsync(int gradeLevelId, int academicYearId);
     Task<OperationResult> DeleteEvaluationTemplateAsync(int id);
+    Task<OperationResult<IEnumerable<EvaluationTemplateDto>>> GetAllTemplatesAsync();
+    Task<OperationResult<IEnumerable<EvaluationTemplateDto>>> GetTemplatesBySubjectAsync(int subjectId, int academicYearId);
+    Task<OperationResult> ToggleTemplateActiveAsync(int id);
+    Task<OperationResult<EvaluationTemplateDto>> DuplicateTemplateAsync(int id);
 }

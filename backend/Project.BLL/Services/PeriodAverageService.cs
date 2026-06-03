@@ -114,4 +114,78 @@ public class PeriodAverageService : IPeriodAverageService
             _mapper.Map<IEnumerable<PeriodAverageDto>>(averages),
             "تم جلب متوسطات الفترات بنجاح");
     }
+
+    public async Task<OperationResult<PeriodAverageDto>> GetPeriodAverageByIdAsync(int id)
+    {
+        var entity = await _unitOfWork.PeriodAverages.GetByIdAsync(id);
+        if (entity is null || entity.IsDeleted)
+            return OperationResult<PeriodAverageDto>.Failure("متوسط الفترة غير موجود");
+
+        return OperationResult<PeriodAverageDto>.Success(
+            _mapper.Map<PeriodAverageDto>(entity),
+            "تم جلب متوسط الفترة بنجاح");
+    }
+
+    public async Task<OperationResult<int>> CalculateAllForClassAsync(int classId, int periodId)
+    {
+        var classEntity = await _unitOfWork.Classes.GetByIdAsync(classId);
+        if (classEntity is null || classEntity.IsDeleted)
+            return OperationResult<int>.Failure("الفصل غير موجود");
+
+        var period = await _unitOfWork.EvaluationPeriods.GetByIdAsync(periodId);
+        if (period is null || period.IsDeleted)
+            return OperationResult<int>.Failure("فترة التقييم غير موجودة");
+
+        var enrollments = await _unitOfWork.StudentEnrollments
+            .GetActiveByClassAsync(classId, classEntity.AcademicYearId);
+
+        if (!enrollments.Any())
+            return OperationResult<int>.Success(0, "لا يوجد طلاب في هذا الفصل");
+
+        var calculated = 0;
+        foreach (var enrollment in enrollments)
+        {
+            var evaluations = await _unitOfWork.StudentEvaluations
+                .GetByEnrollmentAndPeriodAsync(enrollment.Id, periodId);
+
+            if (!evaluations.Any())
+                continue;
+
+            var totalScore = evaluations.Sum(e => e.Score ?? 0);
+            var itemIds = evaluations.Select(e => e.EvaluationItemId).Distinct().ToList();
+            var evaluatedItems = await _unitOfWork.EvaluationItems
+                .FindAsync(i => itemIds.Contains(i.Id));
+            var totalMax = evaluatedItems
+                .Where(i => i is not null && !i.IsDeleted)
+                .Sum(i => i.MaxScore * i.Weight);
+
+            var avgScore = totalMax > 0 ? (totalScore / totalMax) * 100 : 0;
+
+            var existing = await _unitOfWork.PeriodAverages
+                .GetByEnrollmentAndPeriodAsync(enrollment.Id, periodId);
+
+            if (existing is not null && !existing.IsDeleted)
+            {
+                existing.AvgScore = avgScore;
+                existing.MaxScore = totalMax;
+                existing.CalculatedAt = DateTime.UtcNow;
+                _unitOfWork.PeriodAverages.Update(existing);
+            }
+            else
+            {
+                await _unitOfWork.PeriodAverages.AddAsync(new PeriodAverage
+                {
+                    EnrollmentId = enrollment.Id,
+                    PeriodId = periodId,
+                    AvgScore = avgScore,
+                    MaxScore = totalMax,
+                    CalculatedAt = DateTime.UtcNow
+                });
+            }
+            calculated++;
+        }
+
+        await _unitOfWork.SaveChangesAsync();
+        return OperationResult<int>.Success(calculated, $"تم حساب متوسط {calculated} طالب بنجاح");
+    }
 }

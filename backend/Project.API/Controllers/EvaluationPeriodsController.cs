@@ -17,6 +17,24 @@ public class EvaluationPeriodsController : ControllerBase
         _service = service;
     }
 
+    [HttpGet("{id:int}")]
+    public async Task<IActionResult> GetById(int id)
+    {
+        var result = await _service.GetPeriodByIdAsync(id);
+        if (!result.IsSuccess)
+            return NotFound(result);
+        return Ok(result);
+    }
+
+    [HttpGet("active/{academicYearId:int}")]
+    public async Task<IActionResult> GetActive(int academicYearId)
+    {
+        var result = await _service.GetActivePeriodAsync(academicYearId);
+        if (!result.IsSuccess)
+            return NotFound(result);
+        return Ok(result);
+    }
+
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateEvaluationPeriodRequest request)
     {

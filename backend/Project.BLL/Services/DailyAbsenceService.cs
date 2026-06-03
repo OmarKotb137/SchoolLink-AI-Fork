@@ -139,4 +139,65 @@ public class DailyAbsenceService : IDailyAbsenceService
             result,
             "تم جلب ملخص الغياب بنجاح");
     }
+
+    public async Task<OperationResult<DailyAbsenceDto>> GetAbsenceByIdAsync(int id)
+    {
+        var entity = await _unitOfWork.DailyAbsences.GetByIdAsync(id);
+        if (entity is null || entity.IsDeleted)
+            return OperationResult<DailyAbsenceDto>.Failure("الغياب غير موجود");
+
+        return OperationResult<DailyAbsenceDto>.Success(
+            _mapper.Map<DailyAbsenceDto>(entity),
+            "تم جلب الغياب بنجاح");
+    }
+
+    public async Task<OperationResult<IEnumerable<DailyAbsenceDto>>> GetAbsencesByClassAsync(int classId, DateOnly date)
+    {
+        var classEntity = await _unitOfWork.Classes.GetByIdAsync(classId);
+        if (classEntity is null || classEntity.IsDeleted)
+            return OperationResult<IEnumerable<DailyAbsenceDto>>.Failure("الفصل غير موجود");
+
+        var cstList = await _unitOfWork.ClassSubjectTeachers
+            .FindAsync(cst => cst.ClassId == classId && !cst.IsDeleted);
+
+        if (!cstList.Any())
+            return OperationResult<IEnumerable<DailyAbsenceDto>>.Success(
+                new List<DailyAbsenceDto>(), "لا توجد مواد لهذا الفصل");
+
+        var allAbsences = new List<DailyAbsence>();
+        foreach (var cst in cstList)
+        {
+            var absences = await _unitOfWork.DailyAbsences
+                .GetByClassSubjectTeacherAndDateAsync(cst.Id, date);
+            allAbsences.AddRange(absences);
+        }
+
+        return OperationResult<IEnumerable<DailyAbsenceDto>>.Success(
+            _mapper.Map<IEnumerable<DailyAbsenceDto>>(allAbsences),
+            "تم جلب غياب الفصل بنجاح");
+    }
+
+    public async Task<OperationResult<IEnumerable<DailyAbsenceDto>>> GetAbsencesByDateRangeAsync(
+        DateOnly fromDate, DateOnly toDate, int? classSubjectTeacherId = null)
+    {
+        if (fromDate >= toDate)
+            return OperationResult<IEnumerable<DailyAbsenceDto>>.Failure("تاريخ البداية يجب أن يكون قبل تاريخ النهاية");
+
+        IReadOnlyList<DailyAbsence> absences;
+
+        if (classSubjectTeacherId.HasValue)
+        {
+            absences = await _unitOfWork.DailyAbsences
+                .GetByClassSubjectTeacherAndDateRangeAsync(classSubjectTeacherId.Value, fromDate, toDate);
+        }
+        else
+        {
+            absences = await _unitOfWork.DailyAbsences
+                .FindAsync(a => a.AbsenceDate >= fromDate && a.AbsenceDate <= toDate && a.IsAbsent && !a.IsDeleted);
+        }
+
+        return OperationResult<IEnumerable<DailyAbsenceDto>>.Success(
+            _mapper.Map<IEnumerable<DailyAbsenceDto>>(absences),
+            "تم جلب سجل الغياب في المدى التاريخي بنجاح");
+    }
 }

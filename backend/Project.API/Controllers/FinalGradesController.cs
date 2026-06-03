@@ -17,6 +17,22 @@ public class FinalGradesController : ControllerBase
         _service = service;
     }
 
+    [HttpPost("calculate-all/{classId:int}")]
+    public async Task<IActionResult> CalculateAllForClass(int classId)
+    {
+        var result = await _service.CalculateFinalGradesForClassAsync(classId);
+        if (!result.IsSuccess)
+            return BadRequest(result);
+        return Ok(result);
+    }
+
+    [HttpGet("by-academic-year/{academicYearId:int}")]
+    public async Task<IActionResult> GetByAcademicYear(int academicYearId)
+    {
+        var result = await _service.GetFinalGradesByAcademicYearAsync(academicYearId);
+        return Ok(result);
+    }
+
     [HttpPost("calculate/{enrollmentId:int}")]
     public async Task<IActionResult> Calculate(int enrollmentId)
     {

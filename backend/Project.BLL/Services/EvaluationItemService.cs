@@ -114,4 +114,38 @@ public class EvaluationItemService : IEvaluationItemService
             _mapper.Map<IEnumerable<EvaluationItemDto>>(items),
             "تم جلب معايير التقييم بنجاح");
     }
+
+    public async Task<OperationResult<EvaluationItemDto>> GetItemByIdAsync(int id)
+    {
+        var entity = await _unitOfWork.EvaluationItems.GetByIdAsync(id);
+        if (entity is null || entity.IsDeleted)
+            return OperationResult<EvaluationItemDto>.Failure("معيار التقييم غير موجود");
+
+        return OperationResult<EvaluationItemDto>.Success(
+            _mapper.Map<EvaluationItemDto>(entity),
+            "تم جلب معيار التقييم بنجاح");
+    }
+
+    public async Task<OperationResult> ReorderItemsAsync(int templateId, List<int> orderedIds)
+    {
+        var template = await _unitOfWork.EvaluationTemplates.GetByIdAsync(templateId);
+        if (template is null || template.IsDeleted)
+            return OperationResult.Failure("قالب التقييم غير موجود");
+
+        var items = await _unitOfWork.EvaluationItems.GetByTemplateIdAsync(templateId);
+        var itemDict = items.ToDictionary(i => i.Id);
+
+        for (int i = 0; i < orderedIds.Count; i++)
+        {
+            if (itemDict.TryGetValue(orderedIds[i], out var item))
+            {
+                item.DisplayOrder = i + 1;
+                item.UpdatedAt = DateTime.UtcNow;
+                _unitOfWork.EvaluationItems.Update(item);
+            }
+        }
+
+        await _unitOfWork.SaveChangesAsync();
+        return OperationResult.Success("تم إعادة ترتيب المعايير بنجاح");
+    }
 }

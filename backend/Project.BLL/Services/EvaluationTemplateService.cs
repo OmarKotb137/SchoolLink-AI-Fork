@@ -4,6 +4,7 @@ using Project.BLL.DTOs.EvaluationTemplates;
 using Project.BLL.Interfaces;
 using Project.DAL.Interfaces;
 using Project.Domain.Entities;
+using Project.Domain.Enums;
 
 namespace Project.BLL.Services;
 
@@ -98,5 +99,82 @@ public class EvaluationTemplateService : IEvaluationTemplateService
         await _unitOfWork.SaveChangesAsync();
 
         return OperationResult.Success("تم حذف قالب التقييم بنجاح");
+    }
+
+    public async Task<OperationResult<IEnumerable<EvaluationTemplateDto>>> GetAllTemplatesAsync()
+    {
+        var templates = await _unitOfWork.EvaluationTemplates.FindAsync(t => !t.IsDeleted);
+        return OperationResult<IEnumerable<EvaluationTemplateDto>>.Success(
+            _mapper.Map<IEnumerable<EvaluationTemplateDto>>(templates),
+            "تم جلب كل قوالب التقييم بنجاح");
+    }
+
+    public async Task<OperationResult<IEnumerable<EvaluationTemplateDto>>> GetTemplatesBySubjectAsync(int subjectId, int academicYearId)
+    {
+        var templates = await _unitOfWork.EvaluationTemplates.FindAsync(
+            t => t.SubjectId == subjectId && t.AcademicYearId == academicYearId && !t.IsDeleted);
+        return OperationResult<IEnumerable<EvaluationTemplateDto>>.Success(
+            _mapper.Map<IEnumerable<EvaluationTemplateDto>>(templates),
+            "تم جلب قوالب التقييم للمادة بنجاح");
+    }
+
+    public async Task<OperationResult> ToggleTemplateActiveAsync(int id)
+    {
+        var entity = await _unitOfWork.EvaluationTemplates.GetByIdAsync(id);
+        if (entity is null || entity.IsDeleted)
+            return OperationResult.Failure("قالب التقييم غير موجود");
+
+        entity.IsActive = !entity.IsActive;
+        entity.UpdatedAt = DateTime.UtcNow;
+
+        _unitOfWork.EvaluationTemplates.Update(entity);
+        await _unitOfWork.SaveChangesAsync();
+
+        return OperationResult.Success(
+            entity.IsActive ? "تم تفعيل قالب التقييم بنجاح" : "تم إلغاء تفعيل قالب التقييم بنجاح");
+    }
+
+    public async Task<OperationResult<EvaluationTemplateDto>> DuplicateTemplateAsync(int id)
+    {
+        var source = await _unitOfWork.EvaluationTemplates.GetWithItemsAsync(id);
+        if (source is null || source.IsDeleted)
+            return OperationResult<EvaluationTemplateDto>.Failure("قالب التقييم غير موجود");
+
+        var duplicate = new EvaluationTemplate
+        {
+            GradeLevelId = source.GradeLevelId,
+            SubjectId = source.SubjectId,
+            AcademicYearId = source.AcademicYearId,
+            Name = source.Name + " (نسخة)",
+            CalculationType = source.CalculationType,
+            IsActive = false
+        };
+
+        await _unitOfWork.EvaluationTemplates.AddAsync(duplicate);
+        await _unitOfWork.SaveChangesAsync();
+
+        if (source.Items?.Any() == true)
+        {
+            foreach (var item in source.Items.Where(i => !i.IsDeleted))
+            {
+                var newItem = new EvaluationItem
+                {
+                    TemplateId = duplicate.Id,
+                    Name = item.Name,
+                    MaxScore = item.MaxScore,
+                    Weight = item.Weight,
+                    ItemType = item.ItemType,
+                    DisplayOrder = item.DisplayOrder,
+                    IsVisible = item.IsVisible,
+                    AutoCalcType = item.AutoCalcType
+                };
+                await _unitOfWork.EvaluationItems.AddAsync(newItem);
+            }
+            await _unitOfWork.SaveChangesAsync();
+        }
+
+        return OperationResult<EvaluationTemplateDto>.Success(
+            _mapper.Map<EvaluationTemplateDto>(duplicate),
+            "تم نسخ قالب التقييم بنجاح");
     }
 }

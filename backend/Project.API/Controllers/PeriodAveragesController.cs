@@ -16,6 +16,24 @@ public class PeriodAveragesController : ControllerBase
         _service = service;
     }
 
+    [HttpGet("{id:int}")]
+    public async Task<IActionResult> GetById(int id)
+    {
+        var result = await _service.GetPeriodAverageByIdAsync(id);
+        if (!result.IsSuccess)
+            return NotFound(result);
+        return Ok(result);
+    }
+
+    [HttpPost("calculate-all/{classId:int}")]
+    public async Task<IActionResult> CalculateAllForClass(int classId, [FromQuery] int periodId)
+    {
+        var result = await _service.CalculateAllForClassAsync(classId, periodId);
+        if (!result.IsSuccess)
+            return BadRequest(result);
+        return Ok(result);
+    }
+
     [HttpPost("calculate")]
     public async Task<IActionResult> Calculate([FromBody] CalculatePeriodAverageRequest request)
     {

@@ -11,4 +11,6 @@ public interface IStudentEvaluationService
     Task<OperationResult<IEnumerable<ClassEvaluationDto>>> GetByClassAndPeriodAsync(int classId, int periodId);
     Task<OperationResult> DeleteEvaluationAsync(int id);
     Task<OperationResult> AutoFillAttendanceScoresAsync(int classId, int periodId);
+    Task<OperationResult<StudentEvaluationDto>> GetEvaluationByIdAsync(int id);
+    Task<OperationResult<int>> BulkRecordEvaluationsAsync(BulkRecordEvaluationRequest request);
 }

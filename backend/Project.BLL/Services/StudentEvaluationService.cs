@@ -229,6 +229,56 @@ public class StudentEvaluationService : IStudentEvaluationService
         return OperationResult.Success("تم حذف التقييم بنجاح");
     }
 
+    public async Task<OperationResult<StudentEvaluationDto>> GetEvaluationByIdAsync(int id)
+    {
+        var entity = await _unitOfWork.StudentEvaluations.GetByIdAsync(id);
+        if (entity is null || entity.IsDeleted)
+            return OperationResult<StudentEvaluationDto>.Failure("التقييم غير موجود");
+
+        return OperationResult<StudentEvaluationDto>.Success(
+            _mapper.Map<StudentEvaluationDto>(entity),
+            "تم جلب التقييم بنجاح");
+    }
+
+    public async Task<OperationResult<int>> BulkRecordEvaluationsAsync(BulkRecordEvaluationRequest request)
+    {
+        if (request.Evaluations is null || request.Evaluations.Count == 0)
+            return OperationResult<int>.Failure("لا توجد تقييمات للتسجيل");
+
+        var recorded = 0;
+        foreach (var ev in request.Evaluations)
+        {
+            var existing = await _unitOfWork.StudentEvaluations
+                .GetByEnrollmentItemAndPeriodAsync(ev.EnrollmentId, ev.EvaluationItemId, ev.PeriodId);
+            if (existing is not null && !existing.IsDeleted)
+                continue;
+
+            var item = await _unitOfWork.EvaluationItems.GetByIdAsync(ev.EvaluationItemId);
+            if (item is null || item.IsDeleted || !item.IsVisible)
+                continue;
+
+            if (ev.Score.HasValue && (ev.Score < 0 || ev.Score > item.MaxScore))
+                continue;
+
+            var newEval = new StudentEvaluation
+            {
+                EnrollmentId = ev.EnrollmentId,
+                EvaluationItemId = ev.EvaluationItemId,
+                PeriodId = ev.PeriodId,
+                Score = ev.Score,
+                EnteredById = request.EnteredById,
+                EnteredAt = DateTime.UtcNow
+            };
+            await _unitOfWork.StudentEvaluations.AddAsync(newEval);
+            recorded++;
+        }
+
+        if (recorded > 0)
+            await _unitOfWork.SaveChangesAsync();
+
+        return OperationResult<int>.Success(recorded, $"تم تسجيل {recorded} تقييم بنجاح");
+    }
+
     public async Task<OperationResult<IEnumerable<ClassEvaluationDto>>> GetByClassAndPeriodAsync(
         int classId, int periodId)
     {
