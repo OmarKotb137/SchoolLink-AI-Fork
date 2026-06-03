@@ -16,6 +16,22 @@ public class PeriodicAssessmentsController : ControllerBase
         _service = service;
     }
 
+    [HttpGet("{id:int}")]
+    public async Task<IActionResult> GetById(int id)
+    {
+        var result = await _service.GetPeriodicAssessmentByIdAsync(id);
+        if (!result.IsSuccess)
+            return NotFound(result);
+        return Ok(result);
+    }
+
+    [HttpGet("by-class/{classId:int}")]
+    public async Task<IActionResult> GetByClass(int classId)
+    {
+        var result = await _service.GetByClassAsync(classId);
+        return Ok(result);
+    }
+
     [HttpPost]
     public async Task<IActionResult> Record([FromBody] RecordPeriodicAssessmentRequest request)
     {

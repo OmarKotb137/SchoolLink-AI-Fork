@@ -87,4 +87,42 @@ public class PeriodicAssessmentService : IPeriodicAssessmentService
             _mapper.Map<IEnumerable<PeriodicAssessmentDto>>(assessments),
             "تم جلب التقييمات الدورية بنجاح");
     }
+
+    public async Task<OperationResult<PeriodicAssessmentDto>> GetPeriodicAssessmentByIdAsync(int id)
+    {
+        var entity = await _unitOfWork.PeriodicAssessments.GetByIdAsync(id);
+        if (entity is null || entity.IsDeleted)
+            return OperationResult<PeriodicAssessmentDto>.Failure("التقييم الدوري غير موجود");
+
+        return OperationResult<PeriodicAssessmentDto>.Success(
+            _mapper.Map<PeriodicAssessmentDto>(entity),
+            "تم جلب التقييم الدوري بنجاح");
+    }
+
+    public async Task<OperationResult<IEnumerable<PeriodicAssessmentDto>>> GetByClassAsync(int classId)
+    {
+        var classEntity = await _unitOfWork.Classes.GetByIdAsync(classId);
+        if (classEntity is null || classEntity.IsDeleted)
+            return OperationResult<IEnumerable<PeriodicAssessmentDto>>.Failure("الفصل غير موجود");
+
+        var enrollments = await _unitOfWork.StudentEnrollments
+            .GetActiveByClassAsync(classId, classEntity.AcademicYearId);
+
+        if (!enrollments.Any())
+            return OperationResult<IEnumerable<PeriodicAssessmentDto>>.Success(
+                new List<PeriodicAssessmentDto>(), "لا يوجد طلاب في هذا الفصل");
+
+        var enrollmentIds = enrollments.Select(e => e.Id).ToList();
+        var allAssessments = new List<PeriodicAssessment>();
+
+        foreach (var eid in enrollmentIds)
+        {
+            var assessments = await _unitOfWork.PeriodicAssessments.GetByEnrollmentIdAsync(eid);
+            allAssessments.AddRange(assessments);
+        }
+
+        return OperationResult<IEnumerable<PeriodicAssessmentDto>>.Success(
+            _mapper.Map<IEnumerable<PeriodicAssessmentDto>>(allAssessments),
+            "تم جلب التقييمات الدورية للفصل بنجاح");
+    }
 }

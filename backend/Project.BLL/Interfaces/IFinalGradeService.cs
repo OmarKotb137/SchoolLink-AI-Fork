@@ -11,4 +11,6 @@ public interface IFinalGradeService
     Task<OperationResult<IEnumerable<FinalGradeDto>>> GetFinalGradesByClassAsync(int classId);
     Task<OperationResult<IEnumerable<FinalGradeDto>>> GetTopStudentsAsync(int classId, int count);
     Task<OperationResult<IEnumerable<FinalGradeDto>>> GetStudentsNeedingSupportAsync(int classId, decimal threshold);
+    Task<OperationResult<int>> CalculateFinalGradesForClassAsync(int classId);
+    Task<OperationResult<IEnumerable<FinalGradeDto>>> GetFinalGradesByAcademicYearAsync(int academicYearId);
 }

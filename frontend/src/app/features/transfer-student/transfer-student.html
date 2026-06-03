@@ -1,0 +1,158 @@
+<app-sidebar [(isOpen)]="sidebarOpen" />
+<div class="main-content">
+  <app-topbar userName="أحمد" />
+  <main class="p-gutter-desktop">
+    <div class="max-w-4xl mx-auto flex flex-col gap-stack-lg">
+
+      <div>
+        <h1 class="font-headline-lg text-headline-lg" style="font-weight:800;background:linear-gradient(135deg,#00236f,#6b7280);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">نقل طالب بين الفصول</h1>
+        <p class="font-body-md text-body-md text-outline">نقل الطالب من فصله الحالي إلى فصل آخر مع تسجيل سجل النقل</p>
+      </div>
+
+      <div class="glass-card" style="padding:24px;">
+        <h2 class="font-headline-md text-headline-md mb-4" style="font-weight:700;">
+          <span class="gradient-icon-box gradient-secondary" style="width:32px;height:32px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:16px;margin-left:8px;vertical-align:middle;">
+            <span class="material-symbols-outlined" style="font-size:18px;">person_search</span>
+          </span>
+          الخطوة 1: اختر الطالب
+        </h2>
+
+        <div class="relative mb-4">
+          <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline">search</span>
+          <input class="glass-input w-full" style="padding:10px 40px 10px 16px;" placeholder="ابحث عن طالب بالاسم..." type="text" [value]="searchQuery()" (input)="searchQuery.set($any($event.target).value)" />
+        </div>
+
+        <div class="glass-table-container">
+          <div class="overflow-x-auto">
+            <table class="w-full">
+              <thead>
+                <tr>
+                  <th class="text-center p-3 font-label-md text-outline" style="width:50px;"></th>
+                  <th class="text-right p-3 font-label-md text-outline">اسم الطالب</th>
+                  <th class="text-right p-3 font-label-md text-outline">الفصل الحالي</th>
+                  <th class="text-right p-3 font-label-md text-outline">ولي الأمر</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (s of filteredStudents(); track s.id) {
+                  <tr class="cursor-pointer transition-all"
+                    [class.bg-primary/5]="selectedStudent()?.id === s.id"
+                    (click)="selectStudent(s)">
+                    <td class="p-3 text-center">
+                      <div class="w-5 h-5 rounded-full border-2 mx-auto transition-all"
+                        [class.border-primary]="selectedStudent()?.id === s.id"
+                        [class.border-outline-variant]="selectedStudent()?.id !== s.id"
+                        [style.background]="selectedStudent()?.id === s.id ? '#00236f' : 'transparent'">
+                      </div>
+                    </td>
+                    <td class="p-3 font-body-md" style="font-weight:600;">{{ s.name }}</td>
+                    <td class="p-3"><span class="px-3 py-1 bg-white/40 backdrop-blur-sm rounded-lg text-label-sm font-semibold">{{ s.class }}</span></td>
+                    <td class="p-3 font-body-md text-outline">{{ s.guardianName }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      @if (selectedStudent(); as student) {
+        <div class="glass-card" style="padding:24px;">
+          <h2 class="font-headline-md text-headline-md mb-4" style="font-weight:700;">
+            <span class="gradient-icon-box gradient-tertiary" style="width:32px;height:32px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:16px;margin-left:8px;vertical-align:middle;">
+              <span class="material-symbols-outlined" style="font-size:18px;">swap_horiz</span>
+            </span>
+            الخطوة 2: تأكيد النقل
+          </h2>
+
+          <div class="bg-white/40 backdrop-blur-sm rounded-2xl p-4 flex items-center gap-4 mb-4">
+            <div class="gradient-icon-box gradient-secondary" style="width:48px;height:48px;border-radius:12px;">
+              <span class="material-symbols-outlined">person</span>
+            </div>
+            <div>
+              <p class="font-headline-md text-headline-md" style="font-weight:700;">{{ student.name }}</p>
+              <p class="font-body-md text-body-md text-outline">الفصل الحالي: <span class="font-semibold" style="color:#00236f;">{{ student.class }}</span></p>
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-1 mb-4">
+            <label class="font-label-md text-label-md" style="font-weight:600;">الفصل الجديد</label>
+            <select class="glass-select" [value]="targetClass()" (change)="targetClass.set($any($event.target).value)">
+              <option value="">اختر الفصل الجديد...</option>
+              @for (c of availableClasses(); track c) {
+                <option [value]="c">{{ c }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="flex flex-col gap-1 mb-4">
+            <label class="font-label-md text-label-md" style="font-weight:600;">سبب النقل (اختياري)</label>
+            <textarea class="glass-input w-full resize-none" rows="2" placeholder="مثال: بناءً على طلب ولي الأمر..." [value]="transferReason()" (input)="transferReason.set($any($event.target).value)"></textarea>
+          </div>
+
+          @if (showError()) {
+            <div class="bg-error/10 backdrop-blur-sm border border-error/30 rounded-xl p-3 flex items-center gap-2 mb-4">
+              <span class="material-symbols-outlined text-error text-[18px]" style="font-variation-settings:'FILL'1;">error</span>
+              <span class="text-label-sm text-error font-semibold">يرجى اختيار الفصل الجديد</span>
+            </div>
+          }
+
+          <div class="flex justify-end gap-3 pt-4" style="border-top:1px solid rgba(0,0,0,0.06);">
+            <button class="secondary-btn-glass" (click)="cancelTransfer()">إلغاء</button>
+            <button class="gradient-btn" (click)="confirmTransfer()">
+              <span class="material-symbols-outlined">check_circle</span>
+              تأكيد النقل
+            </button>
+          </div>
+        </div>
+      }
+
+      <div class="glass-card" style="padding:24px;">
+        <h3 class="font-headline-md text-headline-md mb-4" style="font-weight:700;">
+          <span class="material-symbols-outlined" style="vertical-align:middle;margin-left:6px;">history</span>
+          سجل عمليات النقل
+        </h3>
+        <div class="glass-table-container">
+          <div class="overflow-x-auto">
+            <table class="w-full">
+              <thead>
+                <tr>
+                  <th class="text-right p-3 font-label-md text-outline">الطالب</th>
+                  <th class="text-right p-3 font-label-md text-outline">من فصل</th>
+                  <th class="text-right p-3 font-label-md text-outline">إلى فصل</th>
+                  <th class="text-right p-3 font-label-md text-outline">التاريخ</th>
+                  <th class="text-right p-3 font-label-md text-outline">السبب</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (h of transferHistory(); track h.id) {
+                  <tr>
+                    <td class="p-3 font-body-md" style="font-weight:600;">{{ h.studentName }}</td>
+                    <td class="p-3"><span class="px-2 py-0.5 bg-white/40 rounded text-label-sm">{{ h.fromClass }}</span></td>
+                    <td class="p-3"><span class="px-2 py-0.5 bg-secondary/10 text-secondary rounded text-label-sm font-semibold">{{ h.toClass }}</span></td>
+                    <td class="p-3 text-outline text-label-sm">{{ h.date }}</td>
+                    <td class="p-3 text-outline text-label-sm">{{ h.reason || '—' }}</td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="5" class="p-6 text-center text-outline font-body-md">لا توجد عمليات نقل بعد</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+@if (showSuccess()) {
+  <div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 text-white px-6 py-3 rounded-2xl shadow-lg flex items-center gap-3 backdrop-blur-sm" style="background:linear-gradient(135deg,#0d7a5f,#0f9b7a);">
+    <span class="material-symbols-outlined" style="font-variation-settings:'FILL'1;">check_circle</span>
+    @if (lastTransfer(); as lt) {
+      تم نقل الطالب بنجاح من {{ lt.fromClass }} إلى {{ lt.toClass }}
+    }
+  </div>
+}

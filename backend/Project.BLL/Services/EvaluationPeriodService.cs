@@ -127,4 +127,31 @@ public class EvaluationPeriodService : IEvaluationPeriodService
             _mapper.Map<IEnumerable<EvaluationPeriodDto>>(periods),
             "تم جلب فترات التقييم بنجاح");
     }
+
+    public async Task<OperationResult<EvaluationPeriodDto>> GetPeriodByIdAsync(int id)
+    {
+        var entity = await _unitOfWork.EvaluationPeriods.GetByIdAsync(id);
+        if (entity is null || entity.IsDeleted)
+            return OperationResult<EvaluationPeriodDto>.Failure("فترة التقييم غير موجودة");
+
+        return OperationResult<EvaluationPeriodDto>.Success(
+            _mapper.Map<EvaluationPeriodDto>(entity),
+            "تم جلب فترة التقييم بنجاح");
+    }
+
+    public async Task<OperationResult<EvaluationPeriodDto>> GetActivePeriodAsync(int academicYearId)
+    {
+        var year = await _unitOfWork.AcademicYears.GetByIdAsync(academicYearId);
+        if (year is null || year.IsDeleted)
+            return OperationResult<EvaluationPeriodDto>.Failure("السنة الدراسية غير موجودة");
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var period = await _unitOfWork.EvaluationPeriods.GetByDateAsync(academicYearId, today);
+        if (period is null)
+            return OperationResult<EvaluationPeriodDto>.Failure("لا توجد فترة نشطة حالياً");
+
+        return OperationResult<EvaluationPeriodDto>.Success(
+            _mapper.Map<EvaluationPeriodDto>(period),
+            "تم جلب الفترة النشطة بنجاح");
+    }
 }

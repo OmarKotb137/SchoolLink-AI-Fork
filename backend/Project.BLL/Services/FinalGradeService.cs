@@ -161,4 +161,48 @@ public class FinalGradeService : IFinalGradeService
             _mapper.Map<IEnumerable<FinalGradeDto>>(grades),
             "تم جلب درجات الفصل بنجاح");
     }
+
+    public async Task<OperationResult<int>> CalculateFinalGradesForClassAsync(int classId)
+    {
+        var classEntity = await _unitOfWork.Classes.GetByIdAsync(classId);
+        if (classEntity is null || classEntity.IsDeleted)
+            return OperationResult<int>.Failure("الفصل غير موجود");
+
+        var enrollments = await _unitOfWork.StudentEnrollments
+            .GetActiveByClassAsync(classId, classEntity.AcademicYearId);
+
+        if (!enrollments.Any())
+            return OperationResult<int>.Success(0, "لا يوجد طلاب في هذا الفصل");
+
+        var calculated = 0;
+        foreach (var enrollment in enrollments)
+        {
+            var result = await CalculateFinalGradeAsync(enrollment.Id);
+            if (result.IsSuccess)
+                calculated++;
+        }
+
+        return OperationResult<int>.Success(calculated, $"تم حساب الدرجة النهائية لـ {calculated} طالب بنجاح");
+    }
+
+    public async Task<OperationResult<IEnumerable<FinalGradeDto>>> GetFinalGradesByAcademicYearAsync(int academicYearId)
+    {
+        var year = await _unitOfWork.AcademicYears.GetByIdAsync(academicYearId);
+        if (year is null || year.IsDeleted)
+            return OperationResult<IEnumerable<FinalGradeDto>>.Failure("السنة الدراسية غير موجودة");
+
+        var classes = await _unitOfWork.Classes.FindAsync(c =>
+            c.AcademicYearId == academicYearId && !c.IsDeleted);
+
+        var allGrades = new List<FinalGrade>();
+        foreach (var classEntity in classes)
+        {
+            var grades = await _unitOfWork.FinalGrades.GetByClassIdAsync(classEntity.Id);
+            allGrades.AddRange(grades);
+        }
+
+        return OperationResult<IEnumerable<FinalGradeDto>>.Success(
+            _mapper.Map<IEnumerable<FinalGradeDto>>(allGrades),
+            "تم جلب الدرجات النهائية للسنة الدراسية بنجاح");
+    }
 }

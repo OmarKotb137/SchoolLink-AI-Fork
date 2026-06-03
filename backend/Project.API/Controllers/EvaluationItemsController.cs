@@ -16,6 +16,24 @@ public class EvaluationItemsController : ControllerBase
         _service = service;
     }
 
+    [HttpGet("{id:int}")]
+    public async Task<IActionResult> GetById(int id)
+    {
+        var result = await _service.GetItemByIdAsync(id);
+        if (!result.IsSuccess)
+            return NotFound(result);
+        return Ok(result);
+    }
+
+    [HttpPut("reorder/{templateId:int}")]
+    public async Task<IActionResult> Reorder(int templateId, [FromBody] List<int> orderedIds)
+    {
+        var result = await _service.ReorderItemsAsync(templateId, orderedIds);
+        if (!result.IsSuccess)
+            return BadRequest(result);
+        return Ok(result);
+    }
+
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateEvaluationItemRequest request)
     {

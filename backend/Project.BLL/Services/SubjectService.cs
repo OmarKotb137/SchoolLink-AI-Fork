@@ -113,8 +113,20 @@ public class SubjectService : ISubjectService
 
     public async Task<OperationResult<IEnumerable<SubjectDto>>> GetSubjectsByGradeLevelAsync(int gradeLevelId)
     {
-        var all = await _unitOfWork.Subjects.GetAllAsync();
-        var list = all.Where(s => !s.IsDeleted).OrderBy(s => s.Name);
+        var classes = await _unitOfWork.Classes.FindAsync(c => c.GradeLevelId == gradeLevelId && !c.IsDeleted);
+        if (classes.Count == 0)
+            return OperationResult<IEnumerable<SubjectDto>>.Success(Array.Empty<SubjectDto>(), "تم جلب المواد حسب الصف بنجاح");
+
+        var classIds = classes.Select(c => c.Id).ToHashSet();
+        var assignments = await _unitOfWork.ClassSubjectTeachers.FindAsync(
+            cst => classIds.Contains(cst.ClassId) && !cst.IsDeleted);
+
+        var subjectIds = assignments.Select(cst => cst.SubjectId).Distinct().ToHashSet();
+        if (subjectIds.Count == 0)
+            return OperationResult<IEnumerable<SubjectDto>>.Success(Array.Empty<SubjectDto>(), "تم جلب المواد حسب الصف بنجاح");
+
+        var subjects = await _unitOfWork.Subjects.FindAsync(s => subjectIds.Contains(s.Id) && !s.IsDeleted);
+        var list = subjects.OrderBy(s => s.Name);
         return OperationResult<IEnumerable<SubjectDto>>.Success(
             _mapper.Map<IEnumerable<SubjectDto>>(list),
             "تم جلب المواد حسب الصف بنجاح");
@@ -134,7 +146,7 @@ public class SubjectService : ISubjectService
     public async Task<OperationResult<IEnumerable<SubjectDto>>> SearchSubjectsAsync(string term)
     {
         if (string.IsNullOrWhiteSpace(term) || term.Length < 2)
-            return OperationResult<IEnumerable<SubjectDto>>.Failure("Search term must be at least 2 characters");
+            return OperationResult<IEnumerable<SubjectDto>>.Failure("يجب أن تكون عبارة البحث حرفين على الأقل");
 
         var all = await _unitOfWork.Subjects.GetAllAsync();
         var termLower = term.ToLower();

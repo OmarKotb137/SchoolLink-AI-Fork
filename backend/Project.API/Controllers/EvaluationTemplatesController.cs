@@ -62,4 +62,36 @@ public class EvaluationTemplatesController : ControllerBase
         var result = await _service.GetTemplateByGradeLevelAsync(gradeLevelId, academicYearId);
         return Ok(result);
     }
+
+    [HttpGet]
+    public async Task<IActionResult> GetAll()
+    {
+        var result = await _service.GetAllTemplatesAsync();
+        return Ok(result);
+    }
+
+    [HttpGet("by-subject/{subjectId:int}")]
+    public async Task<IActionResult> GetBySubject(int subjectId, [FromQuery] int academicYearId)
+    {
+        var result = await _service.GetTemplatesBySubjectAsync(subjectId, academicYearId);
+        return Ok(result);
+    }
+
+    [HttpPatch("{id:int}/toggle-active")]
+    public async Task<IActionResult> ToggleActive(int id)
+    {
+        var result = await _service.ToggleTemplateActiveAsync(id);
+        if (!result.IsSuccess)
+            return BadRequest(result);
+        return Ok(result);
+    }
+
+    [HttpPost("{id:int}/duplicate")]
+    public async Task<IActionResult> Duplicate(int id)
+    {
+        var result = await _service.DuplicateTemplateAsync(id);
+        if (!result.IsSuccess)
+            return BadRequest(result);
+        return CreatedAtAction(nameof(GetById), new { id = result.Data!.Id }, result);
+    }
 }
