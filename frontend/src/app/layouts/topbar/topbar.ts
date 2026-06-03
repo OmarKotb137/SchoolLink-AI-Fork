@@ -18,7 +18,7 @@ export class Topbar {
   showSpark = input(true);
   showSettings = input(true);
   showAvatar = input(true);
-  notificationDot = input(true);
+  notificationCount = input(0);
 
   userRole = computed(() => {
     const roleLabels: Record<string, string> = {

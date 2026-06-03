@@ -24,4 +24,66 @@
   scrollbar-color: #c5c5d3 transparent;
 }
 
+.sdbr-widget {
+  margin: 12px 16px;
+  padding: 12px;
+  background: linear-gradient(135deg, #eef2ff 0%, #e8edff 100%);
+  border: 1px solid rgba(0, 35, 111, 0.12);
+  border-radius: 16px;
+  direction: rtl;
+}
+.sdbr-widget-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.sdbr-widget-icon {
+  font-size: 18px;
+  color: #00236f;
+}
+.sdbr-widget-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #00236f;
+}
+.sdbr-widget-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sdbr-widget-subject {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1a1b1f;
+  margin: 0;
+}
+.sdbr-widget-info {
+  font-size: 12px;
+  color: #444651;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.sdbr-widget-dot {
+  color: #c5c5d3;
+}
+.sdbr-widget-room-icon {
+  font-size: 14px;
+  color: #757682;
+}
+.sdbr-widget-link {
+  display: block;
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #00236f;
+  text-decoration: none;
+  text-align: left;
+  direction: ltr;
+}
+.sdbr-widget-link:hover {
+  text-decoration: underline;
+}
+
 

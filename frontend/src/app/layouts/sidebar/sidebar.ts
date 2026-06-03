@@ -37,6 +37,8 @@ export class Sidebar {
     this.router.navigate([route]);
   }
 
+  currentRole = computed(() => this.roleService.currentRole());
+
   onAiConsult() {
     alert('AI consultation coming soon!');
   }
