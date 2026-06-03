@@ -26,17 +26,6 @@ public class StudentEvaluationsController : ControllerBase
         return Ok(result);
     }
 
-    [HttpPost("bulk")]
-    public async Task<IActionResult> BulkRecord([FromBody] BulkRecordEvaluationRequest request)
-    {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-        request.EnteredById = userIdClaim != null ? int.Parse(userIdClaim.Value) : 1;
-        var result = await _service.BulkRecordEvaluationsAsync(request);
-        if (!result.IsSuccess)
-            return BadRequest(result);
-        return Ok(result);
-    }
-
     [HttpPost]
     public async Task<IActionResult> Record([FromBody] RecordEvaluationRequest request)
     {

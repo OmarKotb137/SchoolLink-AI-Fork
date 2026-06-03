@@ -7,6 +7,7 @@ public interface IStudentEvaluationService
 {
     Task<OperationResult<StudentEvaluationDto>> RecordEvaluationAsync(RecordEvaluationRequest request);
     Task<OperationResult<StudentEvaluationDto>> UpdateEvaluationAsync(UpdateEvaluationRequest request);
+    Task<OperationResult<StudentEvaluationDto>> GetEvaluationByIdAsync(int id);
     Task<OperationResult<IEnumerable<StudentEvaluationDto>>> GetByEnrollmentAndPeriodAsync(int enrollmentId, int periodId);
     Task<OperationResult<IEnumerable<ClassEvaluationDto>>> GetByClassAndPeriodAsync(int classId, int periodId);
     Task<OperationResult> DeleteEvaluationAsync(int id);

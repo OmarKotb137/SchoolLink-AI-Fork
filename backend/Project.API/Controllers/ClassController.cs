@@ -7,8 +7,7 @@ using Project.BLL.Interfaces;
 namespace Project.API.Controllers;
 
 [ApiController]
-[Route("api/classes")]
-[Authorize]
+[Route("api/class-management")]
 public class ClassController : ControllerBase
 {
     private readonly IClassService _classService;
@@ -24,10 +23,10 @@ public class ClassController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll([FromQuery] GetClassesFilter filter)
     {
-        if (User.IsInRole("Admin"))
+        if (User.Identity?.IsAuthenticated != true || User.IsInRole("Admin"))
         {
-            var adminResult = await _classService.GetAllClassesAsync(filter);
-            return Ok(adminResult);
+            var result = await _classService.GetAllClassesAsync(filter);
+            return Ok(result);
         }
 
         var yearId = filter.AcademicYearId;
@@ -44,8 +43,12 @@ public class ClassController : ControllerBase
         if (!classesResult.IsSuccess)
             return BadRequest(classesResult);
 
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+        if (userIdClaim is null)
+            return Ok(classesResult);
+
         var teacherClassesResult = await _classService.GetClassesByTeacherAsync(
-            int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value),
+            int.Parse(userIdClaim.Value),
             yearId.Value);
         if (!teacherClassesResult.IsSuccess)
             return BadRequest(teacherClassesResult);

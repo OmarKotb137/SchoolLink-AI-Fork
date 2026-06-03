@@ -31,15 +31,29 @@ public class DailyAbsenceService : IDailyAbsenceService
         if (enrollment.LeftAt.HasValue && enrollment.LeftAt < request.AbsenceDate)
             return OperationResult<DailyAbsenceDto>.Failure("تاريخ الغياب بعد تاريخ ترك الفصل");
 
-        if (await _unitOfWork.DailyAbsences.IsAbsentAsync(
-                request.EnrollmentId, request.AbsenceDate, request.ClassSubjectTeacherId))
-            return OperationResult<DailyAbsenceDto>.Failure("تم تسجيل هذا الغياب مسبقاً");
+        var existing = (await _unitOfWork.DailyAbsences.FindAsync(a =>
+            a.EnrollmentId == request.EnrollmentId &&
+            a.AbsenceDate == request.AbsenceDate &&
+            a.ClassSubjectTeacherId == request.ClassSubjectTeacherId &&
+            !a.IsDeleted)).FirstOrDefault();
 
         if (request.ClassSubjectTeacherId.HasValue)
         {
             var cst = await _unitOfWork.ClassSubjectTeachers.GetByIdAsync(request.ClassSubjectTeacherId.Value);
             if (cst is null || cst.IsDeleted)
                 return OperationResult<DailyAbsenceDto>.Failure("توزيع المدرس غير موجود");
+        }
+
+        if (existing is not null)
+        {
+            existing.IsAbsent = request.IsAbsent;
+            existing.Reason = request.Reason;
+            existing.UpdatedAt = DateTime.UtcNow;
+            _unitOfWork.DailyAbsences.Update(existing);
+            await _unitOfWork.SaveChangesAsync();
+            return OperationResult<DailyAbsenceDto>.Success(
+                _mapper.Map<DailyAbsenceDto>(existing),
+                "تم تحديث الغياب بنجاح");
         }
 
         var entity = _mapper.Map<DailyAbsence>(request);

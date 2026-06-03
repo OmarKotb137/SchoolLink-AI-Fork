@@ -219,6 +219,15 @@ public class StudentEvaluationService : IStudentEvaluationService
             "تم جلب التقييمات بنجاح");
     }
 
+    public async Task<OperationResult<StudentEvaluationDto>> GetEvaluationByIdAsync(int id)
+    {
+        var entity = await _unitOfWork.StudentEvaluations.GetByIdAsync(id);
+        if (entity is null || entity.IsDeleted)
+            return OperationResult<StudentEvaluationDto>.Failure("التقييم غير موجود");
+        return OperationResult<StudentEvaluationDto>.Success(
+            _mapper.Map<StudentEvaluationDto>(entity), "");
+    }
+
     public async Task<OperationResult> DeleteEvaluationAsync(int id)
     {
         var entity = await _unitOfWork.StudentEvaluations.GetByIdAsync(id);

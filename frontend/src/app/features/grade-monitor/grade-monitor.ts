@@ -45,6 +45,7 @@ export class GradeMonitor implements OnInit {
   localAbsences: Record<string, boolean> = {};
   localExams: Record<string, any> = {};
   localFinals: Record<string, any> = {};
+  private absenceSnapshot: Record<string, boolean> = {};
 
   // ══ Loading indicator for week data ══
   loadingWeek = signal(false);
@@ -921,10 +922,7 @@ export class GradeMonitor implements OnInit {
     const cls = this.currentCls();
     const tmpl = this.currentTmpl();
     const wn = Number(this.entryWeek());
-    if (!cls || !tmpl) {
-      console.warn('[loadEvaluations] no cls or tmpl', { clsId: this.entryClassId(), tmpls: this.templates().length });
-      return;
-    }
+    if (!cls || !tmpl) return;
 
     // ① إلغاء أي طلب HTTP سابق (race condition fix)
     this.cancelLoad$.next();
@@ -938,12 +936,10 @@ export class GradeMonitor implements OnInit {
     this.localAbsences = {};
     this.localExams = {};
     this.localFinals = {};
+    this.absenceSnapshot = {};
 
     const periodId = this.currentPeriodId();
-    if (!periodId) {
-      console.warn('[loadEvaluations] no periodId for week', wn);
-      return;
-    }
+    if (!periodId) return;
 
     // بناء set من الـ item ids للـ template الحالي فقط
     const tmplItemIds = new Set(
@@ -953,18 +949,13 @@ export class GradeMonitor implements OnInit {
     );
 
     this.loadingWeek.set(true);
-    console.log('[loadEvaluations] cls=' + cls.id + ' wk=' + wn + ' periodId=' + periodId
-      + ' tmplItems:', [...tmplItemIds]);
 
     this.api.getEvaluationsByClassPeriod(cls.id, periodId)
       .pipe(takeUntil(this.cancelLoad$))
       .subscribe({
         next: (res) => {
           this.loadingWeek.set(false);
-          if (!res.isSuccess || !res.data?.length) {
-            console.log('[loadEvaluations] empty/failed response');
-            return;
-          }
+          if (!res.isSuccess || !res.data?.length) return;
 
           const classEvals = res.data as any[];
           const grades: Record<string, number> = {};
@@ -987,9 +978,6 @@ export class GradeMonitor implements OnInit {
               evalIds[eid + '_' + ev.evaluationItemId] = ev.id;
             }
           }
-
-          console.log('[loadEvaluations] DONE wk=' + wn + ' grades=' + Object.keys(grades).length,
-            Object.keys(grades).slice(0, 4));
 
           if (Object.keys(grades).length) this.gradeValues.set(grades);
           if (Object.keys(evalIds).length) this.existingEvalMap.set(evalIds);
@@ -1029,6 +1017,7 @@ export class GradeMonitor implements OnInit {
         }
         if (Object.keys(absences).length) {
           this.absenceValues.update(m => ({ ...m, ...absences }));
+          this.absenceSnapshot = { ...absences };
         }
       }
     });
@@ -1052,6 +1041,7 @@ export class GradeMonitor implements OnInit {
     this.localAbsences = {};
     this.localExams = {};
     this.localFinals = {};
+    this.absenceSnapshot = {};
   }
 
   onGradeChange(sid: number, cid: string, val: any) {
@@ -1201,12 +1191,15 @@ export class GradeMonitor implements OnInit {
       const students = this.getStudents();
       const enrollMap = this.enrollmentMap();
       const requests: any[] = [];
+      const sentKeys: string[] = [];
 
       for (const st of students) {
         const enrollmentId = st.enrollmentId ?? enrollMap[st.id] ?? st.id;
         for (const day of tmpl.absent_days) {
-          const isAbsent = this.absenceValues()[st.id + '_' + wn + '_' + day];
+          const key = st.id + '_' + wn + '_' + day;
+          const isAbsent = this.absenceValues()[key];
           if (isAbsent == null) continue;
+          if (this.absenceSnapshot[key] === isAbsent) continue;
           requests.push(
             this.api.recordAbsence({
               enrollmentId,
@@ -1215,6 +1208,7 @@ export class GradeMonitor implements OnInit {
               periodId,
             })
           );
+          sentKeys.push(key);
         }
       }
 
@@ -1223,6 +1217,7 @@ export class GradeMonitor implements OnInit {
           next: () => {
             this.saving.set(false);
             this.showSnackbar('تم حفظ الغياب بنجاح ✓');
+            for (const k of sentKeys) this.absenceSnapshot[k] = this.absenceValues()[k] ?? false;
           },
           error: () => {
             this.saving.set(false);
