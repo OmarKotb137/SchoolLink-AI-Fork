@@ -375,6 +375,75 @@ public class TimetableService : ITimetableService
             "تم جلب جدول الطالب بنجاح");
     }
 
+    public async Task<OperationResult<TimetableDto>> GetByStudentForUserAsync(int enrollmentId, int userId)
+    {
+        var enrollment = await _unitOfWork.StudentEnrollments.GetWithStudentAsync(enrollmentId);
+        if (enrollment is null || enrollment.IsDeleted)
+            return OperationResult<TimetableDto>.Failure("تسجيل الطالب غير موجود");
+
+        var student = enrollment.Student;
+        if (student.UserId != userId)
+        {
+            var linked = await _unitOfWork.ParentStudents.GetByParentAndStudentAsync(userId, student.Id);
+            if (linked is null)
+                return OperationResult<TimetableDto>.Failure("غير مسموح بالوصول لهذا الجدول");
+        }
+
+        var timetable = await _unitOfWork.Timetables.GetActiveByClassAndYearAsync(
+            enrollment.ClassId, enrollment.AcademicYearId);
+        if (timetable is null)
+            return OperationResult<TimetableDto>.Failure(
+                "لا يوجد جدول دراسي مفعل لهذا الفصل وهذه السنة الدراسية");
+
+        var full = await _unitOfWork.Timetables
+            .GetWithClassAndAllSlotsAsync(timetable.Id);
+
+        return OperationResult<TimetableDto>.Success(
+            _mapper.Map<TimetableDto>(full),
+            "تم جلب جدول الطالب بنجاح");
+    }
+
+    public async Task<OperationResult<TimetableDto>> GetMyStudentScheduleAsync(int studentUserId, int academicYearId)
+    {
+        var student = await _unitOfWork.Students.GetByUserIdAsync(studentUserId);
+        if (student is null || student.IsDeleted)
+            return OperationResult<TimetableDto>.Failure("الطالب غير موجود");
+
+        var enrollment = await _unitOfWork.StudentEnrollments
+            .GetActiveByStudentAndYearAsync(student.Id, academicYearId);
+        if (enrollment is null)
+            return OperationResult<TimetableDto>.Failure("لا يوجد تسجيل نشط لهذا الطالب في هذه السنة الدراسية");
+
+        return await GetByStudentAsync(enrollment.Id);
+    }
+
+    public async Task<OperationResult<IEnumerable<TimetableDto>>> GetMyChildSchedulesAsync(int parentUserId, int academicYearId)
+    {
+        var links = await _unitOfWork.ParentStudents.GetWithStudentDetailsByParentAsync(parentUserId);
+        var schedules = new List<TimetableDto>();
+
+        foreach (var link in links.Where(l => !l.IsDeleted && l.Student is not null && l.Student.UserId.HasValue))
+        {
+            var studentId = link.StudentId;
+            var enrollment = await _unitOfWork.StudentEnrollments
+                .GetActiveByStudentAndYearAsync(studentId, academicYearId);
+            if (enrollment is null)
+                continue;
+
+            var timetable = await _unitOfWork.Timetables.GetActiveByClassAndYearAsync(
+                enrollment.ClassId, enrollment.AcademicYearId);
+            if (timetable is null)
+                continue;
+
+            var full = await _unitOfWork.Timetables.GetWithClassAndAllSlotsAsync(timetable.Id);
+            schedules.Add(_mapper.Map<TimetableDto>(full));
+        }
+
+        return OperationResult<IEnumerable<TimetableDto>>.Success(
+            schedules,
+            "تم جلب جداول الأبناء بنجاح");
+    }
+
     public async Task<OperationResult<IEnumerable<TeacherScheduleSlotDto>>> GetTeacherScheduleAsync(
         int teacherId, int academicYearId)
     {

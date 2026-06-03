@@ -7,7 +7,7 @@ using Project.Domain.Enums;
 namespace Project.API.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/rooms")]
 [Authorize(Roles = "Admin")]
 public class RoomsController : ControllerBase
 {
@@ -91,6 +91,30 @@ public class RoomsController : ControllerBase
         var result = await _roomService.GetAvailableRoomsAsync(day, periodNumber, type);
         if (!result.IsSuccess)
             return BadRequest(result);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// جلب الغرف حسب النوع.
+    /// </summary>
+    [HttpGet("by-type")]
+    public async Task<IActionResult> GetByType([FromQuery] RoomType type)
+    {
+        var result = await _roomService.GetRoomsByTypeAsync(type);
+        if (!result.IsSuccess)
+            return BadRequest(result);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// جلب جدول غرفة معينة في يوم محدد.
+    /// </summary>
+    [HttpGet("{id:int}/schedule")]
+    public async Task<IActionResult> GetRoomSchedule(int id, [FromQuery] SchoolDay day)
+    {
+        var result = await _roomService.GetRoomScheduleAsync(id, day);
+        if (!result.IsSuccess)
+            return NotFound(result);
         return Ok(result);
     }
 }
