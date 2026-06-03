@@ -35,6 +35,8 @@ export const routes: Routes = [
   { path: 'analysis-ai', loadComponent: () => import('./features/analysis-ai/analysis-ai').then(c => c.AnalysisAi) },
   { path: 'import-students', loadComponent: () => import('./features/import-students/import-students').then(c => c.ImportStudents) },
   { path: 'user-management', loadComponent: () => import('./features/user-management/user-management').then(c => c.UserManagement) },
+  { path: 'add-teacher', loadComponent: () => import('./features/add-teacher/add-teacher').then(c => c.AddTeacher) },
+  { path: 'transfer-student', loadComponent: () => import('./features/transfer-student/transfer-student').then(c => c.TransferStudent) },
   { path: 'settings', loadComponent: () => import('./features/settings/settings').then(c => c.Settings) },
   { path: 'grade-monitor', loadComponent: () => import('./features/grade-monitor/grade-monitor').then(c => c.GradeMonitor) },
   { path: 'child-progress', loadComponent: () => import('./features/child-progress/child-progress').then(c => c.ChildProgress) },

@@ -1,0 +1,124 @@
+<app-sidebar [(isOpen)]="sidebarOpen" />
+<div class="main-content">
+  <app-topbar userName="أحمد" />
+  <main class="p-gutter-desktop">
+    <div class="max-w-4xl mx-auto flex flex-col gap-stack-lg">
+
+      <div>
+        <h1 class="font-headline-lg text-headline-lg" style="font-weight:800;background:linear-gradient(135deg,#00236f,#6b7280);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">إضافة معلم جديد</h1>
+        <p class="font-body-md text-body-md text-outline">إضافة مدرس جديد وتحديد المواد والفصول التي يدرسها</p>
+      </div>
+
+      <div class="glass-card" style="padding:24px;">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-stack-md">
+          <div class="flex flex-col gap-1">
+            <label class="font-label-md text-label-md" style="font-weight:600;">الاسم</label>
+            <input class="glass-input" placeholder="مثال: أ. أحمد علي" [value]="newName()" (input)="newName.set($any($event.target).value)" />
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="font-label-md text-label-md" style="font-weight:600;">البريد الإلكتروني</label>
+            <input class="glass-input" type="email" placeholder="teacher@school.com" [value]="newEmail()" (input)="newEmail.set($any($event.target).value)" />
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="font-label-md text-label-md" style="font-weight:600;">كلمة المرور</label>
+            <input class="glass-input" type="password" placeholder="******" [value]="newPassword()" (input)="newPassword.set($any($event.target).value)" />
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="font-label-md text-label-md" style="font-weight:600;">رقم الهاتف</label>
+            <input class="glass-input" type="tel" placeholder="01012345678" [value]="newPhone()" (input)="newPhone.set($any($event.target).value)" />
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-1 mt-4">
+          <label class="font-label-md text-label-md" style="font-weight:600;">المواد الدراسية</label>
+          <div class="flex flex-wrap gap-2">
+            @for (s of allSubjects; track s) {
+              <button class="px-3 py-1.5 rounded-lg text-label-sm font-label-sm transition-all"
+                [class.gradient-btn]="selectedSubjects().includes(s)"
+                [class.secondary-btn-glass]="!selectedSubjects().includes(s)"
+                (click)="toggleSubject(s)">{{ s }}</button>
+            }
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-1 mt-4">
+          <label class="font-label-md text-label-md" style="font-weight:600;">الفصول</label>
+          <div class="flex flex-wrap gap-2">
+            @for (c of allClasses; track c) {
+              <button class="px-3 py-1.5 rounded-lg text-label-sm font-label-sm transition-all"
+                [class.gradient-btn]="selectedClasses().includes(c)"
+                [class.secondary-btn-glass]="!selectedClasses().includes(c)"
+                (click)="toggleClass(c)">{{ c }}</button>
+            }
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-3 mt-6 pt-4" style="border-top:1px solid rgba(0,0,0,0.06);">
+          <button class="secondary-btn-glass" (click)="resetForm()">إلغاء</button>
+          <button class="gradient-btn" (click)="saveTeacher()">
+            <span class="material-symbols-outlined">save</span>
+            حفظ المعلم
+          </button>
+        </div>
+      </div>
+
+      <div class="glass-table-container">
+        <div class="overflow-x-auto">
+          <table class="w-full">
+            <thead>
+              <tr>
+                <th class="text-right p-4 font-label-md text-outline">الاسم</th>
+                <th class="text-right p-4 font-label-md text-outline">البريد الإلكتروني</th>
+                <th class="text-right p-4 font-label-md text-outline">المواد</th>
+                <th class="text-right p-4 font-label-md text-outline">الفصول</th>
+                <th class="text-center p-4 font-label-md text-outline"></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (t of teachers(); track t.id) {
+                <tr>
+                  <td class="p-4 font-body-md" style="font-weight:700;">{{ t.name }}</td>
+                  <td class="p-4 font-body-md text-outline">{{ t.email }}</td>
+                  <td class="p-4"><div class="flex flex-wrap gap-1">@for (s of t.subjects; track s) {<span class="px-2 py-0.5 bg-white/40 backdrop-blur-sm rounded text-label-sm text-primary" style="font-weight:600;">{{ s }}</span>}</div></td>
+                  <td class="p-4"><div class="flex flex-wrap gap-1">@for (c of t.classes; track c) {<span class="px-2 py-0.5 bg-secondary/10 rounded text-label-sm text-secondary" style="font-weight:600;">{{ c }}</span>}</div></td>
+                  <td class="p-4"><div class="flex items-center justify-center gap-1"><button class="p-2 rounded-lg hover:bg-white/50 text-outline hover:text-secondary" (click)="editTeacher(t)"><span class="material-symbols-outlined">edit</span></button><button class="p-2 rounded-lg hover:bg-white/50 text-outline hover:text-error" (click)="deleteTeacher(t.id)"><span class="material-symbols-outlined">delete</span></button></div></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+@if (showEditModal()) {
+  <div class="fixed inset-0 z-[60] flex items-center justify-center glass-overlay p-margin-mobile" (click)="closeEditModal()">
+    <div class="glass-modal max-w-xl w-full max-h-[90vh] overflow-y-auto" (click)="$event.stopPropagation()">
+      <div class="glass-modal-header flex justify-between items-center">
+        <h2 class="font-headline-md text-headline-md" style="font-weight:700;">تعديل معلم</h2>
+        <button class="p-2 rounded-full hover:bg-black/5 transition-colors" (click)="closeEditModal()"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <div class="p-stack-lg flex flex-col gap-stack-md">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-stack-md">
+          <div class="flex flex-col gap-1"><label class="font-label-md" style="font-weight:600;">الاسم</label><input class="glass-input" [value]="newName()" (input)="newName.set($any($event.target).value)" /></div>
+          <div class="flex flex-col gap-1"><label class="font-label-md" style="font-weight:600;">البريد الإلكتروني</label><input class="glass-input" type="email" [value]="newEmail()" (input)="newEmail.set($any($event.target).value)" /></div>
+          <div class="flex flex-col gap-1"><label class="font-label-md" style="font-weight:600;">رقم الهاتف</label><input class="glass-input" type="tel" [value]="newPhone()" (input)="newPhone.set($any($event.target).value)" /></div>
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="font-label-md" style="font-weight:600;">المواد</label>
+          <div class="flex flex-wrap gap-2">@for (s of allSubjects; track s) {<button class="px-3 py-1.5 rounded-lg text-label-sm font-label-sm transition-all" [class.gradient-btn]="selectedSubjects().includes(s)" [class.secondary-btn-glass]="!selectedSubjects().includes(s)" (click)="toggleSubject(s)">{{ s }}</button>}</div>
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="font-label-md" style="font-weight:600;">الفصول</label>
+          <div class="flex flex-wrap gap-2">@for (c of allClasses; track c) {<button class="px-3 py-1.5 rounded-lg text-label-sm font-label-sm transition-all" [class.gradient-btn]="selectedClasses().includes(c)" [class.secondary-btn-glass]="!selectedClasses().includes(c)" (click)="toggleClass(c)">{{ c }}</button>}</div>
+        </div>
+      </div>
+      <div class="glass-modal-footer flex justify-end gap-3">
+        <button class="secondary-btn-glass" (click)="closeEditModal()">إلغاء</button>
+        <button class="gradient-btn" (click)="updateTeacher()">حفظ التغييرات</button>
+      </div>
+    </div>
+  </div>
+}
