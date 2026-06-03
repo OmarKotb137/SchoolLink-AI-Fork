@@ -17,6 +17,34 @@ public class DailyAbsencesController : ControllerBase
         _service = service;
     }
 
+    [HttpGet("{id:int}")]
+    public async Task<IActionResult> GetById(int id)
+    {
+        var result = await _service.GetAbsenceByIdAsync(id);
+        if (!result.IsSuccess)
+            return NotFound(result);
+        return Ok(result);
+    }
+
+    [HttpGet("by-class/{classId:int}")]
+    public async Task<IActionResult> GetByClass(int classId, [FromQuery] DateOnly date)
+    {
+        var result = await _service.GetAbsencesByClassAsync(classId, date);
+        return Ok(result);
+    }
+
+    [HttpGet("by-date-range")]
+    public async Task<IActionResult> GetByDateRange(
+        [FromQuery] DateOnly fromDate,
+        [FromQuery] DateOnly toDate,
+        [FromQuery] int? classSubjectTeacherId = null)
+    {
+        var result = await _service.GetAbsencesByDateRangeAsync(fromDate, toDate, classSubjectTeacherId);
+        if (!result.IsSuccess)
+            return BadRequest(result);
+        return Ok(result);
+    }
+
     [HttpPost]
     public async Task<IActionResult> Record([FromBody] RecordAbsenceRequest request)
     {
