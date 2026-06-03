@@ -9,6 +9,7 @@ using Microsoft.IdentityModel.Tokens;
 using Project.BLL.DTOs.Auth;
 using Project.BLL.Interfaces;
 using Project.DAL.Interfaces;
+using Project.Domain.Enums;
 using Project.Domain.Entities;
 
 namespace Project.BLL.Services;
@@ -37,6 +38,38 @@ public class AuthService : IAuthService
 
         if (!user.IsActive)
             return OperationResult<AuthResponseDto>.Failure("هذا الحساب غير نشط. اتصل بالمسؤول");
+
+        if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+            return OperationResult<AuthResponseDto>.Failure("البريد الإلكتروني أو كلمة المرور غير صحيحة");
+
+        var accessToken = GenerateAccessToken(user);
+        var refreshToken = await GenerateAndStoreRefreshTokenAsync(user.Id);
+
+        return OperationResult<AuthResponseDto>.Success(new AuthResponseDto
+        {
+            AccessToken = accessToken,
+            RefreshToken = refreshToken.Token,
+            Expiry = DateTime.UtcNow.AddMinutes(GetConfigDouble("Jwt:ExpiryInMinutes", 60)),
+            UserId = user.Id,
+            FullName = user.FullName,
+            Role = user.Role.ToString()
+        }, "تم تسجيل الدخول بنجاح");
+    }
+
+    public async Task<OperationResult<AuthResponseDto>> LoginByRoleAsync(LoginRequest request, UserRole role)
+    {
+        var user = await _unitOfWork.Users.GetByEmailAsync(request.Email);
+        if (user == null)
+            return OperationResult<AuthResponseDto>.Failure("البريد الإلكتروني أو كلمة المرور غير صحيحة");
+
+        if (user.IsDeleted)
+            return OperationResult<AuthResponseDto>.Failure("تم حذف هذا الحساب");
+
+        if (!user.IsActive)
+            return OperationResult<AuthResponseDto>.Failure("هذا الحساب غير نشط. اتصل بالمسؤول");
+
+        if (user.Role != role)
+            return OperationResult<AuthResponseDto>.Failure("بيانات الدخول غير صحيحة لهذا النوع من المستخدمين");
 
         if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
             return OperationResult<AuthResponseDto>.Failure("البريد الإلكتروني أو كلمة المرور غير صحيحة");

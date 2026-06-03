@@ -99,30 +99,26 @@
           </button>
         </div>
         @if (templates().length) {
-          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          <div class="grade-grid">
             @for (t of templates(); track t.id) {
-              <div class="grade-card hover:border-primary transition-all">
-                <h4 class="font-bold text-on-surface mb-2">{{ t.name }}</h4>
-                <p class="text-xs text-on-surface-variant flex items-center gap-1 mb-1">
+              <div class="grade-card">
+                <h4>{{ t.name }}</h4>
+                <p>
                   <span class="material-symbols-outlined text-sm">school</span> {{ t.stage }}
                 </p>
-                <p class="text-xs text-on-surface-variant flex items-center gap-1 mb-1">
+                <p>
                   <span class="material-symbols-outlined text-sm">calendar_month</span> {{ t.weeks }} أسبوع
                   @if (t.start_date) { · بداية: {{ t.start_date }} }
                 </p>
-                <p class="text-xs text-on-surface-variant flex items-center gap-1 mb-2">
+                <p>
                   <span class="material-symbols-outlined text-sm">business</span> {{ t.school }}
                 </p>
-                <div class="flex flex-wrap gap-1 mb-3">
-                  @for (c of t.criteria; track c.id) {
-                    <span class="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full">{{ c.name }}</span>
-                  }
-                </div>
-                <div class="flex gap-2">
+                <span class="grade-badge">{{ t.criteria.map(c => c.name).join(' · ') }}</span>
+                <div class="ca">
                   <button class="grade-btn-outline-sm" (click)="openTmplForm(t)">
                     <span class="material-symbols-outlined text-sm">edit</span> تعديل
                   </button>
-                  <button class="grade-btn-outline-sm text-error border-error" (click)="delTmpl(t.id)">
+                  <button class="grade-btn-outline-sm" style="color:var(--danger);border-color:var(--danger)" (click)="delTmpl(t.id)">
                     <span class="material-symbols-outlined text-sm">delete</span> حذف
                   </button>
                 </div>
@@ -145,20 +141,20 @@
           </button>
         </div>
         @if (classes().length) {
-          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          <div class="grade-grid">
             @for (c of classes(); track c.id) {
-              <div class="grade-card hover:border-primary transition-all">
-                <h4 class="font-bold text-on-surface mb-2 flex items-center gap-2">
-                  <span class="material-symbols-outlined text-primary">school</span> {{ c.name }}
+              <div class="grade-card">
+                <h4>
+                  <span class="material-symbols-outlined text-primary" style="font-size:18px">school</span> {{ c.name }}
                 </h4>
-                <p class="text-xs text-on-surface-variant flex items-center gap-1 mb-1">
+                <p>
                   <span class="material-symbols-outlined text-sm">edit_note</span> {{ c.subject || '—' }} · {{ c.teacher || '—' }}
                 </p>
-                <p class="text-xs text-on-surface-variant flex items-center gap-1 mb-3">
+                <p>
                   <span class="material-symbols-outlined text-sm">group</span> {{ c.students.length }} طالب
                   · <span class="material-symbols-outlined text-sm">calendar_month</span> {{ c.year }}
                 </p>
-                <div class="flex gap-2 flex-wrap">
+                <div class="ca">
                   <button class="grade-btn-outline-sm" (click)="openClsForm(c)">
                     <span class="material-symbols-outlined text-sm">edit</span> تعديل
                   </button>
@@ -166,9 +162,9 @@
                     <span class="material-symbols-outlined text-sm">edit_note</span> درجات
                   </button>
                   <button class="grade-btn-outline-sm" (click)="goExp(c.id)">
-                    <span class="material-symbols-outlined text-sm">file_download</span> تصدير
+                    <span class="material-symbols-outlined text-sm">file_download</span>
                   </button>
-                  <button class="grade-btn-outline-sm text-error border-error" (click)="delCls(c.id)">
+                  <button class="grade-btn-outline-sm" style="color:var(--danger);border-color:var(--danger)" (click)="delCls(c.id)">
                     <span class="material-symbols-outlined text-sm">delete</span>
                   </button>
                 </div>
@@ -189,7 +185,7 @@
             <div class="flex flex-wrap gap-4">
               <div class="flex-1 min-w-[200px]">
                 <label class="text-label-sm text-on-surface-variant block mb-1">الفصل</label>
-                <select class="grade-inp" [ngModel]="entryClassId()" (ngModelChange)="entryClassId.set($event); clearGrades()">
+                <select class="grade-inp" [ngModel]="entryClassId()" (ngModelChange)="entryClassId.set($event); onClassOrWeekChange()">
                   <option [ngValue]="null">-- اختر الفصل --</option>
                   @for (c of classes(); track c.id) {
                     <option [ngValue]="c.id">{{ c.name }} – {{ c.subject }}</option>
@@ -208,9 +204,9 @@
               @if (entryType() === 'grades' || entryType() === 'absence') {
                 <div class="min-w-[160px]">
                   <label class="text-label-sm text-on-surface-variant block mb-1">الأسبوع</label>
-                  <select class="grade-inp" [ngModel]="entryWeek()" (ngModelChange)="entryWeek.set($event); clearGrades()">
+                  <select class="grade-inp" [ngModel]="entryWeek()" (ngModelChange)="entryWeek.set($event); onClassOrWeekChange()">
                     @for (w of entryWeeks(); track w) {
-                      <option [value]="w">{{ entryWeekLabel() }}</option>
+                      <option [value]="w">{{ weekLabel(w) }}</option>
                     }
                   </select>
                 </div>
@@ -223,19 +219,24 @@
           <div class="grade-box overflow-hidden">
             <div class="grade-box-header flex-wrap gap-3">
               <h3>
-                @if (entryType() === 'grades') { الدرجات الأسبوعية · {{ entryWeekLabel() }} · {{ currentCls()?.name }}
-                } @else if (entryType() === 'absence') { الغياب الأسبوعي · {{ entryWeekLabel() }} · {{ currentCls()?.name }}
+                  @if (entryType() === 'grades') { الدرجات الأسبوعية · {{ weekLabel(entryWeek()) }} · {{ currentCls()?.name }}
+                  } @else if (entryType() === 'absence') { الغياب الأسبوعي · {{ weekLabel(entryWeek()) }} · {{ currentCls()?.name }}
                 } @else if (entryType() === 'exams') { الامتحانات الشهرية · {{ currentCls()?.name }}
                 } @else { النتائج النهائية · {{ currentCls()?.name }}
                 }
               </h3>
               <div class="flex gap-2 flex-wrap">
                 @if (entryType() === 'grades') {
-                  <button class="grade-btn-outline-sm" (click)="fillZeros()">صفر للكل</button>
-                  <button class="grade-btn-outline-sm" (click)="fillMax()">الدرجة الكاملة</button>
+                  <button class="grade-btn-outline-sm" (click)="fillZeros()" [disabled]="!currentPeriodId()">صفر للكل</button>
+                  <button class="grade-btn-outline-sm" (click)="fillMax()" [disabled]="!currentPeriodId()">الدرجة الكاملة</button>
                 }
-                <button class="grade-btn-primary-sm">
-                  <span class="material-symbols-outlined text-sm">save</span> حفظ
+                @if (entryType() === 'absence') {
+                  <button class="grade-btn-outline-sm" (click)="autoFillAttendance()" [disabled]="saving() || !currentPeriodId()">
+                    <span class="material-symbols-outlined text-sm">auto_awesome</span> تعبئة تلقائية
+                  </button>
+                }
+                <button class="grade-btn-primary-sm" (click)="saveGrades()" [disabled]="saving() || !currentPeriodId()">
+                  <span class="material-symbols-outlined text-sm">save</span> {{ saving() ? 'جاري الحفظ' : 'حفظ' }}
                 </button>
               </div>
             </div>
@@ -259,7 +260,7 @@
                         <td class="font-medium text-on-surface text-right">{{ st.name }}</td>
                         @for (c of currentTmpl()!.criteria; track c.id) {
                           <td>
-                            <input type="number" class="grade-num-inp"
+                            <input type="number" class="grade-num-inp" step="0.25"
                                    [value]="getGradeDisplay(st.id, c.id)"
                                    (input)="onGradeInput(st.id, c.id, $event)"
                                    min="0" [max]="c.max" />
@@ -314,13 +315,13 @@
                         <td class="text-on-surface-variant text-xs">{{ i + 1 }}</td>
                         <td class="font-medium text-on-surface text-right">{{ st.name }}</td>
                         <td>
-                          <input type="number" class="grade-num-inp"
+                          <input type="number" class="grade-num-inp" step="0.25"
                                  [value]="getExam(st.id, 1) || ''"
                                  (input)="onExamInput(st.id, 1, $event)"
                                  min="0" max="15" />
                         </td>
                         <td>
-                          <input type="number" class="grade-num-inp"
+                          <input type="number" class="grade-num-inp" step="0.25"
                                  [value]="getExam(st.id, 2) || ''"
                                  (input)="onExamInput(st.id, 2, $event)"
                                  min="0" max="15" />
@@ -346,11 +347,11 @@
                       <tr>
                         <td class="text-on-surface-variant text-xs">{{ i + 1 }}</td>
                         <td class="font-medium text-on-surface text-right">{{ st.name }}</td>
-                        <td><input type="number" class="grade-num-inp" [value]="getFinal(st.id, 'ma') || ''" (input)="onFinalInput(st.id, 'ma', $event)" min="0" max="40" /></td>
-                        <td><input type="number" class="grade-num-inp" [value]="getFinal(st.id, 'e1') || ''" (input)="onFinalInput(st.id, 'e1', $event)" min="0" max="15" /></td>
-                        <td><input type="number" class="grade-num-inp" [value]="getFinal(st.id, 'e2') || ''" (input)="onFinalInput(st.id, 'e2', $event)" min="0" max="15" /></td>
+                        <td><input type="number" class="grade-num-inp" step="0.25" [value]="getFinal(st.id, 'ma') || ''" (input)="onFinalInput(st.id, 'ma', $event)" min="0" max="40" /></td>
+                        <td><input type="number" class="grade-num-inp" step="0.25" [value]="getFinal(st.id, 'e1') || ''" (input)="onFinalInput(st.id, 'e1', $event)" min="0" max="15" /></td>
+                        <td><input type="number" class="grade-num-inp" step="0.25" [value]="getFinal(st.id, 'e2') || ''" (input)="onFinalInput(st.id, 'e2', $event)" min="0" max="15" /></td>
                         <td class="grade-total">{{ finalWritten(st.id) }}</td>
-                        <td><input type="number" class="grade-num-inp" [value]="getFinal(st.id, 'fe') || ''" (input)="onFinalInput(st.id, 'fe', $event)" min="0" max="30" /></td>
+                        <td><input type="number" class="grade-num-inp" step="0.25" [value]="getFinal(st.id, 'fe') || ''" (input)="onFinalInput(st.id, 'fe', $event)" min="0" max="30" /></td>
                         <td class="grade-total">{{ finalTotal(st.id) }}</td>
                       </tr>
                     }
@@ -367,6 +368,13 @@
         } @else if (entryClassId() && !currentTmpl()) {
           <div class="text-center py-16 text-on-surface-variant">لم يتم العثور على القالب المرتبط بهذا الفصل</div>
         }
+      </div>
+    }
+
+    <!-- Snackbar -->
+    @if (snackbar()) {
+      <div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-primary text-on-primary px-6 py-3 rounded-xl shadow-lg text-sm font-medium">
+        {{ snackbar() }}
       </div>
     }
 
@@ -395,9 +403,9 @@
               </div>
             </div>
             <div class="flex gap-3 mt-4 flex-wrap">
-              <button class="grade-btn-export" disabled>
+              <button class="grade-btn-export" (click)="exportWord()" [disabled]="exporting()">
                 <span class="material-symbols-outlined text-xl">description</span>
-                تصدير Word
+                {{ exporting() ? 'جاري التصدير...' : 'تصدير Word' }}
               </button>
               <button class="grade-btn-export" onclick="window.print()">
                 <span class="material-symbols-outlined text-xl">print</span>
@@ -456,154 +464,193 @@
 
 <!-- Template Modal -->
 @if (tmplModalOpen()) {
-  <div class="grade-overlay" (click)="tmplModalOpen.set(false)"></div>
-  <div class="grade-modal">
-    <div class="grade-modal-header">
-      <h3>
-        <span class="material-symbols-outlined text-primary">description</span>
-        {{ editTmplId() ? 'تعديل القالب' : 'قالب جديد' }}
-      </h3>
-      <button class="grade-modal-close" (click)="tmplModalOpen.set(false)">
-        <span class="material-symbols-outlined">close</span>
-      </button>
-    </div>
-    <div class="grade-modal-body" style="max-height: 60vh; overflow-y: auto; padding: 20px;">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div class="md:col-span-2">
-          <label class="grade-label">اسم القالب</label>
-          <input class="grade-inp" [ngModel]="tName()" (ngModelChange)="tName.set($event)" placeholder="مثال: سجل الصف الأول" />
-        </div>
-        <div>
-          <label class="grade-label">المرحلة</label>
-          <select class="grade-inp" [ngModel]="tStage()" (ngModelChange)="tStage.set($event)">
-            <option>الصف الأول الابتدائي</option>
-            <option>الصف الثاني الابتدائي</option>
-            <option>الصف الثالث الابتدائي</option>
-            <option>الصف الرابع الابتدائي</option>
-            <option>الصف الخامس الابتدائي</option>
-            <option>الصف السادس الابتدائي</option>
-            <option>الصف الأول الإعدادي</option>
-            <option>الصف الثاني الإعدادي</option>
-            <option>الصف الثالث الإعدادي</option>
-            <option>الصف الأول الثانوي</option>
-            <option>الصف الثاني الثانوي</option>
-            <option>الصف الثالث الثانوي</option>
-          </select>
-        </div>
-        <div>
-          <label class="grade-label">عدد الأسابيع</label>
-          <input class="grade-inp" type="number" [ngModel]="tWeeks()" (ngModelChange)="tWeeks.set($event)" min="1" max="30" />
-        </div>
-        <div>
-          <label class="grade-label">تاريخ بداية الفصل</label>
-          <input class="grade-inp" type="date" [ngModel]="tStart()" (ngModelChange)="tStart.set($event)" />
-        </div>
-        <div>
-          <label class="grade-label">اسم المدرسة</label>
-          <input class="grade-inp" [ngModel]="tSchool()" (ngModelChange)="tSchool.set($event)" />
-        </div>
-        <div>
-          <label class="grade-label">المديرية</label>
-          <input class="grade-inp" [ngModel]="tDir()" (ngModelChange)="tDir.set($event)" />
-        </div>
-        <div>
-          <label class="grade-label">الإدارة</label>
-          <input class="grade-inp" [ngModel]="tAdm()" (ngModelChange)="tAdm.set($event)" />
-        </div>
+  <div class="grade-mo" (click)="tmplModalOpen.set(false)">
+    <div class="grade-md lg" (click)="$event.stopPropagation()">
+      <div class="mh">
+        <h3>
+          <span class="material-symbols-outlined text-primary">description</span>
+          {{ editTmplId() ? 'تعديل القالب' : 'قالب جديد' }}
+        </h3>
+        <button class="grade-xb" (click)="tmplModalOpen.set(false)">
+          <span class="material-symbols-outlined">close</span>
+        </button>
       </div>
-
-      <div class="grade-section-title">عناصر التقييم الأسبوعي</div>
-      <div class="space-y-2">
-        @for (c of tCriteria(); track $index; let i = $index) {
-          <div class="flex gap-2 items-center">
-            <input class="grade-inp flex-1" [ngModel]="tCriteria()[i].name" (ngModelChange)="tCriteria()[i].name = $event; tCriteria.set([...tCriteria()])" placeholder="اسم العنصر" />
-            <input class="grade-inp w-20" type="number" [ngModel]="tCriteria()[i].max" (ngModelChange)="tCriteria()[i].max = $event; tCriteria.set([...tCriteria()])" placeholder="درجة" />
-            <button class="grade-btn-icon text-error" (click)="removeCrit(i)">
-              <span class="material-symbols-outlined text-lg">close</span>
-            </button>
+      <div class="mb">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="md:col-span-2">
+            <label class="grade-label">اسم القالب</label>
+            <input class="grade-inp" [ngModel]="tName()" (ngModelChange)="tName.set($event)" placeholder="مثال: سجل الصف الأول" />
           </div>
-        }
-      </div>
-      <button class="grade-btn-outline-sm mt-2" (click)="addCrit()">
-        <span class="material-symbols-outlined text-sm">add</span> إضافة عنصر
-      </button>
-
-      <div class="grade-section-title mt-4">أعمدة السجل المجمع</div>
-      <div class="space-y-2">
-        @for (c of tSumCols(); track $index; let i = $index) {
-          <div class="flex gap-2 items-center">
-            <input class="grade-inp flex-1" [ngModel]="tSumCols()[i].name" (ngModelChange)="tSumCols()[i].name = $event; tSumCols.set([...tSumCols()])" placeholder="اسم العمود" />
-            <input class="grade-inp w-20" type="number" [ngModel]="tSumCols()[i].max" (ngModelChange)="tSumCols()[i].max = $event; tSumCols.set([...tSumCols()])" placeholder="الدرجة" />
-            <button class="grade-btn-icon text-error" (click)="removeSumCol(i)">
-              <span class="material-symbols-outlined text-lg">close</span>
-            </button>
+          <div>
+            <label class="grade-label">المرحلة</label>
+            <select class="grade-inp" [ngModel]="tStage()" (ngModelChange)="tStage.set($event)">
+              <option>الصف الأول الابتدائي</option>
+              <option>الصف الثاني الابتدائي</option>
+              <option>الصف الثالث الابتدائي</option>
+              <option>الصف الرابع الابتدائي</option>
+              <option>الصف الخامس الابتدائي</option>
+              <option>الصف السادس الابتدائي</option>
+              <option>الصف الأول الإعدادي</option>
+              <option>الصف الثاني الإعدادي</option>
+              <option>الصف الثالث الإعدادي</option>
+              <option>الصف الأول الثانوي</option>
+              <option>الصف الثاني الثانوي</option>
+              <option>الصف الثالث الثانوي</option>
+            </select>
           </div>
-        }
+          <div>
+            <label class="grade-label">المادة</label>
+            <select class="grade-inp" [ngModel]="tSubjectId()" (ngModelChange)="tSubjectId.set($event)">
+              <option [ngValue]="null">اختر المادة</option>
+              @for (s of subjects(); track s.id) {
+                <option [ngValue]="s.id">{{ s.name }}</option>
+              }
+            </select>
+          </div>
+          <div>
+            <label class="grade-label">عدد الأسابيع</label>
+            <input class="grade-inp" type="number" [ngModel]="tWeeks()" (ngModelChange)="tWeeks.set($event)" min="1" max="30" />
+          </div>
+          <div>
+            <label class="grade-label">تاريخ بداية الفصل</label>
+            <input class="grade-inp" type="date" [ngModel]="tStart()" (ngModelChange)="tStart.set($event)" />
+          </div>
+          <div>
+            <label class="grade-label">اسم المدرسة</label>
+            <input class="grade-inp" [ngModel]="tSchool()" (ngModelChange)="tSchool.set($event)" />
+          </div>
+          <div>
+            <label class="grade-label">المديرية</label>
+            <input class="grade-inp" [ngModel]="tDir()" (ngModelChange)="tDir.set($event)" />
+          </div>
+          <div>
+            <label class="grade-label">الإدارة</label>
+            <input class="grade-inp" [ngModel]="tAdm()" (ngModelChange)="tAdm.set($event)" />
+          </div>
+        </div>
+
+        <div class="grade-section-title">عناصر التقييم الأسبوعي</div>
+        
+        <div class="text-xs text-on-surface-variant mb-2">
+          عدد العناصر: {{ tCriteria().length }}
+        </div>
+        
+        <div class="space-y-2">
+          @for (c of tCriteria(); track $index; let i = $index) {
+            <div class="flex gap-2 items-center">
+              <input class="grade-inp flex-1" 
+                     type="text"
+                     [value]="getCName(i)"
+                     (input)="onCriteriaNameInput(i, $event)"
+                     placeholder="اسم العنصر" />
+              <input class="grade-inp w-20" 
+                     type="number" 
+                     step="0.25"
+                     [value]="getCMax(i)"
+                     (change)="onCriteriaMaxInput(i, $event)"
+                     placeholder="درجة" />
+              <button class="grade-btn-icon text-error" (click)="removeCrit(i)">
+                <span class="material-symbols-outlined text-lg">close</span>
+              </button>
+            </div>
+          }
+        </div>
+        <button class="grade-btn-outline-sm mt-2" (click)="addCrit()">
+          <span class="material-symbols-outlined text-sm">add</span> إضافة عنصر
+        </button>
+
+        <div class="grade-section-title mt-4">أعمدة السجل المجمع</div>
+        
+        <div class="text-xs text-on-surface-variant mb-2">
+          عدد الأعمدة: {{ tSumCols().length }}
+        </div>
+        
+        <div class="space-y-2">
+          @for (c of tSumCols(); track $index; let i = $index) {
+            <div class="flex gap-2 items-center">
+              <input class="grade-inp flex-1" 
+                     type="text"
+                     [value]="getSName(i)"
+                     (input)="onSumColNameInput(i, $event)"
+                     placeholder="اسم العمود" />
+              <input class="grade-inp w-20" 
+                     type="number" 
+                     step="0.25"
+                     [value]="getSMax(i)"
+                     (change)="onSumColMaxInput(i, $event)"
+                     placeholder="الدرجة" />
+              <button class="grade-btn-icon text-error" (click)="removeSumCol(i)">
+                <span class="material-symbols-outlined text-lg">close</span>
+              </button>
+            </div>
+          }
+        </div>
+        <button class="grade-btn-outline-sm mt-2" (click)="addSumCol()">
+          <span class="material-symbols-outlined text-sm">add</span> إضافة عمود
+        </button>
       </div>
-      <button class="grade-btn-outline-sm mt-2" (click)="addSumCol()">
-        <span class="material-symbols-outlined text-sm">add</span> إضافة عمود
-      </button>
-    </div>
-    <div class="grade-modal-footer">
-      <button class="grade-btn-outline-sm" (click)="tmplModalOpen.set(false)">إلغاء</button>
-      <button class="grade-btn-primary-sm" (click)="saveTmpl()">
-        <span class="material-symbols-outlined text-sm">save</span> حفظ القالب
-      </button>
+      <div class="mf">
+        <button class="grade-btn-outline-sm" (click)="tmplModalOpen.set(false)">إلغاء</button>
+        <button class="grade-btn-primary-sm" (click)="saveTmpl()">
+          <span class="material-symbols-outlined text-sm">save</span> حفظ القالب
+        </button>
+      </div>
     </div>
   </div>
 }
 
 <!-- Class Modal -->
 @if (clsModalOpen()) {
-  <div class="grade-overlay" (click)="clsModalOpen.set(false)"></div>
-  <div class="grade-modal">
-    <div class="grade-modal-header">
-      <h3>
-        <span class="material-symbols-outlined text-primary">school</span>
-        {{ editClsId() ? 'تعديل الفصل' : 'فصل جديد' }}
-      </h3>
-      <button class="grade-modal-close" (click)="clsModalOpen.set(false)">
-        <span class="material-symbols-outlined">close</span>
-      </button>
-    </div>
-    <div class="grade-modal-body" style="max-height: 60vh; overflow-y: auto; padding: 20px;">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label class="grade-label">القالب</label>
-          <select class="grade-inp" [ngModel]="cTmplId()" (ngModelChange)="cTmplId.set($event)">
-            <option [ngValue]="null">-- اختر قالب --</option>
-            @for (t of templates(); track t.id) {
-              <option [ngValue]="t.id">{{ t.name }}</option>
-            }
-          </select>
+  <div class="grade-mo" (click)="clsModalOpen.set(false)">
+    <div class="grade-md" (click)="$event.stopPropagation()">
+      <div class="mh">
+        <h3>
+          <span class="material-symbols-outlined text-primary">school</span>
+          {{ editClsId() ? 'تعديل الفصل' : 'فصل جديد' }}
+        </h3>
+        <button class="grade-xb" (click)="clsModalOpen.set(false)">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <div class="mb">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="grade-label">القالب</label>
+            <select class="grade-inp" [ngModel]="cTmplId()" (ngModelChange)="cTmplId.set($event)">
+              <option [ngValue]="null">-- اختر قالب --</option>
+              @for (t of templates(); track t.id) {
+                <option [ngValue]="t.id">{{ t.name }}</option>
+              }
+            </select>
+          </div>
+          <div>
+            <label class="grade-label">اسم الفصل</label>
+            <input class="grade-inp" [ngModel]="cName()" (ngModelChange)="cName.set($event)" placeholder="مثال: 1/أ" />
+          </div>
+          <div>
+            <label class="grade-label">اسم المعلم</label>
+            <input class="grade-inp" [ngModel]="cTeacher()" (ngModelChange)="cTeacher.set($event)" placeholder="اسم المعلم" />
+          </div>
+          <div>
+            <label class="grade-label">المادة</label>
+            <input class="grade-inp" [ngModel]="cSubj()" (ngModelChange)="cSubj.set($event)" placeholder="اسم المادة" />
+          </div>
+          <div>
+            <label class="grade-label">العام الدراسي</label>
+            <input class="grade-inp" [ngModel]="cYear()" (ngModelChange)="cYear.set($event)" />
+          </div>
         </div>
-        <div>
-          <label class="grade-label">اسم الفصل</label>
-          <input class="grade-inp" [ngModel]="cName()" (ngModelChange)="cName.set($event)" placeholder="مثال: 1/أ" />
-        </div>
-        <div>
-          <label class="grade-label">اسم المعلم</label>
-          <input class="grade-inp" [ngModel]="cTeacher()" (ngModelChange)="cTeacher.set($event)" placeholder="اسم المعلم" />
-        </div>
-        <div>
-          <label class="grade-label">المادة</label>
-          <input class="grade-inp" [ngModel]="cSubj()" (ngModelChange)="cSubj.set($event)" placeholder="اسم المادة" />
-        </div>
-        <div>
-          <label class="grade-label">العام الدراسي</label>
-          <input class="grade-inp" [ngModel]="cYear()" (ngModelChange)="cYear.set($event)" />
+        <div class="mt-4">
+          <label class="grade-label">أسماء الطلاب (اسم في كل سطر)</label>
+          <textarea class="grade-ta" rows="8" [ngModel]="cStudents()" (ngModelChange)="cStudents.set($event)" placeholder="أحمد محمد علي&#10;فاطمة أحمد حسن&#10;محمد سعيد إبراهيم"></textarea>
         </div>
       </div>
-      <div class="mt-4">
-        <label class="grade-label">أسماء الطلاب (اسم في كل سطر)</label>
-        <textarea class="grade-ta" rows="8" [ngModel]="cStudents()" (ngModelChange)="cStudents.set($event)" placeholder="أحمد محمد علي&#10;فاطمة أحمد حسن&#10;محمد سعيد إبراهيم"></textarea>
+      <div class="mf">
+        <button class="grade-btn-outline-sm" (click)="clsModalOpen.set(false)">إلغاء</button>
+        <button class="grade-btn-primary-sm" (click)="saveCls()">
+          <span class="material-symbols-outlined text-sm">save</span> حفظ الفصل
+        </button>
       </div>
-    </div>
-    <div class="grade-modal-footer">
-      <button class="grade-btn-outline-sm" (click)="clsModalOpen.set(false)">إلغاء</button>
-      <button class="grade-btn-primary-sm" (click)="saveCls()">
-        <span class="material-symbols-outlined text-sm">save</span> حفظ الفصل
-      </button>
     </div>
   </div>
 }

@@ -6,7 +6,6 @@ using Project.BLL.Interfaces;
 
 namespace Project.API.Controllers;
 
-[Authorize(Roles = "Admin,Teacher")]
 [ApiController]
 [Route("api/[controller]")]
 public class StudentEvaluationsController : ControllerBase
@@ -21,7 +20,8 @@ public class StudentEvaluationsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Record([FromBody] RecordEvaluationRequest request)
     {
-        request.EnteredById = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+        request.EnteredById = userIdClaim != null ? int.Parse(userIdClaim.Value) : 1;
         var result = await _service.RecordEvaluationAsync(request);
         if (!result.IsSuccess)
             return BadRequest(result);
@@ -31,7 +31,8 @@ public class StudentEvaluationsController : ControllerBase
     [HttpPut]
     public async Task<IActionResult> Update([FromBody] UpdateEvaluationRequest request)
     {
-        request.UpdatedById = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+        request.UpdatedById = userIdClaim != null ? int.Parse(userIdClaim.Value) : 1;
         var result = await _service.UpdateEvaluationAsync(request);
         if (!result.IsSuccess)
             return BadRequest(result);

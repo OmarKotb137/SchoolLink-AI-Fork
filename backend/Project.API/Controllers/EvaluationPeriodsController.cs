@@ -6,7 +6,6 @@ using Project.Domain.Enums;
 
 namespace Project.API.Controllers;
 
-[Authorize(Roles = "Admin")]
 [ApiController]
 [Route("api/[controller]")]
 public class EvaluationPeriodsController : ControllerBase

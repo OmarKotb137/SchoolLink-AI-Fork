@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Project.BLL.DTOs.Auth;
 using Project.BLL.Interfaces;
+using Project.Domain.Enums;
 
 namespace Project.API.Controllers;
 
@@ -17,10 +18,37 @@ public class AuthController : ControllerBase
         _authService = authService;
     }
 
-    [HttpPost("login")]
-    public async Task<IActionResult> Login([FromBody] LoginRequest request)
+    [HttpPost("login/admin")]
+    public async Task<IActionResult> LoginAsAdmin([FromBody] LoginRequest request)
     {
-        var result = await _authService.LoginAsync(request);
+        var result = await _authService.LoginByRoleAsync(request, UserRole.Admin);
+        if (!result.IsSuccess)
+            return Unauthorized(result);
+        return Ok(result);
+    }
+
+    [HttpPost("login/teacher")]
+    public async Task<IActionResult> LoginAsTeacher([FromBody] LoginRequest request)
+    {
+        var result = await _authService.LoginByRoleAsync(request, UserRole.Teacher);
+        if (!result.IsSuccess)
+            return Unauthorized(result);
+        return Ok(result);
+    }
+
+    [HttpPost("login/parent")]
+    public async Task<IActionResult> LoginAsParent([FromBody] LoginRequest request)
+    {
+        var result = await _authService.LoginByRoleAsync(request, UserRole.Parent);
+        if (!result.IsSuccess)
+            return Unauthorized(result);
+        return Ok(result);
+    }
+
+    [HttpPost("login/student")]
+    public async Task<IActionResult> LoginAsStudent([FromBody] LoginRequest request)
+    {
+        var result = await _authService.LoginByRoleAsync(request, UserRole.Student);
         if (!result.IsSuccess)
             return Unauthorized(result);
         return Ok(result);

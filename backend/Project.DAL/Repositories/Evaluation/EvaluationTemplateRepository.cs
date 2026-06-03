@@ -79,7 +79,8 @@ public class EvaluationTemplateRepository : Repository<EvaluationTemplate>, IEva
             .AnyAsync(t =>
                 t.GradeLevelId == gradeLevelId &&
                 t.SubjectId == subjectId &&
-                t.AcademicYearId == academicYearId, ct);
+                t.AcademicYearId == academicYearId &&
+                !t.IsDeleted, ct);
 }
 
 
