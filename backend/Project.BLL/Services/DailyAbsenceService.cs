@@ -61,6 +61,7 @@ public class DailyAbsenceService : IDailyAbsenceService
 
         entity.IsAbsent = request.IsAbsent;
         entity.Reason = request.Reason;
+        entity.UpdatedAt = DateTime.UtcNow;
 
         _unitOfWork.DailyAbsences.Update(entity);
         await _unitOfWork.SaveChangesAsync();
@@ -100,6 +101,18 @@ public class DailyAbsenceService : IDailyAbsenceService
         return OperationResult<IEnumerable<DailyAbsenceDto>>.Success(
             _mapper.Map<IEnumerable<DailyAbsenceDto>>(absences),
             "تم جلب سجل الغياب بنجاح");
+    }
+
+    public async Task<OperationResult> DeleteAbsenceAsync(int id)
+    {
+        var entity = await _unitOfWork.DailyAbsences.GetByIdAsync(id);
+        if (entity is null || entity.IsDeleted)
+            return OperationResult.Failure("الغياب غير موجود");
+
+        _unitOfWork.DailyAbsences.SoftDelete(entity);
+        await _unitOfWork.SaveChangesAsync();
+
+        return OperationResult.Success("تم حذف الغياب بنجاح");
     }
 
     public async Task<OperationResult<AbsenceSummaryDto>> GetAbsenceSummaryAsync(

@@ -1,3 +1,5 @@
+using Project.Domain.Enums;
+
 namespace Project.BLL.DTOs.EvaluationItems;
 
 public class UpdateEvaluationItemRequest
@@ -6,5 +8,6 @@ public class UpdateEvaluationItemRequest
     public string Name { get; set; } = string.Empty;
     public decimal MaxScore { get; set; }
     public decimal Weight { get; set; }
+    public AutoCalcType AutoCalcType { get; set; } = AutoCalcType.None;
     public int DisplayOrder { get; set; }
 }

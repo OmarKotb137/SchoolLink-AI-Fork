@@ -87,4 +87,16 @@ public class EvaluationTemplateService : IEvaluationTemplateService
             _mapper.Map<IEnumerable<EvaluationTemplateDto>>(templates),
             "تم جلب قوالب التقييم بنجاح");
     }
+
+    public async Task<OperationResult> DeleteEvaluationTemplateAsync(int id)
+    {
+        var entity = await _unitOfWork.EvaluationTemplates.GetByIdAsync(id);
+        if (entity is null || entity.IsDeleted)
+            return OperationResult.Failure("قالب التقييم غير موجود");
+
+        _unitOfWork.EvaluationTemplates.SoftDelete(entity);
+        await _unitOfWork.SaveChangesAsync();
+
+        return OperationResult.Success("تم حذف قالب التقييم بنجاح");
+    }
 }

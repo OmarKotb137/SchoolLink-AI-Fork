@@ -4,6 +4,7 @@ using Project.BLL.DTOs.StudentEvaluations;
 using Project.BLL.Interfaces;
 using Project.DAL.Interfaces;
 using Project.Domain.Entities;
+using Project.Domain.Enums;
 
 namespace Project.BLL.Services;
 
@@ -16,6 +17,112 @@ public class StudentEvaluationService : IStudentEvaluationService
     {
         _unitOfWork = unitOfWork;
         _mapper     = mapper;
+    }
+
+    public async Task<OperationResult> AutoFillAttendanceScoresAsync(int classId, int periodId)
+    {
+        var classEntity = await _unitOfWork.Classes.GetByIdAsync(classId);
+        if (classEntity is null || classEntity.IsDeleted)
+            return OperationResult.Failure("الفصل غير موجود");
+
+        var period = await _unitOfWork.EvaluationPeriods.GetByIdAsync(periodId);
+        if (period is null || period.IsDeleted)
+            return OperationResult.Failure("فترة التقييم غير موجودة");
+
+        if (period.StartDate is null || period.EndDate is null)
+            return OperationResult.Failure("الفترة يجب أن تحتوي على تاريخ بداية ونهاية");
+
+        var enrollments = await _unitOfWork.StudentEnrollments
+            .GetActiveByClassAsync(classId, classEntity.AcademicYearId);
+
+        if (enrollments.Count == 0)
+            return OperationResult.Success("لا يوجد طلاب في هذا الفصل");
+
+        var cstList = await _unitOfWork.ClassSubjectTeachers
+            .FindAsync(cst => cst.ClassId == classId && !cst.IsDeleted);
+
+        if (cstList.Count == 0)
+            return OperationResult.Success("لا يوجد مواد مرتبطة بهذا الفصل");
+
+        var subjectIds = cstList.Select(cst => cst.SubjectId).Distinct().ToHashSet();
+
+        var templates = await _unitOfWork.EvaluationTemplates
+            .FindAsync(t => t.GradeLevelId == classEntity.GradeLevelId
+                         && t.AcademicYearId == classEntity.AcademicYearId
+                         && !t.IsDeleted);
+
+        var matchingTemplates = templates.Where(t => subjectIds.Contains(t.SubjectId)).ToList();
+        if (matchingTemplates.Count == 0)
+            return OperationResult.Success("لا يوجد قوالب تقييم مرتبطة بهذا الفصل");
+
+        var templateIds = matchingTemplates.Select(t => t.Id).ToList();
+        var allItems = await _unitOfWork.EvaluationItems
+            .FindAsync(i => templateIds.Contains(i.TemplateId)
+                         && i.AutoCalcType == AutoCalcType.Attendance
+                         && !i.IsDeleted
+                         && i.IsVisible);
+
+        if (allItems.Count == 0)
+            return OperationResult.Success("لا يوجد بنود تقييم تعتمد على الغياب في قوالب هذا الفصل");
+
+        var totalSchoolDays = CountSchoolDays(period.StartDate.Value, period.EndDate.Value);
+        if (totalSchoolDays == 0)
+            return OperationResult.Failure("لا توجد أيام دراسية في هذه الفترة");
+
+        var autoFilled = 0;
+        foreach (var enrollment in enrollments)
+        {
+            var absentCount = await _unitOfWork.DailyAbsences.GetAbsenceCountAsync(
+                enrollment.Id, null, period.StartDate, period.EndDate);
+
+            var presentCount = totalSchoolDays - absentCount;
+            var attendanceRate = (decimal)presentCount / totalSchoolDays;
+
+            foreach (var item in allItems)
+            {
+                var score = Math.Round(item.MaxScore * attendanceRate, 2);
+
+                var existing = await _unitOfWork.StudentEvaluations
+                    .GetByEnrollmentItemAndPeriodAsync(enrollment.Id, item.Id, periodId);
+
+                if (existing is not null && !existing.IsDeleted)
+                {
+                    existing.Score = score;
+                    existing.UpdatedAt = DateTime.UtcNow;
+                    _unitOfWork.StudentEvaluations.Update(existing);
+                }
+                else
+                {
+                    var eval = new StudentEvaluation
+                    {
+                        EnrollmentId = enrollment.Id,
+                        EvaluationItemId = item.Id,
+                        PeriodId = periodId,
+                        Score = score,
+                        EnteredById = 0,
+                        EnteredAt = DateTime.UtcNow
+                    };
+                    await _unitOfWork.StudentEvaluations.AddAsync(eval);
+                }
+                autoFilled++;
+            }
+        }
+
+        await _unitOfWork.SaveChangesAsync();
+
+        return OperationResult.Success($"تم تعبئة {autoFilled} درجة تلقائياً بناءً على الغياب");
+    }
+
+    private static int CountSchoolDays(DateOnly from, DateOnly to)
+    {
+        var count = 0;
+        for (var date = from; date <= to; date = date.AddDays(1))
+        {
+            var dayOfWeek = (int)date.DayOfWeek;
+            if (dayOfWeek >= 0 && dayOfWeek <= 4)
+                count++;
+        }
+        return count;
     }
 
     public async Task<OperationResult<StudentEvaluationDto>> RecordEvaluationAsync(
@@ -83,7 +190,7 @@ public class StudentEvaluationService : IStudentEvaluationService
 
         entity.Score = request.NewScore;
         entity.EnteredById = request.UpdatedById;
-        entity.EnteredAt = DateTime.UtcNow;
+        entity.UpdatedAt = DateTime.UtcNow;
 
         _unitOfWork.StudentEvaluations.Update(entity);
         await _unitOfWork.SaveChangesAsync();
@@ -108,6 +215,18 @@ public class StudentEvaluationService : IStudentEvaluationService
         return OperationResult<IEnumerable<StudentEvaluationDto>>.Success(
             _mapper.Map<IEnumerable<StudentEvaluationDto>>(evaluations),
             "تم جلب التقييمات بنجاح");
+    }
+
+    public async Task<OperationResult> DeleteEvaluationAsync(int id)
+    {
+        var entity = await _unitOfWork.StudentEvaluations.GetByIdAsync(id);
+        if (entity is null || entity.IsDeleted)
+            return OperationResult.Failure("التقييم غير موجود");
+
+        _unitOfWork.StudentEvaluations.SoftDelete(entity);
+        await _unitOfWork.SaveChangesAsync();
+
+        return OperationResult.Success("تم حذف التقييم بنجاح");
     }
 
     public async Task<OperationResult<IEnumerable<ClassEvaluationDto>>> GetByClassAndPeriodAsync(

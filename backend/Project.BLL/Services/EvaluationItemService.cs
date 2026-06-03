@@ -63,6 +63,7 @@ public class EvaluationItemService : IEvaluationItemService
         entity.Name = request.Name;
         entity.MaxScore = request.MaxScore;
         entity.Weight = request.Weight;
+        entity.AutoCalcType = request.AutoCalcType;
         entity.DisplayOrder = request.DisplayOrder;
         entity.UpdatedAt = DateTime.UtcNow;
 
@@ -88,6 +89,18 @@ public class EvaluationItemService : IEvaluationItemService
 
         return OperationResult.Success(
             entity.IsVisible ? "تم إظهار معيار التقييم بنجاح" : "تم إخفاء معيار التقييم بنجاح");
+    }
+
+    public async Task<OperationResult> DeleteEvaluationItemAsync(int id)
+    {
+        var entity = await _unitOfWork.EvaluationItems.GetByIdAsync(id);
+        if (entity is null || entity.IsDeleted)
+            return OperationResult.Failure("معيار التقييم غير موجود");
+
+        _unitOfWork.EvaluationItems.SoftDelete(entity);
+        await _unitOfWork.SaveChangesAsync();
+
+        return OperationResult.Success("تم حذف معيار التقييم بنجاح");
     }
 
     public async Task<OperationResult<IEnumerable<EvaluationItemDto>>> GetItemsByTemplateAsync(int templateId)

@@ -43,6 +43,73 @@ public class EvaluationPeriodService : IEvaluationPeriodService
             "تم إنشاء فترة التقييم بنجاح");
     }
 
+    public async Task<OperationResult<EvaluationPeriodDto>> UpdateEvaluationPeriodAsync(
+        UpdateEvaluationPeriodRequest request)
+    {
+        var entity = await _unitOfWork.EvaluationPeriods.GetByIdAsync(request.Id);
+        if (entity is null || entity.IsDeleted)
+            return OperationResult<EvaluationPeriodDto>.Failure("فترة التقييم غير موجودة");
+
+        var existing = await _unitOfWork.EvaluationPeriods.GetByAcademicYearAsync(entity.AcademicYearId);
+        if (existing.Any(p => p.Id != request.Id && p.Name == request.Name && !p.IsDeleted))
+            return OperationResult<EvaluationPeriodDto>.Failure("اسم الفترة مكرر في نفس السنة الدراسية");
+
+        if (request.StartDate.HasValue && request.EndDate.HasValue && request.EndDate <= request.StartDate)
+            return OperationResult<EvaluationPeriodDto>.Failure("تاريخ النهاية يجب أن يكون بعد تاريخ البداية");
+
+        entity.Name = request.Name;
+        entity.PeriodType = request.PeriodType;
+        entity.OrderNum = request.OrderNum;
+        entity.StartDate = request.StartDate;
+        entity.EndDate = request.EndDate;
+        entity.MonthName = request.MonthName;
+        entity.UpdatedAt = DateTime.UtcNow;
+
+        _unitOfWork.EvaluationPeriods.Update(entity);
+        await _unitOfWork.SaveChangesAsync();
+
+        return OperationResult<EvaluationPeriodDto>.Success(
+            _mapper.Map<EvaluationPeriodDto>(entity),
+            "تم تحديث فترة التقييم بنجاح");
+    }
+
+    public async Task<OperationResult> DeleteEvaluationPeriodAsync(int id)
+    {
+        var entity = await _unitOfWork.EvaluationPeriods.GetByIdAsync(id);
+        if (entity is null || entity.IsDeleted)
+            return OperationResult.Failure("فترة التقييم غير موجودة");
+
+        _unitOfWork.EvaluationPeriods.SoftDelete(entity);
+        await _unitOfWork.SaveChangesAsync();
+
+        return OperationResult.Success("تم حذف فترة التقييم بنجاح");
+    }
+
+    public async Task<OperationResult<EvaluationPeriodDto>> GetCurrentWeekAsync(int academicYearId)
+    {
+        var period = await _unitOfWork.EvaluationPeriods.GetCurrentWeekAsync(academicYearId);
+        if (period is null)
+            return OperationResult<EvaluationPeriodDto>.Failure("لا يوجد أسبوع تقييم حالي");
+
+        return OperationResult<EvaluationPeriodDto>.Success(
+            _mapper.Map<EvaluationPeriodDto>(period),
+            "تم جلب الأسبوع الحالي بنجاح");
+    }
+
+    public async Task<OperationResult<IEnumerable<string>>> GetDistinctMonthNamesAsync(int academicYearId)
+    {
+        var months = await _unitOfWork.EvaluationPeriods.GetDistinctMonthNamesAsync(academicYearId);
+        return OperationResult<IEnumerable<string>>.Success(months, "تم جلب أسماء الأشهر بنجاح");
+    }
+
+    public async Task<OperationResult<IEnumerable<EvaluationPeriodDto>>> GetPeriodsByMonthAsync(int academicYearId, string monthName)
+    {
+        var periods = await _unitOfWork.EvaluationPeriods.GetByMonthNameAsync(academicYearId, monthName);
+        return OperationResult<IEnumerable<EvaluationPeriodDto>>.Success(
+            _mapper.Map<IEnumerable<EvaluationPeriodDto>>(periods),
+            "تم جلب فترات الشهر بنجاح");
+    }
+
     public async Task<OperationResult<IEnumerable<EvaluationPeriodDto>>> GetPeriodsByAcademicYearAsync(
         int academicYearId, PeriodType? type = null)
     {

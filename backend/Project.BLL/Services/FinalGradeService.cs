@@ -29,9 +29,9 @@ public class FinalGradeService : IFinalGradeService
         if (classEntity is null || classEntity.IsDeleted)
             return OperationResult<FinalGradeDto>.Failure("الفصل غير موجود");
 
-        var template = await _unitOfWork.EvaluationTemplates.GetByGradeLevelSubjectAndYearAsync(
-            classEntity.GradeLevelId, 0, enrollment.AcademicYearId);
-        if (template is null)
+        var templates = await _unitOfWork.EvaluationTemplates.GetByGradeLevelAndYearAsync(
+            classEntity.GradeLevelId, enrollment.AcademicYearId);
+        if (!templates.Any())
             return OperationResult<FinalGradeDto>.Failure("لم يتم العثور على قالب تقييم لهذا الصف");
 
         var periodAverages = await _unitOfWork.PeriodAverages.GetByEnrollmentIdAsync(enrollmentId);
@@ -124,6 +124,30 @@ public class FinalGradeService : IFinalGradeService
         return OperationResult<FinalGradeDto>.Success(
             _mapper.Map<FinalGradeDto>(finalGrade),
             "تم جلب الدرجة النهائية بنجاح");
+    }
+
+    public async Task<OperationResult<IEnumerable<FinalGradeDto>>> GetTopStudentsAsync(int classId, int count)
+    {
+        var classEntity = await _unitOfWork.Classes.GetByIdAsync(classId);
+        if (classEntity is null || classEntity.IsDeleted)
+            return OperationResult<IEnumerable<FinalGradeDto>>.Failure("الفصل غير موجود");
+
+        var grades = await _unitOfWork.FinalGrades.GetTopStudentsByClassAsync(classId, count);
+        return OperationResult<IEnumerable<FinalGradeDto>>.Success(
+            _mapper.Map<IEnumerable<FinalGradeDto>>(grades),
+            "تم جلب الطلاب المتفوقين بنجاح");
+    }
+
+    public async Task<OperationResult<IEnumerable<FinalGradeDto>>> GetStudentsNeedingSupportAsync(int classId, decimal threshold)
+    {
+        var classEntity = await _unitOfWork.Classes.GetByIdAsync(classId);
+        if (classEntity is null || classEntity.IsDeleted)
+            return OperationResult<IEnumerable<FinalGradeDto>>.Failure("الفصل غير موجود");
+
+        var grades = await _unitOfWork.FinalGrades.GetStudentsNeedingSupportAsync(classId, threshold);
+        return OperationResult<IEnumerable<FinalGradeDto>>.Success(
+            _mapper.Map<IEnumerable<FinalGradeDto>>(grades),
+            "تم جلب الطلاب المحتاجين للدعم بنجاح");
     }
 
     public async Task<OperationResult<IEnumerable<FinalGradeDto>>> GetFinalGradesByClassAsync(int classId)

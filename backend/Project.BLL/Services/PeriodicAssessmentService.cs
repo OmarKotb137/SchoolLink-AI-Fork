@@ -64,6 +64,18 @@ public class PeriodicAssessmentService : IPeriodicAssessmentService
             "تم تحديث التقييم الدوري بنجاح");
     }
 
+    public async Task<OperationResult> DeletePeriodicAssessmentAsync(int id)
+    {
+        var entity = await _unitOfWork.PeriodicAssessments.GetByIdAsync(id);
+        if (entity is null || entity.IsDeleted)
+            return OperationResult.Failure("التقييم الدوري غير موجود");
+
+        _unitOfWork.PeriodicAssessments.SoftDelete(entity);
+        await _unitOfWork.SaveChangesAsync();
+
+        return OperationResult.Success("تم حذف التقييم الدوري بنجاح");
+    }
+
     public async Task<OperationResult<IEnumerable<PeriodicAssessmentDto>>> GetByEnrollmentAsync(int enrollmentId)
     {
         var enrollment = await _unitOfWork.StudentEnrollments.GetByIdAsync(enrollmentId);

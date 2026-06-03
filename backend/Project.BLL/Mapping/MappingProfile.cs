@@ -97,7 +97,11 @@ public class MappingProfile : Profile
             .ForMember(d => d.ItemName,
                 opt => opt.MapFrom(s => s.EvaluationItem.Name))
             .ForMember(d => d.MaxScore,
-                opt => opt.MapFrom(s => s.EvaluationItem.MaxScore));
+                opt => opt.MapFrom(s => s.EvaluationItem.MaxScore))
+            .ForMember(d => d.SubjectName,
+                opt => opt.MapFrom(s => s.EvaluationItem.Template.Subject.Name))
+            .ForMember(d => d.PeriodName,
+                opt => opt.MapFrom(s => s.Period.Name));
 
         // Daily Absence
         CreateMap<DailyAbsence, DailyAbsenceDto>()

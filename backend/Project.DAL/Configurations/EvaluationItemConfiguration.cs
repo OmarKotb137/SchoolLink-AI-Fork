@@ -20,6 +20,9 @@ namespace Project.DAL.Configurations
             builder.Property(x => x.Weight)
                 .HasColumnType("decimal(4,2)");
 
+            builder.Property(x => x.AutoCalcType)
+                .HasDefaultValue(Domain.Enums.AutoCalcType.None);
+
             builder.HasOne(x => x.Template)
                 .WithMany(x => x.Items)
                 .HasForeignKey(x => x.TemplateId)

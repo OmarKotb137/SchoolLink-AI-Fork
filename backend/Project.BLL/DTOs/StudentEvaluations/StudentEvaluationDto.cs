@@ -11,4 +11,6 @@ public class StudentEvaluationDto
     public DateTime EnteredAt { get; set; }
     public string? ItemName { get; set; }
     public decimal MaxScore { get; set; }
+    public string? SubjectName { get; set; }
+    public string? PeriodName { get; set; }
 }
