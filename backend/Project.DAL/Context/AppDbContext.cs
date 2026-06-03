@@ -16,6 +16,7 @@ public class AppDbContext : DbContext
     public DbSet<StudentEnrollment> StudentEnrollments => Set<StudentEnrollment>();
     public DbSet<ParentStudent> ParentStudents => Set<ParentStudent>();
     public DbSet<ClassSubjectTeacher> ClassSubjectTeachers => Set<ClassSubjectTeacher>();
+    public DbSet<ClassTemplateLink> ClassTemplateLinks => Set<ClassTemplateLink>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     
     public DbSet<EvaluationTemplate> EvaluationTemplates => Set<EvaluationTemplate>();

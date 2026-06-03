@@ -5,6 +5,9 @@ export interface Criteria {
   id: string;
   name: string;
   max: number;
+  autoCalcType?: number;
+  absenceLinked?: boolean;
+  absenceMax?: number;
 }
 
 export interface SumColumn {
@@ -17,6 +20,7 @@ export interface Template {
   id: number;
   apiId?: number;
   name: string;
+  subjectName?: string;
   stage: string;
   subjectId?: number;
   weeks: number;
@@ -40,6 +44,7 @@ export interface Student {
 }
 
 export interface ClassItem {
+  linkId?: number;
   id: number;
   name: string;
   teacher: string;
@@ -212,6 +217,10 @@ export class GradeMonitorService {
     return this.http.get<any>(url);
   }
 
+  getAbsencesByEnrollments(enrollmentIds: number[], fromDate: string, toDate: string) {
+    return this.http.get<any>(`${this.base}/DailyAbsences/by-enrollments?enrollmentIds=${enrollmentIds.join(',')}&fromDate=${fromDate}&toDate=${toDate}`);
+  }
+
   recordAbsence(data: any) {
     return this.http.post<any>(`${this.base}/DailyAbsences`, data);
   }
@@ -239,20 +248,32 @@ export class GradeMonitorService {
     return this.http.post<any>(`${this.base}/FinalGrades/publish`, data);
   }
 
-  // ─── Classes ──────────────────────────────────────────
+  // ─── Real Classes (for dropdown picker) ──────────────
   getClasses() {
     return this.http.get<any>(`${this.base}/Classes`);
   }
 
-  getClassById(id: number) {
-    return this.http.get<any>(`${this.base}/Classes/${id}`);
+  // ─── Bulk Save ─────────────────────────────────────────
+  bulkSaveEvaluations(entries: {
+    evaluationId?: number;
+    enrollmentId: number;
+    evaluationItemId: number;
+    periodId: number;
+    score: number | null;
+  }[]) {
+    return this.http.post<any>(`${this.base}/StudentEvaluations/bulk`, { entries });
   }
 
-  createClass(data: any) {
-    return this.http.post<any>(`${this.base}/Classes`, data);
+  // ─── Class-Template Links ─────────────────────────────
+  getLinks() {
+    return this.http.get<any>(`${this.base}/ClassTemplateLinks`);
   }
 
-  deleteClass(id: number) {
-    return this.http.delete<any>(`${this.base}/Classes/${id}`);
+  createLink(data: { classId: number; templateId: number; academicYearId: number }) {
+    return this.http.post<any>(`${this.base}/ClassTemplateLinks`, data);
+  }
+
+  deleteLink(id: number) {
+    return this.http.delete<any>(`${this.base}/ClassTemplateLinks/${id}`);
   }
 }

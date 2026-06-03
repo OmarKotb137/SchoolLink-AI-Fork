@@ -6,12 +6,16 @@ using Project.DAL.Interfaces.Repositories.Library;
 using Project.DAL.Interfaces.Repositories.Feedback;
 using Project.DAL.Interfaces.Repositories.Settings;
 using Project.DAL.Interfaces.Repositories.Timetable;
+using Project.DAL.Interfaces.Repositories;
 using Project.DAL.Interfaces.Repositories.StudyPlans;
+using Project.Domain.Entities;
 
 namespace Project.DAL.Interfaces;
 
 public interface IUnitOfWork : IDisposable, IAsyncDisposable
 {
+    IRepository<ClassTemplateLink>         ClassTemplateLinks           { get; }
+
     // Section A: Core
     IUserRepository                        Users                        { get; }
     IRefreshTokenRepository                RefreshTokens                { get; }

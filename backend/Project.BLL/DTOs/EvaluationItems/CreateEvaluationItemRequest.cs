@@ -11,4 +11,5 @@ public class CreateEvaluationItemRequest
     public ItemType ItemType { get; set; }
     public AutoCalcType AutoCalcType { get; set; } = AutoCalcType.None;
     public int DisplayOrder { get; set; }
+    public decimal? AbsenceMaxScore { get; set; }
 }

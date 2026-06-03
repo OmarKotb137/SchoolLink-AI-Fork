@@ -6,6 +6,7 @@ using Project.BLL.Services;
 using Project.BLL.Validators;
 using Project.DAL.Context;
 using Project.DAL.Interfaces;
+using Project.DAL.Interfaces.Repositories;
 using Project.DAL.Repositories;
 using Project.DAL.UnitOfWork;
 
@@ -62,6 +63,7 @@ public static class ServiceExtensions
 
     private static void RegisterRepositories(IServiceCollection services)
     {
+        services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
         var dalAssembly = typeof(Repository<>).Assembly;
         var repositoryTypes = dalAssembly.GetTypes()
             .Where(type =>

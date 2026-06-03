@@ -20,6 +20,9 @@ namespace Project.DAL.Configurations
             builder.Property(x => x.Weight)
                 .HasColumnType("decimal(4,2)");
 
+            builder.Property(x => x.AbsenceMaxScore)
+                .HasColumnType("decimal(5,2)");
+
             builder.Property(x => x.AutoCalcType)
                 .HasDefaultValue(Domain.Enums.AutoCalcType.None);
 

@@ -23,6 +23,9 @@ public interface IDailyAbsenceRepository : IRepository<DailyAbsence>
     Task<IReadOnlyList<int>> GetEnrollmentsWithAbsenceExceedingAsync(int classId, int academicYearId, int threshold, CancellationToken ct = default);
 
     Task BulkUpsertAsync(IEnumerable<DailyAbsence> absences, CancellationToken ct = default);
+
+    Task<IReadOnlyList<DailyAbsence>> GetByEnrollmentsAndDateRangeAsync(
+        List<int> enrollmentIds, DateOnly from, DateOnly to, CancellationToken ct = default);
 }
 
 

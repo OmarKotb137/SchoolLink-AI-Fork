@@ -115,17 +115,54 @@
 
 /* Inputs */
 .grade-inp, .grade-ta {
+  --on-surface: #091E42;
   width: 100%;
   padding: 10px 14px;
   background: #fff;
   border: 1px solid var(--outline, #DFE1E6);
   border-radius: 8px;
-  color: var(--on-surface, #091E42);
+  color: #091E42 !important;
   font-family: inherit;
-  font-size: 13px;
+  font-size: 15px;
   transition: border-color 0.2s, box-shadow 0.2s;
   outline: none;
 }
+/* New classes for template modal columns/items inputs */
+.grade-name-inp {
+  flex: 1;
+  padding: 10px 14px;
+  background: #fff;
+  border: 1px solid var(--outline, #DFE1E6);
+  border-radius: 8px;
+  color: #091E42 !important;
+  font-family: inherit;
+  font-size: 15px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  outline: none;
+}
+.grade-name-inp:focus {
+  border-color: var(--primary, #0052CC);
+  box-shadow: 0 0 0 2px rgba(0, 82, 204, 0.1);
+}
+
+.grade-max-inp {
+  width: 80px;
+  padding: 10px 14px;
+  background: #fff;
+  border: 1px solid var(--outline, #DFE1E6);
+  border-radius: 8px;
+  color: #091E42 !important;
+  font-family: inherit;
+  font-size: 15px;
+  text-align: center;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  outline: none;
+}
+.grade-max-inp:focus {
+  border-color: var(--primary, #0052CC);
+  box-shadow: 0 0 0 2px rgba(0, 82, 204, 0.1);
+}
+
 .grade-inp:focus, .grade-ta:focus {
   border-color: var(--primary, #0052CC);
   box-shadow: 0 0 0 2px rgba(0, 82, 204, 0.1);

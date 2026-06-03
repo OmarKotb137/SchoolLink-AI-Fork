@@ -64,6 +64,7 @@ public class EvaluationItemService : IEvaluationItemService
         entity.MaxScore = request.MaxScore;
         entity.Weight = request.Weight;
         entity.AutoCalcType = request.AutoCalcType;
+        entity.AbsenceMaxScore = request.AbsenceMaxScore;
         entity.DisplayOrder = request.DisplayOrder;
         entity.UpdatedAt = DateTime.UtcNow;
 

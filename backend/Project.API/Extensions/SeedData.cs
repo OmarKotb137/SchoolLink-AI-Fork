@@ -27,6 +27,49 @@ public static class SeedData
             await ctx.Database.EnsureCreatedAsync();
         }
 
+        // Ensure ClassTemplateLinks table exists (entity was added after initial migration)
+        try { await ctx.Database.ExecuteSqlRawAsync("SELECT TOP 1 1 FROM ClassTemplateLinks"); }
+        catch
+        {
+            await ctx.Database.ExecuteSqlRawAsync(@"
+                CREATE TABLE ClassTemplateLinks (
+                    Id int IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                    ClassId int NOT NULL,
+                    TemplateId int NOT NULL,
+                    AcademicYearId int NOT NULL,
+                    IsDeleted bit NOT NULL DEFAULT 0,
+                    CreatedAt datetime2 NOT NULL DEFAULT GETUTCDATE(),
+                    UpdatedAt datetime2 NOT NULL DEFAULT GETUTCDATE(),
+                    CONSTRAINT FK_ClassTemplateLinks_Class FOREIGN KEY (ClassId) REFERENCES Classes(Id),
+                    CONSTRAINT FK_ClassTemplateLinks_Template FOREIGN KEY (TemplateId) REFERENCES EvaluationTemplates(Id),
+                    CONSTRAINT FK_ClassTemplateLinks_AcademicYear FOREIGN KEY (AcademicYearId) REFERENCES AcademicYears(Id)
+                );
+                CREATE UNIQUE INDEX IX_ClassTemplateLinks_Class_Template_Year
+                    ON ClassTemplateLinks(ClassId, TemplateId, AcademicYearId)
+                    WHERE IsDeleted = 0;");
+        }
+
+        // Ensure EvaluationTemplates unique index has IsDeleted filter
+        try
+        {
+            await ctx.Database.ExecuteSqlRawAsync(@"
+                DROP INDEX IX_EvaluationTemplates_GradeLevelId_SubjectId_AcademicYearId ON EvaluationTemplates;
+                CREATE UNIQUE INDEX IX_EvaluationTemplates_GradeLevelId_SubjectId_AcademicYearId
+                    ON EvaluationTemplates(GradeLevelId, SubjectId, AcademicYearId)
+                    WHERE IsDeleted = 0;");
+        }
+        catch { /* index might already be correct */ }
+
+        // Ensure EvaluationItems has AbsenceMaxScore column
+        try
+        {
+            await ctx.Database.ExecuteSqlRawAsync("SELECT TOP 1 [AbsenceMaxScore] FROM EvaluationItems");
+        }
+        catch
+        {
+            await ctx.Database.ExecuteSqlRawAsync("ALTER TABLE EvaluationItems ADD AbsenceMaxScore decimal(5,2) NULL");
+        }
+
         if (await ctx.AcademicYears.AnyAsync())
             return;
 

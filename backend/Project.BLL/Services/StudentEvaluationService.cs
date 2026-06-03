@@ -19,7 +19,7 @@ public class StudentEvaluationService : IStudentEvaluationService
         _mapper     = mapper;
     }
 
-    public async Task<OperationResult> AutoFillAttendanceScoresAsync(int classId, int periodId)
+    public async Task<OperationResult> AutoFillAttendanceScoresAsync(int classId, int periodId, int enteredById)
     {
         var classEntity = await _unitOfWork.Classes.GetByIdAsync(classId);
         if (classEntity is null || classEntity.IsDeleted)
@@ -80,7 +80,9 @@ public class StudentEvaluationService : IStudentEvaluationService
 
             foreach (var item in allItems)
             {
-                var score = Math.Round(item.MaxScore * attendanceRate, 2);
+                var absencePortion = item.AbsenceMaxScore ?? item.MaxScore;
+                var lost = Math.Round(absencePortion * (1 - attendanceRate), 2);
+                var score = Math.Round(item.MaxScore - lost, 2);
 
                 var existing = await _unitOfWork.StudentEvaluations
                     .GetByEnrollmentItemAndPeriodAsync(enrollment.Id, item.Id, periodId);
@@ -99,7 +101,7 @@ public class StudentEvaluationService : IStudentEvaluationService
                         EvaluationItemId = item.Id,
                         PeriodId = periodId,
                         Score = score,
-                        EnteredById = 0,
+                        EnteredById = enteredById,
                         EnteredAt = DateTime.UtcNow
                     };
                     await _unitOfWork.StudentEvaluations.AddAsync(eval);
@@ -227,6 +229,68 @@ public class StudentEvaluationService : IStudentEvaluationService
         await _unitOfWork.SaveChangesAsync();
 
         return OperationResult.Success("تم حذف التقييم بنجاح");
+    }
+
+    public async Task<OperationResult> BulkSaveEvaluationsAsync(BulkSaveEvaluationsRequest request)
+    {
+        if (request.Entries.Count == 0)
+            return OperationResult.Success("لا توجد تغييرات للحفظ");
+
+        var items = await _unitOfWork.EvaluationItems
+            .FindAsync(i => request.Entries.Select(e => e.EvaluationItemId).Distinct().Contains(i.Id));
+        var itemMap = items.ToDictionary(i => i.Id);
+
+        var saved = 0;
+        foreach (var entry in request.Entries)
+        {
+            if (!itemMap.TryGetValue(entry.EvaluationItemId, out var item))
+                continue;
+
+            if (!entry.Score.HasValue) continue;
+            if (entry.Score < 0 || entry.Score > item.MaxScore) continue;
+
+            // Round up to nearest 0.5 (e.g. 7.1→7.5, 7.6→8)
+            entry.Score = Math.Ceiling(entry.Score.Value * 2) / 2;
+
+            if (entry.EvaluationId.HasValue)
+            {
+                var existing = await _unitOfWork.StudentEvaluations.GetByIdAsync(entry.EvaluationId.Value);
+                if (existing is null || existing.IsDeleted) continue;
+                existing.Score = entry.Score;
+                existing.EnteredById = request.EnteredById;
+                existing.UpdatedAt = DateTime.UtcNow;
+                _unitOfWork.StudentEvaluations.Update(existing);
+            }
+            else
+            {
+                var existing = await _unitOfWork.StudentEvaluations
+                    .GetByEnrollmentItemAndPeriodAsync(entry.EnrollmentId, entry.EvaluationItemId, entry.PeriodId);
+                if (existing is not null && !existing.IsDeleted)
+                {
+                    existing.Score = entry.Score;
+                    existing.EnteredById = request.EnteredById;
+                    existing.UpdatedAt = DateTime.UtcNow;
+                    _unitOfWork.StudentEvaluations.Update(existing);
+                }
+                else
+                {
+                    var eval = new StudentEvaluation
+                    {
+                        EnrollmentId = entry.EnrollmentId,
+                        EvaluationItemId = entry.EvaluationItemId,
+                        PeriodId = entry.PeriodId,
+                        Score = entry.Score,
+                        EnteredById = request.EnteredById,
+                        EnteredAt = DateTime.UtcNow
+                    };
+                    await _unitOfWork.StudentEvaluations.AddAsync(eval);
+                }
+            }
+            saved++;
+        }
+
+        await _unitOfWork.SaveChangesAsync();
+        return OperationResult.Success("تم حفظ الدرجات بنجاح");
     }
 
     public async Task<OperationResult<IEnumerable<ClassEvaluationDto>>> GetByClassAndPeriodAsync(

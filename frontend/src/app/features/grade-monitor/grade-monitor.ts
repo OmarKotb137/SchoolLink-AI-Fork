@@ -1,10 +1,10 @@
-﻿import { Component, signal, computed, inject, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, signal, computed, inject, OnInit, ChangeDetectorRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { firstValueFrom, forkJoin } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { firstValueFrom, forkJoin, Subject } from 'rxjs';
+import { map, takeUntil } from 'rxjs/operators';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
 import { Topbar } from '../../layouts/topbar/topbar';
-import { GradeMonitorService, Template, ClassItem, Student, SchoolProfile, EvaluationPeriod } from './grade-monitor.service';
+import { GradeMonitorService, Template, ClassItem, Student, SchoolProfile, EvaluationPeriod, Criteria } from './grade-monitor.service';
 import { WordGeneratorService } from './word-generator.service';
 
 @Component({
@@ -25,7 +25,8 @@ export class GradeMonitor implements OnInit {
   //  SIGNALS
   // ══════════════════════════════════════
   templates = signal<Template[]>([]);
-  classes = signal<ClassItem[]>([]);
+  classes = signal<ClassItem[]>([]);          // linked classes (from ClassTemplateLinks)
+  apiClasses = signal<any[]>([]);             // real classes from API (for dropdown)
   schoolProfile = signal<SchoolProfile | null>(null);
   periods = signal<EvaluationPeriod[]>([]);
   subjects = signal<{ id: number; name: string }[]>([]);
@@ -39,11 +40,22 @@ export class GradeMonitor implements OnInit {
   enrollmentMap = signal<Record<number, number>>({}); // studentId → enrollmentId
   existingEvalMap = signal<Record<string, number>>({}); // key: enrollmentId_evalItemId → evalId
 
+  // Local objects for two-way binding input values
+  localGrades: Record<string, any> = {};
+  localAbsences: Record<string, boolean> = {};
+  localExams: Record<string, any> = {};
+  localFinals: Record<string, any> = {};
+
   // ══ Loading indicator for week data ══
   loadingWeek = signal(false);
+  dataReady = signal(false);
+  pendingReload = signal(false);
+  // إلغاء الطلبات القديمة عند استدعاء جديد
+  private cancelLoad$ = new Subject<void>();
 
   currentPeriodId = computed(() => {
-    const p = this.periods().find(p => p.periodType === 1 && p.orderNum === this.entryWeek());
+    const weekNum = Number(this.entryWeek());
+    const p = this.periods().find(p => p.periodType === 1 && p.orderNum === weekNum);
     return p?.id ?? null;
   });
 
@@ -60,20 +72,36 @@ export class GradeMonitor implements OnInit {
   // ══════════════════════════════════════
   ngOnInit() {
     this.loadFromLocalStorage();
-    this.loadClassesFromApi();
-    this.api.getSchoolProfile().subscribe({
-      next: (res) => {
-        if (res.isSuccess) this.schoolProfile.set(res.data);
-      },
-      error: () => {},
+    this.loadApiClasses();
+
+    Promise.all([
+      new Promise<void>(resolve => {
+        this.api.getSchoolProfile().subscribe({
+          next: (res) => { if (res.isSuccess) this.schoolProfile.set(res.data); resolve(); },
+          error: () => resolve(),
+        });
+      }),
+      new Promise<void>(resolve => {
+        this.api.getPeriodsByAcademicYear(1).subscribe(res => {
+          if (res.isSuccess) this.periods.set(res.data || []);
+          resolve();
+        });
+      }),
+      new Promise<void>(resolve => {
+        this.api.getSubjects().subscribe(res => {
+          if (res.isSuccess) this.subjects.set(res.data || []);
+          resolve();
+        });
+      }),
+      this.loadLinksFromApi(),
+      this.loadTemplatesAsync(),
+    ]).then(() => {
+      this.dataReady.set(true);
+      if (this.pendingReload()) {
+        this.pendingReload.set(false);
+        this.loadEvaluations();
+      }
     });
-    this.api.getPeriodsByAcademicYear(1).subscribe(res => {
-      if (res.isSuccess) this.periods.set(res.data || []);
-    });
-    this.api.getSubjects().subscribe(res => {
-      if (res.isSuccess) this.subjects.set(res.data || []);
-    });
-    this.loadTemplates();
   }
 
   // ══════════════════════════════════════
@@ -87,10 +115,10 @@ export class GradeMonitor implements OnInit {
   tSchool = signal('');
   tDir = signal('');
   tAdm = signal('');
-  tCriteria = signal<{ id: string; name: string; max: number }[]>([
-    { id: 'default_1', name: 'الأداء المنزلي', max: 10 },
-    { id: 'default_2', name: 'التقييم الأسبوعي', max: 20 },
-    { id: 'default_3', name: 'السلوك والمواظبة', max: 10 },
+  tCriteria = signal<Criteria[]>([
+    { id: 'default_1', name: 'الأداء المنزلي', max: 10, autoCalcType: 0, absenceMax: undefined },
+    { id: 'default_2', name: 'التقييم الأسبوعي', max: 20, autoCalcType: 0, absenceMax: undefined },
+    { id: 'default_3', name: 'السلوك والمواظبة', max: 10, autoCalcType: 1, absenceMax: 10 },
   ]);
   tSumCols = signal<{ id: string; name: string; max: number }[]>([
     { id: 'feb_avg', name: 'متوسط شهر فبراير', max: 40 },
@@ -103,42 +131,104 @@ export class GradeMonitor implements OnInit {
     { id: 'end_year', name: 'درجة آخر العام', max: 30 },
     { id: 'final_total', name: 'المجموع النهائي', max: 100 },
   ]);
+  tAbsentDays = signal<string[]>(['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس']);
   tmplModalOpen = signal(false);
 
-  loadTemplates() {
-    this.api.getTemplatesByGradeLevel(1, 1).subscribe(res => {
-      if (!res.isSuccess) return;
-      const rawList = res.data as any[];
-      if (!rawList?.length) {
-        const stored = this.loadRawFromLocalStorage();
-        if (stored?.templates?.length) {
-          this.templates.set([]);
-          this.saveToLocalStorage();
-        }
-        return;
+  private async loadTemplatesAsync() {
+    const res = await firstValueFrom(this.api.getTemplatesByGradeLevel(1, 1));
+    if (!res.isSuccess) return;
+    const rawList = res.data as any[];
+    if (!rawList?.length) {
+      const stored = this.loadRawFromLocalStorage();
+      if (stored?.templates?.length) {
+        this.templates.set([]);
+        this.saveToLocalStorage();
       }
-      const apiIds = new Set(rawList.map((t: any) => t.id));
-      const localTemplates = this.templates().filter(t => !t.apiId || !apiIds.has(t.apiId));
-      this.templates.set(localTemplates);
-      let done = 0;
-      for (const t of rawList) {
-        this.api.getItemsByTemplate(t.id).subscribe({
-          next: (itemRes) => {
-            const items = itemRes.isSuccess ? (itemRes.data as any[]) || [] : [];
-            const criteria = items
-              .filter((i: any) => i.isVisible !== false)
-              .sort((a: any, b: any) => a.displayOrder - b.displayOrder)
-              .map((i: any) => ({ id: 'c' + i.id, name: i.name, max: i.maxScore }));
-            const weeklyMax = criteria.reduce((a: number, c: any) => a + c.max, 0);
-            this.templates.update(list => [...list, this.toFrontendTemplate(t, criteria, weeklyMax)]);
-          },
-          error: () => {
-            this.templates.update(list => [...list, this.toFrontendTemplate(t, [], 0)]);
-          },
-          complete: () => { done++; if (done === rawList.length) this.saveToLocalStorage(); }
-        });
+      return;
+    }
+    const apiIds = new Set(rawList.map((t: any) => t.id));
+    const localTemplates = this.templates().filter(t => !t.apiId || !apiIds.has(t.apiId));
+    this.templates.set(localTemplates);
+    const results = await Promise.all(rawList.map(t =>
+      firstValueFrom(this.api.getItemsByTemplate(t.id))
+    ));
+    for (let i = 0; i < rawList.length; i++) {
+      const t = rawList[i];
+      const itemRes = results[i];
+      const items = itemRes.isSuccess ? (itemRes.data as any[]) || [] : [];
+      const criteria = items
+        .filter((i: any) => i.isVisible !== false)
+        .sort((a: any, b: any) => a.displayOrder - b.displayOrder)
+        .map((i: any) => ({ id: 'c' + i.id, name: i.name, max: i.maxScore, autoCalcType: i.autoCalcType ?? 0, absenceMax: i.absenceMaxScore ?? undefined }));
+      const weeklyMax = criteria.reduce((a: number, c: any) => a + c.max, 0);
+      this.templates.update(list => [...list, this.toFrontendTemplate(t, criteria, weeklyMax)]);
+    }
+    this.saveToLocalStorage();
+  }
+
+  computeMonthGroups(startDateStr: string, totalWeeks: number) {
+    if (!startDateStr) {
+      return [
+        { name: 'شهر 1', weeks: Array.from({ length: Math.min(4, totalWeeks) }, (_, i) => i + 1) },
+        { name: 'شهر 2', weeks: Array.from({ length: Math.min(4, totalWeeks - 4) }, (_, i) => i + 5) },
+        { name: 'شهر 3', weeks: Array.from({ length: Math.max(0, totalWeeks - 8) }, (_, i) => i + 9) },
+      ].filter(g => g.weeks.length > 0);
+    }
+
+    const startDate = new Date(startDateStr);
+    const arabicMonths = [
+      "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو",
+      "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"
+    ];
+
+    const groups: { name: string; weeks: number[] }[] = [];
+    const date = new Date(startDate);
+
+    for (let w = 1; w <= totalWeeks; w++) {
+      const monthName = arabicMonths[date.getMonth()];
+      let g = groups.find(x => x.name === monthName);
+      if (!g) {
+        g = { name: monthName, weeks: [] };
+        groups.push(g);
       }
-    });
+      g.weeks.push(w);
+      date.setDate(date.getDate() + 7);
+    }
+
+    return groups;
+  }
+
+  onTmplConfigChange() {
+    const startDateStr = this.tStart();
+    const weeksCount = Number(this.tWeeks()) || 12;
+    if (!startDateStr) return;
+
+    const mGroups = this.computeMonthGroups(startDateStr, weeksCount);
+    if (!mGroups.length) return;
+
+    const month1Name = mGroups[0]?.name || 'الأول';
+    const month2Name = mGroups[1]?.name || 'الثاني';
+    const month3Name = mGroups[2]?.name || 'الثالث';
+
+    const suggestedCols = [
+      { id: 'm1_avg', name: `متوسط شهر ${month1Name}`, max: 40 },
+      { id: 'm2_avg', name: `متوسط شهر ${month2Name}`, max: 40 },
+      { id: 'm3_avg', name: `متوسط شهر ${month3Name}`, max: 40 },
+      { id: 'three_month_avg', name: 'متوسط الثلاثة شهور', max: 40 },
+      { id: 'exam1', name: `امتحان شهر ${month1Name}`, max: 15 },
+      { id: 'exam2', name: `امتحان شهر ${month2Name}`, max: 15 },
+      { id: 'written_total', name: 'مجموع الأعمال التحريرية', max: 70 },
+      { id: 'end_year', name: 'درجة آخر العام', max: 30 },
+      { id: 'final_total', name: 'المجموع النهائي', max: 100 },
+    ];
+
+    this.tSumCols.set(suggestedCols);
+  }
+
+  toggleSchoolDay(day: string) {
+    this.tAbsentDays.update(days =>
+      days.includes(day) ? days.filter(d => d !== day) : [...days, day]
+    );
   }
 
   private toFrontendTemplate(t: any, criteria: { id: string; name: string; max: number }[], weeklyMax: number): Template {
@@ -152,19 +242,24 @@ export class GradeMonitor implements OnInit {
       const d = new Date(w.startDate);
       return d.getDate() + '/' + (d.getMonth() + 1) + '/' + d.getFullYear();
     });
+    const weekCount = t.weeks || weeks.length || 12;
+    const startDateStr = t.start_date || weeks[0]?.startDate || '';
+    const mGroups = this.computeMonthGroups(startDateStr, weekCount);
+
     return {
       id: t.id,
       apiId: t.id,
       name: t.name,
+      subjectName: t.subjectName,
       stage: t.gradeLevelName || '',
       subjectId: t.subjectId,
-      weeks: weeks.length || 12,
-      start_date: weeks[0]?.startDate || '',
+      weeks: weekCount,
+      start_date: startDateStr,
       school: p?.schoolName || '',
       directorate: p?.directorate || '',
       administration: p?.educationalAdministration || '',
       criteria,
-      summary_columns: [
+      summary_columns: t.summary_columns?.length ? t.summary_columns : [
         { id: 'feb_avg', name: 'متوسط شهر فبراير', max: 40 },
         { id: 'mar_avg', name: 'متوسط شهر مارس', max: 40 },
         { id: 'apr_avg', name: 'متوسط شهر أبريل', max: 40 },
@@ -177,13 +272,9 @@ export class GradeMonitor implements OnInit {
       ],
       week_names: wNames,
       week_dates: wDates,
-      absent_days: ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'],
+      absent_days: t.absent_days?.length ? t.absent_days : ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'],
       weekly_max: weeklyMax,
-      month_groups: [
-        { name: 'فبراير', weeks: [1, 2, 3, 4] },
-        { name: 'مارس', weeks: [5, 6, 7, 8] },
-        { name: 'أبريل', weeks: [9, 10, 11, 12] },
-      ],
+      month_groups: mGroups,
     };
   }
 
@@ -198,11 +289,12 @@ export class GradeMonitor implements OnInit {
     this.tSchool.set(t?.school || profile?.schoolName || '');
     this.tDir.set(t?.directorate || profile?.directorate || '');
     this.tAdm.set(t?.administration || profile?.educationalAdministration || '');
+    this.tAbsentDays.set(t?.absent_days?.length ? t.absent_days : ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس']);
 
     const criteria = t?.criteria?.length ? t.criteria : [
-      { id: 'default_1', name: 'الأداء المنزلي', max: 10 },
-      { id: 'default_2', name: 'التقييم الأسبوعي', max: 20 },
-      { id: 'default_3', name: 'السلوك والمواظبة', max: 10 },
+      { id: 'default_1', name: 'الأداء المنزلي', max: 10, autoCalcType: 0, absenceMax: undefined },
+      { id: 'default_2', name: 'التقييم الأسبوعي', max: 20, autoCalcType: 0, absenceMax: undefined },
+      { id: 'default_3', name: 'السلوك والمواظبة', max: 10, autoCalcType: 0, absenceMax: undefined },
     ];
     this.tCriteria.set(criteria.map(c => ({ ...c })));
 
@@ -237,6 +329,7 @@ export class GradeMonitor implements OnInit {
         d.setDate(d.getDate() + 7);
       }
     }
+    const monthGroups = this.computeMonthGroups(this.tStart(), this.tWeeks());
     const data: Template = {
       id: this.editTmplId() || nextId,
       name: this.tName().trim(),
@@ -251,14 +344,9 @@ export class GradeMonitor implements OnInit {
       summary_columns: this.tSumCols(),
       week_names: weekNames.slice(0, this.tWeeks()),
       week_dates: weekDates,
-      absent_days: ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'],
+      absent_days: this.tAbsentDays(),
       weekly_max: this.tCriteria().reduce((a, c) => a + c.max, 0),
-      month_groups: [
-        { name: 'فبراير', weeks: [1, 2, 3, 4] },
-        { name: 'مارس', weeks: [5, 6, 7, 8] },
-        { name: 'أبريل', weeks: [9, 10, 11, 12] },
-        { name: 'مايو', weeks: [13, 14] },
-      ],
+      month_groups: monthGroups,
     };
 
     const existing = this.editTmplId() ? this.templates().find(t => t.id === this.editTmplId()) : null;
@@ -282,16 +370,17 @@ export class GradeMonitor implements OnInit {
 
       const processItems = () => {
         const requests = data.criteria.map((c, idx) => {
-          const body = {
+          const body: any = {
             templateId: tmplApiId,
             name: c.name,
             maxScore: c.max,
             weight: 1,
             itemType: 1,
-            autoCalcType: 0,
+            autoCalcType: c.autoCalcType ?? 0,
             displayOrder: idx + 1,
             isVisible: true
           };
+          if (c.autoCalcType === 1) body.absenceMaxScore = c.absenceMax ?? c.max;
           const existingItemId = c.id.startsWith('c') ? parseInt(c.id.substring(1)) : null;
           if (existingItemId && !isNaN(existingItemId)) {
             return this.api.updateItem(existingItemId, { ...body, id: existingItemId })
@@ -370,10 +459,15 @@ export class GradeMonitor implements OnInit {
   getSName(i: number): string { return this.tSumCols()[i]?.name ?? ''; }
   getSMax(i: number): number { return this.tSumCols()[i]?.max ?? 0; }
 
+  onAutoCalcTypeChange(c: Criteria, val: number) {
+    c.autoCalcType = val;
+    if (val !== 1) c.absenceMax = undefined;
+  }
+
   addCrit() {
     this.tCriteria.update(list => {
       const newIdx = list.filter(c => c.id.startsWith('new_')).length + 1;
-      return [...list, { id: 'new_' + newIdx, name: 'عنصر ' + newIdx, max: 10 }];
+      return [...list, { id: 'new_' + newIdx, name: 'عنصر ' + newIdx, max: 10, autoCalcType: 0, absenceMax: undefined }];
     });
   }
 
@@ -453,16 +547,57 @@ export class GradeMonitor implements OnInit {
   }
 
   // ══════════════════════════════════════
-  //  PERSISTENCE (localStorage)
+  //  REAL CLASSES (for dropdown)
+  // ══════════════════════════════════════
+  private loadApiClasses() {
+    this.api.getClasses().subscribe({
+      next: (res) => {
+        if (res.isSuccess) this.apiClasses.set(res.data || []);
+      },
+    });
+  }
+
+  // ══════════════════════════════════════
+  //  CLASS-TEMPLATE LINKS (API)
+  // ══════════════════════════════════════
+  private loadLinksFromApi(): Promise<void> {
+    return new Promise(resolve => {
+      this.api.getLinks().subscribe({
+        next: (res) => {
+          if (res.isSuccess && res.data?.length) {
+            this.classes.set((res.data as any[]).map((link: any) => ({
+              linkId: link.id,
+              id: link.classId,
+              name: link.className || '',
+              teacher: link.teacher || '',
+              subject: link.subject || '',
+              year: '',
+              template_id: link.templateId,
+              students: (link.students || []).map((s: any) => ({
+                id: s.id, name: s.name, enrollmentId: s.enrollmentId
+              })),
+            })));
+          } else {
+            this.classes.set([]);
+          }
+          resolve();
+        },
+        error: () => { resolve(); },
+      });
+    });
+  }
+
+  // ══════════════════════════════════════
+  //  PERSISTENCE (localStorage — templates only)
   // ══════════════════════════════════════
   private saveToLocalStorage() {
     try {
-      const data = { classes: this.classes(), templates: this.templates() };
+      const data = { templates: this.templates() };
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(data));
     } catch {}
   }
 
-  private loadRawFromLocalStorage(): { classes?: any[]; templates?: any[] } | null {
+  private loadRawFromLocalStorage(): { templates?: any[] } | null {
     try {
       const raw = localStorage.getItem(this.STORAGE_KEY);
       if (!raw) return null;
@@ -473,91 +608,86 @@ export class GradeMonitor implements OnInit {
   private loadFromLocalStorage() {
     const data = this.loadRawFromLocalStorage();
     if (!data) return;
-    if (data.classes?.length) this.classes.set(data.classes);
     if (data.templates?.length) this.templates.set(data.templates);
-  }
-
-  private loadClassesFromApi() {
-    this.api.getClasses().subscribe({
-      next: (res) => {
-        if (res.isSuccess && res.data?.length) {
-          this.classes.set(res.data);
-          this.saveToLocalStorage();
-        }
-      },
-      error: () => {},
-    });
   }
 
   // ══════════════════════════════════════
   //  CLASSES
   // ══════════════════════════════════════
-  cName = signal('');
-  cTeacher = signal('');
-  cSubj = signal('');
-  cYear = signal('2025/2026');
+  // ══ Class modal signals ══
+  clsModalOpen  = signal(false);
+  linkedApiClsId = signal<number | null>(null);        // id of selected API class
+  cName     = signal('');
+  cTeacher  = signal('');
+  cSubj     = signal('');
+  cYear     = signal('2025/2026');
   cStudents = signal('');
-  cTmplId = signal<number | null>(null);
-  clsModalOpen = signal(false);
+  cTmplId   = signal<number | null>(null);
+
+  // Computed: classes NOT yet linked (have no template chosen or came fresh from API)
+  unlinkedApiClasses = computed(() => this.classes());
 
   openClsForm(c?: ClassItem) {
     this.editClsId.set(c ? c.id : null);
-    this.cName.set(c?.name || '');
-    this.cTeacher.set(c?.teacher || '');
-    this.cSubj.set(c?.subject || '');
-    this.cYear.set(c?.year || '2025/2026');
-    this.cStudents.set((c?.students || []).map(s => s.name).join('\n'));
-    this.cTmplId.set(c?.template_id || null);
+    if (c) {
+      this.linkedApiClsId.set(c.id);
+      this.cTmplId.set(c.template_id || null);
+    } else {
+      this.linkedApiClsId.set(null);
+      this.cTmplId.set(null);
+    }
+    // Look up class info from apiClasses (not from link data) for consistency
+    const apiId = c?.id;
+    const found = apiId ? this.apiClasses().find((ac: any) => ac.id === apiId) : null;
+    this.cName.set(found?.name ?? c?.name ?? '');
+    this.cTeacher.set(found?.teacher ?? '');
+    this.cSubj.set(found?.subject ?? '');
+    this.cYear.set(found?.year ?? c?.year ?? '2025/2026');
+    this.cStudents.set(
+      (found?.students ?? c?.students ?? []).map((s: any) => s.name).join('\n')
+    );
     this.clsModalOpen.set(true);
   }
 
-  saveCls() {
-    if (!this.cName().trim() || this.cTmplId() === null) return;
-    const studentNames = this.cStudents().split('\n')
-      .map(s => s.trim()).filter(Boolean);
-    const students: Student[] = studentNames.map((name, i) => ({ id: i + 1, name }));
-    const data: ClassItem = {
-      id: this.editClsId() || Date.now(),
-      name: this.cName().trim(),
-      teacher: this.cTeacher().trim(),
-      subject: this.cSubj().trim(),
-      year: this.cYear().trim(),
-      template_id: this.cTmplId()!,
-      students,
-    };
-    if (this.editClsId()) {
-      this.classes.update(list => list.map(c => c.id === data.id ? data : c));
-    } else {
-      this.classes.update(list => [...list, data]);
+  onLinkedApiClsChange(id: number | null) {
+    this.linkedApiClsId.set(id);
+    if (id == null) return;
+    const found = this.apiClasses().find((c: any) => c.id === Number(id));
+    if (found) {
+      this.cName.set(found.name || '');
+      this.cTeacher.set(found.teacher || '');
+      this.cSubj.set(found.subject || '');
+      this.cYear.set(found.year || '');
+      this.cStudents.set((found.students || []).map((s: any) => s.name).join('\n'));
+      this.cTmplId.set(null);
     }
-    this.saveToLocalStorage();
-    this.clsModalOpen.set(false);
-    this.showSnackbar(this.editClsId() ? 'تم تحديث الفصل' : 'تم إنشاء الفصل');
-    this.api.createClass({
-      name: data.name, teacher: data.teacher, subject: data.subject,
-      year: data.year, templateId: data.template_id, students: studentNames,
-    }).subscribe({
-      next: (res) => {
-        if (res.isSuccess && res.data) {
-          this.classes.update(list => list.map(c => c.id === data.id ? {
-            id: res.data.id, name: res.data.name, teacher: res.data.teacher,
-            subject: res.data.subject, year: res.data.year,
-            template_id: res.data.template_id ?? data.template_id,
-            students: (res.data.students || []).map((s: any) => ({
-              id: s.id, name: s.name, enrollmentId: s.enrollmentId
-            })),
-          } : c));
-          this.saveToLocalStorage();
-        }
+  }
+
+  saveCls() {
+    if (this.cTmplId() === null) return;
+
+    const apiClsId = this.linkedApiClsId();
+    if (apiClsId == null) return;
+    this.api.createLink({ classId: Number(apiClsId), templateId: this.cTmplId()!, academicYearId: 1 }).subscribe({
+      next: () => {
+        this.loadLinksFromApi();
+        this.clsModalOpen.set(false);
+        this.showSnackbar('تم ربط الفصل بالقالب');
       },
-      error: () => {},
+      error: () => this.showSnackbar('فشل الربط'),
     });
   }
 
   delCls(id: number) {
-    this.classes.update(list => list.filter(c => c.id !== id));
-    this.saveToLocalStorage();
-    this.api.deleteClass(id).subscribe({ error: () => {} });
+    const item = this.classes().find(c => c.id === id);
+    if (!item || !item.linkId) return;
+    this.api.deleteLink(item.linkId).subscribe({
+      next: () => {
+        this.loadLinksFromApi();
+        this.showSnackbar('تم فك الربط');
+      },
+      error: () => this.showSnackbar('فشل فك الربط'),
+    });
   }
 
   // ══════════════════════════════════════
@@ -566,15 +696,17 @@ export class GradeMonitor implements OnInit {
   currentTmpl = computed(() => {
     const cid = this.entryClassId();
     if (!cid) return null;
-    const cls = this.classes().find(c => c.id === cid);
+    const cls = this.classes().find(c => c.id === Number(cid));
     if (!cls) return null;
-    return this.templates().find(t => t.id === cls.template_id) || null;
+    return this.templates().find(t => t.id === cls.template_id)
+      || (cls.subject ? this.templates().find(t => t.subjectName === cls.subject) : null)
+      || null;
   });
 
   currentCls = computed(() => {
     const cid = this.entryClassId();
     if (!cid) return null;
-    return this.classes().find(c => c.id === cid) || null;
+    return this.classes().find(c => c.id === Number(cid)) || null;
   });
 
   weeklyMax = computed(() => {
@@ -603,10 +735,26 @@ export class GradeMonitor implements OnInit {
   }
 
   goEntry(cid: number) {
-    this.entryClassId.set(cid);
+    // إلغاء أي طلب HTTP جاري قبل تغيير الفصل
+    this.cancelLoad$.next();
+    this.entryClassId.set(+cid);
     this.entryWeek.set(1);
     this.activeSection.set('entry');
-    this.onClassOrWeekChange();
+    this.clearGrades();
+    if (this.dataReady()) this.loadEvaluations();
+    else this.pendingReload.set(true);
+  }
+
+  // ══ يُستدعى من الـ HTML عند تغيير الأسبوع أو الفصل ══
+  onClassOrWeekChange() {
+    // إلغاء أي طلب HTTP جاري
+    this.cancelLoad$.next();
+    // امسح البيانات القديمة
+    this.gradeValues.set({});
+    this.absenceValues.set({});
+    this.existingEvalMap.set({});
+    this.enrollmentMap.set({});
+    this.loadEvaluations();
   }
 
   goExp(cid: number) {
@@ -628,28 +776,32 @@ export class GradeMonitor implements OnInit {
   weekLabel(wn: number): string {
     const tmpl = this.currentTmpl();
     if (!tmpl) return 'الأسبوع ' + wn;
-    const wName = tmpl.week_names[wn - 1] || wn;
-    const wDate = tmpl.week_dates[wn - 1] ? ' (' + tmpl.week_dates[wn - 1] + ')' : '';
+    const num = Number(wn);
+    const wName = tmpl.week_names[num - 1] || num;
+    const wDate = tmpl.week_dates[num - 1] ? ' (' + tmpl.week_dates[num - 1] + ')' : '';
     return 'الأسبوع ' + wName + wDate;
   }
 
   private getPeriodId(weekNum: number): number | null {
-    const period = this.periods().find(p => p.periodType === 1 && p.orderNum === weekNum);
+    const num = Number(weekNum);
+    const period = this.periods().find(p => p.periodType === 1 && p.orderNum === num);
     return period?.id ?? null;
   }
 
   exportTmpl = computed(() => {
     const cid = this.exportClassId();
     if (!cid) return null;
-    const cls = this.classes().find(c => c.id === cid);
+    const cls = this.classes().find(c => c.id === Number(cid));
     if (!cls) return null;
-    return this.templates().find(t => t.id === cls.template_id) || null;
+    return this.templates().find(t => t.id === cls.template_id)
+      || (cls.subject ? this.templates().find(t => t.subjectName === cls.subject) : null)
+      || null;
   });
 
   exportCls = computed(() => {
     const cid = this.exportClassId();
     if (!cid) return null;
-    return this.classes().find(c => c.id === cid) || null;
+    return this.classes().find(c => c.id === Number(cid)) || null;
   });
 
   // ══════════════════════════════════════
@@ -664,15 +816,21 @@ export class GradeMonitor implements OnInit {
     return this.currentCls()?.students || [];
   }
 
+  private normalizeHalfGrade(v: number): number {
+    return Math.ceil(v * 2) / 2;
+  }
+
   setGrade(sid: number, cid: string, val: number | string) {
-    const wn = this.entryWeek();
+    const wn = Number(this.entryWeek());
     const numVal = typeof val === 'string' ? parseFloat(val) : val;
     if (isNaN(numVal)) return;
-    this.gradeValues.update(m => ({ ...m, [sid + '_' + wn + '_' + cid]: numVal }));
+    const normalized = this.normalizeHalfGrade(numVal);
+    this.localGrades[sid + '_' + cid] = normalized;
+    this.gradeValues.update(m => ({ ...m, [sid + '_' + wn + '_' + cid]: normalized }));
   }
 
   gradeTotal(sid: number): number {
-    const wn = this.entryWeek();
+    const wn = Number(this.entryWeek());
     const tmpl = this.currentTmpl();
     if (!tmpl) return 0;
     return tmpl.criteria.reduce((sum, c) =>
@@ -680,27 +838,28 @@ export class GradeMonitor implements OnInit {
   }
 
   toggleAbs(sid: number, day: string) {
-    const wn = this.entryWeek();
+    const wn = Number(this.entryWeek());
     const key = sid + '_' + wn + '_' + day;
-    this.absenceValues.update(m => ({ ...m, [key]: !m[key] }));
+    this.localAbsences[sid + '_' + day] = !this.localAbsences[sid + '_' + day];
+    this.absenceValues.update(m => ({ ...m, [key]: this.localAbsences[sid + '_' + day] }));
   }
 
   isAbsent(sid: number, day: string): boolean {
-    const wn = this.entryWeek();
-    return !!this.absenceValues()[sid + '_' + wn + '_' + day];
+    return !!this.localAbsences[sid + '_' + day];
   }
 
   absenceCount(sid: number): number {
     const tmpl = this.currentTmpl();
     if (!tmpl) return 0;
-    const wn = this.entryWeek();
     return tmpl.absent_days.filter(d => this.isAbsent(sid, d)).length;
   }
 
   setExam(sid: number, examNum: number, val: number | string) {
     const numVal = typeof val === 'string' ? parseFloat(val) : val;
     if (isNaN(numVal)) return;
-    this.examValues.update(m => ({ ...m, [sid + '_e' + examNum]: numVal }));
+    const normalized = this.normalizeHalfGrade(numVal);
+    this.localExams[sid + '_e' + examNum] = normalized;
+    this.examValues.update(m => ({ ...m, [sid + '_e' + examNum]: normalized }));
   }
 
   getExam(sid: number, examNum: number): number {
@@ -710,7 +869,9 @@ export class GradeMonitor implements OnInit {
   setFinal(sid: number, field: string, val: number | string) {
     const numVal = typeof val === 'string' ? parseFloat(val) : val;
     if (isNaN(numVal)) return;
-    this.finalValues.update(m => ({ ...m, [sid + '_' + field]: numVal }));
+    const normalized = this.normalizeHalfGrade(numVal);
+    this.localFinals[sid + '_' + field] = normalized;
+    this.finalValues.update(m => ({ ...m, [sid + '_' + field]: normalized }));
   }
 
   getFinal(sid: number, field: string): number {
@@ -756,64 +917,128 @@ export class GradeMonitor implements OnInit {
   //  يُستدعى عند تغيير الفصل أو الأسبوع
   // ══════════════════════════════════════
   loadEvaluations() {
+    if (!this.dataReady()) { this.pendingReload.set(true); return; }
     const cls = this.currentCls();
     const tmpl = this.currentTmpl();
-    const wn = this.entryWeek();
-    if (!cls || !tmpl) return;
+    const wn = Number(this.entryWeek());
+    if (!cls || !tmpl) {
+      console.warn('[loadEvaluations] no cls or tmpl', { clsId: this.entryClassId(), tmpls: this.templates().length });
+      return;
+    }
 
-    // امسح القيم الحالية فوراً
+    // ① إلغاء أي طلب HTTP سابق (race condition fix)
+    this.cancelLoad$.next();
+
+    // ② امسح الداتا القديمة
     this.gradeValues.set({});
     this.absenceValues.set({});
     this.enrollmentMap.set({});
     this.existingEvalMap.set({});
+    this.localGrades = {};
+    this.localAbsences = {};
+    this.localExams = {};
+    this.localFinals = {};
 
     const periodId = this.currentPeriodId();
-    if (!periodId) return;
+    if (!periodId) {
+      console.warn('[loadEvaluations] no periodId for week', wn);
+      return;
+    }
+
+    // بناء set من الـ item ids للـ template الحالي فقط
+    const tmplItemIds = new Set(
+      tmpl.criteria
+        .map(c => parseInt(c.id.replace('c', '')))
+        .filter(n => !isNaN(n))
+    );
 
     this.loadingWeek.set(true);
+    console.log('[loadEvaluations] cls=' + cls.id + ' wk=' + wn + ' periodId=' + periodId
+      + ' tmplItems:', [...tmplItemIds]);
 
-    this.api.getEvaluationsByClassPeriod(cls.id, periodId).subscribe({
-      next: (res) => {
-        this.loadingWeek.set(false);
-        if (!res.isSuccess || !res.data?.length) return;
-
-        const classEvals = res.data as any[];
-        const grades: Record<string, number> = {};
-        const evalIds: Record<string, number> = {};
-        const enrollMap: Record<number, number> = {};
-
-        for (const ce of classEvals) {
-          // ابحث عن الطالب بالاسم أولاً، ثم بالـ enrollmentId
-          const st = cls.students.find(s => s.name === ce.studentName)
-            || cls.students.find(s => (s.enrollmentId ?? s.id) === ce.enrollmentId);
-          const eid = ce.enrollmentId;
-
-          if (st) enrollMap[st.id] = eid;
-
-          for (const ev of (ce.evaluations || [])) {
-            if (ev.score == null) continue;
-            const studentId = st?.id ?? eid;
-            const key = studentId + '_' + wn + '_c' + ev.evaluationItemId;
-            grades[key] = ev.score;
-            // evalIds: key = enrollmentId_evaluationItemId → evalId (لتحديد create/update)
-            evalIds[eid + '_' + ev.evaluationItemId] = ev.id;
+    this.api.getEvaluationsByClassPeriod(cls.id, periodId)
+      .pipe(takeUntil(this.cancelLoad$))
+      .subscribe({
+        next: (res) => {
+          this.loadingWeek.set(false);
+          if (!res.isSuccess || !res.data?.length) {
+            console.log('[loadEvaluations] empty/failed response');
+            return;
           }
-        }
 
-        if (Object.keys(grades).length) this.gradeValues.set(grades);
-        if (Object.keys(evalIds).length) this.existingEvalMap.set(evalIds);
-        if (Object.keys(enrollMap).length) this.enrollmentMap.set(enrollMap);
-      },
-      error: () => {
-        this.loadingWeek.set(false);
+          const classEvals = res.data as any[];
+          const grades: Record<string, number> = {};
+          const evalIds: Record<string, number> = {};
+          const enrollMap: Record<number, number> = {};
+
+          for (const ce of classEvals) {
+            const st = cls.students.find(s => s.name === ce.studentName)
+              || cls.students.find(s => (s.enrollmentId ?? s.id) === ce.enrollmentId);
+            const eid = ce.enrollmentId;
+            if (st) enrollMap[st.id] = eid;
+
+            for (const ev of (ce.evaluations || [])) {
+              if (ev.score == null || !st) continue;
+              // ③ فقط الـ items التابعة للـ template الحالي
+              if (!tmplItemIds.has(ev.evaluationItemId)) continue;
+              const key = st.id + '_' + wn + '_c' + ev.evaluationItemId;
+              grades[key] = ev.score;
+              this.localGrades[st.id + '_c' + ev.evaluationItemId] = ev.score;
+              evalIds[eid + '_' + ev.evaluationItemId] = ev.id;
+            }
+          }
+
+          console.log('[loadEvaluations] DONE wk=' + wn + ' grades=' + Object.keys(grades).length,
+            Object.keys(grades).slice(0, 4));
+
+          if (Object.keys(grades).length) this.gradeValues.set(grades);
+          if (Object.keys(evalIds).length) this.existingEvalMap.set(evalIds);
+          if (Object.keys(enrollMap).length) this.enrollmentMap.set(enrollMap);
+
+          this.loadAbsences(cls, tmpl, wn, periodId, enrollMap);
+        },
+        error: () => { this.loadingWeek.set(false); }
+      });
+  }
+
+  private loadAbsences(cls: ClassItem, tmpl: Template, wn: number, periodId: number, enrollMap: Record<number, number>) {
+    if (tmpl.absent_days.length === 0) return;
+    const students = cls.students;
+    const enrollmentIds: number[] = [];
+    const stIdByEnrollment: Record<number, number> = {};
+    for (const st of students) {
+      const enrollmentId = st.enrollmentId ?? enrollMap[st.id] ?? st.id;
+      enrollmentIds.push(enrollmentId);
+      stIdByEnrollment[enrollmentId] = st.id;
+    }
+    if (enrollmentIds.length === 0) return;
+    const firstDay = this.getDateForDay(wn, tmpl.absent_days[0]);
+    const lastDay = this.getDateForDay(wn, tmpl.absent_days[tmpl.absent_days.length - 1]);
+    this.api.getAbsencesByEnrollments(enrollmentIds, firstDay, lastDay).subscribe({
+      next: (res) => {
+        if (!res.isSuccess || !res.data?.length) return;
+        const absences: Record<string, boolean> = {};
+        for (const a of (res.data as any[])) {
+          const dayKey = this.getDayKeyForDate(a.absenceDate, tmpl);
+          if (!dayKey) continue;
+          const stId = stIdByEnrollment[a.enrollmentId];
+          if (!stId) continue;
+          const key = stId + '_' + wn + '_' + dayKey;
+          absences[key] = a.isAbsent;
+          this.localAbsences[stId + '_' + dayKey] = a.isAbsent;
+        }
+        if (Object.keys(absences).length) {
+          this.absenceValues.update(m => ({ ...m, ...absences }));
+        }
       }
     });
   }
 
-  // ══ يُستدعى من الـ HTML عند تغيير الفصل أو الأسبوع ══
-  onClassOrWeekChange() {
-    this.clearGrades();
-    this.loadEvaluations();
+  private getDayKeyForDate(dateStr: string, tmpl: Template): string | null {
+    const date = new Date(dateStr);
+    const dayNames = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+    const dayName = dayNames[date.getDay()];
+    return tmpl.absent_days.includes(dayName) ? dayName : null;
   }
 
   clearGrades() {
@@ -823,31 +1048,67 @@ export class GradeMonitor implements OnInit {
     this.finalValues.set({});
     this.enrollmentMap.set({});
     this.existingEvalMap.set({});
+    this.localGrades = {};
+    this.localAbsences = {};
+    this.localExams = {};
+    this.localFinals = {};
   }
 
-  onGradeInput(sid: number, cid: string, event: Event) {
-    const val = (event.target as HTMLInputElement).value;
-    if (val === '') return;
-    const numVal = parseFloat(val);
-    if (!isNaN(numVal)) this.setGrade(sid, cid, numVal);
+  onGradeChange(sid: number, cid: string, val: any) {
+    const key = sid + '_' + cid;
+    this.localGrades[key] = val;
+    const wn = Number(this.entryWeek());
+    if (val === null || val === undefined || val === '') {
+      this.gradeValues.update(m => {
+        const copy = { ...m };
+        delete copy[sid + '_' + wn + '_' + cid];
+        return copy;
+      });
+      return;
+    }
+    const num = parseFloat(val);
+    if (!isNaN(num)) {
+      this.gradeValues.update(m => ({ ...m, [sid + '_' + wn + '_' + cid]: num }));
+    }
   }
 
-  onExamInput(sid: number, examNum: number, event: Event) {
-    const val = (event.target as HTMLInputElement).value;
-    if (val === '') return;
-    const numVal = parseFloat(val);
-    if (!isNaN(numVal)) this.setExam(sid, examNum, numVal);
+  onExamChange(sid: number, examNum: number, val: any) {
+    const key = sid + '_e' + examNum;
+    this.localExams[key] = val;
+    if (val === null || val === undefined || val === '') {
+      this.examValues.update(m => {
+        const copy = { ...m };
+        delete copy[key];
+        return copy;
+      });
+      return;
+    }
+    const num = parseFloat(val);
+    if (!isNaN(num)) {
+      this.examValues.update(m => ({ ...m, [key]: num }));
+    }
   }
 
-  onFinalInput(sid: number, field: string, event: Event) {
-    const val = (event.target as HTMLInputElement).value;
-    if (val === '') return;
-    const numVal = parseFloat(val);
-    if (!isNaN(numVal)) this.setFinal(sid, field, numVal);
+  onFinalChange(sid: number, field: string, val: any) {
+    const key = sid + '_' + field;
+    this.localFinals[key] = val;
+    if (val === null || val === undefined || val === '') {
+      this.finalValues.update(m => {
+        const copy = { ...m };
+        delete copy[key];
+        return copy;
+      });
+      return;
+    }
+    const num = parseFloat(val);
+    if (!isNaN(num)) {
+      this.finalValues.update(m => ({ ...m, [key]: num }));
+    }
   }
 
   getGradeDisplay(sid: number, cid: string): string {
-    const v = this.gradeValues()[sid + '_' + this.entryWeek() + '_' + cid];
+    const key = sid + '_' + Number(this.entryWeek()) + '_' + cid;
+    const v = this.gradeValues()[key];
     return v !== undefined ? String(v) : '';
   }
 
@@ -867,7 +1128,7 @@ export class GradeMonitor implements OnInit {
   saveGrades() {
     const cls = this.currentCls();
     const tmpl = this.currentTmpl();
-    const wn = this.entryWeek();
+    const wn = Number(this.entryWeek());
     if (!cls || !tmpl) return;
 
     this.saving.set(true);
@@ -884,43 +1145,46 @@ export class GradeMonitor implements OnInit {
       const evalMap = this.existingEvalMap();
       const enrollMap = this.enrollmentMap();
 
-      const requests: any[] = [];
+      const entries: {
+        evaluationId?: number;
+        enrollmentId: number;
+        evaluationItemId: number;
+        periodId: number;
+        score: number | null;
+      }[] = [];
 
       for (const st of students) {
         const enrollmentId = st.enrollmentId ?? enrollMap[st.id] ?? st.id;
         for (const c of tmpl.criteria) {
-          const score = this.gradeValues()[st.id + '_' + wn + '_' + c.id];
-          if (score == null) continue;
+          const rawScore = this.gradeValues()[st.id + '_' + wn + '_' + c.id];
+          if (rawScore == null) continue;
 
           const evalItemId = parseInt(c.id.replace('c', ''));
           if (isNaN(evalItemId)) continue;
 
+          // Normalize score to half-grade increments before sending
+          const score = this.normalizeHalfGrade(rawScore);
+          if (score > c.max) continue;
+
+          const entry: any = {
+            enrollmentId,
+            evaluationItemId: evalItemId,
+            periodId,
+            score,
+          };
+
           const existingId = evalMap[enrollmentId + '_' + evalItemId];
-          if (existingId) {
-            // تحديث درجة موجودة
-            requests.push(
-              this.api.updateEvaluation({ evaluationId: existingId, newScore: score })
-            );
-          } else {
-            // إنشاء درجة جديدة
-            requests.push(
-              this.api.recordEvaluation({
-                enrollmentId,
-                evaluationItemId: evalItemId,
-                periodId,
-                score,
-              })
-            );
-          }
+          if (existingId) entry.evaluationId = existingId;
+
+          entries.push(entry);
         }
       }
 
-      if (requests.length) {
-        forkJoin(requests).subscribe({
+      if (entries.length) {
+        this.api.bulkSaveEvaluations(entries).subscribe({
           next: () => {
             this.saving.set(false);
             this.showSnackbar('تم حفظ الدرجات بنجاح ✓');
-            // أعد تحميل البيانات لتحديث existingEvalMap
             this.loadEvaluations();
           },
           error: () => {
@@ -994,13 +1258,14 @@ export class GradeMonitor implements OnInit {
 
   private getDateForDay(weekNum: number, dayName: string): string {
     const tmpl = this.currentTmpl();
+    const num = Number(weekNum);
     if (!tmpl?.start_date) {
       const d = new Date();
-      d.setDate(d.getDate() + (weekNum - 1) * 7);
+      d.setDate(d.getDate() + (num - 1) * 7);
       return d.toISOString().split('T')[0];
     }
     const start = new Date(tmpl.start_date);
-    start.setDate(start.getDate() + (weekNum - 1) * 7);
+    start.setDate(start.getDate() + (num - 1) * 7);
     const dayMap: Record<string, number> = {
       'الأحد': 0, 'الاثنين': 1, 'الثلاثاء': 2, 'الأربعاء': 3,
       'الخميس': 4, 'الجمعة': 5, 'السبت': 6
@@ -1046,9 +1311,10 @@ export class GradeMonitor implements OnInit {
           for (let wn = 1; wn <= wkCount; wn++) {
             const id = `${st.id}_${wn}`;
             const wd = allWeeks[id];
+            if (!wd) continue;
             const values: Record<string, number> = {};
             for (const c of tmpl.criteria) {
-              values[c.id] = wd?.[c.id] ?? 0;
+              values[c.id] = wd[c.id] ?? 0;
             }
             const total = Object.values(values).reduce((a, b) => a + b, 0);
             gradeData[`${wn}_${st.id}`] = { total, values };
@@ -1086,7 +1352,8 @@ export class GradeMonitor implements OnInit {
           for (let wn = 1; wn <= wkCount; wn++) {
             const id = `${st.id}_${wn}`;
             const wd = allWeeks[id];
-            const total = Object.values(tmpl.criteria).reduce((s, c) => s + (wd?.[c.id] ?? 0), 0);
+            if (!wd) continue;
+            const total = Object.values(tmpl.criteria).reduce((s, c) => s + (wd[c.id] ?? 0), 0);
             gradeData[`${wn}_${st.id}`] = { total };
           }
         }

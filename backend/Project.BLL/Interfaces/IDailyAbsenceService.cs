@@ -10,4 +10,6 @@ public interface IDailyAbsenceService
     Task<OperationResult> DeleteAbsenceAsync(int id);
     Task<OperationResult<IEnumerable<DailyAbsenceDto>>> GetAbsencesByEnrollmentAsync(GetAbsenceFilter filter);
     Task<OperationResult<AbsenceSummaryDto>> GetAbsenceSummaryAsync(int enrollmentId, int? classSubjectTeacherId = null);
+    Task<OperationResult<IEnumerable<DailyAbsenceDto>>> GetAbsencesByEnrollmentsAsync(
+        List<int> enrollmentIds, DateOnly fromDate, DateOnly toDate);
 }

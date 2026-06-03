@@ -66,12 +66,25 @@ public class StudentEvaluationsController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPost("bulk")]
+    public async Task<IActionResult> BulkSave([FromBody] BulkSaveEvaluationsRequest request)
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+        request.EnteredById = userIdClaim != null ? int.Parse(userIdClaim.Value) : 1;
+        var result = await _service.BulkSaveEvaluationsAsync(request);
+        if (!result.IsSuccess)
+            return BadRequest(result);
+        return Ok(result);
+    }
+
     [HttpPost("auto-fill-attendance")]
     public async Task<IActionResult> AutoFillAttendance(
         [FromQuery] int classId,
         [FromQuery] int periodId)
     {
-        var result = await _service.AutoFillAttendanceScoresAsync(classId, periodId);
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+        var enteredById = userIdClaim != null ? int.Parse(userIdClaim.Value) : 1;
+        var result = await _service.AutoFillAttendanceScoresAsync(classId, periodId, enteredById);
         if (!result.IsSuccess)
             return BadRequest(result);
         return Ok(result);

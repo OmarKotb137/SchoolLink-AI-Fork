@@ -11,7 +11,8 @@ using Project.DAL.Interfaces.Repositories.Settings;
 using Project.DAL.Interfaces.Repositories.StudyPlans;
 using Project.DAL.Interfaces.Repositories.Timetable;
 using Project.DAL.Context;
-
+using Project.DAL.Interfaces.Repositories;
+using Project.Domain.Entities;
 
 namespace Project.DAL.UnitOfWork;
 
@@ -73,7 +74,8 @@ public class UnitOfWork : IUnitOfWork
         ITimetableSlotRepository               timetableSlots,
 
         IStudyPlanRepository                   studyPlans,
-        IStudyPlanItemRepository               studyPlanItems)
+        IStudyPlanItemRepository               studyPlanItems,
+        IRepository<ClassTemplateLink>         classTemplateLinks)
     {
         _context = context;
 
@@ -137,7 +139,10 @@ public class UnitOfWork : IUnitOfWork
         // Section I
         StudyPlans                   = studyPlans;
         StudyPlanItems               = studyPlanItems;
+        ClassTemplateLinks           = classTemplateLinks;
     }
+
+    public IRepository<ClassTemplateLink>         ClassTemplateLinks           { get; }
 
     // Section A: Core
     public IUserRepository                        Users                        { get; }

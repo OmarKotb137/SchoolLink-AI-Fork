@@ -1,4 +1,4 @@
-﻿<app-sidebar [(isOpen)]="sidebarOpen" />
+<app-sidebar [(isOpen)]="sidebarOpen" />
 <div class="main-content">
   <app-topbar userName="أحمد" />
   <main class="pt-24 px-margin-mobile md:px-margin-desktop pb-margin-desktop">
@@ -194,7 +194,7 @@
               </div>
               <div class="flex-1 min-w-[200px]">
                 <label class="text-label-sm text-on-surface-variant block mb-1">نوع السجل</label>
-                <select class="grade-inp" [ngModel]="entryType()" (ngModelChange)="entryType.set($event); clearGrades()">
+                <select class="grade-inp" [ngModel]="entryType()" (ngModelChange)="entryType.set($event); clearGrades(); onClassOrWeekChange()">
                   <option value="grades">درجات أسبوعية</option>
                   <option value="absence">غياب أسبوعي</option>
                   <option value="exams">امتحانات شهرية</option>
@@ -204,9 +204,9 @@
               @if (entryType() === 'grades' || entryType() === 'absence') {
                 <div class="min-w-[160px]">
                   <label class="text-label-sm text-on-surface-variant block mb-1">الأسبوع</label>
-                  <select class="grade-inp" [ngModel]="entryWeek()" (ngModelChange)="entryWeek.set($event); onClassOrWeekChange()">
+                  <select class="grade-inp" [ngModel]="entryWeek()" (ngModelChange)="entryWeek.set(+$event); onClassOrWeekChange()">
                     @for (w of entryWeeks(); track w) {
-                      <option [value]="w">{{ weekLabel(w) }}</option>
+                      <option [ngValue]="w">{{ weekLabel(w) }}</option>
                     }
                   </select>
                 </div>
@@ -219,16 +219,19 @@
           <div class="grade-box overflow-hidden">
             <div class="grade-box-header flex-wrap gap-3">
               <h3>
-                  @if (entryType() === 'grades') { الدرجات الأسبوعية · {{ weekLabel(entryWeek()) }} · {{ currentCls()?.name }}
-                  } @else if (entryType() === 'absence') { الغياب الأسبوعي · {{ weekLabel(entryWeek()) }} · {{ currentCls()?.name }}
-                } @else if (entryType() === 'exams') { الامتحانات الشهرية · {{ currentCls()?.name }}
-                } @else { النتائج النهائية · {{ currentCls()?.name }}
+                @if (entryType() === 'grades') { الدرجات الأسبوعية · {{ weekLabel(entryWeek()) }} · {{ currentCls()?.name }} – {{ currentCls()?.subject }}
+                } @else if (entryType() === 'absence') { الغياب الأسبوعي · {{ weekLabel(entryWeek()) }} · {{ currentCls()?.name }} – {{ currentCls()?.subject }}
+                } @else if (entryType() === 'exams') { الامتحانات الشهرية · {{ currentCls()?.name }} – {{ currentCls()?.subject }}
+                } @else { النتائج النهائية · {{ currentCls()?.name }} – {{ currentCls()?.subject }}
                 }
               </h3>
               <div class="flex gap-2 flex-wrap">
                 @if (entryType() === 'grades') {
                   <button class="grade-btn-outline-sm" (click)="fillZeros()" [disabled]="!currentPeriodId()">صفر للكل</button>
                   <button class="grade-btn-outline-sm" (click)="fillMax()" [disabled]="!currentPeriodId()">الدرجة الكاملة</button>
+                  <button class="grade-btn-outline-sm" (click)="autoFillAttendance()" [disabled]="saving() || !currentPeriodId()">
+                    <span class="material-symbols-outlined text-sm">auto_awesome</span> درجات الغياب
+                  </button>
                 }
                 @if (entryType() === 'absence') {
                   <button class="grade-btn-outline-sm" (click)="autoFillAttendance()" [disabled]="saving() || !currentPeriodId()">
@@ -240,125 +243,158 @@
                 </button>
               </div>
             </div>
-            <div class="overflow-x-auto">
-              <table class="grade-table">
-                @if (entryType() === 'grades') {
-                  <thead>
-                    <tr>
-                      <th class="w-10">#</th>
-                      <th class="text-right min-w-[170px]">اسم الطالب</th>
-                      @for (c of currentTmpl()!.criteria; track c.id) {
-                        <th>{{ c.name }}<br><span class="text-[10px] text-on-surface-variant font-normal">/{{ c.max }}</span></th>
-                      }
-                      <th class="bg-primary/10 text-primary">المجموع<br><span class="text-[10px] font-normal">/{{ weeklyMax() }}</span></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    @for (st of getStudents(); track st.id; let i = $index) {
+
+            @if (loadingWeek()) {
+              <div class="flex items-center justify-center gap-3 py-10 text-on-surface-variant">
+                <span class="material-symbols-outlined text-2xl text-primary" style="animation: spin 1s linear infinite">progress_activity</span>
+                <span class="text-sm">جاري تحميل بيانات الأسبوع...</span>
+              </div>
+            } @else {
+              <div class="overflow-x-auto">
+                <table class="grade-table">
+                  @if (entryType() === 'grades') {
+                    <thead>
                       <tr>
-                        <td class="text-on-surface-variant text-xs">{{ i + 1 }}</td>
-                        <td class="font-medium text-on-surface text-right">{{ st.name }}</td>
+                        <th class="w-10">#</th>
+                        <th class="text-right min-w-[170px]">اسم الطالب</th>
                         @for (c of currentTmpl()!.criteria; track c.id) {
-                          <td>
-                            <input type="number" class="grade-num-inp" step="0.25"
-                                   [value]="getGradeDisplay(st.id, c.id)"
-                                   (input)="onGradeInput(st.id, c.id, $event)"
-                                   min="0" [max]="c.max" />
-                          </td>
+                          <th>
+                            {{ c.name }}
+                            @if (c.autoCalcType === 1) { <span class="text-[10px] text-primary">(تلقائي)</span> }
+                            <br>
+                            <span class="text-[10px] text-on-surface-variant font-normal">/{{ c.max }}</span>
+                          </th>
                         }
-                        <td class="grade-total">{{ gradeTotal(st.id) }}</td>
+                        <th class="bg-primary/10 text-primary">المجموع<br><span class="text-[10px] font-normal">/{{ weeklyMax() }}</span></th>
                       </tr>
-                    }
-                  </tbody>
-                } @else if (entryType() === 'absence') {
-                  <thead>
-                    <tr>
-                      <th class="w-10">#</th>
-                      <th class="text-right min-w-[170px]">اسم الطالب</th>
-                      @for (d of currentTmpl()!.absent_days; track d) {
-                        <th>{{ d }}</th>
+                    </thead>
+                    <tbody>
+                      @for (st of getStudents(); track st.id; let i = $index) {
+                        <tr>
+                          <td class="text-on-surface-variant text-xs">{{ i + 1 }}</td>
+                          <td class="font-medium text-on-surface text-right">{{ st.name }}</td>
+                          @for (c of currentTmpl()!.criteria; track c.id) {
+                            <td>
+                              <input type="number" class="grade-num-inp" step="0.5"
+                                     [(ngModel)]="localGrades[st.id + '_' + c.id]"
+                                     (ngModelChange)="onGradeChange(st.id, c.id, $event)"
+                                     min="0" [max]="c.max" />
+                            </td>
+                          }
+                          <td class="grade-total">{{ gradeTotal(st.id) }}</td>
+                        </tr>
                       }
-                      <th class="text-success">غياب</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    @for (st of getStudents(); track st.id; let i = $index) {
+                    </tbody>
+                  } @else if (entryType() === 'absence') {
+                    <thead>
                       <tr>
-                        <td class="text-on-surface-variant text-xs">{{ i + 1 }}</td>
-                        <td class="font-medium text-on-surface text-right">{{ st.name }}</td>
+                        <th class="w-10">#</th>
+                        <th class="text-right min-w-[170px]">اسم الطالب</th>
                         @for (d of currentTmpl()!.absent_days; track d) {
-                          <td>
-                            <button class="grade-abs-btn"
-                                    [class.absent]="isAbsent(st.id, d)"
-                                    [class.present]="!isAbsent(st.id, d)"
-                                    (click)="toggleAbs(st.id, d)">
-                              {{ isAbsent(st.id, d) ? 'غ' : '✓' }}
-                            </button>
-                          </td>
+                          <th>{{ d }}</th>
                         }
-                        <td class="grade-total text-success">{{ absenceCount(st.id) }}</td>
+                        <th class="text-success">غياب</th>
                       </tr>
-                    }
-                  </tbody>
-                } @else if (entryType() === 'exams') {
-                  <thead>
-                    <tr>
-                      <th class="w-10">#</th>
-                      <th class="text-right min-w-[170px]">اسم الطالب</th>
-                      <th>الامتحان الأول<br><span class="text-[10px] text-on-surface-variant font-normal">/15</span></th>
-                      <th>الامتحان الثاني<br><span class="text-[10px] text-on-surface-variant font-normal">/15</span></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    @for (st of getStudents(); track st.id; let i = $index) {
+                    </thead>
+                    <tbody>
+                      @for (st of getStudents(); track st.id; let i = $index) {
+                        <tr>
+                          <td class="text-on-surface-variant text-xs">{{ i + 1 }}</td>
+                          <td class="font-medium text-on-surface text-right">{{ st.name }}</td>
+                          @for (d of currentTmpl()!.absent_days; track d) {
+                            <td>
+                              <button class="grade-abs-btn"
+                                      [class.absent]="isAbsent(st.id, d)"
+                                      [class.present]="!isAbsent(st.id, d)"
+                                      (click)="toggleAbs(st.id, d)">
+                                {{ isAbsent(st.id, d) ? 'غ' : '✓' }}
+                              </button>
+                            </td>
+                          }
+                          <td class="grade-total">{{ absenceCount(st.id) }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  } @else if (entryType() === 'exams') {
+                    <thead>
                       <tr>
-                        <td class="text-on-surface-variant text-xs">{{ i + 1 }}</td>
-                        <td class="font-medium text-on-surface text-right">{{ st.name }}</td>
-                        <td>
-                          <input type="number" class="grade-num-inp" step="0.25"
-                                 [value]="getExam(st.id, 1) || ''"
-                                 (input)="onExamInput(st.id, 1, $event)"
-                                 min="0" max="15" />
-                        </td>
-                        <td>
-                          <input type="number" class="grade-num-inp" step="0.25"
-                                 [value]="getExam(st.id, 2) || ''"
-                                 (input)="onExamInput(st.id, 2, $event)"
-                                 min="0" max="15" />
-                        </td>
+                        <th class="w-10">#</th>
+                        <th class="text-right min-w-[170px]">اسم الطالب</th>
+                        <th>الامتحان الأول<br><span class="text-[10px] font-normal">/15</span></th>
+                        <th>الامتحان الثاني<br><span class="text-[10px] font-normal">/15</span></th>
                       </tr>
-                    }
-                  </tbody>
-                } @else if (entryType() === 'final') {
-                  <thead>
-                    <tr>
-                      <th class="w-10">#</th>
-                      <th class="text-right min-w-[170px]">اسم الطالب</th>
-                      <th>متوسط الشهور<br><span class="text-[10px] text-on-surface-variant font-normal">/40</span></th>
-                      <th>امتحان أول<br><span class="text-[10px] text-on-surface-variant font-normal">/15</span></th>
-                      <th>امتحان ثاني<br><span class="text-[10px] text-on-surface-variant font-normal">/15</span></th>
-                      <th class="bg-primary/10 text-primary">التحريرية</th>
-                      <th>آخر العام<br><span class="text-[10px] text-on-surface-variant font-normal">/30</span></th>
-                      <th class="bg-primary/10 text-primary">المجموع<br><span class="text-[10px] font-normal">/100</span></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    @for (st of getStudents(); track st.id; let i = $index) {
+                    </thead>
+                    <tbody>
+                      @for (st of getStudents(); track st.id; let i = $index) {
+                        <tr>
+                          <td class="text-on-surface-variant text-xs">{{ i + 1 }}</td>
+                          <td class="font-medium text-on-surface text-right">{{ st.name }}</td>
+                          <td>
+                            <input type="number" class="grade-num-inp" step="0.5"
+                                   [(ngModel)]="localExams[st.id + '_e1']"
+                                   (ngModelChange)="onExamChange(st.id, 1, $event)"
+                                   min="0" max="15" />
+                          </td>
+                          <td>
+                            <input type="number" class="grade-num-inp" step="0.5"
+                                   [(ngModel)]="localExams[st.id + '_e2']"
+                                   (ngModelChange)="onExamChange(st.id, 2, $event)"
+                                   min="0" max="15" />
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  } @else if (entryType() === 'final') {
+                    <thead>
                       <tr>
-                        <td class="text-on-surface-variant text-xs">{{ i + 1 }}</td>
-                        <td class="font-medium text-on-surface text-right">{{ st.name }}</td>
-                        <td><input type="number" class="grade-num-inp" step="0.25" [value]="getFinal(st.id, 'ma') || ''" (input)="onFinalInput(st.id, 'ma', $event)" min="0" max="40" /></td>
-                        <td><input type="number" class="grade-num-inp" step="0.25" [value]="getFinal(st.id, 'e1') || ''" (input)="onFinalInput(st.id, 'e1', $event)" min="0" max="15" /></td>
-                        <td><input type="number" class="grade-num-inp" step="0.25" [value]="getFinal(st.id, 'e2') || ''" (input)="onFinalInput(st.id, 'e2', $event)" min="0" max="15" /></td>
-                        <td class="grade-total">{{ finalWritten(st.id) }}</td>
-                        <td><input type="number" class="grade-num-inp" step="0.25" [value]="getFinal(st.id, 'fe') || ''" (input)="onFinalInput(st.id, 'fe', $event)" min="0" max="30" /></td>
-                        <td class="grade-total">{{ finalTotal(st.id) }}</td>
+                        <th class="w-10">#</th>
+                        <th class="text-right min-w-[170px]">اسم الطالب</th>
+                        <th>أعمال السنة<br><span class="text-[10px] font-normal">/40</span></th>
+                        <th>امتحان 1<br><span class="text-[10px] font-normal">/15</span></th>
+                        <th>امتحان 2<br><span class="text-[10px] font-normal">/15</span></th>
+                        <th class="bg-primary/5 text-primary">المجموع التحريري<br><span class="text-[10px] font-normal">/70</span></th>
+                        <th>امتحان آخر العام<br><span class="text-[10px] font-normal">/30</span></th>
+                        <th class="bg-primary/10 text-primary">المجموع النهائي<br><span class="text-[10px] font-normal">/100</span></th>
                       </tr>
-                    }
-                  </tbody>
-                }
-              </table>
-            </div>
+                    </thead>
+                    <tbody>
+                      @for (st of getStudents(); track st.id; let i = $index) {
+                        <tr>
+                          <td class="text-on-surface-variant text-xs">{{ i + 1 }}</td>
+                          <td class="font-medium text-on-surface text-right">{{ st.name }}</td>
+                          <td>
+                            <input type="number" class="grade-num-inp" step="0.5"
+                                   [(ngModel)]="localFinals[st.id + '_ma']"
+                                   (ngModelChange)="onFinalChange(st.id, 'ma', $event)"
+                                   min="0" max="40" />
+                          </td>
+                          <td>
+                            <input type="number" class="grade-num-inp" step="0.5"
+                                   [(ngModel)]="localFinals[st.id + '_e1']"
+                                   (ngModelChange)="onFinalChange(st.id, 'e1', $event)"
+                                   min="0" max="15" />
+                          </td>
+                          <td>
+                            <input type="number" class="grade-num-inp" step="0.5"
+                                   [(ngModel)]="localFinals[st.id + '_e2']"
+                                   (ngModelChange)="onFinalChange(st.id, 'e2', $event)"
+                                   min="0" max="15" />
+                          </td>
+                          <td class="grade-total">{{ finalWritten(st.id) }}</td>
+                          <td>
+                            <input type="number" class="grade-num-inp" step="0.5"
+                                   [(ngModel)]="localFinals[st.id + '_fe']"
+                                   (ngModelChange)="onFinalChange(st.id, 'fe', $event)"
+                                   min="0" max="30" />
+                          </td>
+                          <td class="grade-total bg-primary/5 text-primary font-bold">{{ finalTotal(st.id) }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  }
+                </table>
+              </div>
+            }
             <div class="grade-summary">
               <div class="flex gap-5 flex-wrap text-xs text-on-surface-variant">
                 <span>{{ entrySummaryText() }}</span>
@@ -509,11 +545,11 @@
           </div>
           <div>
             <label class="grade-label">عدد الأسابيع</label>
-            <input class="grade-inp" type="number" [ngModel]="tWeeks()" (ngModelChange)="tWeeks.set($event)" min="1" max="30" />
+            <input class="grade-inp" type="number" [ngModel]="tWeeks()" (ngModelChange)="tWeeks.set($event); onTmplConfigChange()" min="1" max="30" />
           </div>
           <div>
             <label class="grade-label">تاريخ بداية الفصل</label>
-            <input class="grade-inp" type="date" [ngModel]="tStart()" (ngModelChange)="tStart.set($event)" />
+            <input class="grade-inp" type="date" [ngModel]="tStart()" (ngModelChange)="tStart.set($event); onTmplConfigChange()" />
           </div>
           <div>
             <label class="grade-label">اسم المدرسة</label>
@@ -536,19 +572,32 @@
         </div>
         
         <div class="space-y-2">
-          @for (c of tCriteria(); track $index; let i = $index) {
+          @for (c of tCriteria(); track c.id; let i = $index) {
             <div class="flex gap-2 items-center">
-              <input class="grade-inp flex-1" 
+              <input class="grade-name-inp" 
                      type="text"
-                     [value]="getCName(i)"
-                     (input)="onCriteriaNameInput(i, $event)"
+                     [value]="c.name"
+                     (input)="c.name = $any($event.target).value"
                      placeholder="اسم العنصر" />
-              <input class="grade-inp w-20" 
+              <input class="grade-max-inp" 
                      type="number" 
                      step="0.25"
-                     [value]="getCMax(i)"
-                     (change)="onCriteriaMaxInput(i, $event)"
+                     [value]="c.max"
+                     (input)="c.max = +$any($event.target).value"
                      placeholder="درجة" />
+              <select class="grade-inp w-36" 
+                      [value]="c.autoCalcType ?? 0"
+                      (change)="onAutoCalcTypeChange(c, +$any($event.target).value)"
+                      style="font-size: 12px; padding: 10px 8px;">
+                <option [value]="0">إدخال يدوي</option>
+                <option [value]="1">تلقائي من الغياب</option>
+              </select>
+              @if (c.autoCalcType === 1) {
+                <input class="grade-max-inp" type="number" step="0.5"
+                       [value]="c.absenceMax ?? c.max"
+                       (input)="c.absenceMax = +$any($event.target).value"
+                       placeholder="غياب" title="الدرجة المتأثرة بالغياب" style="width:60px" />
+              }
               <button class="grade-btn-icon text-error" (click)="removeCrit(i)">
                 <span class="material-symbols-outlined text-lg">close</span>
               </button>
@@ -566,18 +615,18 @@
         </div>
         
         <div class="space-y-2">
-          @for (c of tSumCols(); track $index; let i = $index) {
+          @for (c of tSumCols(); track c.id; let i = $index) {
             <div class="flex gap-2 items-center">
-              <input class="grade-inp flex-1" 
+              <input class="grade-name-inp" 
                      type="text"
-                     [value]="getSName(i)"
-                     (input)="onSumColNameInput(i, $event)"
+                     [value]="c.name"
+                     (input)="c.name = $any($event.target).value"
                      placeholder="اسم العمود" />
-              <input class="grade-inp w-20" 
+              <input class="grade-max-inp" 
                      type="number" 
                      step="0.25"
-                     [value]="getSMax(i)"
-                     (change)="onSumColMaxInput(i, $event)"
+                     [value]="c.max"
+                     (input)="c.max = +$any($event.target).value"
                      placeholder="الدرجة" />
               <button class="grade-btn-icon text-error" (click)="removeSumCol(i)">
                 <span class="material-symbols-outlined text-lg">close</span>
@@ -588,6 +637,19 @@
         <button class="grade-btn-outline-sm mt-2" (click)="addSumCol()">
           <span class="material-symbols-outlined text-sm">add</span> إضافة عمود
         </button>
+
+        <div class="grade-section-title mt-4">الأيام الدراسية</div>
+        <div class="flex flex-wrap gap-4 mt-2">
+          @for (d of ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة']; track d) {
+            <label class="flex items-center gap-2 cursor-pointer text-sm text-on-surface">
+              <input type="checkbox"
+                     [checked]="tAbsentDays().includes(d)"
+                     (change)="toggleSchoolDay(d)"
+                     class="w-4 h-4 rounded text-primary focus:ring-primary" />
+              <span>{{ d }}</span>
+            </label>
+          }
+        </div>
       </div>
       <div class="mf">
         <button class="grade-btn-outline-sm" (click)="tmplModalOpen.set(false)">إلغاء</button>
@@ -602,53 +664,85 @@
 <!-- Class Modal -->
 @if (clsModalOpen()) {
   <div class="grade-mo" (click)="clsModalOpen.set(false)">
-    <div class="grade-md" (click)="$event.stopPropagation()">
+    <div class="grade-md" (click)="$event.stopPropagation()" style="max-width:560px">
+      <!-- Header -->
       <div class="mh">
         <h3>
           <span class="material-symbols-outlined text-primary">school</span>
-          {{ editClsId() ? 'تعديل الفصل' : 'فصل جديد' }}
+          {{ editClsId() ? 'تعديل الفصل' : 'إضافة فصل' }}
         </h3>
         <button class="grade-xb" (click)="clsModalOpen.set(false)">
           <span class="material-symbols-outlined">close</span>
         </button>
       </div>
+
+      @if (!editClsId()) {
+        <div style="background:#e8f4fd;border-radius:8px;padding:12px 14px;font-size:13px;color:#1565c0;display:flex;gap:8px;align-items:flex-start;margin:0 24px">
+          <span class="material-symbols-outlined" style="font-size:18px;margin-top:1px">info</span>
+          <span>اختر فصلاً من النظام وحدّد له القالب المناسب لعرض تقييماته.</span>
+        </div>
+      }
+
       <div class="mb">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label class="grade-label">القالب</label>
-            <select class="grade-inp" [ngModel]="cTmplId()" (ngModelChange)="cTmplId.set($event)">
-              <option [ngValue]="null">-- اختر قالب --</option>
-              @for (t of templates(); track t.id) {
-                <option [ngValue]="t.id">{{ t.name }}</option>
-              }
-            </select>
+
+        <!-- ══ LINK MODE ══ -->
+          <div style="display:flex;flex-direction:column;gap:16px">
+
+            <!-- Info banner -->
+            <div style="background:#e8f4fd;border-radius:8px;padding:12px 14px;font-size:13px;color:#1565c0;display:flex;gap:8px;align-items:flex-start">
+              <span class="material-symbols-outlined" style="font-size:18px;margin-top:1px">info</span>
+              <span>اختر فصلاً موجوداً من النظام وحدّد له القالب المناسب. لن يتم إنشاء فصل جديد.</span>
+            </div>
+
+            <!-- Class picker -->
+            <div>
+              <label class="grade-label">اختر الفصل</label>
+              <select class="grade-inp"
+                [ngModel]="linkedApiClsId()"
+                (ngModelChange)="onLinkedApiClsChange(+$event)">
+                <option [ngValue]="null">-- اختر فصلاً --</option>
+                @for (c of apiClasses(); track c.id) {
+                  <option [ngValue]="c.id">{{ c.name }} — {{ c.subject }} ({{ c.teacher }})</option>
+                }
+              </select>
+            </div>
+
+            <!-- Template picker -->
+            <div>
+              <label class="grade-label">القالب</label>
+              <select class="grade-inp"
+                [ngModel]="cTmplId()"
+                (ngModelChange)="cTmplId.set(+$event)">
+                <option [ngValue]="null">-- اختر قالباً --</option>
+                @for (t of templates(); track t.id) {
+                  <option [ngValue]="t.id">{{ t.name }}</option>
+                }
+              </select>
+            </div>
+
+            <!-- Preview of selected class -->
+            @if (linkedApiClsId()) {
+              <div style="background:#f5f5f5;border-radius:8px;padding:12px 14px;font-size:13px">
+                <div style="font-weight:700;margin-bottom:6px;color:#333">معلومات الفصل المختار</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;color:#555">
+                  <span>👨‍🏫 المعلم: <b>{{ cTeacher() }}</b></span>
+                  <span>📚 المادة: <b>{{ cSubj() }}</b></span>
+                  <span>📅 العام: <b>{{ cYear() }}</b></span>
+                  <span>👥 الطلاب: <b>{{ cStudents().split('\n').filter(s=>s.trim()).length }}</b> طالب</span>
+                </div>
+              </div>
+            }
           </div>
-          <div>
-            <label class="grade-label">اسم الفصل</label>
-            <input class="grade-inp" [ngModel]="cName()" (ngModelChange)="cName.set($event)" placeholder="مثال: 1/أ" />
-          </div>
-          <div>
-            <label class="grade-label">اسم المعلم</label>
-            <input class="grade-inp" [ngModel]="cTeacher()" (ngModelChange)="cTeacher.set($event)" placeholder="اسم المعلم" />
-          </div>
-          <div>
-            <label class="grade-label">المادة</label>
-            <input class="grade-inp" [ngModel]="cSubj()" (ngModelChange)="cSubj.set($event)" placeholder="اسم المادة" />
-          </div>
-          <div>
-            <label class="grade-label">العام الدراسي</label>
-            <input class="grade-inp" [ngModel]="cYear()" (ngModelChange)="cYear.set($event)" />
-          </div>
-        </div>
-        <div class="mt-4">
-          <label class="grade-label">أسماء الطلاب (اسم في كل سطر)</label>
-          <textarea class="grade-ta" rows="8" [ngModel]="cStudents()" (ngModelChange)="cStudents.set($event)" placeholder="أحمد محمد علي&#10;فاطمة أحمد حسن&#10;محمد سعيد إبراهيم"></textarea>
-        </div>
+
       </div>
+
+      <!-- Footer -->
       <div class="mf">
         <button class="grade-btn-outline-sm" (click)="clsModalOpen.set(false)">إلغاء</button>
-        <button class="grade-btn-primary-sm" (click)="saveCls()">
-          <span class="material-symbols-outlined text-sm">save</span> حفظ الفصل
+        <button class="grade-btn-primary-sm" (click)="saveCls()"
+          [disabled]="cTmplId()===null || !linkedApiClsId()">
+          <span class="material-symbols-outlined text-sm">link</span>
+          ربط بالقالب
         </button>
       </div>
     </div>

@@ -1,31 +1,27 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Project.Domain.Entities;
 
 namespace Project.DAL.Configurations
 {
-    public class EvaluationTemplateConfiguration : IEntityTypeConfiguration<EvaluationTemplate>
+    public class ClassTemplateLinkConfiguration : IEntityTypeConfiguration<ClassTemplateLink>
     {
-        public void Configure(EntityTypeBuilder<EvaluationTemplate> builder)
+        public void Configure(EntityTypeBuilder<ClassTemplateLink> builder)
         {
             builder.HasKey(x => x.Id);
 
-            builder.Property(x => x.Name)
-                .IsRequired()
-                .HasMaxLength(200);
-
-            builder.HasIndex(x => new { x.GradeLevelId, x.SubjectId, x.AcademicYearId })
+            builder.HasIndex(x => new { x.ClassId, x.TemplateId, x.AcademicYearId })
                 .IsUnique()
                 .HasFilter("[IsDeleted] = 0");
 
-            builder.HasOne(x => x.GradeLevel)
+            builder.HasOne(x => x.Class)
                 .WithMany()
-                .HasForeignKey(x => x.GradeLevelId)
+                .HasForeignKey(x => x.ClassId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            builder.HasOne(x => x.Subject)
+            builder.HasOne(x => x.Template)
                 .WithMany()
-                .HasForeignKey(x => x.SubjectId)
+                .HasForeignKey(x => x.TemplateId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             builder.HasOne(x => x.AcademicYear)

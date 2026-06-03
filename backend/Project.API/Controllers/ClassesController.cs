@@ -14,6 +14,22 @@ public class ClassesController : ControllerBase
 
     public ClassesController(IUnitOfWork uow) { _uow = uow; }
 
+    private async Task<(ClassSubjectTeacher? cst, int templateId)> GetCstWithTemplate(int classId, int academicYearId)
+    {
+        var allTemplates = await _uow.EvaluationTemplates.FindAsync(t =>
+            t.AcademicYearId == academicYearId && t.IsActive && !t.IsDeleted);
+        var templateBySubject = allTemplates.ToDictionary(t => t.SubjectId, t => t.Id);
+
+        var csts = await _uow.ClassSubjectTeachers.GetByClassWithAllDetailsAsync(classId, academicYearId);
+        // Prefer CST whose subject has a template, otherwise fallback to first
+        var matched = csts.FirstOrDefault(cst => templateBySubject.ContainsKey(cst.SubjectId));
+        if (matched != null)
+            return (matched, templateBySubject[matched.SubjectId]);
+
+        var first = csts.FirstOrDefault();
+        return (first, 0);
+    }
+
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
@@ -22,8 +38,8 @@ public class ClassesController : ControllerBase
         foreach (var c in classes)
         {
             var enrollments = await _uow.StudentEnrollments.GetByClassWithStudentAsync(c.Id, c.AcademicYearId);
-            var cst = (await _uow.ClassSubjectTeachers.GetByClassWithAllDetailsAsync(c.Id, c.AcademicYearId)).FirstOrDefault();
-            result.Add(MapClass(c, enrollments, cst));
+            var (cst, templateId) = await GetCstWithTemplate(c.Id, c.AcademicYearId);
+            result.Add(MapClass(c, enrollments, cst, templateId));
         }
         return Ok(new { isSuccess = true, data = result });
     }
@@ -35,8 +51,8 @@ public class ClassesController : ControllerBase
         if (c is null || c.IsDeleted)
             return NotFound(new { isSuccess = false, message = "الفصل غير موجود" });
         var enrollments = await _uow.StudentEnrollments.GetByClassWithStudentAsync(c.Id, c.AcademicYearId);
-        var cst = (await _uow.ClassSubjectTeachers.GetByClassWithAllDetailsAsync(c.Id, c.AcademicYearId)).FirstOrDefault();
-        return Ok(new { isSuccess = true, data = MapClass(c, enrollments, cst) });
+        var (cst, templateId) = await GetCstWithTemplate(c.Id, c.AcademicYearId);
+        return Ok(new { isSuccess = true, data = MapClass(c, enrollments, cst, templateId) });
     }
 
     [HttpPost]
@@ -105,8 +121,8 @@ public class ClassesController : ControllerBase
         }
 
         var enrollments = await _uow.StudentEnrollments.GetByClassWithStudentAsync(c.Id, academicYear.Id);
-        var cst = (await _uow.ClassSubjectTeachers.GetByClassWithAllDetailsAsync(c.Id, academicYear.Id)).FirstOrDefault();
-        return CreatedAtAction(nameof(GetById), new { id = c.Id }, new { isSuccess = true, data = MapClass(c, enrollments, cst) });
+        var (cst, templateId) = await GetCstWithTemplate(c.Id, c.AcademicYearId);
+        return CreatedAtAction(nameof(GetById), new { id = c.Id }, new { isSuccess = true, data = MapClass(c, enrollments, cst, templateId) });
     }
 
     [HttpDelete("{id:int}")]
@@ -120,13 +136,13 @@ public class ClassesController : ControllerBase
         return Ok(new { isSuccess = true, message = "تم حذف الفصل" });
     }
 
-    private object MapClass(SchoolClass c, IReadOnlyList<StudentEnrollment> enrollments, ClassSubjectTeacher? cst)
+    private object MapClass(SchoolClass c, IReadOnlyList<StudentEnrollment> enrollments, ClassSubjectTeacher? cst, int templateId)
     {
         return new
         {
             id = c.Id,
             name = c.Name,
-            template_id = 1,
+            template_id = templateId,
             teacher = cst?.Teacher?.FullName ?? "",
             subject = cst?.Subject?.Name ?? "",
             year = c.AcademicYear?.Name ?? "",

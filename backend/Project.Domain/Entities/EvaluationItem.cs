@@ -12,6 +12,7 @@ namespace Project.Domain.Entities
         public int DisplayOrder { get; set; }
         public bool IsVisible { get; set; } = true;
         public AutoCalcType AutoCalcType { get; set; } = AutoCalcType.None;
+        public decimal? AbsenceMaxScore { get; set; }
 
         // Navigation Properties
         public EvaluationTemplate Template { get; set; } = null!;

@@ -10,7 +10,8 @@ public class EvaluationItemDto
     public decimal MaxScore { get; set; }
     public decimal Weight { get; set; }
     public ItemType ItemType { get; set; }
-    public AutoCalcType AutoCalcType { get; set; }
-    public int DisplayOrder { get; set; }
+        public AutoCalcType AutoCalcType { get; set; }
+        public decimal? AbsenceMaxScore { get; set; }
+        public int DisplayOrder { get; set; }
     public bool IsVisible { get; set; }
 }

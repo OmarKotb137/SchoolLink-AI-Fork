@@ -177,6 +177,16 @@ public class DailyAbsenceRepository : Repository<DailyAbsence>, IDailyAbsenceRep
             .ToListAsync(ct);
 
 
+    public async Task<IReadOnlyList<DailyAbsence>> GetByEnrollmentsAndDateRangeAsync(
+        List<int> enrollmentIds, DateOnly from, DateOnly to, CancellationToken ct = default)
+        => await _context.DailyAbsences
+            .Where(da => enrollmentIds.Contains(da.EnrollmentId) && da.AbsenceDate >= from && da.AbsenceDate <= to)
+            .Include(da => da.Enrollment)
+                .ThenInclude(e => e.Student)
+            .OrderBy(da => da.Enrollment.Student.FullName)
+            .ThenBy(da => da.AbsenceDate)
+            .ToListAsync(ct);
+
     public async Task BulkUpsertAsync(
         IEnumerable<DailyAbsence> absences,
         CancellationToken ct = default)

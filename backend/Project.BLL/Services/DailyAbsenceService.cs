@@ -115,6 +115,23 @@ public class DailyAbsenceService : IDailyAbsenceService
         return OperationResult.Success("تم حذف الغياب بنجاح");
     }
 
+    public async Task<OperationResult<IEnumerable<DailyAbsenceDto>>> GetAbsencesByEnrollmentsAsync(
+        List<int> enrollmentIds, DateOnly fromDate, DateOnly toDate)
+    {
+        if (enrollmentIds == null || enrollmentIds.Count == 0)
+            return OperationResult<IEnumerable<DailyAbsenceDto>>.Failure("معرفات القيد مطلوبة");
+
+        if (fromDate >= toDate)
+            return OperationResult<IEnumerable<DailyAbsenceDto>>.Failure("تاريخ البداية يجب أن يكون قبل تاريخ النهاية");
+
+        var absences = await _unitOfWork.DailyAbsences.GetByEnrollmentsAndDateRangeAsync(
+            enrollmentIds, fromDate, toDate);
+
+        return OperationResult<IEnumerable<DailyAbsenceDto>>.Success(
+            _mapper.Map<IEnumerable<DailyAbsenceDto>>(absences),
+            "تم جلب سجل الغياب بنجاح");
+    }
+
     public async Task<OperationResult<AbsenceSummaryDto>> GetAbsenceSummaryAsync(
         int enrollmentId, int? classSubjectTeacherId = null)
     {

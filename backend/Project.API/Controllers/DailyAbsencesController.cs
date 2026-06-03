@@ -20,7 +20,8 @@ public class DailyAbsencesController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Record([FromBody] RecordAbsenceRequest request)
     {
-        request.RecordedById = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+        request.RecordedById = userIdClaim != null ? int.Parse(userIdClaim.Value) : 1;
         var result = await _service.RecordAbsenceAsync(request);
         if (!result.IsSuccess)
             return BadRequest(result);
@@ -60,6 +61,17 @@ public class DailyAbsencesController : ControllerBase
             ToDate = toDate
         };
         var result = await _service.GetAbsencesByEnrollmentAsync(filter);
+        return Ok(result);
+    }
+
+    [HttpGet("by-enrollments")]
+    public async Task<IActionResult> GetByEnrollments(
+        [FromQuery] string enrollmentIds,
+        [FromQuery] DateOnly fromDate,
+        [FromQuery] DateOnly toDate)
+    {
+        var ids = enrollmentIds.Split(',').Select(int.Parse).ToList();
+        var result = await _service.GetAbsencesByEnrollmentsAsync(ids, fromDate, toDate);
         return Ok(result);
     }
 

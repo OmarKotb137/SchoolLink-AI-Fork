@@ -10,4 +10,5 @@ public class UpdateEvaluationItemRequest
     public decimal Weight { get; set; }
     public AutoCalcType AutoCalcType { get; set; } = AutoCalcType.None;
     public int DisplayOrder { get; set; }
+    public decimal? AbsenceMaxScore { get; set; }
 }
