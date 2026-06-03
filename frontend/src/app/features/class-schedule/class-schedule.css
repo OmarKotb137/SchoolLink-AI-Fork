@@ -1,0 +1,82 @@
+.sch-header-corner {
+  position: sticky;
+  right: 0;
+  z-index: 2;
+}
+
+.sch-day-cell {
+  position: sticky;
+  right: 0;
+  z-index: 1;
+}
+
+.sch-today-indicator {
+  position: relative;
+}
+
+/* current day row */
+.sch-current-day {
+  background-color: #f0f4ff !important;
+}
+
+/* current period column */
+.sch-current-period {
+  background-color: #e8edff !important;
+}
+
+/* intersection cell */
+.sch-current-cell {
+  box-shadow: inset 0 0 0 2px var(--color-primary);
+  position: relative;
+  z-index: 1;
+}
+
+/* break period cell */
+.sch-break {
+  background-color: #f8f7fc !important;
+}
+
+/* subject colors */
+.class-blue {
+  background-color: rgba(0, 35, 111, 0.08);
+  border-right: 4px solid #00236f;
+}
+.class-blue .font-title-md { color: #00236f; }
+
+.class-cyan {
+  background-color: rgba(0, 184, 217, 0.08);
+  border-right: 4px solid #00b8d9;
+}
+.class-cyan .font-title-md { color: #007a8a; }
+
+.class-green {
+  background-color: rgba(22, 163, 74, 0.08);
+  border-right: 4px solid #16a34a;
+}
+.class-green .font-title-md { color: #15803d; }
+
+.class-orange {
+  background-color: rgba(234, 88, 12, 0.08);
+  border-right: 4px solid #ea580c;
+}
+.class-orange .font-title-md { color: #c2410c; }
+
+.class-gray {
+  background-color: rgba(107, 114, 128, 0.08);
+  border-right: 4px solid #6b7280;
+}
+.class-gray .font-title-md { color: #6b7280; }
+
+/* occupied cell hover */
+.sch-occupied {
+  cursor: default;
+  transition: box-shadow 0.2s;
+}
+.sch-occupied:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* empty cell */
+.sch-empty {
+  min-height: 90px;
+}

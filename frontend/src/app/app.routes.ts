@@ -4,6 +4,7 @@ export const routes: Routes = [
   // Login pages
   { path: 'login', loadComponent: () => import('./pages/login-guardian/login-guardian').then(c => c.LoginGuardian) },
   { path: 'login-staff', loadComponent: () => import('./pages/login-staff/login-staff').then(c => c.LoginStaff) },
+  { path: 'login-admin', loadComponent: () => import('./pages/login-admin/login-admin').then(c => c.LoginAdmin) },
   { path: 'login-guardian', loadComponent: () => import('./pages/login-guardian/login-guardian').then(c => c.LoginGuardian) },
 
   // Dashboard / Feature pages
@@ -15,7 +16,11 @@ export const routes: Routes = [
   { path: 'admin-schedule', loadComponent: () => import('./features/admin-schedule/admin-schedule').then(c => c.AdminSchedule) },
   { path: 'class-schedule', loadComponent: () => import('./features/class-schedule/class-schedule').then(c => c.ClassSchedule) },
   { path: 'teacher-schedule', loadComponent: () => import('./features/teacher-schedule/teacher-schedule').then(c => c.TeacherSchedule) },
+  { path: 'assignment-management', loadComponent: () => import('./features/assignment-management/assignment-management').then(c => c.AssignmentManagement) },
   { path: 'homework', loadComponent: () => import('./features/homework/homework').then(c => c.Homework) },
+  { path: 'my-assignments', loadComponent: () => import('./features/my-assignments/my-assignments').then(c => c.MyAssignments) },
+  { path: 'my-exams', loadComponent: () => import('./features/my-exams/my-exams').then(c => c.MyExams) },
+  { path: 'exam-management', loadComponent: () => import('./features/exam-management/exam-management').then(c => c.ExamManagement) },
   { path: 'exam-generator', loadComponent: () => import('./features/exam-generator/exam-generator').then(c => c.ExamGenerator) },
   { path: 'lesson-creator', loadComponent: () => import('./features/lesson-creator/lesson-creator').then(c => c.LessonCreator) },
   { path: 'monthly-report', loadComponent: () => import('./features/monthly-report/monthly-report').then(c => c.MonthlyReport) },
@@ -28,10 +33,14 @@ export const routes: Routes = [
   { path: 'reports-academic', loadComponent: () => import('./features/reports-academic/reports-academic').then(c => c.ReportsAcademic) },
   { path: 'reports-training', loadComponent: () => import('./features/reports-training/reports-training').then(c => c.ReportsTraining) },
   { path: 'analysis-ai', loadComponent: () => import('./features/analysis-ai/analysis-ai').then(c => c.AnalysisAi) },
+  { path: 'import-students', loadComponent: () => import('./features/import-students/import-students').then(c => c.ImportStudents) },
+  { path: 'user-management', loadComponent: () => import('./features/user-management/user-management').then(c => c.UserManagement) },
   { path: 'settings', loadComponent: () => import('./features/settings/settings').then(c => c.Settings) },
   { path: 'grade-monitor', loadComponent: () => import('./features/grade-monitor/grade-monitor').then(c => c.GradeMonitor) },
+  { path: 'child-progress', loadComponent: () => import('./features/child-progress/child-progress').then(c => c.ChildProgress) },
+  { path: 'index', loadComponent: () => import('./features/landing/landing').then(c => c.Landing) },
 
   // Default redirect
-  { path: '', redirectTo: '/login', pathMatch: 'full' },
-  { path: '**', redirectTo: '/login' },
+  { path: '', redirectTo: '/index', pathMatch: 'full' },
+  { path: '**', redirectTo: '/index' },
 ];

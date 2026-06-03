@@ -1,0 +1,19 @@
+/* Exam-specific overrides - shared glass classes in styles.css */
+.glass-exam-card {
+  background: rgba(255,255,255,0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.4);
+  border-radius: 24px;
+  padding: 24px;
+  transition: all .3s ease;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.04);
+}
+.glass-exam-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.08);
+}
+
+.glass-exam-card.border-draft { border-right: 4px solid #9ca3af; }
+.glass-exam-card.border-upcoming { border-right: 4px solid #3b82f6; }
+.glass-exam-card.border-active { border-right: 4px solid #0d7a5f; }
+.glass-exam-card.border-ended { border-right: 4px solid #757682; }

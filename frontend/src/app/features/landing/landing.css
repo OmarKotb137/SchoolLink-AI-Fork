@@ -1,0 +1,50 @@
+.landing-glass-card {
+  background: rgba(255,255,255,0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.4);
+  border-radius: 24px;
+  padding: 32px 24px;
+  text-align: center;
+  transition: all .3s ease;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.04);
+}
+.landing-glass-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.08);
+}
+
+.landing-role-card {
+  background: rgba(255,255,255,0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid;
+  border-radius: 24px;
+  padding: 32px 24px;
+  text-align: center;
+  transition: all .3s ease;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.04);
+}
+.landing-role-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.08);
+}
+
+/* Hero button hover */
+section:first-of-type button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(0,35,111,0.35) !important;
+}
+section:first-of-type button:active {
+  transform: scale(0.97) !important;
+}
+
+/* Header button hover */
+header button:first-of-type:hover {
+  background: rgba(255,255,255,0.6) !important;
+}
+header button:last-of-type:hover {
+  box-shadow: 0 6px 20px rgba(0,35,111,0.3) !important;
+  transform: translateY(-1px);
+}
+header button:last-of-type:active {
+  transform: scale(0.97);
+}

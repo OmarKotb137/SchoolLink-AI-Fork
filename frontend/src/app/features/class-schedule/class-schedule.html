@@ -1,243 +1,80 @@
-    <app-sidebar [(isOpen)]="sidebarOpen" />
-    <div class="main-content">
-      <app-topbar userName="أحمد" />
-      <main class="p-gutter-desktop">
-        <div class="flex flex-col gap-gutter-desktop">
-          <!-- Top Action Header -->
-          <header class="flex justify-between items-center ai-glass p-6 rounded-2xl shadow-sm" style="background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.3);">
-            <div class="flex flex-col gap-1">
-              <div class="flex items-center gap-3">
-                <span class="material-symbols-outlined text-primary text-3xl">calendar_today</span>
-                <h2 class="font-headline-lg text-headline-lg text-primary">الجدول الدراسي</h2>
-              </div>
-              <div class="flex items-center gap-4 text-on-surface-variant mr-11">
-                <span class="flex items-center gap-1"><span class="material-symbols-outlined text-base">person</span> أ. أحمد سالم</span>
-                <span class="w-1 h-1 bg-outline-variant rounded-full"></span>
-                <span class="flex items-center gap-1"><span class="material-symbols-outlined text-base">functions</span> مادة الرياضيات</span>
-              </div>
-            </div>
-            <div class="flex gap-stack-md">
-              <button class="flex items-center gap-2 px-6 py-3 border border-outline text-on-surface font-label-lg rounded-xl hover:bg-surface-container-low transition-all active:scale-95">
-                <span class="material-symbols-outlined">schedule</span>
-                تعديل المواعيد
-              </button>
-              <button class="flex items-center gap-2 px-6 py-3 border border-outline text-on-surface font-label-lg rounded-xl hover:bg-surface-container-low transition-all active:scale-95">
-                <span class="material-symbols-outlined">calendar_view_week</span>
-                أيام الأسبوع
-              </button>
-              <button class="flex items-center gap-2 px-8 py-3 bg-primary text-on-primary font-label-lg rounded-xl shadow-lg hover:shadow-primary/20 transition-all active:scale-95">
-                <span class="material-symbols-outlined">save</span>
-                حفظ التغييرات
-              </button>
-            </div>
-          </header>
+<app-sidebar [(isOpen)]="sidebarOpen" />
+<div class="main-content">
+  <app-topbar userName="عمر" />
+  <main class="p-gutter-desktop">
+    <div class="max-w-6xl mx-auto flex flex-col gap-stack-lg">
 
-          <!-- Day Settings Panel -->
-          <div class="ai-glass p-6 rounded-2xl shadow-sm" style="display:none;background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.3);">
-            <div class="flex items-center justify-between mb-4">
-              <h3 class="font-title-md text-primary flex items-center gap-2"><span class="material-symbols-outlined">calendar_view_week</span> إعدادات أيام الأسبوع</h3>
-              <button style="background:none;border:none;font-size:20px;cursor:pointer;color:#94a3b8;">✕</button>
-            </div>
-            <div class="flex flex-wrap gap-3">
-              <div class="flex items-center gap-2 bg-white rounded-xl px-4 py-3 border border-outline-variant">
-                <input type="checkbox" id="day-sat" checked />
-                <label for="day-sat" class="text-label-lg cursor-pointer">السبت</label>
-              </div>
-              <div class="flex items-center gap-2 bg-white rounded-xl px-4 py-3 border border-outline-variant">
-                <input type="checkbox" id="day-sun" checked />
-                <label for="day-sun" class="text-label-lg cursor-pointer">الأحد</label>
-              </div>
-              <div class="flex items-center gap-2 bg-white rounded-xl px-4 py-3 border border-outline-variant">
-                <input type="checkbox" id="day-mon" checked />
-                <label for="day-mon" class="text-label-lg cursor-pointer">الاثنين</label>
-              </div>
-              <div class="flex items-center gap-2 bg-white rounded-xl px-4 py-3 border border-outline-variant">
-                <input type="checkbox" id="day-tue" checked />
-                <label for="day-tue" class="text-label-lg cursor-pointer">الثلاثاء</label>
-              </div>
-              <div class="flex items-center gap-2 bg-white rounded-xl px-4 py-3 border border-outline-variant">
-                <input type="checkbox" id="day-wed" checked />
-                <label for="day-wed" class="text-label-lg cursor-pointer">الأربعاء</label>
-              </div>
-              <div class="flex items-center gap-2 bg-white rounded-xl px-4 py-3 border border-outline-variant">
-                <input type="checkbox" id="day-thu" checked />
-                <label for="day-thu" class="text-label-lg cursor-pointer">الخميس</label>
-              </div>
-              <div class="flex items-center gap-2 bg-white rounded-xl px-4 py-3 border border-outline-variant opacity-50">
-                <input type="checkbox" id="day-fri" />
-                <label for="day-fri" class="text-label-lg cursor-pointer">الجمعة</label>
-              </div>
-            </div>
-          </div>
-
-          <!-- Schedule Grid -->
-          <div class="bg-surface rounded-2xl shadow-sm border border-outline-variant/10 overflow-x-auto">
-            <div class="schedule-grid bg-surface-container-high" style="display: grid; grid-template-columns: 100px repeat(5, 1fr); gap: 1px; background-color: #e0e1f3; border-radius: 12px; overflow: hidden;">
-              <div class="schedule-cell font-label-lg text-on-surface-variant flex items-center justify-center bg-surface-container" style="background-color: #ffffff; padding: 12px; min-height: 100px; transition: all 0.2s ease;">الحصة / اليوم</div>
-              <div class="schedule-cell font-title-md text-center py-4" style="background-color: #ffffff; padding: 12px; min-height: 100px;">الأحد</div>
-              <div class="schedule-cell font-title-md text-center py-4" style="background-color: #ffffff; padding: 12px; min-height: 100px;">الاثنين</div>
-              <div class="schedule-cell font-title-md text-center py-4" style="background-color: #ffffff; padding: 12px; min-height: 100px;">الثلاثاء</div>
-              <div class="schedule-cell font-title-md text-center py-4" style="background-color: #ffffff; padding: 12px; min-height: 100px;">الأربعاء</div>
-              <div class="schedule-cell font-title-md text-center py-4" style="background-color: #ffffff; padding: 12px; min-height: 100px;">الخميس</div>
-
-              <!-- Row 1 -->
-              <div class="schedule-cell font-label-sm text-center flex flex-col justify-center border-l time-cell" style="background-color: #ffffff; padding: 12px; min-height: 100px;">
-                <span class="font-bold text-primary">الحصة 1</span>
-                <span class="text-[10px] text-outline time-display">8:00 - 9:00</span>
-              </div>
-              <div class="schedule-cell class-blue group relative" style="background-color: rgba(0, 82, 204, 0.12); border-right: 4px solid #0052cc; padding: 12px; min-height: 100px;">
-                <div class="font-title-md text-primary">ثالث إعدادي أ</div>
-                <div class="text-label-sm text-on-surface-variant">معمل الرياضيات</div>
-                <div class="text-label-sm text-primary/70 mt-0.5">أ. أحمد سالم</div>
-              </div>
-              <div class="schedule-cell empty-cell flex items-center justify-center cursor-pointer group" style="background-color: #f8f9ff; border: 2px dashed #e0e1f3; padding: 12px; min-height: 100px;">
-                <span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors">add_circle</span>
-              </div>
-              <div class="schedule-cell class-cyan group relative" style="background-color: rgba(0, 184, 217, 0.12); border-right: 4px solid #00b8d9; padding: 12px; min-height: 100px;">
-                <div class="font-title-md text-secondary">ثالث إعدادي ب</div>
-                <div class="text-label-sm text-on-surface-variant">القاعة 4</div>
-                <div class="text-label-sm text-secondary/70 mt-0.5">أ. محمد علي</div>
-              </div>
-              <div class="schedule-cell class-blue group relative" style="background-color: rgba(0, 82, 204, 0.12); border-right: 4px solid #0052cc; padding: 12px; min-height: 100px;">
-                <div class="font-title-md text-primary">ثالث إعدادي أ</div>
-                <div class="text-label-sm text-on-surface-variant">معمل الرياضيات</div>
-                <div class="text-label-sm text-primary/70 mt-0.5">أ. أحمد سالم</div>
-              </div>
-              <div class="schedule-cell empty-cell flex items-center justify-center cursor-pointer group" style="background-color: #f8f9ff; border: 2px dashed #e0e1f3; padding: 12px; min-height: 100px;">
-                <span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors">add_circle</span>
-              </div>
-
-              <!-- Row 2 -->
-              <div class="schedule-cell font-label-sm text-center flex flex-col justify-center border-l time-cell" style="background-color: #ffffff; padding: 12px; min-height: 100px;">
-                <span class="font-bold text-primary">الحصة 2</span>
-                <span class="text-[10px] text-outline time-display">9:00 - 10:00</span>
-              </div>
-              <div class="schedule-cell empty-cell flex items-center justify-center cursor-pointer group" style="background-color: #f8f9ff; border: 2px dashed #e0e1f3; padding: 12px; min-height: 100px;">
-                <span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors">add_circle</span>
-              </div>
-              <div class="schedule-cell class-blue group relative" style="background-color: rgba(0, 82, 204, 0.12); border-right: 4px solid #0052cc; padding: 12px; min-height: 100px;">
-                <div class="font-title-md text-primary">ثالث إعدادي أ</div>
-                <div class="text-label-sm text-on-surface-variant">معمل الرياضيات</div>
-                <div class="text-label-sm text-primary/70 mt-0.5">أ. أحمد سالم</div>
-              </div>
-              <div class="schedule-cell empty-cell flex items-center justify-center cursor-pointer group" style="background-color: #f8f9ff; border: 2px dashed #e0e1f3; padding: 12px; min-height: 100px;">
-                <span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors">add_circle</span>
-              </div>
-              <div class="schedule-cell class-cyan group relative" style="background-color: rgba(0, 184, 217, 0.12); border-right: 4px solid #00b8d9; padding: 12px; min-height: 100px;">
-                <div class="font-title-md text-secondary">ثالث إعدادي ب</div>
-                <div class="text-label-sm text-on-surface-variant">القاعة 4</div>
-                <div class="text-label-sm text-secondary/70 mt-0.5">أ. محمد علي</div>
-              </div>
-              <div class="schedule-cell class-blue group relative" style="background-color: rgba(0, 82, 204, 0.12); border-right: 4px solid #0052cc; padding: 12px; min-height: 100px;">
-                <div class="font-title-md text-primary">ثالث إعدادي أ</div>
-                <div class="text-label-sm text-on-surface-variant">معمل الرياضيات</div>
-                <div class="text-label-sm text-primary/70 mt-0.5">أ. أحمد سالم</div>
-              </div>
-
-              <!-- Row 3 (Break) -->
-              <div class="col-span-6 bg-surface-container-low py-2 text-center text-label-sm font-bold text-outline tracking-widest uppercase">
-                استراحة (10:00 - 10:30)
-              </div>
-
-              <!-- Row 4 -->
-              <div class="schedule-cell font-label-sm text-center flex flex-col justify-center border-l time-cell" style="background-color: #ffffff; padding: 12px; min-height: 100px;">
-                <span class="font-bold text-primary">الحصة 3</span>
-                <span class="text-[10px] text-outline time-display">10:30 - 11:30</span>
-              </div>
-              <div class="schedule-cell class-cyan group relative" style="background-color: rgba(0, 184, 217, 0.12); border-right: 4px solid #00b8d9; padding: 12px; min-height: 100px;">
-                <div class="font-title-md text-secondary">ثالث إعدادي ب</div>
-                <div class="text-label-sm text-on-surface-variant">القاعة 4</div>
-                <div class="text-label-sm text-secondary/70 mt-0.5">أ. محمد علي</div>
-              </div>
-              <div class="schedule-cell empty-cell flex items-center justify-center cursor-pointer group" style="background-color: #f8f9ff; border: 2px dashed #e0e1f3; padding: 12px; min-height: 100px;">
-                <span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors">add_circle</span>
-              </div>
-              <div class="schedule-cell class-blue group relative" style="background-color: rgba(0, 82, 204, 0.12); border-right: 4px solid #0052cc; padding: 12px; min-height: 100px;">
-                <div class="font-title-md text-primary">ثالث إعدادي أ</div>
-                <div class="text-label-sm text-on-surface-variant">معمل الرياضيات</div>
-                <div class="text-label-sm text-primary/70 mt-0.5">أ. أحمد سالم</div>
-              </div>
-              <div class="schedule-cell empty-cell flex items-center justify-center cursor-pointer group" style="background-color: #f8f9ff; border: 2px dashed #e0e1f3; padding: 12px; min-height: 100px;">
-                <span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors">add_circle</span>
-              </div>
-              <div class="schedule-cell class-cyan group relative" style="background-color: rgba(0, 184, 217, 0.12); border-right: 4px solid #00b8d9; padding: 12px; min-height: 100px;">
-                <div class="font-title-md text-secondary">ثالث إعدادي ب</div>
-                <div class="text-label-sm text-on-surface-variant">القاعة 4</div>
-                <div class="text-label-sm text-secondary/70 mt-0.5">أ. محمد علي</div>
-              </div>
-
-              <!-- Row 5 -->
-              <div class="schedule-cell font-label-sm text-center flex flex-col justify-center border-l time-cell" style="background-color: #ffffff; padding: 12px; min-height: 100px;">
-                <span class="font-bold text-primary">الحصة 4</span>
-                <span class="text-[10px] text-outline time-display">11:30 - 12:30</span>
-              </div>
-              <div class="schedule-cell empty-cell flex items-center justify-center cursor-pointer group" style="background-color: #f8f9ff; border: 2px dashed #e0e1f3; padding: 12px; min-height: 100px;">
-                <span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors">add_circle</span>
-              </div>
-              <div class="schedule-cell class-cyan group relative" style="background-color: rgba(0, 184, 217, 0.12); border-right: 4px solid #00b8d9; padding: 12px; min-height: 100px;">
-                <div class="font-title-md text-secondary">ثالث إعدادي ب</div>
-                <div class="text-label-sm text-on-surface-variant">القاعة 4</div>
-                <div class="text-label-sm text-secondary/70 mt-0.5">أ. محمد علي</div>
-              </div>
-              <div class="schedule-cell empty-cell flex items-center justify-center cursor-pointer group" style="background-color: #f8f9ff; border: 2px dashed #e0e1f3; padding: 12px; min-height: 100px;">
-                <span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors">add_circle</span>
-              </div>
-              <div class="schedule-cell class-blue group relative" style="background-color: rgba(0, 82, 204, 0.12); border-right: 4px solid #0052cc; padding: 12px; min-height: 100px;">
-                <div class="font-title-md text-primary">ثالث إعدادي أ</div>
-                <div class="text-label-sm text-on-surface-variant">معمل الرياضيات</div>
-                <div class="text-label-sm text-primary/70 mt-0.5">أ. أحمد سالم</div>
-              </div>
-              <div class="schedule-cell empty-cell flex items-center justify-center cursor-pointer group" style="background-color: #f8f9ff; border: 2px dashed #e0e1f3; padding: 12px; min-height: 100px;">
-                <span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors">add_circle</span>
-              </div>
-
-              <!-- Row 6 -->
-              <div class="schedule-cell font-label-sm text-center flex flex-col justify-center border-l time-cell" style="background-color: #ffffff; padding: 12px; min-height: 100px;">
-                <span class="font-bold text-primary">الحصة 5</span>
-                <span class="text-[10px] text-outline time-display">12:30 - 1:30</span>
-              </div>
-              <div class="schedule-cell class-blue group relative" style="background-color: rgba(0, 82, 204, 0.12); border-right: 4px solid #0052cc; padding: 12px; min-height: 100px;">
-                <div class="font-title-md text-primary">ثالث إعدادي أ</div>
-                <div class="text-label-sm text-on-surface-variant">معمل الرياضيات</div>
-                <div class="text-label-sm text-primary/70 mt-0.5">أ. أحمد سالم</div>
-              </div>
-              <div class="schedule-cell empty-cell flex items-center justify-center cursor-pointer group" style="background-color: #f8f9ff; border: 2px dashed #e0e1f3; padding: 12px; min-height: 100px;">
-                <span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors">add_circle</span>
-              </div>
-              <div class="schedule-cell class-cyan group relative" style="background-color: rgba(0, 184, 217, 0.12); border-right: 4px solid #00b8d9; padding: 12px; min-height: 100px;">
-                <div class="font-title-md text-secondary">ثالث إعدادي ب</div>
-                <div class="text-label-sm text-on-surface-variant">القاعة 4</div>
-                <div class="text-label-sm text-secondary/70 mt-0.5">أ. محمد علي</div>
-              </div>
-              <div class="schedule-cell empty-cell flex items-center justify-center cursor-pointer group" style="background-color: #f8f9ff; border: 2px dashed #e0e1f3; padding: 12px; min-height: 100px;">
-                <span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors">add_circle</span>
-              </div>
-              <div class="schedule-cell class-blue group relative" style="background-color: rgba(0, 82, 204, 0.12); border-right: 4px solid #0052cc; padding: 12px; min-height: 100px;">
-                <div class="font-title-md text-primary">ثالث إعدادي أ</div>
-                <div class="text-label-sm text-on-surface-variant">معمل الرياضيات</div>
-                <div class="text-label-sm text-primary/70 mt-0.5">أ. أحمد سالم</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- AI Insight Section -->
-          <div class="p-gutter rounded-2xl bg-gradient-to-br from-tertiary-fixed to-primary-fixed/30 backdrop-blur-xl border border-white/40 shadow-xl relative overflow-hidden">
-            <div class="absolute top-0 right-0 p-4">
-              <span class="material-symbols-outlined text-tertiary text-4xl opacity-20" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
-            </div>
-            <div class="relative z-10 flex items-start gap-4">
-              <div class="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-sm">
-                <span class="material-symbols-outlined text-tertiary">lightbulb</span>
-              </div>
-              <div>
-                <h3 class="font-title-md text-tertiary mb-1">تحليل الجدول الذكي</h3>
-                <p class="text-body-md text-on-tertiary-fixed-variant leading-relaxed max-w-2xl">
-                  لاحظ النظام كثافة في حصص مادة الرياضيات ليوم الثلاثاء. يقترح الذكاء الاصطناعي مراجعة توزيع الحصص لتجنب إجهاد الطلاب وضمان استيعاب أفضل للمفاهيم الهندسية المعقدة.
-                </p>
-                <button class="mt-4 px-4 py-2 bg-tertiary text-on-tertiary rounded-lg text-label-lg hover:bg-tertiary-container transition-colors active:scale-95">تطبيق الاقتراح التلقائي</button>
-              </div>
-            </div>
-          </div>
+      <div class="flex justify-between items-center">
+        <div>
+          <h1 class="font-headline-lg text-headline-lg" style="font-weight:800;background:linear-gradient(135deg,#3b82f6,#6b7280);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">جدولي</h1>
+          <p class="font-body-md text-body-md text-outline">{{ getStudent().name }} — {{ getStudent().class }}</p>
         </div>
-      </main>
+      </div>
+
+      <div class="glass-table-container">
+        <div class="schedule-grid" style="display: grid; grid-template-columns: 120px repeat(6, 1fr); gap: 1px; background: var(--color-outline-variant); direction: rtl;">
+
+          <div class="sch-header-corner font-label-md text-outline flex items-center justify-center bg-surface" style="padding: 14px; min-height: 70px;">اليوم / الحصة</div>
+          @for (p of periods; track $index) {
+            <div class="sch-header-cell font-label-sm flex flex-col items-center justify-center bg-surface transition-colors"
+              [class.sch-current-period]="isCurrentPeriod($index)"
+              [class.sch-break-cell]="$index === 2"
+              style="padding: 14px; min-height: 70px;">
+              <span class="font-bold text-on-surface" [class.text-on-primary]="isCurrentPeriod($index)">{{ p.label }}</span>
+              <span class="text-[11px] text-outline mt-0.5" [class.text-on-primary/80]="isCurrentPeriod($index)">{{ p.time }}</span>
+            </div>
+          }
+
+          @for (d of days; track d.dayAr; let di = $index) {
+            <div class="sch-day-cell font-label-md font-bold flex items-center justify-center bg-surface transition-colors"
+              [class.sch-current-day]="isCurrentDay(di)"
+              [class.sch-today-indicator]="isCurrentDay(di)"
+              style="padding: 14px; min-height: 90px;">
+              @if (isCurrentDay(di)) {
+                <span class="w-1.5 h-1.5 bg-primary rounded-full ml-1.5"></span>
+              }
+              {{ d.dayAr }}
+            </div>
+            @for (c of d.cells; track $index; let pi = $index) {
+              @if (pi === 2) {
+                <div class="sch-cell sch-break flex items-center justify-center bg-surface-container-low font-label-sm font-bold text-outline"
+                  [class.sch-current-day]="isCurrentDay(di)"
+                  style="padding: 14px; min-height: 90px;">
+                  فسحة
+                </div>
+              } @else if (c.color !== 'none') {
+                <div class="sch-cell sch-occupied group relative transition-all"
+                  [class.sch-current-day]="isCurrentDay(di)"
+                  [class.sch-current-period]="isCurrentPeriod(pi)"
+                  [class.sch-current-cell]="isCurrentCell(di, pi)"
+                  [class.class-blue]="c.color === 'blue'"
+                  [class.class-cyan]="c.color === 'cyan'"
+                  [class.class-green]="c.color === 'green'"
+                  [class.class-orange]="c.color === 'orange'"
+                  [class.class-gray]="c.color === 'purple'"
+                  style="padding: 12px; min-height: 90px;">
+                  <div class="font-title-md">{{ c.subject }}</div>
+                  <div class="text-label-sm text-on-surface-variant">{{ c.class }}</div>
+                  <div class="text-label-sm mt-0.5" [class.text-primary/70]="c.color === 'blue'"
+                    [class.text-secondary/70]="c.color === 'cyan'"
+                    [class.text-green-700/70]="c.color === 'green'"
+                    [class.text-orange-700/70]="c.color === 'orange'"
+                    [class.text-gray-700/70]="c.color === 'purple'"
+                  >{{ c.teacher }}</div>
+                </div>
+              } @else {
+                <div class="sch-cell sch-empty flex items-center justify-center bg-surface transition-colors"
+                  [class.sch-current-day]="isCurrentDay(di)"
+                  [class.sch-current-period]="isCurrentPeriod(pi)"
+                  style="padding: 12px; min-height: 90px;">
+                </div>
+              }
+            }
+          }
+
+        </div>
+      </div>
+
     </div>
+  </main>
+</div>

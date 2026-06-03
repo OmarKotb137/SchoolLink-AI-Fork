@@ -1,0 +1,128 @@
+<app-sidebar [(isOpen)]="sidebarOpen" />
+<div class="main-content">
+  <app-topbar userName="أحمد" />
+  <main class="p-gutter-desktop">
+    <div class="max-w-4xl mx-auto flex flex-col gap-stack-lg">
+
+      <div>
+        <h1 class="font-headline-lg text-headline-lg" style="font-weight:800;background:linear-gradient(135deg,#f59e0b,#d97706);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">متابعة ابني</h1>
+        <p class="font-body-md text-body-md text-outline">متابعة الأداء الدراسي لابنك</p>
+      </div>
+
+      <!-- Student Profile Card -->
+      <div class="glass-card" style="padding:24px;">
+        <div class="flex flex-col md:flex-row items-start md:items-center gap-6">
+          <div style="width:80px;height:80px;border-radius:50%;padding:3px;flex-shrink:0;background:conic-gradient(from 0deg,#f59e0b,#d97706,#f59e0b);">
+            <div style="width:100%;height:100%;border-radius:50%;background:rgba(255,255,255,0.85);backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:center;">
+              <span class="material-symbols-outlined" style="color:#d97706;font-size:36px;font-variation-settings:'FILL'1;">face</span>
+            </div>
+          </div>
+          <div class="flex-1">
+            <h2 class="font-headline-lg text-headline-lg" style="font-weight:700;">{{ student.name }}</h2>
+            <p class="font-body-md text-body-md text-outline">{{ student.class }}</p>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div class="glass-card" style="padding:16px;text-align:center;border-radius:16px;">
+              <p class="font-headline-md text-headline-md" style="font-weight:800;background:linear-gradient(135deg,#f59e0b,#d97706);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">{{ student.avgScore }}%</p>
+              <p class="font-label-sm text-label-sm text-outline">متوسط الدرجات</p>
+            </div>
+            <div class="glass-card" style="padding:16px;text-align:center;border-radius:16px;">
+              <p class="font-headline-md text-headline-md" style="font-weight:800;background:linear-gradient(135deg,#0d7a5f,#0f9b7a);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">{{ student.attendance }}%</p>
+              <p class="font-label-sm text-label-sm text-outline">نسبة الحضور</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="glass-tabs">
+        <button class="glass-tab" [class.active]="activeTab() === 'assignments'" (click)="activeTab.set('assignments')">الواجبات</button>
+        <button class="glass-tab" [class.active]="activeTab() === 'exams'" (click)="activeTab.set('exams')">الامتحانات</button>
+      </div>
+
+      @if (activeTab() === 'assignments') {
+        <div class="flex flex-col gap-stack-md">
+          @for (a of assignments(); track a.id) {
+            <div class="glass-card" style="padding:20px;"
+              [style.border-right]="'4px solid ' + (a.status === 'submitted' ? '#0d7a5f' : a.status === 'late' ? '#dc2626' : '#9ca3af')">
+              <div class="flex items-start gap-4">
+                <div class="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+                  [class.gradient-icon-box]="true"
+                  [class.gradient-tertiary]="a.status === 'submitted'"
+                  [class.gradient-error]="a.status === 'late'"
+                  [class.gradient-secondary]="a.status === 'not-submitted'"
+                >
+                  <span class="material-symbols-outlined" style="font-variation-settings:'FILL'1;">
+                    @if (a.status === 'submitted') { check_circle }
+                    @else if (a.status === 'late') { warning }
+                    @else { hourglass_empty }
+                  </span>
+                </div>
+                <div class="flex-1">
+                  <div class="flex justify-between items-start">
+                    <div>
+                      <div class="flex items-center gap-2 mb-1"><span class="px-2 py-0.5 bg-white/40 backdrop-blur-sm rounded text-label-sm text-outline">{{ a.subject }}</span></div>
+                      <h3 class="font-headline-md text-headline-md" style="font-weight:700;">{{ a.title }}</h3>
+                      <p class="text-label-sm text-outline mt-1">الموعد: {{ a.deadline }}</p>
+                    </div>
+                    <div class="text-left">
+                      <span class="px-3 py-1 rounded-full text-label-sm font-label-sm {{ getStatusClass(a.status) }}">{{ getStatusText(a.status) }}</span>
+                      @if (a.score !== undefined) {
+                        <p class="text-label-sm font-bold mt-1" [style.color]="a.status === 'late' ? '#dc2626' : '#0d7a5f'">{{ a.score }}/{{ a.maxScore }}</p>
+                      }
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      @if (activeTab() === 'exams') {
+        <div class="flex flex-col gap-stack-md">
+          @for (e of exams(); track e.id) {
+            <div class="glass-card" style="padding:20px;"
+              [style.border-right]="'4px solid ' + (e.status === 'done' ? '#0d7a5f' : e.status === 'upcoming' ? '#9ca3af' : '#dc2626')">
+              <div class="flex items-start gap-4">
+                <div class="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+                  [class.gradient-icon-box]="true"
+                  [class.gradient-secondary]="e.status === 'upcoming'"
+                  [class.gradient-tertiary]="e.status === 'done'"
+                  [class.gradient-error]="e.status === 'missed'"
+                >
+                  <span class="material-symbols-outlined" style="font-variation-settings:'FILL'1;">
+                    @if (e.status === 'upcoming') { calendar_month }
+                    @else if (e.status === 'done') { check_circle }
+                    @else { cancel }
+                  </span>
+                </div>
+                <div class="flex-1">
+                  <div class="flex justify-between items-start">
+                    <div>
+                      <div class="flex items-center gap-2 mb-1"><span class="px-2 py-0.5 bg-white/40 backdrop-blur-sm rounded text-label-sm text-outline">{{ e.subject }}</span></div>
+                      <h3 class="font-headline-md text-headline-md" style="font-weight:700;">امتحان {{ e.subject }}</h3>
+                      <p class="text-label-sm text-outline mt-1">{{ e.date }}</p>
+                    </div>
+                    <div class="text-left">
+                      <span class="px-3 py-1 rounded-full text-label-sm font-label-sm {{ getStatusClass(e.status) }}">{{ getStatusText(e.status) }}</span>
+                    </div>
+                  </div>
+                  @if (e.status === 'done' && e.score !== undefined) {
+                    <div class="flex items-center gap-2 mt-3">
+                      <div class="flex-1 bg-outline-variant rounded-full h-2 overflow-hidden">
+                        <div class="bg-gradient-to-l from-amber-500 to-orange-600 h-full rounded-full" [style.width.%]="(e.score / e.maxScore) * 100"></div>
+                      </div>
+                      <span class="font-label-sm text-label-sm" style="font-weight:700;background:linear-gradient(135deg,#f59e0b,#d97706);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">{{ e.score }}/{{ e.maxScore }}</span>
+                    </div>
+                  }
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+    </div>
+  </main>
+</div>

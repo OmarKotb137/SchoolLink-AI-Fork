@@ -1,0 +1,263 @@
+<app-sidebar [(isOpen)]="sidebarOpen" />
+<div class="main-content">
+  <app-topbar userName="أحمد" />
+  <main class="p-gutter-desktop">
+    <div class="max-w-6xl mx-auto flex flex-col gap-stack-lg">
+
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 class="font-headline-lg text-headline-lg" style="font-weight:800;background:linear-gradient(135deg,#00236f,#3b82f6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">إدارة الواجبات</h1>
+          <p class="font-body-md text-body-md text-outline">إنشاء ومتابعة وتقييم واجبات الطلاب</p>
+        </div>
+        <button class="gradient-btn" (click)="openAddModal()">
+          <span class="material-symbols-outlined">add</span>
+          إضافة واجب جديد
+        </button>
+      </div>
+
+      <!-- Stats Cards -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-gutter-desktop">
+        <div class="glass-stat-card">
+          <div class="flex items-center gap-3 mb-2">
+            <div class="gradient-icon-box gradient-primary"><span class="material-symbols-outlined">assignment</span></div>
+            <span class="font-label-md text-label-md text-outline">إجمالي الواجبات</span>
+          </div>
+          <p class="gradient-stat-number">{{ stats().total }}</p>
+        </div>
+        <div class="glass-stat-card">
+          <div class="flex items-center gap-3 mb-2">
+            <div class="gradient-icon-box gradient-secondary"><span class="material-symbols-outlined">hourglass_top</span></div>
+            <span class="font-label-md text-label-md text-outline">قيد التسليم</span>
+          </div>
+          <p class="gradient-stat-number">{{ stats().active }}</p>
+        </div>
+        <div class="glass-stat-card">
+          <div class="flex items-center gap-3 mb-2">
+            <div class="gradient-icon-box gradient-tertiary"><span class="material-symbols-outlined">trending_up</span></div>
+            <span class="font-label-md text-label-md text-outline">متوسط التسليم</span>
+          </div>
+          <p class="gradient-stat-number">{{ stats().avgDelivery }}%</p>
+        </div>
+        <div class="glass-stat-card">
+          <div class="flex items-center gap-3 mb-2">
+            <div class="gradient-icon-box gradient-error"><span class="material-symbols-outlined">warning</span></div>
+            <span class="font-label-md text-label-md text-outline">تجاوزت الموعد</span>
+          </div>
+          <p class="gradient-stat-number">{{ stats().overdue }}</p>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="glass-table-container">
+        <div class="overflow-x-auto">
+          <table class="w-full">
+            <thead>
+              <tr>
+                <th class="text-right p-4 font-label-md text-label-md text-outline">الواجب</th>
+                <th class="text-right p-4 font-label-md text-label-md text-outline">المادة</th>
+                <th class="text-right p-4 font-label-md text-label-md text-outline">الفصل</th>
+                <th class="text-right p-4 font-label-md text-label-md text-outline">الموعد</th>
+                <th class="text-right p-4 font-label-md text-label-md text-outline">التسليم</th>
+                <th class="text-right p-4 font-label-md text-label-md text-outline">الحالة</th>
+                <th class="text-center p-4 font-label-md text-label-md text-outline"></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (a of assignments(); track a.id) {
+                <tr>
+                  <td class="p-4 font-body-md text-body-md" style="font-weight:700;">{{ a.title }}</td>
+                  <td class="p-4 font-body-md text-body-md text-outline">{{ a.subject }}</td>
+                  <td class="p-4 font-body-md text-body-md text-outline">{{ a.class }}</td>
+                  <td class="p-4 font-body-md text-body-md text-outline">{{ a.deadline }}</td>
+                  <td class="p-4">
+                    <div class="flex items-center gap-2">
+                      <div class="flex-1 bg-surface-container-high rounded-full h-2 overflow-hidden w-24">
+                        <div class="bg-gradient-to-l from-primary to-blue-600 h-full rounded-full transition-all" [style.width.%]="a.total ? (a.submitted / a.total * 100) : 0"></div>
+                      </div>
+                      <span class="font-label-sm text-label-sm text-outline">{{ a.submitted }}/{{ a.total }}</span>
+                    </div>
+                  </td>
+                  <td class="p-4"><span class="px-3 py-1 rounded-full text-label-sm font-label-sm {{ getStatusClass(a.status) }}">{{ getStatusText(a.status) }}</span></td>
+                  <td class="p-4">
+                    <div class="flex items-center justify-center gap-1">
+                      <button class="p-2 rounded-lg hover:bg-white/50 text-outline hover:text-primary transition-all" title="عرض" (click)="openViewModal(a)"><span class="material-symbols-outlined">visibility</span></button>
+                      <button class="p-2 rounded-lg hover:bg-white/50 text-outline hover:text-secondary transition-all" title="تعديل" (click)="openEditModal(a)"><span class="material-symbols-outlined">edit</span></button>
+                      <button class="p-2 rounded-lg hover:bg-white/50 text-outline hover:text-error transition-all" title="حذف" (click)="deleteAssignment(a.id)"><span class="material-symbols-outlined">delete</span></button>
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Add/Edit Modal -->
+@if (showAddModal()) {
+  <div class="fixed inset-0 z-[60] flex items-center justify-center glass-overlay p-margin-mobile" (click)="closeModals()">
+    <div class="glass-modal max-w-2xl w-full max-h-[90vh] overflow-y-auto" (click)="$event.stopPropagation()">
+      <div class="glass-modal-header flex justify-between items-center">
+        <h2 class="font-headline-md text-headline-md" style="font-weight:700;">{{ editingAssignment() ? 'تعديل واجب' : 'إضافة واجب جديد' }}</h2>
+        <button class="p-2 rounded-full hover:bg-black/5 transition-colors" (click)="closeModals()"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <div class="p-stack-lg flex flex-col gap-stack-md">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-stack-md">
+          <div class="flex flex-col gap-1">
+            <label class="font-label-md text-label-md" style="font-weight:600;">عنوان الواجب</label>
+            <input class="border border-outline-variant rounded-xl px-4 py-3 font-body-md text-body-md bg-white/60 focus:outline-none focus:ring-2 focus:ring-primary backdrop-blur-sm" placeholder="مثال: تمارين المعادلات" [value]="newTitle()" (input)="newTitle.set($any($event.target).value)" />
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="font-label-md text-label-md" style="font-weight:600;">المادة</label>
+            <select class="border border-outline-variant rounded-xl px-4 py-3 font-body-md text-body-md bg-white/60 focus:outline-none focus:ring-2 focus:ring-primary backdrop-blur-sm" [value]="newSubject()" (change)="newSubject.set($any($event.target).value)">
+              <option value="">اختر المادة...</option>
+              @for (s of subjects; track s) { <option [value]="s">{{ s }}</option> }
+            </select>
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="font-label-md text-label-md" style="font-weight:600;">الفصل</label>
+            <select class="border border-outline-variant rounded-xl px-4 py-3 font-body-md text-body-md bg-white/60 focus:outline-none focus:ring-2 focus:ring-primary backdrop-blur-sm" [value]="newClass()" (change)="newClass.set($any($event.target).value)">
+              <option value="">اختر الفصل...</option>
+              @for (c of classes; track c) { <option [value]="c">{{ c }}</option> }
+            </select>
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="font-label-md text-label-md" style="font-weight:600;">تاريخ التسليم</label>
+            <input class="border border-outline-variant rounded-xl px-4 py-3 font-body-md text-body-md bg-white/60 focus:outline-none focus:ring-2 focus:ring-primary backdrop-blur-sm" type="date" [value]="newDeadline()" (input)="newDeadline.set($any($event.target).value)" />
+          </div>
+        </div>
+
+        <div class="border-t border-outline-variant/50 pt-stack-md mt-2">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="font-headline-md text-headline-md" style="font-weight:700;">الأسئلة</h3>
+            <button class="bg-secondary/10 text-secondary px-4 py-2 rounded-xl font-label-md text-label-md hover:bg-secondary/20 transition-colors flex items-center gap-1" (click)="addQuestion()">
+              <span class="material-symbols-outlined">add</span>
+              إضافة سؤال
+            </button>
+          </div>
+          <div class="flex flex-col gap-stack-md">
+            @for (q of questions(); track q.id) {
+              <div class="bg-white/40 backdrop-blur-sm rounded-xl border border-white/40 p-stack-md">
+                <div class="flex justify-between items-start mb-3">
+                  <div class="flex items-center gap-2">
+                    <span class="bg-gradient-to-l from-primary to-blue-600 text-on-primary w-7 h-7 rounded-lg flex items-center justify-center font-bold text-label-sm">{{ $index + 1 }}</span>
+                    <select class="border border-outline-variant rounded-lg px-3 py-1.5 text-label-sm font-label-sm bg-white/60" [value]="q.type" (change)="updateQuestionType(q.id, $any($event.target).value)">
+                      <option value="mcq">اختيار من متعدد</option>
+                      <option value="true-false">صح وخطأ</option>
+                      <option value="essay">مقالي</option>
+                    </select>
+                  </div>
+                  <button class="p-1 rounded-lg hover:bg-error/10 text-outline hover:text-error transition-colors" (click)="removeQuestion(q.id)"><span class="material-symbols-outlined">close</span></button>
+                </div>
+                <textarea class="w-full border border-outline-variant rounded-xl px-4 py-3 font-body-md text-body-md bg-white/60 focus:outline-none focus:ring-2 focus:ring-primary mb-3 resize-none backdrop-blur-sm" rows="2" placeholder="نص السؤال..." [value]="q.text" (input)="updateQuestionText(q.id, $any($event.target).value)"></textarea>
+                @if (q.type === 'mcq' && q.options) {
+                  <div class="grid gap-2 mr-2">
+                    @for (opt of q.options; track $index) {
+                      <label class="flex items-center gap-3 p-2 rounded-lg border border-white/40 cursor-pointer hover:bg-white/40 transition-colors bg-white/20">
+                        <input type="radio" [name]="'q' + q.id" [value]="$index" [checked]="q.correctAnswer === str($index)" (change)="updateQuestionAnswer(q.id, str($index))" class="text-primary" />
+                        <input class="flex-1 bg-transparent border-none focus:outline-none font-body-md text-body-md" [placeholder]="'الخيار ' + ($index + 1)" [value]="opt" (input)="updateQuestionOption(q.id, $index, $any($event.target).value)" />
+                      </label>
+                    }
+                  </div>
+                }
+                @if (q.type === 'true-false') {
+                  <div class="flex gap-3 mr-2">
+                    @for (opt of ['صواب', 'خطأ']; track opt) {
+                      <label class="flex items-center gap-2 p-2 rounded-lg border border-white/40 cursor-pointer hover:bg-white/40 transition-colors bg-white/20">
+                        <input type="radio" [name]="'tf' + q.id" [value]="opt" [checked]="q.correctAnswer === opt" (change)="updateQuestionAnswer(q.id, opt)" class="text-primary" />
+                        <span class="font-body-md text-body-md">{{ opt }}</span>
+                      </label>
+                    }
+                  </div>
+                }
+                @if (q.type === 'essay') {
+                  <div class="mr-2 p-3 bg-white/40 backdrop-blur-sm rounded-xl">
+                    <span class="font-label-sm text-label-sm text-outline">إجابة مقالية — سيتم التصحيح يدوياً أو بواسطة AI</span>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+      <div class="glass-modal-footer flex justify-end gap-3">
+        <button class="secondary-btn-glass" (click)="closeModals()">إلغاء</button>
+        <button class="gradient-btn" (click)="saveAssignment()">حفظ الواجب</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- View Modal -->
+@if (showViewModal(); as viewing) {
+  @let a = viewingAssignment();
+  @if (a) {
+    <div class="fixed inset-0 z-[60] flex items-center justify-center glass-overlay p-margin-mobile" (click)="closeModals()">
+      <div class="glass-modal max-w-3xl w-full max-h-[90vh] overflow-y-auto" (click)="$event.stopPropagation()">
+        <div class="glass-modal-header flex justify-between items-center">
+          <h2 class="font-headline-md text-headline-md" style="font-weight:700;">{{ a.title }}</h2>
+          <button class="p-2 rounded-full hover:bg-black/5 transition-colors" (click)="closeModals()"><span class="material-symbols-outlined">close</span></button>
+        </div>
+        <div class="p-stack-lg">
+          <div class="flex flex-wrap gap-4 mb-stack-lg">
+            <div class="flex items-center gap-2 bg-white/40 backdrop-blur-sm rounded-xl px-4 py-2"><span class="material-symbols-outlined text-outline">book</span><span class="font-body-md text-body-md">{{ a.subject }}</span></div>
+            <div class="flex items-center gap-2 bg-white/40 backdrop-blur-sm rounded-xl px-4 py-2"><span class="material-symbols-outlined text-outline">groups</span><span class="font-body-md text-body-md">{{ a.class }}</span></div>
+            <div class="flex items-center gap-2 bg-white/40 backdrop-blur-sm rounded-xl px-4 py-2"><span class="material-symbols-outlined text-outline">calendar_today</span><span class="font-body-md text-body-md">{{ a.deadline }}</span></div>
+            <div class="flex items-center gap-2 bg-white/40 backdrop-blur-sm rounded-xl px-4 py-2"><span class="material-symbols-outlined text-outline">assignment_turned_in</span><span class="font-body-md text-body-md">{{ a.submitted }}/{{ a.total }}</span></div>
+          </div>
+          <h3 class="font-headline-md text-headline-md mb-4" style="font-weight:700;">الأسئلة</h3>
+          <div class="flex flex-col gap-stack-md">
+            @for (q of getQuestionsForAssignment(a); track q.id) {
+              <div class="border border-white/40 bg-white/30 backdrop-blur-sm rounded-2xl p-stack-md">
+                <div class="flex items-center gap-3 mb-3">
+                  <span class="bg-gradient-to-l from-primary to-blue-600 text-on-primary w-7 h-7 rounded-lg flex items-center justify-center font-bold text-label-sm">{{ $index + 1 }}</span>
+                  <span class="px-3 py-1 bg-secondary/10 text-secondary rounded-full text-label-sm font-label-sm">{{ getTypeLabel(q.type) }}</span>
+                </div>
+                <p class="font-body-lg text-body-lg mb-3">{{ q.text }}</p>
+                @if (q.type === 'mcq' && q.options) {
+                  <div class="grid gap-2 mr-2">
+                    @for (opt of q.options; track $index) {
+                      <div class="flex items-center gap-3 p-3 rounded-xl border bg-white/20"
+                        [class.border-green-500]="opt === q.correctAnswer"
+                        [class.border-white/40]="opt !== q.correctAnswer"
+                        [class.bg-green-50/50]="opt === q.correctAnswer">
+                        <span class="w-2 h-2 rounded-full" [class.bg-green-500]="opt === q.correctAnswer" [class.bg-outline]="opt !== q.correctAnswer"></span>
+                        <span class="font-body-md text-body-md">{{ opt }}</span>
+                        @if (opt === q.correctAnswer) {
+                          <span class="material-symbols-outlined text-green-600 text-[18px] mr-auto" style="font-variation-settings:'FILL'1;">check_circle</span>
+                        }
+                      </div>
+                    }
+                  </div>
+                }
+                @if (q.type === 'true-false') {
+                  <div class="flex gap-3 mr-2">
+                    @for (opt of ['صواب', 'خطأ']; track opt) {
+                      <div class="flex items-center gap-2 p-3 rounded-xl border bg-white/20"
+                        [class.border-green-500]="opt === q.correctAnswer"
+                        [class.border-white/40]="opt !== q.correctAnswer"
+                        [class.bg-green-50/50]="opt === q.correctAnswer">
+                        <span class="w-2 h-2 rounded-full" [class.bg-green-500]="opt === q.correctAnswer" [class.bg-outline]="opt !== q.correctAnswer"></span>
+                        <span>{{ opt }}</span>
+                      </div>
+                    }
+                  </div>
+                }
+                @if (q.type === 'essay') {
+                  <div class="p-4 bg-white/40 backdrop-blur-sm rounded-xl mr-2">
+                    <span class="text-outline font-body-md">إجابة مقالية — نموذج الإجابة: {{ q.correctAnswer || 'يتم التصحيح يدوياً' }}</span>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </div>
+        <div class="glass-modal-footer flex justify-end">
+          <button class="gradient-btn" (click)="closeModals()">إغلاق</button>
+        </div>
+      </div>
+    </div>
+  }
+}
