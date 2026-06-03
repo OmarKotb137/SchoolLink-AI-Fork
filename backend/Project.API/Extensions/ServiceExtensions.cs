@@ -44,6 +44,14 @@ public static class ServiceExtensions
         services.AddScoped<IExamService, ExamService>();
         services.AddScoped<IExamAttemptService, ExamAttemptService>();
         services.AddScoped<IAIGenerationLogService, AIGenerationLogService>();
+        services.AddScoped<IEvaluationTemplateService, EvaluationTemplateService>();
+        services.AddScoped<IEvaluationPeriodService, EvaluationPeriodService>();
+        services.AddScoped<IEvaluationItemService, EvaluationItemService>();
+        services.AddScoped<IStudentEvaluationService, StudentEvaluationService>();
+        services.AddScoped<IDailyAbsenceService, DailyAbsenceService>();
+        services.AddScoped<IPeriodAverageService, PeriodAverageService>();
+        services.AddScoped<IPeriodicAssessmentService, PeriodicAssessmentService>();
+        services.AddScoped<IFinalGradeService, FinalGradeService>();
 
         services.AddAutoMapper(typeof(UserMappingProfile).Assembly);
 

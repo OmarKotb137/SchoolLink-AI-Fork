@@ -1,5 +1,13 @@
 using AutoMapper;
 using Project.BLL.DTOs;
+using Project.BLL.DTOs.EvaluationTemplates;
+using Project.BLL.DTOs.EvaluationPeriods;
+using Project.BLL.DTOs.EvaluationItems;
+using Project.BLL.DTOs.StudentEvaluations;
+using Project.BLL.DTOs.DailyAbsences;
+using Project.BLL.DTOs.PeriodAverages;
+using Project.BLL.DTOs.PeriodicAssessments;
+using Project.BLL.DTOs.FinalGrades;
 using Project.Domain.Entities;
 
 namespace Project.BLL.Mapping;
@@ -63,5 +71,53 @@ public class MappingProfile : Profile
                 opt => opt.MapFrom(s => s.Type.ToString()));
         CreateMap<CreateRoomRequest, Room>();
         CreateMap<UpdateRoomRequest, Room>();
+
+        // Evaluation Template
+        CreateMap<EvaluationTemplate, EvaluationTemplateDto>()
+            .ForMember(d => d.GradeLevelName,
+                opt => opt.MapFrom(s => s.GradeLevel.Name))
+            .ForMember(d => d.SubjectName,
+                opt => opt.MapFrom(s => s.Subject.Name))
+            .ForMember(d => d.AcademicYearName,
+                opt => opt.MapFrom(s => s.AcademicYear.Name));
+        CreateMap<CreateEvaluationTemplateRequest, EvaluationTemplate>();
+
+        // Evaluation Period
+        CreateMap<EvaluationPeriod, EvaluationPeriodDto>()
+            .ForMember(d => d.AcademicYearName,
+                opt => opt.MapFrom(s => s.AcademicYear.Name));
+        CreateMap<CreateEvaluationPeriodRequest, EvaluationPeriod>();
+
+        // Evaluation Item
+        CreateMap<EvaluationItem, EvaluationItemDto>();
+        CreateMap<CreateEvaluationItemRequest, EvaluationItem>();
+
+        // Student Evaluation
+        CreateMap<StudentEvaluation, StudentEvaluationDto>()
+            .ForMember(d => d.ItemName,
+                opt => opt.MapFrom(s => s.EvaluationItem.Name))
+            .ForMember(d => d.MaxScore,
+                opt => opt.MapFrom(s => s.EvaluationItem.MaxScore));
+
+        // Daily Absence
+        CreateMap<DailyAbsence, DailyAbsenceDto>()
+            .ForMember(d => d.SubjectName,
+                opt => opt.MapFrom(s => s.ClassSubjectTeacher != null
+                    ? s.ClassSubjectTeacher.Subject.Name : null));
+        CreateMap<RecordAbsenceRequest, DailyAbsence>();
+
+        // Period Average
+        CreateMap<PeriodAverage, PeriodAverageDto>()
+            .ForMember(d => d.PeriodName,
+                opt => opt.MapFrom(s => s.Period.Name))
+            .ForMember(d => d.PeriodType,
+                opt => opt.MapFrom(s => s.Period.PeriodType.ToString()));
+
+        // Periodic Assessment
+        CreateMap<PeriodicAssessment, PeriodicAssessmentDto>();
+        CreateMap<RecordPeriodicAssessmentRequest, PeriodicAssessment>();
+
+        // Final Grade
+        CreateMap<FinalGrade, FinalGradeDto>();
     }
 }
