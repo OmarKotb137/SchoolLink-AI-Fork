@@ -28,37 +28,44 @@ public class DropboxService : IDropboxService
 
     public async Task<OperationResult<string>> UploadFileAsync(Stream fileStream, string fileName, string? folder = null)
     {
-        var path = $"/{(folder ?? "SchoolLink")}/{fileName}";
-
-        var apiArg = JsonSerializer.Serialize(new
+        try
         {
-            path,
-            mode = "add",
-            autorename = true
-        });
+            var path = $"/{(folder ?? "SchoolLink")}/{fileName}";
 
-        var request = new HttpRequestMessage(HttpMethod.Post, "https://content.dropboxapi.com/2/files/upload")
-        {
-            Headers = { { "Dropbox-API-Arg", apiArg } },
-            Content = new StreamContent(fileStream)
-        };
-        request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+            var apiArg = JsonSerializer.Serialize(new
+            {
+                path,
+                mode = "add",
+                autorename = true
+            });
 
-        var response = await SendWithRetryAsync(request);
-        if (!response.IsSuccessStatusCode)
-        {
-            var error = await response.Content.ReadAsStringAsync();
-            return OperationResult<string>.Failure($"Dropbox upload failed: {error}");
+            var request = new HttpRequestMessage(HttpMethod.Post, "https://content.dropboxapi.com/2/files/upload")
+            {
+                Headers = { { "Dropbox-API-Arg", apiArg } },
+                Content = new StreamContent(fileStream)
+            };
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+
+            var response = await SendWithRetryAsync(request);
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                return OperationResult<string>.Failure($"Dropbox upload failed: {error}");
+            }
+
+            var result = await response.Content.ReadFromJsonAsync<JsonElement>();
+            var filePath = result.GetProperty("path_display").GetString()!;
+
+            var linkResult = await GetSharedLinkAsync(filePath);
+            if (!linkResult.IsSuccess)
+                return linkResult;
+
+            return OperationResult<string>.Success(linkResult.Data!, "تم رفع الملف بنجاح");
         }
-
-        var result = await response.Content.ReadFromJsonAsync<JsonElement>();
-        var filePath = result.GetProperty("path_display").GetString()!;
-
-        var linkResult = await GetSharedLinkAsync(filePath);
-        if (!linkResult.IsSuccess)
-            return linkResult;
-
-        return OperationResult<string>.Success(linkResult.Data!, "تم رفع الملف بنجاح");
+        catch (Exception ex)
+        {
+            return OperationResult<string>.Failure($"Dropbox Error: {ex.Message}");
+        }
     }
 
     public async Task<OperationResult<string>> GetSharedLinkAsync(string path)
@@ -125,9 +132,13 @@ public class DropboxService : IDropboxService
     private async Task<HttpResponseMessage> SendWithRetryAsync(HttpRequestMessage request, int retryCount = 1)
     {
         await EnsureTokenAsync();
-        ApplyAuthorization();
 
         var cloned = await CloneRequestAsync(request);
+        if (_currentAccessToken != null)
+        {
+            cloned.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _currentAccessToken);
+        }
+
         var response = await _httpClient.SendAsync(cloned);
 
         if (!response.IsSuccessStatusCode && retryCount > 0)
@@ -136,9 +147,12 @@ public class DropboxService : IDropboxService
             if (error.Contains("expired_access_token"))
             {
                 await RefreshAccessTokenAsync();
-                ApplyAuthorization();
 
                 var retryRequest = await CloneRequestAsync(request);
+                if (_currentAccessToken != null)
+                {
+                    retryRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _currentAccessToken);
+                }
                 return await _httpClient.SendAsync(retryRequest);
             }
         }
@@ -170,8 +184,16 @@ public class DropboxService : IDropboxService
                 })
             };
 
+            // Ensure no lingering Authorization headers interfere with client_secret
+            tokenRequest.Headers.Authorization = null;
+
             var response = await _httpClient.SendAsync(tokenRequest);
-            response.EnsureSuccessStatusCode();
+            
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorBody = await response.Content.ReadAsStringAsync();
+                throw new InvalidOperationException($"Invalid Dropbox credentials. Please check your RefreshToken, AppKey, and AppSecret. Dropbox returned: {response.StatusCode} - {errorBody}");
+            }
 
             var result = await response.Content.ReadFromJsonAsync<JsonElement>();
             _currentAccessToken = result.GetProperty("access_token").GetString()!;
@@ -182,11 +204,7 @@ public class DropboxService : IDropboxService
         }
     }
 
-    private void ApplyAuthorization()
-    {
-        _httpClient.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", _currentAccessToken);
-    }
+    // Removed ApplyAuthorization as it causes header conflicts with DefaultRequestHeaders
 
     public async Task<OperationResult<IEnumerable<string>>> ListFilesAsync(string? folder = null)
     {
