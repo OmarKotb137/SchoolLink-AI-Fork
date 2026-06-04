@@ -59,7 +59,7 @@ public static class ServiceExtensions
         services.AddScoped<IStudyPlanService, StudyPlanService>();
         services.AddScoped<ILessonFeedbackService, LessonFeedbackService>();
 
-        services.AddAutoMapper(typeof(UserMappingProfile).Assembly);
+        services.AddAutoMapper(cfg => cfg.AddMaps(typeof(UserMappingProfile).Assembly));
 
         services.AddValidatorsFromAssemblyContaining<CreateUserValidator>();
 
