@@ -53,6 +53,11 @@ public static class ServiceExtensions
         services.AddScoped<IPeriodAverageService, PeriodAverageService>();
         services.AddScoped<IPeriodicAssessmentService, PeriodicAssessmentService>();
         services.AddScoped<IFinalGradeService, FinalGradeService>();
+        services.AddScoped<IStudentService, StudentService>();
+        services.AddScoped<IStudentEnrollmentService, StudentEnrollmentService>();
+        services.AddScoped<IParentStudentService, ParentStudentService>();
+        services.AddScoped<IStudyPlanService, StudyPlanService>();
+        services.AddScoped<ILessonFeedbackService, LessonFeedbackService>();
 
         services.AddAutoMapper(typeof(UserMappingProfile).Assembly);
 
