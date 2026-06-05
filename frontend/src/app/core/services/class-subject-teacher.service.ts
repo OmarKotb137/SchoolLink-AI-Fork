@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../../environments/environment';
 
 export interface ClassSubjectTeacher {
   id?: number;
@@ -23,7 +24,7 @@ export interface ClassSubjectTeacher {
 })
 export class ClassSubjectTeacherService {
   private http = inject(HttpClient);
-  private apiUrl = '/api/class-subject-teachers';
+  private apiUrl = `${environment.apiUrl}/api/class-subject-teachers`;
 
   getAll(): Observable<ClassSubjectTeacher[]> {
     return this.http.get<ClassSubjectTeacher[]>(this.apiUrl);

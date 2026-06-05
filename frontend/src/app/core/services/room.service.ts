@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../../environments/environment';
 
 export interface Room {
   id: number;
@@ -16,7 +17,7 @@ export interface Room {
 })
 export class RoomService {
   private http = inject(HttpClient);
-  private apiUrl = '/api/rooms';
+  private apiUrl = `${environment.apiUrl}/api/rooms`;
 
   getAll(): Observable<Room[]> {
     return this.http.get<Room[]>(this.apiUrl);
