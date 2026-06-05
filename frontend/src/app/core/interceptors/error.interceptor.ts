@@ -1,29 +1,19 @@
 import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
-import { NotificationService } from '../services/notification.service';
+import { AuthService } from '../services/auth.service';
 import { catchError, throwError } from 'rxjs';
 import { Router } from '@angular/router';
 
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
-  const notificationService = inject(NotificationService);
+  const auth = inject(AuthService);
   const router = inject(Router);
 
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
-      let message = 'An unexpected error occurred';
-
-      if (error.status === 0) {
-        message = 'No internet connection';
-      } else if (error.status === 401) {
-        message = 'Session expired. Please login again.';
+      if (error.status === 401 && !req.url.includes('/login') && !req.url.includes('/refresh-token')) {
+        auth.logout();
         router.navigate(['/login']);
-      } else if (error.status === 404) {
-        message = 'Resource not found';
-      } else if (error.status === 500) {
-        message = 'Server error. Please try again later.';
       }
-
-      notificationService.addMessage(message);
       return throwError(() => error);
     })
   );

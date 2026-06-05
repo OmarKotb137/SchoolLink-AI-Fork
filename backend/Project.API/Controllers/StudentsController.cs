@@ -7,7 +7,7 @@ namespace Project.API.Controllers;
 
 [ApiController]
 [Route("api/students")]
-//[Authorize(Roles = "Admin")]
+[Authorize(Roles = "Admin,Teacher")]
 public class StudentsController : ControllerBase
 {
     private readonly IStudentService _studentService;

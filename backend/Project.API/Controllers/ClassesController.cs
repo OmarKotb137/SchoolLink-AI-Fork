@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Project.BLL.DTOs;
 using Project.DAL.Interfaces;
@@ -8,6 +9,7 @@ namespace Project.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize(Roles = "Admin,Teacher")]
 public class ClassesController : ControllerBase
 {
     private readonly IUnitOfWork _uow;

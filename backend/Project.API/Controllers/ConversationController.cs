@@ -29,6 +29,7 @@ public class ConversationController : ControllerBase
         return CreatedAtAction(nameof(GetMessages), new { conversationId = result.Data?.Id }, result);
     }
 
+    [Authorize(Roles = "Admin,Teacher")]
     [HttpPost("group")]
     public async Task<IActionResult> CreateGroup([FromBody] CreateGroupConversationRequest request)
     {
@@ -39,6 +40,7 @@ public class ConversationController : ControllerBase
         return CreatedAtAction(nameof(GetMessages), new { conversationId = result.Data?.Id }, result);
     }
 
+    [Authorize(Roles = "Admin,Teacher")]
     [HttpPost("subject-group")]
     public async Task<IActionResult> CreateSubjectGroup([FromBody] CreateSubjectGroupConversationRequest request)
     {
@@ -130,6 +132,7 @@ public class ConversationController : ControllerBase
         return Ok(result);
     }
 
+    [Authorize(Roles = "Admin,Teacher")]
     [HttpDelete("{conversationId}")]
     public async Task<IActionResult> Delete(int conversationId)
     {
@@ -150,6 +153,7 @@ public class ConversationController : ControllerBase
         return Ok(result);
     }
 
+    [Authorize(Roles = "Admin,Teacher")]
     [HttpPost("{conversationId}/participants")]
     public async Task<IActionResult> AddParticipant(int conversationId, [FromQuery] int participantUserId)
     {
@@ -160,6 +164,7 @@ public class ConversationController : ControllerBase
         return Ok(result);
     }
 
+    [Authorize(Roles = "Admin,Teacher")]
     [HttpDelete("{conversationId}/participants/{participantUserId}")]
     public async Task<IActionResult> RemoveParticipant(int conversationId, int participantUserId)
     {

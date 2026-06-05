@@ -7,6 +7,7 @@ namespace Project.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize(Roles = "Admin,Teacher")]
 public class EvaluationTemplatesController : ControllerBase
 {
     private readonly IEvaluationTemplateService _service;

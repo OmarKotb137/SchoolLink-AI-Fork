@@ -38,6 +38,7 @@ public class NotificationController : ControllerBase
         return Ok(result);
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpDelete("bulk")]
     public async Task<IActionResult> DeleteBulk([FromBody] List<int> notificationIds)
     {
@@ -95,6 +96,7 @@ public class NotificationController : ControllerBase
         return Ok(result);
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpDelete("{notificationId}")]
     public async Task<IActionResult> Delete(int notificationId)
     {

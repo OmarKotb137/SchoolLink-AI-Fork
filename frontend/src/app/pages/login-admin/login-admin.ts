@@ -1,6 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RoleService } from '../../shared/role.service';
+import { Router } from '@angular/router';
+import { AuthService } from '../../core/services/auth.service';
 
 @Component({
   selector: 'app-login-admin',
@@ -9,7 +10,8 @@ import { RoleService } from '../../shared/role.service';
   styleUrl: './login-admin.css'
 })
 export class LoginAdmin {
-  private roleService = inject(RoleService);
+  private auth = inject(AuthService);
+  private router = inject(Router);
 
   togglePwd(pwd: HTMLInputElement) {
     pwd.type = pwd.type === 'password' ? 'text' : 'password';
@@ -17,7 +19,10 @@ export class LoginAdmin {
 
   handleLogin(f: any) {
     if (!f.valid) { alert('يرجى إدخال البريد الإلكتروني وكلمة المرور'); return; }
-    this.roleService.setRole('admin');
-    window.location.href = '/admin';
+    const { email, password } = f.value;
+    this.auth.login('admin', email, password).subscribe({
+      next: () => this.router.navigate(['/admin']),
+      error: (err) => alert(err.message)
+    });
   }
 }

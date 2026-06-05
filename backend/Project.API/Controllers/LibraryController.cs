@@ -6,7 +6,7 @@ using Project.BLL.DTOs.Library;
 
 namespace Project.API.Controllers;
 
-// [Authorize]
+[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 public class LibraryController : ControllerBase
@@ -39,7 +39,7 @@ public class LibraryController : ControllerBase
         ".txt", ".mp4", ".webm"
     };
 
-    // [Authorize(Roles = "Admin,Teacher")]
+    [Authorize(Roles = "Admin,Teacher")]
     [HttpPost("upload")]
     public async Task<IActionResult> Upload(
         IFormFile? file,
@@ -139,6 +139,7 @@ public class LibraryController : ControllerBase
         return Ok(result);
     }
 
+    [Authorize(Roles = "Admin,Teacher")]
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateLibraryItemRequest request)
     {
@@ -160,6 +161,7 @@ public class LibraryController : ControllerBase
         return Ok(result);
     }
 
+    [Authorize(Roles = "Admin,Teacher")]
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(int id)
     {

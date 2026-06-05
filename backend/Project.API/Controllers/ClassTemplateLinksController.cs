@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Project.DAL.Interfaces;
 using Project.Domain.Entities;
@@ -6,6 +7,7 @@ namespace Project.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize(Roles = "Admin,Teacher")]
 public class ClassTemplateLinksController : ControllerBase
 {
     private readonly IUnitOfWork _uow;

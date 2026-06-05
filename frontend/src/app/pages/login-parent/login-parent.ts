@@ -1,6 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RoleService } from '../../shared/role.service';
+import { Router } from '@angular/router';
+import { AuthService } from '../../core/services/auth.service';
 
 @Component({
   selector: 'app-login-parent',
@@ -9,14 +10,18 @@ import { RoleService } from '../../shared/role.service';
   styleUrl: './login-parent.css'
 })
 export class LoginParent {
-  private roleService = inject(RoleService);
+  private auth = inject(AuthService);
+  private router = inject(Router);
 
   togglePwd(pwd: HTMLInputElement) {
     pwd.type = pwd.type === 'password' ? 'text' : 'password';
   }
   handleLogin(f: any) {
     if (!f.valid) { alert('يرجى إدخال البيانات'); return; }
-    this.roleService.setRole('parent');
-    window.location.href = '/parent';
+    const { email, password } = f.value;
+    this.auth.login('parent', email, password).subscribe({
+      next: () => this.router.navigate(['/parent']),
+      error: (err) => alert(err.message)
+    });
   }
 }

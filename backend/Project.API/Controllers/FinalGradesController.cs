@@ -8,6 +8,7 @@ namespace Project.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize(Roles = "Admin,Teacher")]
 public class FinalGradesController : ControllerBase
 {
     private readonly IFinalGradeService _service;
