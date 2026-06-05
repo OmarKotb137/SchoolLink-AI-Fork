@@ -1,43 +1,101 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Project.DAL.Interfaces;
+using Project.BLL.DTOs.Students;
+using Project.BLL.Interfaces;
 
 namespace Project.API.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/students")]
+//[Authorize(Roles = "Admin")]
 public class StudentsController : ControllerBase
 {
-    private readonly IUnitOfWork _uow;
+    private readonly IStudentService _studentService;
 
-    public StudentsController(IUnitOfWork uow) { _uow = uow; }
+    public StudentsController(IStudentService studentService)
+    {
+        _studentService = studentService;
+    }
 
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
-        var students = await _uow.Students.GetActiveStudentsAsync();
-        var result = students.Select(s => new { id = s.Id, name = s.FullName }).OrderBy(s => s.name).ToList();
-        return Ok(new { isSuccess = true, data = result });
+        var result = await _studentService.GetAllStudentsAsync();
+        return Ok(result);
     }
 
-    [HttpGet("available-for-class/{classId:int}")]
-    public async Task<IActionResult> GetAvailableForClass(int classId)
+    [HttpGet("{id:int}")]
+    public async Task<IActionResult> GetById(int id)
     {
-        var cls = await _uow.Classes.GetByIdAsync(classId);
-        if (cls is null || cls.IsDeleted)
-            return NotFound(new { isSuccess = false, message = "الفصل غير موجود" });
+        var result = await _studentService.GetStudentByIdAsync(id);
+        if (!result.IsSuccess)
+            return NotFound(result);
+        return Ok(result);
+    }
 
-        var enrolledIds = (await _uow.StudentEnrollments.FindAsync(
-            e => e.ClassId == classId && e.AcademicYearId == cls.AcademicYearId))
-            .Select(e => e.StudentId)
-            .ToHashSet();
+    [HttpGet("by-user/{userId:int}")]
+    public async Task<IActionResult> GetByUserId(int userId)
+    {
+        var result = await _studentService.GetStudentByUserIdAsync(userId);
+        if (!result.IsSuccess)
+            return NotFound(result);
+        return Ok(result);
+    }
 
-        var all = await _uow.Students.GetActiveStudentsAsync();
-        var result = all
-            .Where(s => !enrolledIds.Contains(s.Id))
-            .Select(s => new { id = s.Id, name = s.FullName })
-            .OrderBy(s => s.name)
-            .ToList();
+    [HttpGet("search")]
+    public async Task<IActionResult> Search([FromQuery] StudentSearchFilter filter)
+    {
+        var result = await _studentService.SearchStudentsAsync(filter);
+        if (!result.IsSuccess)
+            return BadRequest(result);
+        return Ok(result);
+    }
 
-        return Ok(new { isSuccess = true, data = result });
+    [HttpPost]
+    public async Task<IActionResult> Create([FromBody] CreateStudentRequest request)
+    {
+        var result = await _studentService.CreateStudentAsync(request);
+        if (!result.IsSuccess)
+            return BadRequest(result);
+        return CreatedAtAction(nameof(GetById), new { id = result.Data!.Id }, result);
+    }
+
+    [HttpPost("bulk")]
+    public async Task<IActionResult> BulkCreate([FromBody] BulkCreateStudentsRequest request)
+    {
+        var result = await _studentService.BulkCreateStudentsAsync(request);
+        if (!result.IsSuccess)
+            return BadRequest(result);
+        return Ok(result);
+    }
+
+    [HttpPut("{id:int}")]
+    public async Task<IActionResult> Update(int id, [FromBody] UpdateStudentRequest request)
+    {
+        if (id != request.Id)
+            return BadRequest("معرف الطالب في الرابط لا يطابق المعرف في الطلب");
+
+        var result = await _studentService.UpdateStudentAsync(request);
+        if (!result.IsSuccess)
+            return BadRequest(result);
+        return Ok(result);
+    }
+
+    [HttpDelete("{id:int}")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var result = await _studentService.DeleteStudentAsync(id);
+        if (!result.IsSuccess)
+            return NotFound(result);
+        return Ok(result);
+    }
+
+    [HttpPost("link-user")]
+    public async Task<IActionResult> LinkUser([FromBody] LinkStudentUserRequest request)
+    {
+        var result = await _studentService.LinkUserAccountAsync(request);
+        if (!result.IsSuccess)
+            return BadRequest(result);
+        return Ok(result);
     }
 }

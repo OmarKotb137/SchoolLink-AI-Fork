@@ -140,6 +140,10 @@ public class EvaluationTemplateService : IEvaluationTemplateService
         if (source is null || source.IsDeleted)
             return OperationResult<EvaluationTemplateDto>.Failure("قالب التقييم غير موجود");
 
+        if (await _unitOfWork.EvaluationTemplates.ExistsByGradeLevelSubjectAndYearAsync(
+                source.GradeLevelId, source.SubjectId, source.AcademicYearId))
+            return OperationResult<EvaluationTemplateDto>.Failure("يوجد قالب تقييم لهذا الصف والمادة والسنة بالفعل");
+
         var duplicate = new EvaluationTemplate
         {
             GradeLevelId = source.GradeLevelId,
