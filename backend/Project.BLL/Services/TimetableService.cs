@@ -417,14 +417,16 @@ public class TimetableService : ITimetableService
         return await GetByStudentAsync(enrollment.Id);
     }
 
-    public async Task<OperationResult<IEnumerable<TimetableDto>>> GetMyChildSchedulesAsync(int parentUserId, int academicYearId)
+    public async Task<OperationResult<IEnumerable<ChildScheduleDto>>> GetMyChildSchedulesAsync(int parentUserId, int academicYearId)
     {
         var links = await _unitOfWork.ParentStudents.GetWithStudentDetailsByParentAsync(parentUserId);
-        var schedules = new List<TimetableDto>();
+        var schedules = new List<ChildScheduleDto>();
 
-        foreach (var link in links.Where(l => !l.IsDeleted && l.Student is not null && l.Student.UserId.HasValue))
+        foreach (var link in links.Where(l => !l.IsDeleted && l.Student is not null))
         {
+            var student   = link.Student;
             var studentId = link.StudentId;
+
             var enrollment = await _unitOfWork.StudentEnrollments
                 .GetActiveByStudentAndYearAsync(studentId, academicYearId);
             if (enrollment is null)
@@ -436,10 +438,16 @@ public class TimetableService : ITimetableService
                 continue;
 
             var full = await _unitOfWork.Timetables.GetWithClassAndAllSlotsAsync(timetable.Id);
-            schedules.Add(_mapper.Map<TimetableDto>(full));
+            var dto  = _mapper.Map<ChildScheduleDto>(full);
+
+            // FIX: نحط اسم الطالب في الـ DTO عشان ولي الأمر يعرف جدول مين ده
+            dto.StudentId   = student.Id;
+            dto.StudentName = student.FullName;
+
+            schedules.Add(dto);
         }
 
-        return OperationResult<IEnumerable<TimetableDto>>.Success(
+        return OperationResult<IEnumerable<ChildScheduleDto>>.Success(
             schedules,
             "تم جلب جداول الأبناء بنجاح");
     }
@@ -468,6 +476,8 @@ public class TimetableService : ITimetableService
             PeriodNumber          = slot.PeriodNumber,
             StartTime             = slot.StartTime,
             EndTime               = slot.EndTime,
+            // FIX 2: IsBreak كانت مش بتتحط في الـ DTO خالص
+            IsBreak               = slot.IsBreak,
             ClassSubjectTeacherId = slot.ClassSubjectTeacherId,
             SubjectName           = slot.ClassSubjectTeacher?.Subject.Name,
             RoomName              = slot.Room?.Name

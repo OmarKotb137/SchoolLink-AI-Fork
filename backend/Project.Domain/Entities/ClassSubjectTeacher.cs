@@ -6,6 +6,7 @@
         public int SubjectId { get; set; }
         public int TeacherId { get; set; }
         public int AcademicYearId { get; set; }
+        public int WeeklyPeriods { get; set; }
 
         // Navigation Properties
         public SchoolClass Class { get; set; } = null!;

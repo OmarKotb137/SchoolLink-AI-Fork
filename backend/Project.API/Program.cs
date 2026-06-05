@@ -24,7 +24,11 @@ try
                   rollingInterval: RollingInterval.Day,
                   retainedFileCountLimit: 30));
 
-    builder.Services.AddControllers();
+    builder.Services.AddControllers()
+        .AddJsonOptions(options =>
+        {
+            options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+        });
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen();
     builder.Services.AddApplicationServices(builder.Configuration);
@@ -62,8 +66,8 @@ try
     });
 
     var app = builder.Build();
-
-    await SeedData.Initialize(app.Services);
+    ///////////////////////////////////////////////////////////////////////////////
+    //await SeedData.Initialize(app.Services);
 
     if (app.Environment.IsDevelopment())
     {
@@ -76,6 +80,31 @@ try
     app.UseCors("AllowAngular");
     app.UseHttpsRedirection();
     app.UseAuthentication();
+
+    // =========================================================================
+    // TODO: REMOVE THIS MOCK AUTHENTICATION MIDDLEWARE BEFORE PRODUCTION!
+    // تمت إضافة هذا الكود مؤقتاً لتخطي نظام تسجيل الدخول (Login) لتسريع اختبار واجهات 
+    // النظام الأمامية دون الحاجة لربط الـ JWT Tokens.
+    // يقوم هذا الكود بإيهام السيرفر أن هناك مستخدم رقمه (1) يمتلك كافة الصلاحيات.
+    // =========================================================================
+    app.Use(async (context, next) =>
+    {
+        var claims = new List<System.Security.Claims.Claim>
+        {
+            new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, "1"),
+            new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Name, "Mock Tester"),
+            new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, "Admin"),
+            new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, "Teacher"),
+            new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, "Student"),
+            new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, "Parent")
+        };
+        var identity = new System.Security.Claims.ClaimsIdentity(claims, "MockAuthType");
+        context.User = new System.Security.Claims.ClaimsPrincipal(identity);
+        
+        await next();
+    });
+    // =========================================================================
+
     app.UseAuthorization();
     app.MapControllers();
 

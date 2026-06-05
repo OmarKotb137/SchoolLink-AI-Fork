@@ -18,6 +18,6 @@ public interface ITimetableService
     Task<OperationResult<TimetableDto>>     GetByStudentAsync(int enrollmentId);
     Task<OperationResult<IEnumerable<TeacherScheduleSlotDto>>> GetTeacherScheduleAsync(int teacherId, int academicYearId);
     Task<OperationResult<TimetableDto>>     GetByStudentForUserAsync(int enrollmentId, int userId);
-    Task<OperationResult<IEnumerable<TimetableDto>>> GetMyChildSchedulesAsync(int parentUserId, int academicYearId);
+    Task<OperationResult<IEnumerable<ChildScheduleDto>>> GetMyChildSchedulesAsync(int parentUserId, int academicYearId);
     Task<OperationResult<TimetableDto>>     GetMyStudentScheduleAsync(int studentUserId, int academicYearId);
 }

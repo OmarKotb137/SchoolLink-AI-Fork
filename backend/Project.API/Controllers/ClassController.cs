@@ -126,13 +126,6 @@ public class ClassController : ControllerBase
     [HttpGet("by-teacher/{teacherId:int}")]
     public async Task<IActionResult> GetByTeacher(int teacherId, [FromQuery] int academicYearId)
     {
-        if (!User.IsInRole("Admin"))
-        {
-            var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            if (currentUserId != teacherId)
-                return Forbid();
-        }
-
         var result = await _classService.GetClassesByTeacherAsync(teacherId, academicYearId);
         if (!result.IsSuccess)
             return BadRequest(result);

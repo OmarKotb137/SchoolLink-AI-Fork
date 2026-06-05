@@ -1,171 +1,107 @@
-import { Component, signal, computed } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
 import { Topbar } from '../../layouts/topbar/topbar';
+import { TimetableService } from '../../core/services/timetable.service';
 
-interface ScheduleCell {
-  subject: string;
-  class: string;
-  room: string;
-  teacher: string;
-  color: 'blue' | 'cyan' | 'green' | 'orange' | 'purple' | 'none';
+// Mirrors TimetableSlotDto from the backend
+export interface ClassScheduleSlot {
+  id:                    number;
+  timetableId:           number;
+  dayOfWeek:             string;
+  periodNumber:          number;
+  startTime:             string;
+  endTime:               string;
+  isBreak:               boolean;
+  classSubjectTeacherId: number | null;
+  subjectName:           string | null;
+  teacherName:           string | null;
+  roomId:                number | null;
+  roomName:              string | null;
 }
 
-interface Period {
-  label: string;
-  time: string;
-  start: string;
-  end: string;
-}
-
-interface DayRow {
-  dayAr: string;
-  dayEn: string;
-  cells: ScheduleCell[];
+// Mirrors TimetableDto from the backend
+export interface ClassScheduleData {
+  id:            number;
+  classId:       number;
+  className:     string;
+  academicYearId: number;
+  isActive:      boolean;
+  slots:         ClassScheduleSlot[];
 }
 
 @Component({
   selector: 'app-class-schedule',
-  imports: [Sidebar, Topbar],
+  standalone: true,
+  imports: [CommonModule, Sidebar, Topbar],
   templateUrl: './class-schedule.html',
   styleUrl: './class-schedule.css',
 })
-export class ClassSchedule {
-  sidebarOpen = signal(false);
+export class ClassSchedule implements OnInit {
+  sidebarOpen  = signal(false);
 
-  periods: Period[] = [
-    { label: 'الحصة 1', time: '8:00 - 9:00', start: '08:00', end: '09:00' },
-    { label: 'الحصة 2', time: '9:00 - 10:00', start: '09:00', end: '10:00' },
-    { label: 'استراحة', time: '10:00 - 10:30', start: '10:00', end: '10:30', },
-    { label: 'الحصة 3', time: '10:30 - 11:30', start: '10:30', end: '11:30' },
-    { label: 'الحصة 4', time: '11:30 - 12:30', start: '11:30', end: '12:30' },
-    { label: 'الحصة 5', time: '12:30 - 1:30', start: '12:30', end: '13:30' },
+  private timetableService = inject(TimetableService);
+
+  // FIX 1: بدل ما نخزّن الـ OperationResult كله نسحب الـ TimetableDto مباشرة من .data
+  //        فـ getSlot() والـ template بيشتغلوا على الـ object الحقيقي مش الـ wrapper
+  timetable    = signal<ClassScheduleData | null>(null);
+  isLoading    = signal(true);
+  errorMessage = signal<string | null>(null);
+  hasLoaded    = signal(false);
+
+  days = [
+    { value: 'Sunday',    label: 'الأحد' },
+    { value: 'Monday',    label: 'الإثنين' },
+    { value: 'Tuesday',   label: 'الثلاثاء' },
+    { value: 'Wednesday', label: 'الأربعاء' },
+    { value: 'Thursday',  label: 'الخميس' }
   ];
 
-  days: DayRow[] = [
-    {
-      dayAr: 'السبت', dayEn: 'Saturday',
-      cells: [
-        { subject: 'الرياضيات', class: 'ثالث إعدادي أ', room: 'معمل الرياضيات', teacher: 'أ. أحمد سالم', color: 'blue' },
-        { subject: '', class: '', room: '', teacher: '', color: 'none' },
-        { subject: '', class: '', room: '', teacher: '', color: 'none' },
-        { subject: 'العلوم', class: 'ثالث إعدادي أ', room: 'معمل العلوم', teacher: 'أ. فاطمة حسن', color: 'green' },
-        { subject: '', class: '', room: '', teacher: '', color: 'none' },
-        { subject: '', class: '', room: '', teacher: '', color: 'none' },
-      ],
-    },
-    {
-      dayAr: 'الأحد', dayEn: 'Sunday',
-      cells: [
-        { subject: '', class: '', room: '', teacher: '', color: 'none' },
-        { subject: 'الرياضيات', class: 'ثالث إعدادي أ', room: 'معمل الرياضيات', teacher: 'أ. أحمد سالم', color: 'blue' },
-        { subject: '', class: '', room: '', teacher: '', color: 'none' },
-        { subject: 'اللغة العربية', class: 'ثالث إعدادي أ', room: 'القاعة 2', teacher: 'أ. محمد علي', color: 'orange' },
-        { subject: '', class: '', room: '', teacher: '', color: 'none' },
-        { subject: 'الرياضيات', class: 'ثالث إعدادي أ', room: 'معمل الرياضيات', teacher: 'أ. أحمد سالم', color: 'blue' },
-      ],
-    },
-    {
-      dayAr: 'الاثنين', dayEn: 'Monday',
-      cells: [
-        { subject: 'اللغة العربية', class: 'ثالث إعدادي ب', room: 'القاعة 4', teacher: 'أ. محمد علي', color: 'orange' },
-        { subject: 'الرياضيات', class: 'ثالث إعدادي أ', room: 'معمل الرياضيات', teacher: 'أ. أحمد سالم', color: 'blue' },
-        { subject: '', class: '', room: '', teacher: '', color: 'none' },
-        { subject: '', class: '', room: '', teacher: '', color: 'none' },
-        { subject: 'اللغة الإنجليزية', class: 'ثالث إعدادي ب', room: 'القاعة 4', teacher: 'أ. سارة أحمد', color: 'purple' },
-        { subject: '', class: '', room: '', teacher: '', color: 'none' },
-      ],
-    },
-    {
-      dayAr: 'الثلاثاء', dayEn: 'Tuesday',
-      cells: [
-        { subject: '', class: '', room: '', teacher: '', color: 'none' },
-        { subject: '', class: '', room: '', teacher: '', color: 'none' },
-        { subject: '', class: '', room: '', teacher: '', color: 'none' },
-        { subject: 'الرياضيات', class: 'ثالث إعدادي أ', room: 'معمل الرياضيات', teacher: 'أ. أحمد سالم', color: 'blue' },
-        { subject: 'العلوم', class: 'ثالث إعدادي أ', room: 'معمل العلوم', teacher: 'أ. فاطمة حسن', color: 'green' },
-        { subject: '', class: '', room: '', teacher: '', color: 'none' },
-      ],
-    },
-    {
-      dayAr: 'الأربعاء', dayEn: 'Wednesday',
-      cells: [
-        { subject: 'العلوم', class: 'ثالث إعدادي أ', room: 'معمل العلوم', teacher: 'أ. فاطمة حسن', color: 'green' },
-        { subject: '', class: '', room: '', teacher: '', color: 'none' },
-        { subject: '', class: '', room: '', teacher: '', color: 'none' },
-        { subject: '', class: '', room: '', teacher: '', color: 'none' },
-        { subject: 'الرياضيات', class: 'ثالث إعدادي ب', room: 'معمل الرياضيات', teacher: 'أ. أحمد سالم', color: 'blue' },
-        { subject: 'اللغة الإنجليزية', class: 'ثالث إعدادي أ', room: 'القاعة 2', teacher: 'أ. سارة أحمد', color: 'purple' },
-      ],
-    },
-    {
-      dayAr: 'الخميس', dayEn: 'Thursday',
-      cells: [
-        { subject: '', class: '', room: '', teacher: '', color: 'none' },
-        { subject: 'اللغة العربية', class: 'ثالث إعدادي أ', room: 'القاعة 2', teacher: 'أ. محمد علي', color: 'orange' },
-        { subject: '', class: '', room: '', teacher: '', color: 'none' },
-        { subject: '', class: '', room: '', teacher: '', color: 'none' },
-        { subject: '', class: '', room: '', teacher: '', color: 'none' },
-        { subject: 'اللغة العربية', class: 'ثالث إعدادي ب', room: 'القاعة 4', teacher: 'أ. محمد علي', color: 'orange' },
-      ],
-    },
+  periods = [
+    { num: 1, label: 'الحصة الأولى',  start: '08:00', end: '08:45' },
+    { num: 2, label: 'الحصة الثانية', start: '08:45', end: '09:30' },
+    { num: 3, label: 'الحصة الثالثة', start: '09:30', end: '10:15' },
+    { num: 4, label: 'الحصة الرابعة', start: '10:30', end: '11:15' },
+    { num: 5, label: 'الحصة الخامسة', start: '11:15', end: '12:00' },
+    { num: 6, label: 'الحصة السادسة', start: '12:00', end: '12:45' },
+    { num: 7, label: 'الحصة السابعة', start: '12:45', end: '13:30' }
   ];
 
-  dayNames = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
-
-  currentDayIndex = signal(new Date().getDay());
-  currentTime = signal(this.getTimeStr());
-
-  currentDayAr = computed(() => {
-    const idx = this.currentDayIndex();
-    return this.dayNames[idx];
-  });
-
-  currentPeriodIndex = computed(() => {
-    const now = this.currentTime();
-    return this.periods.findIndex(p => now >= p.start && now < p.end);
-  });
-
-  private getTimeStr(): string {
-    const d = new Date();
-    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  ngOnInit() {
+    this.loadSchedule();
   }
 
-  getColorClass(color: string): string {
-    const map: Record<string, string> = {
-      blue: 'class-blue',
-      cyan: 'class-cyan',
-      green: 'class-green',
-      orange: 'class-orange',
-      purple: 'class-purple',
-    };
-    return map[color] || '';
+  loadSchedule() {
+    // FIX 2: reset الـ state عند كل محاولة تحميل (مهم لزرار إعادة المحاولة)
+    this.isLoading.set(true);
+    this.errorMessage.set(null);
+    this.hasLoaded.set(false);
+
+    this.timetableService.getMyStudentScheduleCurrentYear().subscribe({
+      next: (response) => {
+        // FIX 3 (CRITICAL): الـ API بيرجع OperationResult<TimetableDto>
+        //   أي: { isSuccess: true, data: { id, classId, className, slots:[...] }, message: "..." }
+        //   الكود القديم كان بيحط الـ response كله في scheduleData ثم بيشوف .slots
+        //   لكن .slots على الـ OperationResult مش موجود — الـ TimetableDto بييجي في .data
+        this.timetable.set(response?.data ?? null);
+        this.hasLoaded.set(true);
+        this.isLoading.set(false);
+      },
+      error: () => {
+        this.timetable.set(null);
+        this.hasLoaded.set(true);
+        this.isLoading.set(false);
+        this.errorMessage.set('تعذر تحميل الجدول الدراسي. يرجى المحاولة مرة أخرى.');
+      }
+    });
   }
 
-  getPeriodBgColor(pi: number): string {
-    if (pi === 2) return ''; // break
-    const cp = this.currentPeriodIndex();
-    if (cp >= 0 && pi === cp) return 'bg-primary/10';
-    return '';
+  // FIX 4: بتشوف في timetable().slots مباشرة — مش scheduleData().slots
+  //        والـ template بيستخدم "*ngIf="getSlot() as slot"
+  //        فبتتنادى مرة واحدة بس للخلية بدل 4-5 مرات
+  getSlot(dayValue: string, periodNum: number): ClassScheduleSlot | null {
+    return this.timetable()?.slots?.find(
+      s => s.dayOfWeek === dayValue && s.periodNumber === periodNum
+    ) ?? null;
   }
-
-  isCurrentDay(di: number): boolean {
-    return di === this.currentDayIndex();
-  }
-
-  isCurrentPeriod(pi: number): boolean {
-    const cp = this.currentPeriodIndex();
-    if (cp < 0) return false;
-    if (pi === 2) return false; // break
-    return pi === cp;
-  }
-
-  isCurrentCell(di: number, pi: number): boolean {
-    return this.isCurrentDay(di) && this.isCurrentPeriod(pi);
-  }
-
-  getStudent() {
-    return { name: 'عمر محمود', class: 'ثالث إعدادي أ' };
-  }
-
-  str(i: number): string { return String(i); }
 }

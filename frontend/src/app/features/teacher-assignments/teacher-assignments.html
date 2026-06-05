@@ -1,0 +1,202 @@
+<app-sidebar [(isOpen)]="sidebarOpen" />
+<div class="main-content">
+  <app-topbar userName="أحمد" />
+  <main class="pt-16 h-screen flex flex-col bg-background">
+    <div class="flex-1 p-stack-lg overflow-y-auto custom-scrollbar">
+      <div class="max-w-7xl mx-auto space-y-stack-lg pb-10">
+
+        <!-- Header -->
+        <div class="flex justify-between items-end">
+          <div>
+            <h2 class="font-headline-lg text-headline-lg text-on-surface mb-2">التعيينات (ربط المعلمين بالفصول والمواد)</h2>
+            <p class="font-body-md text-body-md text-on-surface-variant">قم بتحديد المعلم الذي سيدرس كل مادة داخل كل فصل، مع تحديد النصاب الأسبوعي للحصص.</p>
+          </div>
+        </div>
+
+        <!-- FIX: Inline success banner (replaces alert()) -->
+        <div *ngIf="successMessage()" class="flex items-center gap-3 p-4 rounded-xl bg-green-50 text-green-800 border border-green-200">
+          <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+          <span class="font-body-md">{{ successMessage() }}</span>
+        </div>
+
+        <!-- FIX: Inline error banner (replaces alert()) -->
+        <div *ngIf="errorMessage()" class="flex items-center gap-3 p-4 rounded-xl bg-red-50 text-error border border-error/20">
+          <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">error</span>
+          <span class="font-body-md">{{ errorMessage() }}</span>
+        </div>
+
+        <!-- Add Assignment Form -->
+        <div class="bg-surface-container-lowest rounded-2xl p-6 border border-outline-variant/30">
+          <h3 class="font-headline-md text-headline-md text-primary mb-4 flex items-center gap-2">
+            <span class="material-symbols-outlined">assignment_ind</span> تعيين معلم جديد
+          </h3>
+          <div class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+            <div>
+              <label class="block font-label-sm text-on-surface-variant mb-1">الفصل المستهدف</label>
+              <select [(ngModel)]="newAssignment.classId" class="w-full px-4 py-2 rounded-lg border border-outline-variant bg-white focus:outline-primary">
+                <option [ngValue]="0" disabled>-- اختر الفصل --</option>
+                <option *ngFor="let c of classes()" [ngValue]="c.id">{{ c.name }}</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-label-sm text-on-surface-variant mb-1">المادة الدراسية</label>
+              <select [(ngModel)]="newAssignment.subjectId" class="w-full px-4 py-2 rounded-lg border border-outline-variant bg-white focus:outline-primary">
+                <option [ngValue]="0" disabled>-- اختر المادة --</option>
+                <option *ngFor="let s of subjects()" [ngValue]="s.id">{{ s.name }}</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-label-sm text-on-surface-variant mb-1">المعلم</label>
+              <select [(ngModel)]="newAssignment.teacherId" class="w-full px-4 py-2 rounded-lg border border-outline-variant bg-white focus:outline-primary">
+                <option [ngValue]="0" disabled>-- اختر المعلم --</option>
+                <option *ngFor="let t of teachers()" [ngValue]="t.id">{{ t.fullName }}</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-label-sm text-on-surface-variant mb-1">النصاب الأسبوعي (حصص)</label>
+              <input type="number" min="1" [(ngModel)]="newAssignment.weeklyPeriods" class="w-full px-4 py-2 rounded-lg border border-outline-variant bg-white focus:outline-primary">
+            </div>
+            <button (click)="assignTeacher()" class="w-full px-6 py-2.5 rounded-lg bg-primary text-white font-label-md hover:bg-primary/90 flex justify-center items-center gap-2">
+              <span class="material-symbols-outlined">add_link</span> ربط وتعيين
+            </button>
+          </div>
+        </div>
+
+        <!-- Filter bar -->
+        <div class="flex gap-4 items-center bg-surface-container-low p-4 rounded-xl">
+          <div class="font-bold text-on-surface-variant flex items-center gap-2">
+            <span class="material-symbols-outlined">filter_alt</span> عرض تعيينات فصل محدد:
+          </div>
+          <div class="w-64">
+            <!--
+              FIX: selectedClassFilter is now a plain property (not a signal).
+              Use (ngModelChange) instead of (change) for two-way binding reliability.
+            -->
+            <select [(ngModel)]="selectedClassFilter" (ngModelChange)="onClassFilterChange()"
+                    class="w-full px-4 py-2 rounded-full border border-outline-variant bg-white focus:outline-primary">
+              <option [ngValue]="null">اختر الفصل أولاً</option>
+              <option *ngFor="let c of classes()" [ngValue]="c.id">{{ c.name }}</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Assignments Table -->
+        <div class="bg-surface-container-lowest rounded-xl border border-outline-variant/50 overflow-hidden">
+
+          <!-- FIX: Loading state -->
+          <div *ngIf="isLoading()" class="flex items-center justify-center gap-3 py-12 text-on-surface-variant">
+            <span class="material-symbols-outlined animate-spin">progress_activity</span>
+            <span class="font-body-md">جارٍ تحميل التعيينات…</span>
+          </div>
+
+          <table *ngIf="!isLoading()" class="w-full text-right border-collapse">
+            <thead>
+              <tr class="bg-surface-container-low">
+                <th class="px-6 py-4 font-label-md text-label-md text-on-surface-variant">الفصل</th>
+                <th class="px-6 py-4 font-label-md text-label-md text-on-surface-variant">المادة</th>
+                <th class="px-6 py-4 font-label-md text-label-md text-on-surface-variant">المعلم المُكلّف</th>
+                <th class="px-6 py-4 font-label-md text-label-md text-on-surface-variant text-center">النصاب (حصص/أسبوع)</th>
+                <th class="px-6 py-4 font-label-md text-label-md text-on-surface-variant text-center">إجراءات</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-outline-variant/30 font-body-md text-body-md">
+
+              <ng-container *ngFor="let assignment of assignments()">
+
+                <!-- Normal view row -->
+                <tr *ngIf="editingAssignmentId() !== assignment.id" class="hover:bg-surface-container-lowest transition-colors">
+                  <td class="px-6 py-4 font-bold text-primary">
+                    {{ assignment.className || getClassName(assignment.classId) }}
+                  </td>
+                  <td class="px-6 py-4 text-on-surface-variant">
+                    {{ assignment.subjectName || getSubjectName(assignment.subjectId) }}
+                  </td>
+                  <td class="px-6 py-4">
+                    <div class="flex items-center gap-2">
+                      <span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">person</span>
+                      {{ assignment.teacherName || getTeacherName(assignment.teacherId) }}
+                    </div>
+                  </td>
+                  <td class="px-6 py-4 text-center">
+                    <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-bold">
+                      {{ assignment.weeklyPeriods }}
+                    </span>
+                  </td>
+                  <td class="px-6 py-4">
+                    <div class="flex justify-center gap-2">
+                      <!-- FIX: Edit button (new) -->
+                      <button (click)="startEdit(assignment)"
+                              class="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                              title="تعديل المعلم أو النصاب">
+                        <span class="material-symbols-outlined text-sm">edit</span>
+                      </button>
+                      <button (click)="removeAssignment(assignment.id!)"
+                              class="p-2 text-error hover:bg-error/10 rounded-lg transition-colors"
+                              title="إلغاء التعيين">
+                        <span class="material-symbols-outlined text-sm">link_off</span>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- Inline edit row -->
+                <tr *ngIf="editingAssignmentId() === assignment.id"
+                    class="bg-primary/5 border-r-4 border-primary">
+                  <td class="px-6 py-3 font-bold text-primary">
+                    {{ assignment.className || getClassName(assignment.classId) }}
+                  </td>
+                  <td class="px-6 py-3 text-on-surface-variant">
+                    {{ assignment.subjectName || getSubjectName(assignment.subjectId) }}
+                  </td>
+                  <td class="px-6 py-3">
+                    <!-- Only teacherId is editable (class & subject are immutable per backend) -->
+                    <select [(ngModel)]="editForm.teacherId"
+                            class="w-full px-3 py-1.5 rounded-lg border border-primary bg-white text-sm focus:outline-primary">
+                      <option [ngValue]="0" disabled>-- اختر المعلم --</option>
+                      <option *ngFor="let t of teachers()" [ngValue]="t.id">{{ t.fullName }}</option>
+                    </select>
+                  </td>
+                  <td class="px-6 py-3 text-center">
+                    <input type="number" min="1" [(ngModel)]="editForm.weeklyPeriods"
+                           class="w-20 mx-auto block px-3 py-1.5 rounded-lg border border-primary bg-white text-sm text-center focus:outline-primary">
+                  </td>
+                  <td class="px-6 py-3">
+                    <div class="flex justify-center gap-2">
+                      <button (click)="saveEdit(assignment.id!)"
+                              class="p-2 text-green-700 hover:bg-green-100 rounded-lg transition-colors"
+                              title="حفظ التعديل">
+                        <span class="material-symbols-outlined text-sm">check</span>
+                      </button>
+                      <button (click)="cancelEdit()"
+                              class="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-lg transition-colors"
+                              title="إلغاء">
+                        <span class="material-symbols-outlined text-sm">close</span>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+
+              </ng-container>
+
+              <!-- FIX: Empty state — flex wrapper so icon centres correctly -->
+              <tr *ngIf="assignments().length === 0">
+                <td colspan="5" class="px-6 py-12 text-center text-on-surface-variant">
+                  <div class="flex flex-col items-center gap-2">
+                    <span class="material-symbols-outlined text-4xl opacity-40">assignment_ind</span>
+                    <p class="font-body-md">
+                      {{ selectedClassFilter
+                          ? 'لا توجد تعيينات لهذا الفصل في السنة الدراسية الحالية.'
+                          : 'اختر فصلاً من القائمة أعلاه لعرض تعيينات المعلمين.' }}
+                    </p>
+                  </div>
+                </td>
+              </tr>
+
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+    </div>
+  </main>
+</div>

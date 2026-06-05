@@ -8,8 +8,13 @@ export const ADMIN_MENU: SidebarMenuItem[] = [
   { label: 'لوحة القيادة', icon: 'dashboard', route: '/admin' },
   { label: 'تحليل الأداء', icon: 'analytics', route: '/analysis-ai' },
   { label: 'الجدول الدراسي', icon: 'calendar_month', route: '/admin-schedule' },
+  { label: 'التعيينات', icon: 'assignment_ind', route: '/teacher-assignments' },
+  { label: 'إدارة الفصول', icon: 'meeting_room', route: '/class-management' },
+  { label: 'إدارة المواد', icon: 'menu_book', route: '/subject-management' },
+  { label: 'إدارة القاعات', icon: 'door_open', route: '/room-management' },
   { label: 'التقارير', icon: 'description', route: '/reports' },
   { label: 'التقارير الأكاديمية', icon: 'auto_awesome', route: '/reports-academic' },
+  { label: 'التقارير التدريبية', icon: 'model_training', route: '/reports-training' },
   { label: 'إدارة الامتحانات', icon: 'fact_check', route: '/exam-management' },
   { label: 'المكتبة الرقمية', icon: 'library_books', route: '/digital-library' },
   { label: 'المحادثات', icon: 'chat', route: '/chat' },
@@ -34,14 +39,16 @@ export const TEACHER_MENU: SidebarMenuItem[] = [
   { label: 'رصد الدرجات', icon: 'grading', route: '/grade-monitor' },
   { label: 'المكتبة', icon: 'library_books', route: '/digital-library' },
   { label: 'التقارير', icon: 'description', route: '/reports' },
+  { label: 'التقارير التدريبية', icon: 'model_training', route: '/reports-training' },
   { label: 'الإشعارات', icon: 'notifications', route: '/notifications' },
 ];
 
 export const PARENT_MENU: SidebarMenuItem[] = [
   { label: 'لوحة القيادة', icon: 'dashboard', route: '/parent' },
+  { label: 'جداول الأبناء', icon: 'calendar_month', route: '/parent-schedule' },
+  { label: 'متابعة ابني', icon: 'supervisor_account', route: '/child-progress' },
   { label: 'التقارير', icon: 'description', route: '/reports' },
   { label: 'المحادثات', icon: 'chat', route: '/chat' },
-  { label: 'متابعة ابني', icon: 'supervisor_account', route: '/child-progress' },
   { label: 'المساعد الذكي', icon: 'auto_awesome', route: '/chat-ai' },
   { label: 'الإشعارات', icon: 'notifications', route: '/notifications' },
 ];

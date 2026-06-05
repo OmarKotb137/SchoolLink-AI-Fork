@@ -1,0 +1,140 @@
+<app-sidebar [(isOpen)]="sidebarOpen" />
+<div class="main-content">
+  <app-topbar userName="ولي أمر" />
+  <main class="pt-16 min-h-screen flex flex-col bg-background p-6 gap-5">
+
+    <!-- ══════════════════════ HEADER ══════════════════════ -->
+    <div class="ps-header">
+
+      <div class="ps-header-left">
+        <div class="ps-header-icon">
+          <span class="material-symbols-outlined"
+                style="font-variation-settings:'FILL' 1;font-size:26px">family_home</span>
+        </div>
+        <div>
+          <h1 class="ps-title">جداول الأبناء</h1>
+          <p class="ps-subtitle">متابعة الجداول الأسبوعية لأبنائك المسجلين بالمدرسة</p>
+        </div>
+      </div>
+
+      <!-- Child selector — يظهر لما في أكتر من ابن -->
+      <div class="ps-child-tabs" *ngIf="schedulesData().length > 1">
+        <button *ngFor="let sched of schedulesData(); let i = index"
+                (click)="selectChild(i)"
+                class="ps-child-tab"
+                [class.ps-child-tab--active]="selectedScheduleIndex() === i">
+          <span class="ps-avatar">
+            {{ (sched.studentName || sched.className || '؟') | slice:0:1 }}
+          </span>
+          <div class="ps-tab-info">
+            <span class="ps-tab-name">{{ sched.studentName || 'ابن ' + (i + 1) }}</span>
+            <span class="ps-tab-class">{{ sched.className }}</span>
+          </div>
+        </button>
+      </div>
+
+      <!-- Single child badge — يظهر لما في ابن واحد بس -->
+      <div class="ps-single-badge" *ngIf="schedulesData().length === 1">
+        <span class="ps-avatar ps-avatar--lg">
+          {{ (schedulesData()[0].studentName || '؟') | slice:0:1 }}
+        </span>
+        <div>
+          <p class="ps-single-name">{{ schedulesData()[0].studentName }}</p>
+          <p class="ps-single-class">{{ schedulesData()[0].className }}</p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ══════════════════════ ERROR BANNER ══════════════════════ -->
+    <div *ngIf="errorMessage()" class="ps-error-banner">
+      <span class="material-symbols-outlined"
+            style="font-variation-settings:'FILL' 1;flex-shrink:0">error</span>
+      <span class="flex-1">{{ errorMessage() }}</span>
+      <button (click)="loadSchedules()" class="ps-retry-btn">
+        <span class="material-symbols-outlined" style="font-size:15px">refresh</span>
+        إعادة المحاولة
+      </button>
+    </div>
+
+    <!-- ══════════════════════ TIMETABLE CARD ══════════════════════ -->
+    <div class="ps-grid-card flex-1">
+
+      <!-- Loading overlay -->
+      <div *ngIf="isLoading()" class="ps-overlay">
+        <div class="ps-spinner-wrap">
+          <span class="material-symbols-outlined ps-spinner">progress_activity</span>
+          <p class="ps-loading-label">جاري تحميل الجدول…</p>
+        </div>
+      </div>
+
+      <!-- ─── Timetable Matrix ─── -->
+      <table *ngIf="currentSchedule()" class="ps-table">
+        <thead>
+          <tr>
+            <!-- Corner cell with diagonal divider -->
+            <th class="ps-corner">
+              <span class="ps-corner-top">اليوم</span>
+              <span class="ps-corner-btm">الحصة</span>
+            </th>
+            <th *ngFor="let p of periods" class="ps-period-th">
+              <span class="ps-period-name">{{ p.label }}</span>
+              <span class="ps-period-time">{{ p.start }}–{{ p.end }}</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let day of days" class="ps-day-row">
+
+            <td class="ps-day-td">{{ day.label }}</td>
+
+            <td *ngFor="let p of periods" class="ps-cell">
+              <ng-container *ngIf="getSlot(day.value, p.num) as slot">
+
+                <!-- استراحة -->
+                <div *ngIf="slot.isBreak; else lessonTpl" class="ps-break">
+                  <span class="material-symbols-outlined ps-break-icon"
+                        style="font-variation-settings:'FILL' 1">local_cafe</span>
+                  <span class="ps-break-label">استراحة</span>
+                </div>
+
+                <!-- حصة دراسية -->
+                <ng-template #lessonTpl>
+                  <div class="ps-lesson">
+                    <span class="ps-subject">{{ slot.subjectName }}</span>
+                    <div class="ps-meta">
+                      <span class="ps-meta-row">
+                        <span class="material-symbols-outlined ps-ico">person</span>
+                        {{ slot.teacherName }}
+                      </span>
+                      <span class="ps-meta-row ps-meta-room" *ngIf="slot.roomName">
+                        <span class="material-symbols-outlined ps-ico">door_open</span>
+                        {{ slot.roomName }}
+                      </span>
+                    </div>
+                  </div>
+                </ng-template>
+
+              </ng-container>
+            </td>
+
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- ─── Empty state ─── -->
+      <div *ngIf="!isLoading() && !errorMessage() && schedulesData().length === 0"
+           class="ps-empty">
+        <div class="ps-empty-circle">
+          <span class="material-symbols-outlined"
+                style="font-size:2.75rem;font-variation-settings:'FILL' 1">event_busy</span>
+        </div>
+        <h3 class="ps-empty-title">لا توجد جداول مسجلة</h3>
+        <p class="ps-empty-sub">
+          لم يتم العثور على جداول مفعّلة لأبنائك في السنة الدراسية الحالية
+        </p>
+      </div>
+
+    </div>
+  </main>
+</div>

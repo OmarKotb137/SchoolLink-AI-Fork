@@ -57,7 +57,8 @@ public class ClassSubjectTeacherService : IClassSubjectTeacherService
             ClassId        = request.ClassId,
             SubjectId      = request.SubjectId,
             TeacherId      = request.TeacherId,
-            AcademicYearId = request.AcademicYearId
+            AcademicYearId = request.AcademicYearId,
+            WeeklyPeriods   = request.WeeklyPeriods
         };
 
         // 7. Persist
@@ -106,6 +107,7 @@ public class ClassSubjectTeacherService : IClassSubjectTeacherService
         }
 
         assignment.TeacherId = request.TeacherId;
+        assignment.WeeklyPeriods = request.WeeklyPeriods;
         assignment.UpdatedAt = DateTime.UtcNow;
 
         _unitOfWork.ClassSubjectTeachers.Update(assignment);
@@ -187,7 +189,8 @@ public class ClassSubjectTeacherService : IClassSubjectTeacherService
                 ClassId = req.ClassId,
                 SubjectId = req.SubjectId,
                 TeacherId = req.TeacherId,
-                AcademicYearId = req.AcademicYearId
+                AcademicYearId = req.AcademicYearId,
+                WeeklyPeriods = req.WeeklyPeriods
             };
 
             await _unitOfWork.ClassSubjectTeachers.AddAsync(entity);

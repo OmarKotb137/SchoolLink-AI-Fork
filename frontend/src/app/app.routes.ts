@@ -40,6 +40,11 @@ export const routes: Routes = [
   { path: 'settings', loadComponent: () => import('./features/settings/settings').then(c => c.Settings) },
   { path: 'grade-monitor', loadComponent: () => import('./features/grade-monitor/grade-monitor').then(c => c.GradeMonitor) },
   { path: 'child-progress', loadComponent: () => import('./features/child-progress/child-progress').then(c => c.ChildProgress) },
+  { path: 'parent-schedule', loadComponent: () => import('./features/parent-schedule/parent-schedule').then(c => c.ParentSchedule) },
+  { path: 'teacher-assignments', loadComponent: () => import('./features/teacher-assignments/teacher-assignments').then(c => c.TeacherAssignments) },
+  { path: 'room-management', loadComponent: () => import('./features/room-management/room-management').then(c => c.RoomManagement) },
+  { path: 'class-management', loadComponent: () => import('./features/class-management/class-management').then(c => c.ClassManagement) },
+  { path: 'subject-management', loadComponent: () => import('./features/subject-management/subject-management').then(c => c.SubjectManagement) },
   { path: 'index', loadComponent: () => import('./features/landing/landing').then(c => c.Landing) },
 
   // Default redirect
