@@ -44,6 +44,7 @@ public interface IUnitOfWork : IDisposable, IAsyncDisposable
     IAssignmentQuestionOptionRepository    AssignmentQuestionOptions    { get; }
     IStudentAssignmentSubmissionRepository StudentAssignmentSubmissions { get; }
     IStudentAssignmentAnswerRepository     StudentAssignmentAnswers     { get; }
+    IRepository<ExamQuestionGroup>         ExamQuestionGroups           { get; }
     IExamRepository                        Exams                        { get; }
     IExamQuestionRepository                ExamQuestions                { get; }
     IExamQuestionOptionRepository          ExamQuestionOptions          { get; }

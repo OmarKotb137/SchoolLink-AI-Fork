@@ -71,7 +71,10 @@ public static class SeedData
         }
 
         if (await ctx.AcademicYears.AnyAsync())
+        {
+            await SeedUnitsAndLessons(ctx);
             return;
+        }
 
         var now = DateTime.UtcNow;
 
@@ -591,6 +594,122 @@ public static class SeedData
             });
             parentCount++;
         }
+        await ctx.SaveChangesAsync();
+
+        await SeedUnitsAndLessons(ctx);
+    }
+
+    private static async Task SeedUnitsAndLessons(AppDbContext ctx)
+    {
+        if (await ctx.Units.AnyAsync())
+            return;
+
+        var now = DateTime.UtcNow;
+        var subjects = await ctx.Subjects.ToDictionaryAsync(s => s.Code ?? s.Name, s => s);
+
+        Unit AddUnit(AppDbContext c, Subject s, string name, int order, List<Lesson>? lessons = null)
+        {
+            var u = new Unit
+            {
+                SubjectId = s.Id, Name = name, DisplayOrder = order,
+                CreatedAt = now, UpdatedAt = now
+            };
+            c.Units.Add(u);
+            if (lessons != null)
+            {
+                foreach (var l in lessons)
+                {
+                    l.Unit = u;
+                    c.Lessons.Add(l);
+                }
+            }
+            return u;
+        }
+
+        // ── الرياضيات ──
+        if (subjects.TryGetValue("MTH", out var mth))
+        {
+            var u1 = AddUnit(ctx, mth, "الوحدة الأولى: الأعداد والجبر", 1, new()
+            {
+                new() { Title = "المعادلات التربيعية", Content = "المعادلة التربيعية هي معادلة من الشكل ax² + bx + c = 0 حيث a ≠ 0.\nيمكن حلها بثلاث طرق: التحليل إلى عوامل، إكمال المربع، القانون العام.\nالقانون العام: x = (-b ± √(b²-4ac)) / 2a\nالمميز (Discriminant) = b²-4ac.", DisplayOrder = 1, CreatedAt = now, UpdatedAt = now },
+                new() { Title = "الدوال الخطية", Content = "الدالة الخطية هي دالة من الشكل f(x) = mx + b حيث m هو الميل و b هو المقطع الصادي.\nميل الخط المستقيم = (y₂-y₁)/(x₂-x₁)", DisplayOrder = 2, CreatedAt = now, UpdatedAt = now },
+            });
+            var u2 = AddUnit(ctx, mth, "الوحدة الثانية: الهندسة", 2, new()
+            {
+                new() { Title = "نظرية فيثاغورس", Content = "في المثلث القائم الزاوية، مربع طول الوتر يساوي مجموع مربعي طولي الضلعين الآخرين.\na² + b² = c²", DisplayOrder = 1, CreatedAt = now, UpdatedAt = now },
+            });
+        }
+
+        // ── العلوم ──
+        if (subjects.TryGetValue("SCI", out var sci))
+        {
+            AddUnit(ctx, sci, "الوحدة الأولى: الكيمياء", 1, new()
+            {
+                new() { Title = "المادة وخصائصها", Content = "المادة هي كل ما له كتلة ويشغل حيزاً من الفراغ.\nتوجد المادة في ثلاث حالات: صلبة، سائلة، غازية.", DisplayOrder = 1, CreatedAt = now, UpdatedAt = now },
+            });
+            AddUnit(ctx, sci, "الوحدة الثانية: الأحياء", 2, new()
+            {
+                new() { Title = "الميتوز والميوز", Content = "الميتوز هو انقسام خلوي ينتج عنه خليتان بنت تحملان نفس العدد الكروموسومي للخلية الأم (2n).\nالميوز هو انقسام اختزالي ينتج عنه أربع خلايا يحمل كل منها نصف عدد الكروموسومات (n).", DisplayOrder = 1, CreatedAt = now, UpdatedAt = now },
+            });
+        }
+
+        // ── اللغة العربية ──
+        if (subjects.TryGetValue("ARB", out var arb))
+        {
+            AddUnit(ctx, arb, "الوحدة الأولى: القراءة والنصوص", 1, new()
+            {
+                new() { Title = "نصوص أدبية", Content = "النص الأدبي هو عمل فني يهدف إلى التعبير عن المشاعر والأفكار باستخدام اللغة الجمالية.", DisplayOrder = 1, CreatedAt = now, UpdatedAt = now },
+            });
+            AddUnit(ctx, arb, "الوحدة الثانية: النحو", 2, new()
+            {
+                new() { Title = "أقسام الكلام", Content = "الكلمة في اللغة العربية تنقسم إلى ثلاثة أقسام: اسم، فعل، حرف.", DisplayOrder = 1, CreatedAt = now, UpdatedAt = now },
+            });
+        }
+
+        // ── اللغة الإنجليزية (بدون دروس) ──
+        if (subjects.TryGetValue("ENG", out var eng))
+        {
+            AddUnit(ctx, eng, "Unit 1: Greetings and Introductions", 1);
+            AddUnit(ctx, eng, "Unit 2: Daily Routines", 2);
+            AddUnit(ctx, eng, "Unit 3: Food and Drinks", 3);
+            AddUnit(ctx, eng, "Unit 4: Travel and Tourism", 4);
+        }
+
+        // ── الدراسات الاجتماعية ──
+        if (subjects.TryGetValue("SOC", out var soc))
+        {
+            AddUnit(ctx, soc, "الوحدة الأولى: الجغرافيا", 1, new()
+            {
+                new() { Title = "الموقع الجغرافي لمصر", Content = "تقع مصر في شمال شرق قارة أفريقيا، يحدها من الشمال البحر المتوسط، ومن الشرق البحر الأحمر.", DisplayOrder = 1, CreatedAt = now, UpdatedAt = now },
+            });
+            AddUnit(ctx, soc, "الوحدة الثانية: التاريخ", 2, new()
+            {
+                new() { Title = "الحضارة المصرية القديمة", Content = "تعد الحضارة المصرية القديمة واحدة من أقدم الحضارات في العالم، وتميزت ببناء الأهرامات.", DisplayOrder = 1, CreatedAt = now, UpdatedAt = now },
+            });
+        }
+
+        // ── التربية الإسلامية ──
+        if (subjects.TryGetValue("ISL", out var isl))
+        {
+            AddUnit(ctx, isl, "الوحدة الأولى: القرآن الكريم", 1, new()
+            {
+                new() { Title = "سورة الفاتحة", Content = "سورة الفاتحة هي أعظم سورة في القرآن الكريم، وهي السبع المثاني.", DisplayOrder = 1, CreatedAt = now, UpdatedAt = now },
+            });
+        }
+
+        // ── الحاسب الآلي ──
+        if (subjects.TryGetValue("CMP", out var cmp))
+        {
+            AddUnit(ctx, cmp, "الوحدة الأولى: أساسيات الحاسب", 1, new()
+            {
+                new() { Title = "مكونات الحاسب", Content = "يتكون الحاسب من مكونات مادية: وحدة المعالجة المركزية، الذاكرة، أجهزة الإدخال والإخراج.", DisplayOrder = 1, CreatedAt = now, UpdatedAt = now },
+            });
+            AddUnit(ctx, cmp, "الوحدة الثانية: البرمجة", 2, new()
+            {
+                new() { Title = "مقدمة في البرمجة", Content = "البرمجة هي عملية كتابة تعليمات للحاسب لتنفيذ مهمة محددة.", DisplayOrder = 1, CreatedAt = now, UpdatedAt = now },
+            });
+        }
+
         await ctx.SaveChangesAsync();
     }
 }

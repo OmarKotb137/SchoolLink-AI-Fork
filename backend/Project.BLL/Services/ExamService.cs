@@ -12,11 +12,19 @@ namespace Project.BLL.Services
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
+        private readonly IExamMediaService _mediaService;
+        private readonly IExamHtmlRenderer _htmlRenderer;
 
-        public ExamService(IUnitOfWork unitOfWork, IMapper mapper)
+        public ExamService(
+            IUnitOfWork unitOfWork,
+            IMapper mapper,
+            IExamMediaService mediaService,
+            IExamHtmlRenderer htmlRenderer)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
+            _mediaService = mediaService;
+            _htmlRenderer = htmlRenderer;
         }
 
         public async Task<OperationResult<List<ExamSummaryDto>>> GetAllByClassSubjectTeacherAsync(int classSubjectTeacherId)
@@ -109,9 +117,9 @@ namespace Project.BLL.Services
             return OperationResult.Success("تم نشر الامتحان بنجاح");
         }
 
-    public async Task<OperationResult> UnPublishAsync(int id)
-    {
-        var exam = await _unitOfWork.Exams.GetByIdAsync(id);
+        public async Task<OperationResult> UnPublishAsync(int id)
+        {
+            var exam = await _unitOfWork.Exams.GetByIdAsync(id);
 
             if (exam == null || exam.IsDeleted)
                 return OperationResult.Failure("الامتحان غير موجود");
@@ -119,44 +127,162 @@ namespace Project.BLL.Services
             if (!exam.IsPublished)
                 return OperationResult.Failure("الامتحان غير منشور");
 
-        exam.IsPublished = false;
-        exam.UpdatedAt = DateTime.UtcNow;
+            exam.IsPublished = false;
+            exam.UpdatedAt = DateTime.UtcNow;
 
-        _unitOfWork.Exams.Update(exam);
-        await _unitOfWork.SaveChangesAsync(CancellationToken.None);
+            _unitOfWork.Exams.Update(exam);
+            await _unitOfWork.SaveChangesAsync(CancellationToken.None);
 
-        return OperationResult.Success("تم إلغاء نشر الامتحان بنجاح");
+            return OperationResult.Success("تم إلغاء نشر الامتحان بنجاح");
+        }
+
+        public async Task<OperationResult<List<ExamSummaryDto>>> GetExamsByStudentAsync(int enrollmentId)
+        {
+            var enrollment = await _unitOfWork.StudentEnrollments.GetByIdAsync(enrollmentId);
+            if (enrollment == null || enrollment.IsDeleted)
+                return OperationResult<List<ExamSummaryDto>>.Failure("التسجيل غير موجود", 404);
+
+            var csts = await _unitOfWork.ClassSubjectTeachers
+                .GetByClassAndYearAsync(enrollment.ClassId, enrollment.AcademicYearId);
+
+            var cstIds = csts.Select(c => c.Id).ToList();
+            if (cstIds.Count == 0)
+                return OperationResult<List<ExamSummaryDto>>.Success(new List<ExamSummaryDto>());
+
+            var allExams = await _unitOfWork.Exams
+                .FindAsync(e => cstIds.Contains(e.ClassSubjectTeacherId) && !e.IsDeleted);
+
+            var dtos = _mapper.Map<List<ExamSummaryDto>>(allExams);
+            return OperationResult<List<ExamSummaryDto>>.Success(dtos, "تم جلب الامتحانات بنجاح");
+        }
+
+        public async Task<OperationResult<List<ExamSummaryDto>>> GetUpcomingExamsAsync(int classId, int academicYearId)
+        {
+            var classEntity = await _unitOfWork.Classes.GetByIdAsync(classId);
+            if (classEntity == null || classEntity.IsDeleted)
+                return OperationResult<List<ExamSummaryDto>>.Failure("الفصل غير موجود", 404);
+
+            var exams = await _unitOfWork.Exams.GetUpcomingByClassAsync(classId, 7);
+            var dtos = _mapper.Map<List<ExamSummaryDto>>(exams.Where(e => !e.IsDeleted));
+            return OperationResult<List<ExamSummaryDto>>.Success(dtos, "تم جلب الامتحانات القادمة بنجاح");
+        }
+
+        public async Task<OperationResult<GetExamDto>> CreateFromAiAsync(CreateExamFromAiDto dto, CancellationToken ct = default)
+        {
+            var classSubjectTeacher = await _unitOfWork.ClassSubjectTeachers
+                .GetByIdAsync(dto.ClassSubjectTeacherId);
+
+            if (classSubjectTeacher == null || classSubjectTeacher.IsDeleted)
+                return OperationResult<GetExamDto>.Failure("المادة غير موجودة", 404);
+
+            var exam = new Exam
+            {
+                ClassSubjectTeacherId = dto.ClassSubjectTeacherId,
+                Title = dto.Title,
+                DurationMinutes = dto.DurationMinutes,
+                TotalScore = dto.TotalScore,
+                Category = dto.Category,
+                IsAIGenerated = true,
+                IsPublished = false
+            };
+
+            await _unitOfWork.Exams.AddAsync(exam);
+            await _unitOfWork.SaveChangesAsync(ct);
+
+            int order = 1;
+
+            foreach (var groupDto in dto.Groups)
+            {
+                var group = new ExamQuestionGroup
+                {
+                    ExamId = exam.Id,
+                    DisplayType = groupDto.DisplayType,
+                    ContentTitle = groupDto.ContentTitle,
+                    ContentText = groupDto.ContentText,
+                    ImagePrompt = groupDto.ImagePrompt,
+                    DisplayOrder = groupDto.DisplayOrder > 0 ? groupDto.DisplayOrder : order++
+                };
+
+                await _unitOfWork.ExamQuestionGroups.AddAsync(group);
+                await _unitOfWork.SaveChangesAsync(ct);
+
+                foreach (var qDto in groupDto.Questions)
+                {
+                    var question = MapQuestion(qDto, exam.Id, group.Id, groupDto.DisplayType);
+                    await _unitOfWork.ExamQuestions.AddAsync(question);
+                }
+
+                if (!string.IsNullOrWhiteSpace(group.ImagePrompt))
+                {
+                    try
+                    {
+                        group.ImageUrl = await _mediaService.GenerateImageAsync(group.ImagePrompt, group.Id, ct);
+                    }
+                    catch (Exception ex)
+                    {
+                        group.ImagePrompt = $"[فشل توليد الصورة: {ex.Message}]";
+                    }
+
+                    if (groupDto.DisplayType == TemplateContentType.Diagram && !string.IsNullOrWhiteSpace(group.ContentText))
+                    {
+                        try
+                        {
+                            group.ContentText = _mediaService.SanitizeSvg(group.ContentText);
+                        }
+                        catch (Exception ex)
+                        {
+                            group.ContentText = $"[SVG غير صالح: {ex.Message}]";
+                        }
+                    }
+
+                    _unitOfWork.ExamQuestionGroups.Update(group);
+                }
+            }
+
+            foreach (var qDto in dto.StandaloneQuestions)
+            {
+                var question = MapQuestion(qDto, exam.Id, null, TemplateContentType.None);
+                await _unitOfWork.ExamQuestions.AddAsync(question);
+            }
+
+            await _unitOfWork.SaveChangesAsync(ct);
+
+            var resultExam = await _unitOfWork.Exams.GetWithQuestionsAsync(exam.Id, ct);
+            var resultDto = _mapper.Map<GetExamDto>(resultExam);
+            return OperationResult<GetExamDto>.Success(resultDto, "تم إنشاء الامتحان بواسطة AI بنجاح");
+        }
+
+        public async Task<OperationResult<string>> RenderHtmlAsync(int examId, CancellationToken ct = default)
+        {
+            var exam = await _unitOfWork.Exams.GetByIdAsync(examId);
+            if (exam == null || exam.IsDeleted)
+                return OperationResult<string>.Failure("الامتحان غير موجود", 404);
+
+            var html = await _htmlRenderer.RenderExamAsync(examId, ct);
+            return OperationResult<string>.Success(html, "تم تجهيز HTML للطباعة");
+        }
+
+        private static ExamQuestion MapQuestion(AiQuestionDto dto, int examId, int? groupId, TemplateContentType displayType)
+        {
+            var question = new ExamQuestion
+            {
+                ExamId = examId,
+                GroupId = groupId,
+                DisplayType = displayType,
+                QuestionText = dto.QuestionText,
+                QuestionType = dto.QuestionType,
+                CorrectAnswer = dto.CorrectAnswer,
+                Points = dto.Points,
+                DisplayOrder = dto.DisplayOrder,
+                Options = dto.Options?.Select(o => new ExamQuestionOption
+                {
+                    OptionText = o.Text,
+                    IsCorrect = o.IsCorrect,
+                    DisplayOrder = o.DisplayOrder
+                }).ToList() ?? new List<ExamQuestionOption>()
+            };
+
+            return question;
+        }
     }
-
-    public async Task<OperationResult<List<ExamSummaryDto>>> GetExamsByStudentAsync(int enrollmentId)
-    {
-        var enrollment = await _unitOfWork.StudentEnrollments.GetByIdAsync(enrollmentId);
-        if (enrollment == null || enrollment.IsDeleted)
-            return OperationResult<List<ExamSummaryDto>>.Failure("التسجيل غير موجود", 404);
-
-        var csts = await _unitOfWork.ClassSubjectTeachers
-            .GetByClassAndYearAsync(enrollment.ClassId, enrollment.AcademicYearId);
-
-        var cstIds = csts.Select(c => c.Id).ToList();
-        if (cstIds.Count == 0)
-            return OperationResult<List<ExamSummaryDto>>.Success(new List<ExamSummaryDto>());
-
-        var allExams = await _unitOfWork.Exams
-            .FindAsync(e => cstIds.Contains(e.ClassSubjectTeacherId) && !e.IsDeleted);
-
-        var dtos = _mapper.Map<List<ExamSummaryDto>>(allExams);
-        return OperationResult<List<ExamSummaryDto>>.Success(dtos, "تم جلب الامتحانات بنجاح");
-    }
-
-    public async Task<OperationResult<List<ExamSummaryDto>>> GetUpcomingExamsAsync(int classId, int academicYearId)
-    {
-        var classEntity = await _unitOfWork.Classes.GetByIdAsync(classId);
-        if (classEntity == null || classEntity.IsDeleted)
-            return OperationResult<List<ExamSummaryDto>>.Failure("الفصل غير موجود", 404);
-
-        var exams = await _unitOfWork.Exams.GetUpcomingByClassAsync(classId, 7);
-        var dtos = _mapper.Map<List<ExamSummaryDto>>(exams.Where(e => !e.IsDeleted));
-        return OperationResult<List<ExamSummaryDto>>.Success(dtos, "تم جلب الامتحانات القادمة بنجاح");
-    }
-}
 }
