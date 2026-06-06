@@ -1,10 +1,34 @@
 <app-sidebar [(isOpen)]="sidebarOpen" />
 <div class="main-content">
-  <app-topbar userName="أحمد" />
+  <app-topbar [userName]="displayUserName" />
   <main class="pt-16 h-screen flex flex-col bg-background">
-    <div class="flex-1 flex overflow-hidden">
-      <div class="flex-1 p-stack-lg overflow-y-auto custom-scrollbar">
+    <div class="flex-1 flex overflow-hidden settings-shell">
+      <div class="flex-1 p-stack-lg overflow-y-auto custom-scrollbar settings-content">
         <div class="max-w-5xl mx-auto space-y-stack-lg pb-10">
+
+          <section class="settings-hero">
+            <div class="settings-hero-copy">
+              <span class="settings-eyebrow">System Settings</span>
+              <h1 class="font-headline-lg text-headline-lg text-on-surface">إعدادات المنظومة الأكاديمية</h1>
+              <p class="font-body-md text-body-md text-on-surface-variant settings-hero-text">
+                مساحة منظمة لإدارة السنوات الدراسية والمراحل بشكل أوضح، مع فصل أفضل بين أقسام الإعدادات والمحتوى التنفيذي.
+              </p>
+            </div>
+
+            <div class="settings-hero-stats">
+              <div class="settings-stat-card">
+                <span class="settings-stat-label">السنوات الدراسية</span>
+                <strong class="settings-stat-value">{{ academicYears().length }}</strong>
+                <span class="settings-stat-hint">تشمل الحالية والسنوات السابقة</span>
+              </div>
+
+              <div class="settings-stat-card accent">
+                <span class="settings-stat-label">المراحل والصفوف</span>
+                <strong class="settings-stat-value">{{ gradeLevels().length }}</strong>
+                <span class="settings-stat-hint">قابلة للإضافة والتعديل من نفس الشاشة</span>
+              </div>
+            </div>
+          </section>
 
           <!-- Global Success Toast -->
           <div *ngIf="successMessage()"
@@ -15,7 +39,7 @@
 
           <!-- Permissions Tab -->
           <ng-container *ngIf="activeTab() === 'permissions'">
-            <div class="flex justify-between items-end">
+            <div class="flex justify-between items-end settings-section-head">
               <div>
                 <h2 class="font-headline-lg text-headline-lg text-on-surface mb-2">الصلاحيات وأدوار المستخدمين</h2>
                 <p class="font-body-md text-body-md text-on-surface-variant">قم بإدارة مستويات الوصول والتحكم في الميزات لكل فئة من مستخدمي النظام.</p>
@@ -26,7 +50,7 @@
               </div>
             </div>
 
-            <div class="bg-surface-container-lowest rounded-xl border border-outline-variant/50 overflow-x-auto">
+            <div class="bg-surface-container-lowest rounded-xl border border-outline-variant/50 overflow-x-auto settings-card">
               <table class="w-full text-right border-collapse">
                 <thead>
                   <tr class="bg-surface-container-low">
@@ -50,7 +74,7 @@
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-gutter">
-              <div class="glass-ai p-6 rounded-2xl relative overflow-hidden group">
+              <div class="glass-ai p-6 rounded-2xl relative overflow-hidden group settings-card">
                 <div class="flex justify-between items-start relative z-10">
                   <div class="space-y-2">
                     <div class="flex items-center gap-2">
@@ -70,7 +94,7 @@
 
           <!-- Academic Settings Tab -->
           <ng-container *ngIf="activeTab() === 'academic'">
-            <div class="flex justify-between items-end mb-6">
+            <div class="flex justify-between items-end mb-6 settings-section-head">
               <div>
                 <h2 class="font-headline-lg text-headline-lg text-on-surface mb-2">إعدادات النظام الأكاديمي</h2>
                 <p class="font-body-md text-body-md text-on-surface-variant">إدارة السنوات والمراحل الدراسية الخاصة بالمدرسة.</p>
@@ -80,7 +104,7 @@
             <!-- ═══════════════════════════════════════════════════════════════ -->
             <!--  Academic Years Section                                        -->
             <!-- ═══════════════════════════════════════════════════════════════ -->
-            <div class="bg-surface-container-lowest rounded-2xl p-6 border border-outline-variant/30 mb-8">
+            <div class="bg-surface-container-lowest rounded-2xl p-6 border border-outline-variant/30 mb-8 settings-card">
               <div class="flex justify-between items-center mb-6">
                 <h3 class="font-headline-md text-headline-md text-primary flex items-center gap-2">
                   <span class="material-symbols-outlined">calendar_today</span> السنوات الدراسية
@@ -162,7 +186,7 @@
             <!-- ═══════════════════════════════════════════════════════════════ -->
             <!--  Grade Levels Section                                          -->
             <!-- ═══════════════════════════════════════════════════════════════ -->
-            <div class="bg-surface-container-lowest rounded-2xl p-6 border border-outline-variant/30">
+            <div class="bg-surface-container-lowest rounded-2xl p-6 border border-outline-variant/30 settings-card">
               <div class="flex justify-between items-center mb-6">
                 <h3 class="font-headline-md text-headline-md text-primary flex items-center gap-2">
                   <span class="material-symbols-outlined">layers</span> المراحل والصفوف الدراسية
@@ -179,7 +203,7 @@
                 </button>
               </div>
 
-              <!-- Add Grade Form -->
+              <!-- Add / Edit Grade Form -->
               <div class="flex gap-4 mb-6 bg-surface-container-low p-4 rounded-xl items-end flex-wrap">
                 <div class="flex-1 min-w-[180px]">
                   <label class="block font-label-sm text-on-surface-variant mb-1">اسم الصف (مثال: الصف الأول الإعدادي)</label>
@@ -199,9 +223,14 @@
                   <input type="number" [(ngModel)]="newGrade.levelOrder" min="1"
                          class="w-full px-4 py-2 rounded-lg border border-outline-variant bg-white focus:outline-primary">
                 </div>
+                <button *ngIf="editingGradeId()" (click)="cancelGradeEdit()"
+                        class="px-4 py-2.5 rounded-lg border border-outline-variant text-on-surface hover:bg-surface-container transition-colors flex items-center gap-2">
+                  إلغاء
+                </button>
                 <button (click)="addGradeLevel()"
                         class="px-6 py-2.5 rounded-lg bg-primary text-white font-label-md hover:bg-primary/90 flex items-center gap-2">
-                  <span class="material-symbols-outlined">add</span> إضافة
+                  <span class="material-symbols-outlined">{{ editingGradeId() ? 'save' : 'add' }}</span>
+                  {{ editingGradeId() ? 'تحديث المرحلة' : 'إضافة' }}
                 </button>
               </div>
 
@@ -218,10 +247,18 @@
                       <span *ngIf="grade.stage" class="text-xs text-on-surface-variant">{{ grade.stage }}</span>
                     </div>
                   </div>
-                  <button (click)="deleteGradeLevel(grade.id)"
-                          class="p-2 rounded-lg text-error hover:bg-error/5">
-                    <span class="material-symbols-outlined text-sm">delete</span>
-                  </button>
+                  <div class="flex items-center gap-1">
+                    <button (click)="editGradeLevel(grade)"
+                            class="p-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors"
+                            title="تعديل">
+                      <span class="material-symbols-outlined text-sm">edit</span>
+                    </button>
+                    <button (click)="deleteGradeLevel(grade.id)"
+                            class="p-2 rounded-lg text-error hover:bg-error/5"
+                            title="حذف">
+                      <span class="material-symbols-outlined text-sm">delete</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -232,7 +269,7 @@
       </div>
 
       <!-- Right Sidebar Navigation -->
-      <div class="w-72 bg-surface-container-low border-r border-outline-variant/30 py-stack-lg overflow-y-auto custom-scrollbar">
+      <div class="w-72 bg-surface-container-low border-r border-outline-variant/30 py-stack-lg overflow-y-auto custom-scrollbar settings-side-nav">
         <div class="px-6 mb-6">
           <h3 class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">أقسام الإعدادات</h3>
         </div>

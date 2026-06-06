@@ -1,134 +1,184 @@
 <app-sidebar [(isOpen)]="sidebarOpen" />
 <div class="main-content">
-  <app-topbar userName="أحمد" />
+  <app-topbar [userName]="displayUserName" />
   <main class="pt-16 h-screen flex flex-col bg-background">
     <div class="flex-1 p-stack-lg overflow-y-auto custom-scrollbar">
-      <div class="max-w-7xl mx-auto space-y-stack-lg pb-10">
+      <div class="max-w-7xl mx-auto space-y-stack-lg pb-10 class-page-shell">
 
-        <!-- Page Header -->
-        <div class="flex justify-between items-end">
-          <div>
-            <h2 class="font-headline-lg text-headline-lg text-on-surface mb-2">إدارة الفصول الدراسية</h2>
-            <p class="font-body-md text-body-md text-on-surface-variant">تحكم كامل بالفصول: إضافة، تعديل، وربطها بالمراحل والسنوات الدراسية.</p>
+        <section class="management-hero">
+          <div class="hero-copy">
+            <span class="hero-eyebrow">Class Management</span>
+            <h2 class="font-headline-lg text-headline-lg text-on-surface hero-title">إدارة الفصول الدراسية</h2>
+            <p class="font-body-md text-body-md text-on-surface-variant hero-description">
+              واجهة أكثر ترتيبًا لإدارة الفصول وربطها بالمراحل والسنوات الدراسية مع فلترة أسرع وقراءة أوضح للقائمة.
+            </p>
+          </div>
+
+          <div class="hero-stats">
+            <div class="hero-stat-card">
+              <span class="hero-stat-label">الفصول المعروضة</span>
+              <strong class="hero-stat-value">{{ classes().length }}</strong>
+              <span class="hero-stat-hint">القائمة تتأثر بالفلاتر الحالية</span>
+            </div>
+
+            <div class="hero-stat-card accent">
+              <span class="hero-stat-label">السنة المختارة</span>
+              <strong class="hero-stat-value compact">
+                {{ selectedYearFilter ? 'تصفية حسب سنة' : 'كل السنوات' }}
+              </strong>
+              <span class="hero-stat-hint">{{ editingClassId() ? 'يوجد فصل قيد التعديل' : 'يمكنك إضافة فصل جديد الآن' }}</span>
+            </div>
+          </div>
+        </section>
+
+        <div class="feedback-stack">
+          <div *ngIf="errorMessage()" class="feedback-banner error">
+            <span class="material-symbols-outlined text-base">error</span>
+            <span class="font-body-md">{{ errorMessage() }}</span>
+          </div>
+          <div *ngIf="successMessage()" class="feedback-banner success">
+            <span class="material-symbols-outlined text-base">check_circle</span>
+            <span class="font-body-md">{{ successMessage() }}</span>
           </div>
         </div>
 
-        <!-- Error / Success banners -->
-        <div *ngIf="errorMessage()" class="bg-error/10 border border-error/40 text-error rounded-xl px-4 py-3 flex items-center gap-2">
-          <span class="material-symbols-outlined text-base">error</span>
-          <span class="font-body-md">{{ errorMessage() }}</span>
-        </div>
-        <div *ngIf="successMessage()" class="bg-green-50 border border-green-400 text-green-700 rounded-xl px-4 py-3 flex items-center gap-2">
-          <span class="material-symbols-outlined text-base">check_circle</span>
-          <span class="font-body-md">{{ successMessage() }}</span>
-        </div>
+        <div class="management-grid">
+          <section class="editor-card" [class.editor-card-active]="editingClassId()">
+            <div class="section-heading">
+              <div>
+                <h3 class="font-headline-md text-headline-md text-primary flex items-center gap-2">
+                  <span class="material-symbols-outlined">{{ editingClassId() ? 'edit' : 'school' }}</span>
+                  {{ editingClassId() ? 'تعديل بيانات الفصل' : 'إضافة فصل جديد' }}
+                </h3>
+                <p class="text-sm text-on-surface-variant mt-1">
+                  استخدم اسمًا واضحًا للفصل وحدد المرحلة والسنة لضمان صحة الربط مع الجداول والطلاب.
+                </p>
+              </div>
 
-        <!-- Add/Edit Class Form -->
-        <div class="bg-surface-container-lowest rounded-2xl p-6 border border-outline-variant/30 transition-all" [class.border-primary]="editingClassId()">
-          <h3 class="font-headline-md text-headline-md text-primary mb-4 flex items-center gap-2">
-            <span class="material-symbols-outlined">{{ editingClassId() ? 'edit' : 'meeting_room' }}</span>
-            {{ editingClassId() ? 'تعديل بيانات الفصل: ' + newClass.name : 'إضافة فصل جديد' }}
-          </h3>
-          <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-            <div>
-              <label class="block font-label-sm text-on-surface-variant mb-1">اسم الفصل (مثال: 1/أ)</label>
-              <input type="text" [(ngModel)]="newClass.name"
-                class="w-full px-4 py-2 rounded-lg border border-outline-variant bg-white focus:outline-primary">
+              <span class="editor-chip">
+                {{ editingClassId() ? (newClass.name || 'فصل قيد التعديل') : 'إنشاء فصل' }}
+              </span>
             </div>
-            <div>
-              <label class="block font-label-sm text-on-surface-variant mb-1">المرحلة الدراسية</label>
-              <select [(ngModel)]="newClass.gradeLevelId"
-                class="w-full px-4 py-2 rounded-lg border border-outline-variant bg-white focus:outline-primary">
-                <option [ngValue]="0">-- اختر المرحلة --</option>
-                <option *ngFor="let g of gradeLevels()" [ngValue]="g.id">{{ g.name }}</option>
-              </select>
+
+            <div class="form-grid">
+              <div>
+                <label class="field-label">اسم الفصل</label>
+                <input
+                  type="text"
+                  [(ngModel)]="newClass.name"
+                  class="field-input"
+                  placeholder="مثال: 1/أ">
+              </div>
+
+              <div>
+                <label class="field-label">المرحلة الدراسية</label>
+                <select [(ngModel)]="newClass.gradeLevelId" class="field-input">
+                  <option [ngValue]="0">-- اختر المرحلة --</option>
+                  <option *ngFor="let g of gradeLevels()" [ngValue]="g.id">{{ g.name }}</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="field-label">السنة الدراسية</label>
+                <select [(ngModel)]="newClass.academicYearId" class="field-input">
+                  <option [ngValue]="0">-- اختر السنة --</option>
+                  <option *ngFor="let y of academicYears()" [ngValue]="y.id">
+                    {{ y.name }} {{ y.isCurrent ? '(الحالية)' : '' }}
+                  </option>
+                </select>
+              </div>
             </div>
-            <div>
-              <label class="block font-label-sm text-on-surface-variant mb-1">السنة الدراسية</label>
-              <select [(ngModel)]="newClass.academicYearId"
-                class="w-full px-4 py-2 rounded-lg border border-outline-variant bg-white focus:outline-primary">
-                <option [ngValue]="0">-- اختر السنة --</option>
-                <option *ngFor="let y of academicYears()" [ngValue]="y.id">
-                  {{ y.name }} {{ y.isCurrent ? '(الحالية)' : '' }}
-                </option>
-              </select>
-            </div>
-            <div class="flex gap-2">
-              <button *ngIf="editingClassId()" (click)="cancelEdit()"
-                class="px-4 py-2.5 rounded-lg border border-outline-variant text-on-surface hover:bg-surface-container transition-colors flex justify-center items-center">
+
+            <div class="editor-actions">
+              <button *ngIf="editingClassId()" (click)="cancelEdit()" class="secondary-btn">
                 إلغاء
               </button>
-              <button (click)="saveClass()"
-                class="flex-1 px-6 py-2.5 rounded-lg bg-primary text-white font-label-md hover:bg-primary/90 flex justify-center items-center gap-2">
+              <button (click)="saveClass()" class="primary-btn">
                 <span class="material-symbols-outlined">save</span>
-                {{ editingClassId() ? 'تحديث' : 'حفظ' }}
+                {{ editingClassId() ? 'حفظ التحديث' : 'إضافة الفصل' }}
               </button>
             </div>
-          </div>
-        </div>
+          </section>
 
-        <!-- FIX #1: الـ selects دلوقتي بيبايندوا على plain properties مش signals -->
-        <div class="flex gap-4 items-center bg-surface-container-low p-4 rounded-xl">
-          <div class="font-bold text-on-surface-variant flex items-center gap-2">
-            <span class="material-symbols-outlined">filter_alt</span> فلترة:
-          </div>
-          <div class="w-64">
-            <select [(ngModel)]="selectedGradeFilter" (change)="onFilterChange()"
-              class="w-full px-4 py-2 rounded-full border border-outline-variant bg-white focus:outline-primary">
-              <option [ngValue]="null">كل المراحل الدراسية</option>
-              <option *ngFor="let g of gradeLevels()" [ngValue]="g.id">{{ g.name }}</option>
-            </select>
-          </div>
-          <div class="w-64">
-            <select [(ngModel)]="selectedYearFilter" (change)="onFilterChange()"
-              class="w-full px-4 py-2 rounded-full border border-outline-variant bg-white focus:outline-primary">
-              <option [ngValue]="null">كل السنوات الدراسية</option>
-              <option *ngFor="let y of academicYears()" [ngValue]="y.id">{{ y.name }}</option>
-            </select>
-          </div>
-        </div>
+          <section class="data-card">
+            <div class="section-heading">
+              <div>
+                <h3 class="font-headline-md text-headline-md text-primary flex items-center gap-2">
+                  <span class="material-symbols-outlined">dataset</span>
+                  قائمة الفصول
+                </h3>
+                <p class="text-sm text-on-surface-variant mt-1">
+                  فلترة مباشرة حسب المرحلة أو السنة ثم إدارة الفصول من نفس الجدول.
+                </p>
+              </div>
 
-        <!-- Classes List -->
-        <div class="bg-surface-container-lowest rounded-xl border border-outline-variant/50 overflow-hidden">
-          <table class="w-full text-right border-collapse">
-            <thead>
-              <tr class="bg-surface-container-low">
-                <th class="px-6 py-4 font-label-md text-label-md text-on-surface-variant">اسم الفصل</th>
-                <th class="px-6 py-4 font-label-md text-label-md text-on-surface-variant">المرحلة الدراسية</th>
-                <th class="px-6 py-4 font-label-md text-label-md text-on-surface-variant">السنة الدراسية</th>
-                <th class="px-6 py-4 font-label-md text-label-md text-on-surface-variant text-center">إجراءات</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-outline-variant/30 font-body-md text-body-md">
-              <tr *ngFor="let cls of classes()" class="hover:bg-surface-container-lowest transition-colors">
-                <td class="px-6 py-4 font-bold text-primary">{{ cls.name }}</td>
-                <td class="px-6 py-4">
-                  <span class="px-3 py-1 rounded-full text-xs font-bold bg-primary/10 text-primary">
-                    {{ cls.gradeLevelName || 'غير محدد' }}
-                  </span>
-                </td>
-                <td class="px-6 py-4 text-on-surface-variant">{{ cls.academicYearName || cls.academicYearId }}</td>
-                <td class="px-6 py-4 flex justify-center gap-2">
-                  <button (click)="editClass(cls)"
-                    class="p-2 text-on-surface-variant hover:bg-surface-container hover:text-primary rounded-lg transition-colors"
-                    title="تعديل">
-                    <span class="material-symbols-outlined text-sm">edit</span>
-                  </button>
-                  <button (click)="deleteClass(cls.id)"
-                    class="p-2 text-error hover:bg-error/10 rounded-lg transition-colors"
-                    title="حذف">
-                    <span class="material-symbols-outlined text-sm">delete</span>
-                  </button>
-                </td>
-              </tr>
-              <tr *ngIf="classes().length === 0">
-                <td colspan="4" class="px-6 py-10 text-center text-on-surface-variant">
-                  <span class="material-symbols-outlined text-4xl mb-2 opacity-50">meeting_room</span>
-                  <p>لا توجد فصول دراسية مطابقة. قم بإضافة فصول جديدة.</p>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+              <span class="data-chip">{{ selectedGradeFilter || selectedYearFilter ? 'عرض مفلتر' : 'عرض شامل' }}</span>
+            </div>
+
+            <div class="filters-panel">
+              <div class="filter-field">
+                <label class="field-label">المرحلة</label>
+                <select [(ngModel)]="selectedGradeFilter" (change)="onFilterChange()" class="field-input filter-input">
+                  <option [ngValue]="null">كل المراحل الدراسية</option>
+                  <option *ngFor="let g of gradeLevels()" [ngValue]="g.id">{{ g.name }}</option>
+                </select>
+              </div>
+
+              <div class="filter-field">
+                <label class="field-label">السنة</label>
+                <select [(ngModel)]="selectedYearFilter" (change)="onFilterChange()" class="field-input filter-input">
+                  <option [ngValue]="null">كل السنوات الدراسية</option>
+                  <option *ngFor="let y of academicYears()" [ngValue]="y.id">{{ y.name }}</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="table-shell">
+              <table class="management-table">
+                <thead>
+                  <tr>
+                    <th>اسم الفصل</th>
+                    <th>المرحلة الدراسية</th>
+                    <th>السنة الدراسية</th>
+                    <th class="text-center">إجراءات</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  <tr *ngFor="let cls of classes()">
+                    <td>
+                      <div class="item-title">{{ cls.name }}</div>
+                    </td>
+                    <td>
+                      <span class="soft-badge">{{ cls.gradeLevelName || 'غير محدد' }}</span>
+                    </td>
+                    <td>
+                      <span class="muted-value">{{ cls.academicYearName || cls.academicYearId }}</span>
+                    </td>
+                    <td>
+                      <div class="table-actions">
+                        <button (click)="editClass(cls)" class="icon-btn primary" title="تعديل">
+                          <span class="material-symbols-outlined text-sm">edit</span>
+                        </button>
+                        <button (click)="deleteClass(cls.id)" class="icon-btn danger" title="حذف">
+                          <span class="material-symbols-outlined text-sm">delete</span>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+
+                  <tr *ngIf="classes().length === 0">
+                    <td colspan="4" class="empty-cell">
+                      <div class="empty-state">
+                        <span class="material-symbols-outlined text-4xl opacity-50">meeting_room</span>
+                        <p>لا توجد فصول دراسية مطابقة. قم بإضافة فصول جديدة.</p>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
         </div>
 
       </div>

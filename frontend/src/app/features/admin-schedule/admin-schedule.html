@@ -1,61 +1,74 @@
 <app-sidebar [(isOpen)]="sidebarOpen" />
 <div class="main-content relative">
-  <app-topbar userName="أحمد" />
+  <app-topbar [userName]="displayUserName" />
   <main class="pt-16 h-screen flex flex-col bg-background">
-    <div class="flex-1 flex overflow-hidden">
+    <div class="flex-1 flex min-h-0 overflow-hidden">
 
-      <!-- ══ Right Sidebar — Assignment Bank ══════════════════════════════════ -->
-      <div class="w-80 bg-surface-container-lowest border-l border-outline-variant/30 flex flex-col">
-        <div class="p-6 border-b border-outline-variant/30">
-          <h2 class="font-headline-md text-headline-md text-on-surface mb-2">بنك الحصص</h2>
-          <p class="font-body-sm text-body-sm text-on-surface-variant">التعيينات المتاحة للفصل المختار والمتبقي منها لتوزيعه في الجدول.</p>
+      <!-- Mobile backdrop for assignment bank -->
+      <div *ngIf="isAssignmentBankVisible() && !scheduleEditorOpen()"
+           (click)="toggleAssignmentBank()"
+           class="fixed inset-0 bg-black/40 z-30 lg:hidden"
+           aria-hidden="true"></div>
+
+      <!-- ══ Right Sidebar — Assignment Bank (responsive, toggleable) ══════════════════════════════════ -->
+      <div *ngIf="isAssignmentBankVisible() && !scheduleEditorOpen()"
+           class="fixed inset-y-0 right-0 z-40 w-72 max-w-[85vw] bg-surface-container-lowest border-l border-outline-variant/30 flex flex-col shadow-xl
+                  lg:static lg:z-auto lg:w-80 lg:max-w-none lg:shadow-none lg:shrink-0">
+        <div class="p-6 border-b border-outline-variant/30 flex items-start justify-between gap-3">
+          <div>
+            <h2 class="font-headline-md text-headline-md text-on-surface mb-2">بنك الحصص</h2>
+            <p class="font-body-sm text-body-sm text-on-surface-variant">التعيينات المتاحة للفصل المختار والمتبقي منها لتوزيعه في الجدول.</p>
+          </div>
+          <button (click)="toggleAssignmentBank()" class="shrink-0 p-1 rounded-lg text-on-surface-variant hover:bg-surface-container" aria-label="إغلاق بنك الحصص">
+            <span class="material-symbols-outlined">close</span>
+          </button>
         </div>
 
-        <div class="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4">
-
-          <!-- FIX: flex wrapper so icon centres correctly -->
-          <div *ngIf="!selectedClassId" class="flex flex-col items-center justify-center mt-10 gap-2 text-on-surface-variant text-center">
-            <span class="material-symbols-outlined text-4xl opacity-50">info</span>
-            <p class="font-body-sm">اختر فصلاً دراسياً لعرض تعييناته هنا.</p>
-          </div>
-
-          <div *ngFor="let assign of assignments()"
-               class="p-4 rounded-xl border transition-colors bg-white hover:border-primary/50 relative overflow-hidden group">
-            <div class="flex justify-between items-start mb-2 relative z-10">
-              <!-- FIX: use DTO subjectName first, fallback to local lookup -->
-              <span class="font-bold text-primary">{{ assign.subjectName || getSubjectName(assign.subjectId) }}</span>
-              <span class="inline-flex items-center justify-center w-6 h-6 rounded-full font-bold text-xs"
-                    [ngClass]="getRemainingPeriods(assign) > 0 ? 'bg-error/10 text-error' : 'bg-secondary/10 text-secondary'">
-                {{ getRemainingPeriods(assign) }}
-              </span>
-            </div>
-            <div class="text-sm text-on-surface-variant flex items-center gap-2 relative z-10">
-              <span class="material-symbols-outlined text-sm">person</span>
-              <!-- FIX: use DTO teacherName first, fallback to local lookup -->
-              {{ assign.teacherName || getTeacherName(assign.teacherId) }}
-            </div>
-            <!-- Progress bar -->
-            <div class="absolute bottom-0 left-0 h-1 bg-primary/20 w-full">
-              <div class="h-full bg-primary transition-all"
-                   [style.width]="((assign.weeklyPeriods - getRemainingPeriods(assign)) / assign.weeklyPeriods) * 100 + '%'">
-              </div>
-            </div>
-          </div>
-        </div>
+        <ng-container *ngTemplateOutlet="assignmentBankBody"></ng-container>
       </div>
 
       <!-- ══ Main Schedule Area ═══════════════════════════════════════════════ -->
-      <div class="flex-1 flex flex-col p-6 overflow-hidden">
+      <div class="flex-1 flex flex-col min-h-0 min-w-0 p-4 md:p-6 overflow-hidden">
+
+        <section class="schedule-dashboard-hero">
+          <div class="schedule-dashboard-copy">
+            <span class="schedule-dashboard-eyebrow">Admin Timetable Builder</span>
+            <h1 class="font-headline-lg text-headline-lg text-on-surface">بناء الجداول الدراسية التفاعلية</h1>
+            <p class="font-body-md text-on-surface-variant schedule-dashboard-text">
+              بيئة أوضح لبناء مسودات الجداول، مراجعتها، ثم نشرها بأمان مع متابعة التقدم والحصص المتبقية من مكان واحد.
+            </p>
+          </div>
+
+          <div class="schedule-dashboard-stats">
+            <div class="schedule-summary-card">
+              <span class="schedule-summary-label">حالة العمل</span>
+              <strong class="schedule-summary-value compact">
+                {{ currentTimetable() ? getCurrentStatusLabel() : 'لم يتم اختيار جدول' }}
+              </strong>
+              <span class="schedule-summary-hint">
+                {{ currentTimetable() ? (getCurrentTimetableVersionLabel() + ' · ' + getTimetableCountLabel()) : getTimetableCountLabel() }}
+              </span>
+            </div>
+
+            <div class="schedule-summary-card accent">
+              <span class="schedule-summary-label">نسبة الإنجاز</span>
+              <strong class="schedule-summary-value">{{ getCompletionPercent() }}%</strong>
+              <span class="schedule-summary-hint">بحسب الحصص المطلوبة والمسكّنة</span>
+            </div>
+
+            <div class="schedule-summary-card">
+              <span class="schedule-summary-label">حصص متبقية</span>
+              <strong class="schedule-summary-value">{{ getOutstandingAssignmentsCount() }}</strong>
+              <span class="schedule-summary-hint">تعيينات ما زالت تحتاج توزيعًا</span>
+            </div>
+          </div>
+        </section>
 
         <!-- Filters & Actions -->
-        <div class="flex justify-between items-end mb-4 bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/30">
-          <div class="flex gap-4 items-center">
+        <div class="shrink-0 flex flex-col lg:flex-row lg:justify-between lg:items-end gap-4 mb-4 bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/30">
+          <div class="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
             <div class="w-48">
               <label class="block font-label-sm text-on-surface-variant mb-1">السنة الدراسية</label>
-              <!--
-                FIX: selectedYearId is now a plain property — [(ngModel)] works correctly.
-                     Use (ngModelChange) instead of (change) for reliable trigger.
-              -->
               <select [(ngModel)]="selectedYearId" (ngModelChange)="onFilterChange()"
                       class="w-full px-4 py-2 rounded-lg border border-outline-variant bg-white focus:outline-primary">
                 <option [ngValue]="null" disabled>-- اختر السنة --</option>
@@ -64,7 +77,6 @@
             </div>
             <div class="w-48">
               <label class="block font-label-sm text-on-surface-variant mb-1">الفصل الدراسي</label>
-              <!-- FIX: same as above -->
               <select [(ngModel)]="selectedClassId" (ngModelChange)="onFilterChange()"
                       class="w-full px-4 py-2 rounded-lg border border-outline-variant bg-white focus:outline-primary">
                 <option [ngValue]="null" disabled>-- اختر الفصل --</option>
@@ -72,109 +84,209 @@
               </select>
             </div>
           </div>
-          <div>
-            <button *ngIf="selectedClassId && selectedYearId && !activeTimetable()"
+
+          <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+            <button *ngIf="allTimetables().length"
+                    (click)="toggleTimetablesPicker()"
+                    class="px-3 py-2 rounded-lg border border-outline-variant bg-white text-on-surface font-label-sm hover:bg-surface-container flex items-center gap-2">
+              <span class="material-symbols-outlined">layers</span>
+              <span class="hidden sm:inline">كل الجداول</span>
+              <span class="inline-flex min-w-5 h-5 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold px-1.5">
+                {{ allTimetables().length }}
+              </span>
+            </button>
+
+            <!-- بنك الحصص -->
+            <button (click)="toggleAssignmentBank()"
+                    class="px-3 py-2 rounded-lg border border-outline-variant bg-white text-on-surface font-label-sm hover:bg-surface-container flex items-center gap-2"
+                    [class.bg-primary/10]="isAssignmentBankVisible()"
+                    [class.border-primary/30]="isAssignmentBankVisible()">
+              <span class="material-symbols-outlined">view_list</span>
+              <span class="hidden sm:inline">بنك الحصص</span>
+            </button>
+
+            <!-- تحرير الجدول -->
+            <button *ngIf="currentTimetable()"
+                    (click)="openScheduleEditor()"
+                    class="px-4 py-2.5 rounded-lg bg-primary text-white font-label-md hover:bg-primary/90 flex items-center gap-2 shadow-sm">
+              <span class="material-symbols-outlined">open_in_full</span>
+              تحرير الجدول
+            </button>
+
+            <!-- إنشاء مسودة فارغة -->
+            <button *ngIf="canCreateDraft()"
                     (click)="createTimetable()"
                     class="px-6 py-2.5 rounded-lg bg-primary text-white font-label-md hover:bg-primary/90 flex items-center gap-2 shadow-sm">
-              <span class="material-symbols-outlined">add_box</span> إنشاء جدول جديد
+              <span class="material-symbols-outlined">add_box</span> إنشاء مسودة فارغة
             </button>
-            <div *ngIf="activeTimetable()"
-                 class="px-4 py-2 rounded-lg bg-secondary/10 text-secondary font-bold flex items-center gap-2">
-              <span class="material-symbols-outlined">check_circle</span> الجدول مُفعّل ويدعم الإدخال
+
+            <!-- نسخ من الحالي -->
+            <button *ngIf="canCloneDraft()"
+                    (click)="cloneDraftFromCurrent()"
+                    [disabled]="isCloning()"
+                    class="px-6 py-2.5 rounded-lg border border-outline-variant bg-white text-on-surface font-label-md hover:bg-surface-container disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2 shadow-sm">
+              <span class="material-symbols-outlined">{{ isCloning() ? 'progress_activity' : 'content_copy' }}</span>
+              {{ isCloning() ? 'جارٍ النسخ...' : 'نسخ من الحالي' }}
+            </button>
+
+            <!-- مراجعة قبل التفعيل -->
+            <button *ngIf="currentTimetable()"
+                    (click)="validateCurrentTimetable()"
+                    [disabled]="isValidating()"
+                    class="px-6 py-2.5 rounded-lg border border-outline-variant bg-white text-on-surface font-label-md hover:bg-surface-container disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2 shadow-sm">
+              <span class="material-symbols-outlined">{{ isValidating() ? 'progress_activity' : 'fact_check' }}</span>
+              {{ isValidating() ? 'جارٍ المراجعة...' : 'مراجعة قبل التفعيل' }}
+            </button>
+
+            <!-- تفعيل الجدول (مسودة فقط) -->
+            <button *ngIf="currentTimetable() && !currentTimetable()!.isActive"
+                    (click)="publishCurrentTimetable()"
+                    [disabled]="isPublishing() || hasBlockingValidationErrors()"
+                    class="relative px-6 py-2.5 rounded-lg bg-secondary text-white font-label-md hover:bg-secondary/90 disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2 shadow-sm">
+              <span class="material-symbols-outlined">{{ isPublishing() ? 'progress_activity' : 'publish' }}</span>
+              {{ isPublishing() ? 'جارٍ التفعيل...' : 'تفعيل الجدول' }}
+              <!-- FIX: بادج تحذير لما المراجعة لم تُجرَ بعد -->
+              <span *ngIf="!validationResult() && !isPublishing()"
+                    class="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-amber-400 text-[9px] font-black text-white shadow"
+                    title="المراجعة لم تُجرَ بعد — انقر للتحقق أولاً">!</span>
+            </button>
+
+            <!-- ✅ FIX: إلغاء تفعيل الجدول (منشور فقط) -->
+            <button *ngIf="canDeactivateTimetable()"
+                    (click)="deactivateConfirmOpen.set(true)"
+                    [disabled]="isDeactivating()"
+                    class="px-6 py-2.5 rounded-lg border border-amber-300 bg-white text-amber-800 font-label-md hover:bg-amber-50 disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2 shadow-sm">
+              <span class="material-symbols-outlined">{{ isDeactivating() ? 'progress_activity' : 'lock_open' }}</span>
+              {{ isDeactivating() ? 'جارٍ إلغاء التفعيل...' : 'إلغاء تفعيل الجدول' }}
+            </button>
+
+            <!-- ✅ FIX: حذف المسودة (مسودة فقط) -->
+            <button *ngIf="canDeleteTimetable()"
+                    (click)="deleteTimetableConfirmOpen.set(true)"
+                    [disabled]="isDeletingTimetable()"
+                    class="px-6 py-2.5 rounded-lg border border-error/30 bg-white text-error font-label-md hover:bg-red-50 disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2 shadow-sm">
+              <span class="material-symbols-outlined">{{ isDeletingTimetable() ? 'progress_activity' : 'delete' }}</span>
+              {{ isDeletingTimetable() ? 'جارٍ الحذف...' : 'حذف المسودة' }}
+            </button>
+          </div>
+        </div>
+
+        <!-- حالة الجدول الحالي -->
+        <div *ngIf="currentTimetable()"
+             class="shrink-0 flex items-start justify-between gap-4 p-4 mb-4 rounded-xl border"
+             [ngClass]="currentTimetable()!.isActive ? 'bg-secondary/10 text-secondary border-secondary/20' : 'bg-primary/5 text-primary border-primary/20'">
+          <div class="flex items-start gap-3">
+            <span class="material-symbols-outlined mt-0.5">
+              {{ currentTimetable()!.isActive ? 'lock' : 'edit_calendar' }}
+            </span>
+            <div>
+              <div class="font-bold mb-1">حالة الجدول: {{ getCurrentStatusLabel() }}</div>
+              <p class="text-sm opacity-90">{{ getCurrentStatusMessage() }}</p>
+              <div class="mt-3 flex flex-wrap gap-2 text-xs opacity-90">
+                <span class="px-2.5 py-1 rounded-full bg-white/70">{{ getCurrentTimetableVersionLabel() }}</span>
+                <span class="px-2.5 py-1 rounded-full bg-white/70">أُنشئت {{ formatTimetableDate(currentTimetable()!.createdAt) }}</span>
+                <span class="px-2.5 py-1 rounded-full bg-white/70">آخر تحديث {{ formatTimetableDate(currentTimetable()!.updatedAt) }}</span>
+              </div>
+            </div>
+          </div>
+          <span class="px-3 py-1 rounded-full text-xs font-bold bg-white/70">
+            {{ currentTimetable()!.slots.length || 0 }} حصة مسجلة
+          </span>
+        </div>
+
+        <!-- نتيجة المراجعة -->
+        <div *ngIf="validationResult()"
+             class="shrink-0 p-4 mb-4 rounded-xl border"
+             [ngClass]="getValidationTone()">
+          <div class="flex items-start justify-between gap-4 mb-3">
+            <div>
+              <div class="font-bold mb-1">{{ getValidationHeadline() }}</div>
+              <p class="text-sm opacity-90">{{ getValidationSummary() }}</p>
+            </div>
+            <span class="px-3 py-1 rounded-full text-xs font-bold bg-white/70">
+              {{ validationResult()!.canActivate ? 'جاهز' : 'بحاجة لمراجعة' }}
+            </span>
+          </div>
+
+          <div *ngIf="validationResult()!.errors.length" class="mb-3">
+            <div class="font-bold mb-2">أخطاء يجب إصلاحها</div>
+            <div class="space-y-2">
+              <div *ngFor="let issue of validationResult()!.errors"
+                   class="p-3 rounded-lg bg-white/80 border border-white/60 text-sm">
+                {{ formatValidationIssue(issue) }}
+              </div>
+            </div>
+          </div>
+
+          <div *ngIf="validationResult()!.warnings.length">
+            <div class="font-bold mb-2">تحذيرات وملاحظات</div>
+            <div class="space-y-2">
+              <div *ngFor="let issue of validationResult()!.warnings"
+                   class="p-3 rounded-lg bg-white/80 border border-white/60 text-sm">
+                {{ formatValidationIssue(issue) }}
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- FIX: Success/Error banners -->
+        <!-- ملخص أيام الأسبوع -->
+        <div *ngIf="currentTimetable()" class="hidden xl:grid shrink-0 grid-cols-5 gap-3 mb-4">
+          <div *ngFor="let day of days"
+               class="rounded-xl border p-3"
+               [ngClass]="getDaySummaryTone(day.value)">
+            <div class="font-bold mb-2">{{ day.label }}</div>
+            <div class="text-sm">إجمالي الخلايا: {{ getDaySummary(day.value).filled }}</div>
+            <div class="text-sm">حصص: {{ getDaySummary(day.value).lessons }} | راحة: {{ getDaySummary(day.value).breaks }}</div>
+            <div class="text-sm">المشكلات: {{ getDaySummary(day.value).issues }}</div>
+          </div>
+        </div>
+
+        <!-- رسائل النجاح والخطأ -->
         <div *ngIf="successMessage()"
-             class="flex items-center gap-3 p-3 mb-4 rounded-xl bg-green-50 text-green-800 border border-green-200 font-body-sm">
+             class="shrink-0 flex items-center gap-3 p-3 mb-4 rounded-xl bg-green-50 text-green-800 border border-green-200 font-body-sm">
           <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">check_circle</span>
           {{ successMessage() }}
         </div>
         <div *ngIf="errorMessage()"
-             class="flex items-center gap-3 p-3 mb-4 rounded-xl bg-red-50 text-error border border-error/20 font-body-sm">
+             class="shrink-0 flex items-center gap-3 p-3 mb-4 rounded-xl bg-red-50 text-error border border-error/20 font-body-sm">
           <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">error</span>
           {{ errorMessage() }}
         </div>
 
-        <!-- Schedule Grid -->
-        <div class="flex-1 overflow-auto bg-surface-container-lowest rounded-xl border border-outline-variant/30">
+        <!-- منطقة عرض الجدول -->
+        <div class="flex-1 min-h-0 overflow-auto admin-schedule-scroll bg-surface-container-lowest rounded-xl border border-outline-variant/30">
 
-          <!-- FIX: Loading state -->
-          <div *ngIf="isLoading()" class="h-full flex items-center justify-center gap-3 text-on-surface-variant">
+          <div *ngIf="isLoading()" class="min-h-[280px] flex items-center justify-center gap-3 text-on-surface-variant">
             <span class="material-symbols-outlined animate-spin">progress_activity</span>
             <span class="font-body-md">جارٍ تحميل الجدول…</span>
           </div>
 
-          <!-- Timetable matrix -->
-          <table *ngIf="!isLoading() && activeTimetable()" class="w-full border-collapse min-w-[800px] text-center">
-            <thead>
-              <tr class="bg-surface-container-low border-b border-outline-variant/30">
-                <th class="p-4 border-l border-outline-variant/30 w-32 font-bold text-on-surface">اليوم / الحصة</th>
-                <th *ngFor="let p of periods" class="p-4 border-l border-outline-variant/30 font-bold text-on-surface">
-                  <div class="text-sm">{{ p.label }}</div>
-                  <div class="text-xs text-on-surface-variant font-normal">{{ p.start | slice:0:5 }} - {{ p.end | slice:0:5 }}</div>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let day of days" class="border-b border-outline-variant/30 hover:bg-surface-container-lowest transition-colors">
-                <td class="p-4 border-l border-outline-variant/30 font-bold text-primary bg-surface-container-lowest/50">{{ day.label }}</td>
-
-                <td *ngFor="let p of periods"
-                    class="border-l border-outline-variant/30 relative group h-24 p-2 cursor-pointer transition-colors"
-                    [ngClass]="getSlot(day.value, p.num) ? 'bg-primary/5 hover:bg-error/10' : 'hover:bg-primary/5'"
-                    (click)="openSlotModal(day.value, p.num)">
-
-                  <!-- Empty cell hover hint -->
-                  <div *ngIf="!getSlot(day.value, p.num)"
-                       class="w-full h-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <span class="material-symbols-outlined text-primary">add_circle</span>
-                  </div>
-
-                  <!-- Filled cell -->
-                  <ng-container *ngIf="getSlot(day.value, p.num) as slot">
-                    <div class="w-full h-full flex flex-col justify-center items-center text-sm relative">
-
-                      <!-- Break -->
-                      <ng-container *ngIf="slot.isBreak; else lessonTpl">
-                        <span class="material-symbols-outlined text-secondary mb-1">local_cafe</span>
-                        <span class="font-bold text-secondary">فترة راحة (فسحة)</span>
-                      </ng-container>
-
-                      <!-- Lesson -->
-                      <ng-template #lessonTpl>
-                        <span class="font-bold text-primary mb-1">
-                          {{ getAssignmentDetails(slot.classSubjectTeacherId)?.subjectName || '—' }}
-                        </span>
-                        <span class="text-xs text-on-surface-variant truncate w-full text-center">
-                          {{ getAssignmentDetails(slot.classSubjectTeacherId)?.teacherName || '' }}
-                        </span>
-                      </ng-template>
-
-                      <!-- Delete overlay on hover -->
-                      <div class="absolute inset-0 bg-error/90 text-white flex items-center justify-center rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
-                        <span class="material-symbols-outlined">delete</span>
-                      </div>
-                    </div>
-                  </ng-container>
-
-                </td>
-              </tr>
-            </tbody>
-          </table>
-
-          <!-- No timetable yet -->
-          <div *ngIf="!isLoading() && selectedClassId && selectedYearId && !activeTimetable()"
-               class="h-full flex flex-col items-center justify-center text-on-surface-variant">
-            <span class="material-symbols-outlined text-6xl mb-4 opacity-50">calendar_month</span>
-            <h3 class="font-headline-md mb-2">لا يوجد جدول مسجل</h3>
-            <p class="font-body-md">اضغط على زر "إنشاء جدول جديد" بالأعلى للبدء في تسكين الحصص.</p>
+          <div *ngIf="!isLoading() && currentTimetable()"
+               class="min-h-[280px] flex flex-col items-center justify-center text-center p-8 gap-4">
+            <span class="material-symbols-outlined text-6xl text-primary/40">calendar_view_week</span>
+            <div>
+              <h3 class="font-headline-md text-on-surface mb-2">جدول {{ getSelectedClassName() || 'الفصل المختار' }}</h3>
+              <p class="font-body-md text-on-surface-variant">
+                {{ currentTimetable()!.slots.length || 0 }} حصة مسجلة — اضغط على الزر أدناه لفتح الجدول بالكامل والتعديل عليه.
+              </p>
+            </div>
+            <button (click)="openScheduleEditor()"
+                    class="px-8 py-3 rounded-xl bg-primary text-white font-label-md hover:bg-primary/90 flex items-center gap-2 shadow-sm">
+              <span class="material-symbols-outlined">open_in_full</span>
+              فتح محرر الجدول
+            </button>
+            <p class="text-sm text-on-surface-variant">اضغط على أي خلية فارغة لإضافة حصة، أو على حصة موجودة لتعديلها أو عرضها.</p>
           </div>
 
-          <!-- Nothing selected -->
+          <div *ngIf="!isLoading() && selectedClassId && selectedYearId && !currentTimetable()"
+            class="min-h-[280px] flex flex-col items-center justify-center text-on-surface-variant">
+            <span class="material-symbols-outlined text-6xl mb-4 opacity-50">calendar_month</span>
+            <h3 class="font-headline-md mb-2">لا يوجد جدول مسجل بعد</h3>
+            <p class="font-body-md">ابدأ بإنشاء مسودة جديدة، ثم قم بتسكين الحصص ومراجعتها قبل التفعيل.</p>
+          </div>
+
           <div *ngIf="!isLoading() && (!selectedClassId || !selectedYearId)"
-               class="h-full flex flex-col items-center justify-center text-on-surface-variant">
+            class="min-h-[280px] flex flex-col items-center justify-center text-on-surface-variant">
             <span class="material-symbols-outlined text-6xl mb-4 opacity-50">filter_list</span>
             <p class="font-body-md">اختر السنة الدراسية والفصل للبدء.</p>
           </div>
@@ -185,43 +297,413 @@
   </main>
 </div>
 
-<!-- ══ Add Slot Modal ══════════════════════════════════════════════════════════ -->
+<!-- ══ Fullscreen Schedule Editor ═══════════════════════════════════════════ -->
+<div *ngIf="scheduleEditorOpen()"
+     class="schedule-editor-overlay fixed inset-0 z-[110] bg-background flex flex-col">
+
+  <!-- Editor Header -->
+  <div class="shrink-0 flex items-center justify-between gap-4 px-4 py-3 md:px-6 border-b border-outline-variant/30 bg-surface-container-lowest">
+    <div class="min-w-0">
+      <h2 class="font-headline-md text-primary flex items-center gap-2">
+        <span class="material-symbols-outlined">edit_calendar</span>
+        محرر الجدول — {{ getSelectedClassName() || 'الفصل المختار' }}
+      </h2>
+      <p class="text-sm text-on-surface-variant truncate">
+        {{ getCurrentStatusLabel() }} · {{ currentTimetable()!.slots.length || 0 }} حصة مسجلة
+      </p>
+    </div>
+
+    <div class="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+      <button *ngIf="allTimetables().length"
+              (click)="toggleTimetablesPicker()"
+              class="px-3 py-2 rounded-lg border border-outline-variant bg-white text-on-surface font-label-sm hover:bg-surface-container flex items-center gap-2">
+        <span class="material-symbols-outlined">layers</span>
+        <span class="hidden sm:inline">النسخ</span>
+      </button>
+
+      <!-- بنك الحصص -->
+      <button (click)="toggleAssignmentBank()"
+              class="px-3 py-2 rounded-lg border border-outline-variant bg-white text-on-surface font-label-sm hover:bg-surface-container flex items-center gap-2"
+              [class.bg-primary/10]="isAssignmentBankVisible()"
+              [class.border-primary/30]="isAssignmentBankVisible()">
+        <span class="material-symbols-outlined">view_list</span>
+        <span class="hidden sm:inline">بنك الحصص</span>
+      </button>
+
+      <!-- تفعيل (مسودة فقط) -->
+      <button *ngIf="currentTimetable() && !currentTimetable()!.isActive"
+              (click)="publishCurrentTimetable()"
+              [disabled]="isPublishing() || hasBlockingValidationErrors()"
+              class="relative px-4 py-2 rounded-lg bg-secondary text-white font-label-sm hover:bg-secondary/90 disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2">
+        <span class="material-symbols-outlined text-sm">{{ isPublishing() ? 'progress_activity' : 'publish' }}</span>
+        <span class="hidden md:inline">{{ isPublishing() ? 'جارٍ التفعيل...' : 'تفعيل' }}</span>
+        <!-- FIX: بادج تحذير في الـ editor كمان -->
+        <span *ngIf="!validationResult() && !isPublishing()"
+              class="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-amber-400 text-[9px] font-black text-white shadow"
+              title="المراجعة لم تُجرَ بعد — سيتم التحقق تلقائيًا">!</span>
+      </button>
+
+      <!-- ✅ FIX: إلغاء تفعيل (منشور فقط) في الـ editor -->
+      <button *ngIf="canDeactivateTimetable()"
+              (click)="deactivateConfirmOpen.set(true)"
+              [disabled]="isDeactivating()"
+              class="px-4 py-2 rounded-lg border border-amber-300 bg-white text-amber-800 font-label-sm hover:bg-amber-50 disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2">
+        <span class="material-symbols-outlined text-sm">lock_open</span>
+        <span class="hidden md:inline">إلغاء التفعيل</span>
+      </button>
+
+      <!-- ✅ FIX: حذف المسودة في الـ editor -->
+      <button *ngIf="canDeleteTimetable()"
+              (click)="deleteTimetableConfirmOpen.set(true)"
+              [disabled]="isDeletingTimetable()"
+              class="px-4 py-2 rounded-lg border border-error/30 bg-white text-error font-label-sm hover:bg-red-50 disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2">
+        <span class="material-symbols-outlined text-sm">delete</span>
+        <span class="hidden md:inline">حذف المسودة</span>
+      </button>
+
+      <!-- إغلاق -->
+      <button (click)="closeScheduleEditor()"
+              class="px-3 py-2 rounded-lg border border-outline-variant bg-white text-on-surface hover:bg-surface-container flex items-center gap-2"
+              aria-label="إغلاق محرر الجدول">
+        <span class="material-symbols-outlined">close_fullscreen</span>
+        <span class="hidden sm:inline">إغلاق</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Editor Body -->
+  <div class="flex-1 min-h-0 flex overflow-hidden">
+    <div class="flex-1 min-h-0 min-w-0 overflow-auto admin-schedule-scroll p-4 md:p-6">
+
+      <!-- جدول الحصص -->
+      <table class="admin-schedule-table admin-schedule-table-expanded w-full border-collapse text-center">
+        <thead>
+          <tr class="bg-surface-container-low border-b border-outline-variant/30 sticky top-0 z-10">
+            <th class="p-4 border-l border-outline-variant/30 w-36 font-bold text-on-surface bg-surface-container-low">اليوم / الحصة</th>
+            <th *ngFor="let p of periods" class="p-4 border-l border-outline-variant/30 font-bold text-on-surface bg-surface-container-low">
+              <div class="text-sm">{{ p.label }}</div>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let day of days" class="border-b border-outline-variant/30 hover:bg-surface-container-lowest transition-colors">
+            <td class="p-4 border-l border-outline-variant/30 font-bold text-primary bg-surface-container-lowest/50">{{ day.label }}</td>
+
+            <!-- ✅ FIX: cursor يستخدم getCellCursor() بدل cursor-not-allowed الثابت -->
+            <td *ngFor="let p of periods"
+                class="border-l border-outline-variant/30 relative group h-28 md:h-32 lg:h-36 p-2 transition-colors"
+                [ngClass]="[getCellClass(day.value, p.num), getCellCursor(day.value, p.num)]"
+                (click)="openSlotModal(day.value, p.num)">
+
+              <!-- خلية فارغة -->
+              <div *ngIf="!getSlot(day.value, p.num)"
+                   class="w-full h-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <span class="material-symbols-outlined text-2xl"
+                      [ngClass]="canEditCurrentTimetable() ? 'text-primary' : 'text-on-surface-variant'">
+                  {{ canEditCurrentTimetable() ? 'add_circle' : '' }}
+                </span>
+              </div>
+
+              <!-- خلية بها حصة -->
+              <ng-container *ngIf="getSlot(day.value, p.num) as slot">
+                <div class="w-full h-full flex flex-col justify-center items-center text-sm relative">
+
+                  <!-- بادج المشكلات -->
+                  <div *ngIf="getSlotIssueCount(slot) > 0"
+                       class="absolute top-1 left-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold"
+                       [ngClass]="hasSlotError(slot) ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-800'"
+                       [title]="getSlotIssueTooltip(slot)">
+                    <span class="material-symbols-outlined text-xs">{{ getSlotIssueIcon(slot) }}</span>
+                    {{ getSlotIssueCount(slot) }}
+                  </div>
+
+                  <!-- محتوى الحصة -->
+                  <ng-container *ngIf="slot.isBreak; else editorLessonTpl">
+                    <span class="text-[11px] text-on-surface-variant mb-1">
+                      {{ formatSlotTimeRange(slot.startTime, slot.endTime) }}
+                    </span>
+                    <span class="material-symbols-outlined text-secondary mb-1">local_cafe</span>
+                    <span class="font-bold text-secondary">فترة راحة (فسحة)</span>
+                  </ng-container>
+
+                  <ng-template #editorLessonTpl>
+                    <span class="text-[11px] text-on-surface-variant mb-1">
+                      {{ formatSlotTimeRange(slot.startTime, slot.endTime) }}
+                    </span>
+                    <span class="font-bold text-primary mb-1">
+                      {{ getAssignmentDetails(slot.classSubjectTeacherId)?.subjectName || '—' }}
+                    </span>
+                    <span class="text-xs text-on-surface-variant truncate w-full text-center">
+                      {{ getAssignmentDetails(slot.classSubjectTeacherId)?.teacherName || '' }}
+                    </span>
+                    <span *ngIf="slot.roomName" class="text-[11px] text-on-surface-variant truncate w-full text-center">
+                      {{ slot.roomName }}
+                    </span>
+                  </ng-template>
+
+                  <!-- hover overlay -->
+                  <div class="absolute inset-0 flex items-center justify-center rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                       [ngClass]="canEditCurrentTimetable() ? 'bg-primary/85 text-white' : 'bg-surface-container/85 text-on-surface'">
+                    <span class="material-symbols-outlined text-2xl">
+                      {{ canEditCurrentTimetable() ? 'edit' : 'visibility' }}
+                    </span>
+                  </div>
+                </div>
+              </ng-container>
+
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- لوحة فحص الخلية المختارة -->
+      <div *ngIf="currentTimetable()" class="mt-4 rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-4">
+        <div class="flex items-start justify-between gap-4 mb-3">
+          <div>
+            <div class="font-bold text-on-surface mb-1">{{ getSelectedInspectionTitle() }}</div>
+            <p class="text-sm text-on-surface-variant">{{ getSelectedInspectionSubtitle() }}</p>
+          </div>
+          <span class="px-3 py-1 rounded-full text-xs font-bold"
+                [ngClass]="hasSelectedInspectionIssues() ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-700'">
+            {{ hasSelectedInspectionIssues() ? 'توجد ملاحظات' : 'لا توجد ملاحظات' }}
+          </span>
+        </div>
+
+        <div *ngIf="hasSelectedInspectionIssues(); else editorNoInspectionIssues" class="space-y-2">
+          <div *ngFor="let issue of getSelectedInspectionIssues()"
+               class="p-3 rounded-lg border text-sm"
+               [ngClass]="issue.severity.toLowerCase() === 'error' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-amber-50 border-amber-200 text-amber-800'">
+            {{ formatValidationIssue(issue) }}
+          </div>
+        </div>
+
+        <ng-template #editorNoInspectionIssues>
+          <div class="p-3 rounded-lg bg-green-50 border border-green-200 text-green-700 text-sm">
+            لا توجد مشكلات مرتبطة بالخلية أو الحصة المختارة حاليًا.
+          </div>
+        </ng-template>
+      </div>
+    </div>
+
+    <!-- بنك الحصص داخل الـ editor -->
+    <div *ngIf="isAssignmentBankVisible()"
+         class="w-72 max-w-[40vw] shrink-0 border-l border-outline-variant/30 bg-surface-container-lowest flex flex-col overflow-hidden">
+      <div class="p-4 border-b border-outline-variant/30 font-bold text-on-surface">بنك الحصص</div>
+      <ng-container *ngTemplateOutlet="assignmentBankBody"></ng-container>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Timetables Picker ═══════════════════════════════════════════════════ -->
+<div *ngIf="timetablesPickerOpen()"
+     class="fixed inset-0 bg-black/50 z-[115] flex items-center justify-center p-4 backdrop-blur-sm">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
+    <div class="p-5 border-b border-outline-variant/30 flex items-start justify-between gap-4 bg-surface-container-lowest">
+      <div>
+        <h3 class="font-headline-md text-on-surface mb-1">كل الجداول</h3>
+        <p class="text-sm text-on-surface-variant">
+          اختر النسخة التي تريد عرضها أو تعديلها بدون تزاحم داخل الصفحة الرئيسية.
+        </p>
+      </div>
+      <button (click)="closeTimetablesPicker()" class="text-on-surface-variant hover:text-on-surface">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+
+    <div class="px-5 py-3 border-b border-outline-variant/20 bg-surface-container-lowest/70 flex flex-wrap gap-2 text-xs text-on-surface-variant">
+      <span class="px-2.5 py-1 rounded-full bg-white border border-outline-variant/30">{{ getTimetableCountLabel() }}</span>
+      <span class="px-2.5 py-1 rounded-full bg-white border border-outline-variant/30">{{ getFilteredTimetableCountLabel() }}</span>
+      <span *ngIf="currentTimetable()" class="px-2.5 py-1 rounded-full bg-white border border-outline-variant/30">
+        المعروض الآن: {{ getCurrentTimetableVersionLabel() }}
+      </span>
+    </div>
+
+    <div class="px-5 py-3 border-b border-outline-variant/20 bg-white flex flex-wrap gap-2">
+      <button type="button"
+              (click)="setTimetablesFilter('all')"
+              class="px-3 py-2 rounded-full text-sm border transition-colors"
+              [ngClass]="isTimetablesFilterActive('all') ? 'bg-primary text-white border-primary' : 'bg-white text-on-surface border-outline-variant/30 hover:bg-surface-container'">
+        الكل
+        <span class="mr-1 opacity-80">{{ allTimetables().length }}</span>
+      </button>
+
+      <button type="button"
+              (click)="setTimetablesFilter('active')"
+              class="px-3 py-2 rounded-full text-sm border transition-colors"
+              [ngClass]="isTimetablesFilterActive('active') ? 'bg-secondary text-white border-secondary' : 'bg-white text-on-surface border-outline-variant/30 hover:bg-surface-container'">
+        منشور
+        <span class="mr-1 opacity-80">{{ getPublishedTimetablesCount() }}</span>
+      </button>
+
+      <button type="button"
+              (click)="setTimetablesFilter('draft')"
+              class="px-3 py-2 rounded-full text-sm border transition-colors"
+              [ngClass]="isTimetablesFilterActive('draft') ? 'bg-primary text-white border-primary' : 'bg-white text-on-surface border-outline-variant/30 hover:bg-surface-container'">
+        مسودات
+        <span class="mr-1 opacity-80">{{ getDraftTimetablesCount() }}</span>
+      </button>
+    </div>
+
+    <div class="flex-1 overflow-y-auto p-4 space-y-3 bg-background">
+      <button *ngFor="let timetable of filteredTimetables()"
+              type="button"
+              (click)="selectTimetable(timetable.id)"
+              class="w-full text-right p-4 rounded-2xl border transition-all hover:border-primary/30 hover:bg-primary/5"
+              [ngClass]="isSelectedTimetable(timetable.id) ? 'border-primary/40 bg-primary/5 ring-1 ring-primary/10' : 'border-outline-variant/30 bg-white'">
+        <div class="flex items-start justify-between gap-4">
+          <div class="min-w-0">
+            <div class="flex flex-wrap items-center gap-2 mb-2">
+              <span class="px-2.5 py-1 rounded-full text-xs font-bold"
+                    [ngClass]="timetable.isActive ? 'bg-secondary/10 text-secondary' : 'bg-primary/10 text-primary'">
+                {{ timetable.isActive ? 'منشور' : 'مسودة' }}
+              </span>
+              <span *ngIf="isSelectedTimetable(timetable.id)"
+                    class="px-2.5 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700">
+                المعروض الآن
+              </span>
+            </div>
+
+            <div class="font-bold text-on-surface mb-1">
+              {{ timetable.isActive ? 'نسخة منشورة جاهزة للعرض' : 'نسخة مسودة قابلة للتعديل' }}
+            </div>
+            <div class="text-sm text-on-surface-variant mb-1">أُنشئت {{ formatTimetableDate(timetable.createdAt) }}</div>
+            <div class="text-sm text-on-surface-variant">آخر تحديث {{ formatTimetableDate(timetable.updatedAt) }}</div>
+          </div>
+
+          <div class="shrink-0 text-left">
+            <div class="text-xs text-on-surface-variant mb-1">الحصص</div>
+            <div class="text-2xl font-black text-primary">{{ timetable.slots.length }}</div>
+          </div>
+        </div>
+      </button>
+
+      <div *ngIf="allTimetables().length && !filteredTimetables().length"
+           class="p-8 rounded-2xl border border-dashed border-outline-variant/40 bg-white text-center text-on-surface-variant">
+        لا توجد جداول مطابقة للفلتر الحالي.
+      </div>
+
+      <div *ngIf="!allTimetables().length"
+           class="p-8 rounded-2xl border border-dashed border-outline-variant/40 bg-white text-center text-on-surface-variant">
+        لا توجد جداول لهذا الفصل والسنة الدراسية حاليًا.
+      </div>
+    </div>
+
+    <div class="p-4 border-t border-outline-variant/30 bg-surface-container-lowest flex justify-end">
+      <button (click)="closeTimetablesPicker()"
+              class="px-4 py-2.5 rounded-lg border border-outline-variant text-on-surface hover:bg-surface-container">
+        إغلاق
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Template: بنك الحصص ══════════════════════════════════════════════════ -->
+<ng-template #assignmentBankBody>
+  <div *ngIf="selectedClassId" class="p-4 border-b border-outline-variant/30 bg-surface-container-lowest space-y-3">
+    <input [(ngModel)]="assignmentSubjectFilter"
+           type="text"
+           placeholder="فلترة حسب المادة"
+           class="w-full px-4 py-2 rounded-lg border border-outline-variant bg-white focus:outline-primary">
+    <input [(ngModel)]="assignmentTeacherFilter"
+           type="text"
+           placeholder="فلترة حسب المعلم"
+           class="w-full px-4 py-2 rounded-lg border border-outline-variant bg-white focus:outline-primary">
+  </div>
+
+  <div class="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4">
+    <div *ngIf="!selectedClassId" class="flex flex-col items-center justify-center mt-10 gap-2 text-on-surface-variant text-center">
+      <span class="material-symbols-outlined text-4xl opacity-50">info</span>
+      <p class="font-body-sm">اختر فصلاً دراسياً لعرض تعييناته هنا.</p>
+    </div>
+
+    <div *ngIf="selectedClassId && !filteredAssignments().length"
+         class="flex flex-col items-center justify-center mt-10 gap-2 text-on-surface-variant text-center">
+      <span class="material-symbols-outlined text-4xl opacity-50">search_off</span>
+      <p class="font-body-sm">لا توجد نتائج مطابقة للفلاتر الحالية.</p>
+    </div>
+
+    <div *ngFor="let assign of filteredAssignments()"
+         class="p-4 rounded-xl border transition-colors bg-white hover:border-primary/50 relative overflow-hidden group">
+      <div class="flex justify-between items-start mb-2 relative z-10">
+        <span class="font-bold text-primary">{{ assign.subjectName || getSubjectName(assign.subjectId) }}</span>
+        <span class="inline-flex items-center justify-center w-6 h-6 rounded-full font-bold text-xs"
+              [ngClass]="getRemainingPeriods(assign) > 0 ? 'bg-error/10 text-error' : 'bg-secondary/10 text-secondary'">
+          {{ getRemainingPeriods(assign) }}
+        </span>
+      </div>
+      <div class="text-sm text-on-surface-variant flex items-center gap-2 relative z-10">
+        <span class="material-symbols-outlined text-sm">person</span>
+        {{ assign.teacherName || getTeacherName(assign.teacherId) }}
+      </div>
+      <div class="absolute bottom-0 left-0 h-1 bg-primary/20 w-full">
+        <div class="h-full bg-primary transition-all"
+             [style.width]="getAssignmentProgressWidth(assign) + '%'">
+        </div>
+      </div>
+    </div>
+  </div>
+</ng-template>
+
+<!-- ══ Modal: إضافة / تعديل / استعراض حصة ══════════════════════════════════ -->
 <div *ngIf="isModalOpen()"
-     class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+     class="fixed inset-0 bg-black/50 z-[120] flex items-center justify-center p-4 backdrop-blur-sm">
   <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col transform transition-all">
 
-    <!-- Modal header -->
+    <!-- Modal Header -->
     <div class="p-6 border-b border-outline-variant/30 flex justify-between items-center bg-surface-container-lowest">
       <h3 class="font-headline-md text-primary flex items-center gap-2">
-        <span class="material-symbols-outlined">event_available</span> تسكين حصة
+        <span class="material-symbols-outlined">
+          {{ isReadOnlyModal() ? 'visibility' : (isEditingSlot() ? 'edit_calendar' : 'event_available') }}
+        </span>
+        {{ isReadOnlyModal() ? 'استعراض الحصة' : (isEditingSlot() ? 'تعديل حصة' : 'تسكين حصة') }}
       </h3>
       <button (click)="closeModal()" class="text-on-surface-variant hover:text-error transition-colors">
         <span class="material-symbols-outlined">close</span>
       </button>
     </div>
 
+    <!-- Modal Body -->
     <div class="p-6 space-y-4">
-      <!-- Break vs Lesson toggle -->
+
+      <!-- تنبيه القراءة فقط -->
+      <div *ngIf="isReadOnlyModal()"
+           class="p-3 rounded-lg bg-secondary/10 text-secondary border border-secondary/20 text-sm flex items-center gap-2">
+        <span class="material-symbols-outlined text-sm">lock</span>
+        هذا الجدول منشور حاليًا، لذلك هذه النافذة للقراءة فقط.
+      </div>
+
+      <div *ngIf="!isReadOnlyModal()"
+           class="p-3 rounded-lg bg-primary/5 text-primary border border-primary/15 text-sm">
+        وقت الحصة هنا مستقل لكل يوم ولكل خلية، لذلك يتم عرضه داخل الحصة نفسها وليس أعلى العمود.
+      </div>
+
+      <div *ngIf="slotFormError()"
+           class="p-3 rounded-lg bg-red-50 text-error border border-error/20 text-sm flex items-start gap-2">
+        <span class="material-symbols-outlined text-sm mt-0.5" style="font-variation-settings: 'FILL' 1;">error</span>
+        <span>{{ slotFormError() }}</span>
+      </div>
+
+      <!-- نوع الحصة -->
       <div class="flex gap-4 mb-4">
         <label class="flex items-center gap-2 cursor-pointer">
-          <input type="radio" name="isBreak" [value]="false" [(ngModel)]="newSlot.isBreak" class="accent-primary">
+          <input type="radio" name="isBreak" [value]="false" [(ngModel)]="newSlot.isBreak" (ngModelChange)="onBreakToggle()" [disabled]="isReadOnlyModal()" class="accent-primary">
           حصة دراسية
         </label>
         <label class="flex items-center gap-2 cursor-pointer">
-          <input type="radio" name="isBreak" [value]="true" [(ngModel)]="newSlot.isBreak" class="accent-secondary">
+          <input type="radio" name="isBreak" [value]="true" [(ngModel)]="newSlot.isBreak" (ngModelChange)="onBreakToggle()" [disabled]="isReadOnlyModal()" class="accent-secondary">
           فترة راحة
         </label>
       </div>
 
-      <!-- Lesson-specific fields -->
+      <!-- حقول الحصة الدراسية -->
       <ng-container *ngIf="!newSlot.isBreak">
         <div>
           <label class="block font-label-sm text-on-surface-variant mb-1">المادة والمعلم</label>
           <select [(ngModel)]="newSlot.classSubjectTeacherId"
+                  [disabled]="isReadOnlyModal()"
                   class="w-full px-4 py-2 rounded-lg border border-outline-variant bg-white focus:outline-primary">
             <option [ngValue]="null" disabled>-- اختر من بنك الحصص --</option>
-            <option *ngFor="let assign of assignments()" [ngValue]="assign.id" [disabled]="getRemainingPeriods(assign) <= 0">
-              <!-- FIX: use DTO name fields in modal too -->
+            <option *ngFor="let assign of assignments()" [ngValue]="assign.id" [disabled]="!isAssignmentSelectable(assign)">
               {{ assign.subjectName || getSubjectName(assign.subjectId) }}
               —
               {{ assign.teacherName || getTeacherName(assign.teacherId) }}
@@ -229,9 +711,12 @@
             </option>
           </select>
         </div>
+
+        <!-- ✅ FIX: تصحيح label القاعة -->
         <div>
-          <label class="block font-label-sm text-on-surface-variant mb-1">القاعة (المتاحة فقط)</label>
+          <label class="block font-label-sm text-on-surface-variant mb-1">القاعات المتاحة في هذا الوقت</label>
           <select [(ngModel)]="newSlot.roomId"
+                  [disabled]="isReadOnlyModal()"
                   class="w-full px-4 py-2 rounded-lg border border-outline-variant bg-white focus:outline-primary">
             <option [ngValue]="null">-- استخدام قاعة الفصل الافتراضية --</option>
             <option *ngFor="let r of availableRooms()" [ngValue]="r.id">{{ r.name }}</option>
@@ -239,30 +724,124 @@
         </div>
       </ng-container>
 
-      <!-- Time overrides -->
+      <!-- أوقات الحصة -->
       <div class="flex gap-4">
         <div class="flex-1">
           <label class="block font-label-sm text-on-surface-variant mb-1">وقت البدء</label>
-          <input type="time" [(ngModel)]="newSlot.startTime" step="1"
+          <input type="time" [(ngModel)]="newSlot.startTime" step="1" [disabled]="isReadOnlyModal()"
                  class="w-full px-4 py-2 rounded-lg border border-outline-variant bg-white focus:outline-primary">
         </div>
         <div class="flex-1">
           <label class="block font-label-sm text-on-surface-variant mb-1">وقت الانتهاء</label>
-          <input type="time" [(ngModel)]="newSlot.endTime" step="1"
+          <input type="time" [(ngModel)]="newSlot.endTime" step="1" [disabled]="isReadOnlyModal()"
                  class="w-full px-4 py-2 rounded-lg border border-outline-variant bg-white focus:outline-primary">
         </div>
       </div>
+
+      <!-- ✅ FIX: Two-step confirmation لحذف الحصة (بدل window.confirm) -->
+      <div *ngIf="deleteSlotConfirmOpen()"
+           class="p-4 rounded-xl border border-error/25 bg-red-50 space-y-3">
+        <div class="flex items-start gap-2 text-red-700">
+          <span class="material-symbols-outlined text-sm mt-0.5" style="font-variation-settings: 'FILL' 1;">warning</span>
+          <p class="text-sm font-bold">هل أنت متأكد من حذف هذه الحصة؟ لا يمكن التراجع عن هذا الإجراء.</p>
+        </div>
+        <div class="flex gap-2">
+          <button (click)="deleteEditingSlot()"
+                  [disabled]="isSaving()"
+                  class="flex-1 px-4 py-2 rounded-lg bg-error text-white font-label-sm hover:bg-error/90 disabled:opacity-60 flex items-center justify-center gap-2">
+            <span class="material-symbols-outlined text-sm">{{ isSaving() ? 'progress_activity' : 'delete' }}</span>
+            نعم، احذف الحصة
+          </button>
+          <button (click)="cancelDeleteSlot()"
+                  class="flex-1 px-4 py-2 rounded-lg border border-outline-variant text-on-surface hover:bg-surface-container font-label-sm">
+            إلغاء
+          </button>
+        </div>
+      </div>
+
     </div>
 
-    <!-- Modal footer -->
+    <!-- Modal Footer -->
     <div class="p-6 border-t border-outline-variant/30 flex gap-3 bg-surface-container-lowest">
+      <!-- زرار حذف (بيفتح الـ confirmation بدل الحذف المباشر) -->
+      <button *ngIf="isEditingSlot() && !isReadOnlyModal() && !deleteSlotConfirmOpen()"
+              (click)="requestDeleteSlot()"
+              [disabled]="isSaving()"
+              class="px-4 py-2.5 rounded-lg border border-error/20 text-error hover:bg-red-50 disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2">
+        <span class="material-symbols-outlined">delete</span> حذف
+      </button>
+
+      <!-- إلغاء -->
       <button (click)="closeModal()"
               class="flex-1 px-4 py-2.5 rounded-lg border border-outline-variant text-on-surface hover:bg-surface-container transition-colors">
         إلغاء
       </button>
-      <button (click)="saveSlot()"
-              class="flex-1 px-4 py-2.5 rounded-lg bg-primary text-white font-label-md hover:bg-primary/90 flex justify-center items-center gap-2">
-        <span class="material-symbols-outlined">save</span> تأكيد التسكين
+
+      <!-- حفظ (مخفي في القراءة فقط أو لما confirmation مفتوح) -->
+      <button *ngIf="!isReadOnlyModal() && !deleteSlotConfirmOpen()"
+              (click)="saveSlot()"
+              [disabled]="isSaving()"
+              class="flex-1 px-4 py-2.5 rounded-lg bg-primary text-white font-label-md hover:bg-primary/90 disabled:opacity-60 disabled:cursor-not-allowed flex justify-center items-center gap-2">
+        <span class="material-symbols-outlined">{{ isSaving() ? 'progress_activity' : 'save' }}</span>
+        {{ isSaving() ? 'جارٍ الحفظ...' : (isEditingSlot() ? 'حفظ التعديلات' : 'تأكيد التسكين') }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Confirmation Dialog: حذف المسودة ════════════════════════════════════ -->
+<div *ngIf="deleteTimetableConfirmOpen()"
+     class="fixed inset-0 bg-black/50 z-[130] flex items-center justify-center p-4 backdrop-blur-sm">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-5">
+    <div class="flex items-start gap-3">
+      <span class="material-symbols-outlined text-error text-3xl shrink-0" style="font-variation-settings: 'FILL' 1;">warning</span>
+      <div>
+        <h3 class="font-headline-md text-on-surface mb-1">حذف المسودة</h3>
+        <p class="text-sm text-on-surface-variant leading-relaxed">
+          هل أنت متأكد من حذف هذه المسودة؟ سيتم حذف جميع الحصص المسكّنة فيها ولا يمكن التراجع عن هذا الإجراء.
+        </p>
+      </div>
+    </div>
+    <div class="flex gap-3">
+      <button (click)="deleteTimetable()"
+              [disabled]="isDeletingTimetable()"
+              class="flex-1 px-4 py-2.5 rounded-lg bg-error text-white font-label-md hover:bg-error/90 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+        <span class="material-symbols-outlined">{{ isDeletingTimetable() ? 'progress_activity' : 'delete' }}</span>
+        {{ isDeletingTimetable() ? 'جارٍ الحذف...' : 'نعم، احذف المسودة' }}
+      </button>
+      <button (click)="deleteTimetableConfirmOpen.set(false)"
+              [disabled]="isDeletingTimetable()"
+              class="flex-1 px-4 py-2.5 rounded-lg border border-outline-variant text-on-surface hover:bg-surface-container font-label-md disabled:opacity-60">
+        إلغاء
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Confirmation Dialog: إلغاء تفعيل الجدول ══════════════════════════════ -->
+<div *ngIf="deactivateConfirmOpen()"
+     class="fixed inset-0 bg-black/50 z-[130] flex items-center justify-center p-4 backdrop-blur-sm">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-5">
+    <div class="flex items-start gap-3">
+      <span class="material-symbols-outlined text-amber-600 text-3xl shrink-0" style="font-variation-settings: 'FILL' 1;">lock_open</span>
+      <div>
+        <h3 class="font-headline-md text-on-surface mb-1">إلغاء تفعيل الجدول</h3>
+        <p class="text-sm text-on-surface-variant leading-relaxed">
+          هل تريد إرجاع هذا الجدول إلى مسودة؟ لن يكون مرئيًا للمعلمين والطلاب حتى يُعاد تفعيله مرة أخرى.
+        </p>
+      </div>
+    </div>
+    <div class="flex gap-3">
+      <button (click)="deactivateTimetable()"
+              [disabled]="isDeactivating()"
+              class="flex-1 px-4 py-2.5 rounded-lg bg-amber-600 text-white font-label-md hover:bg-amber-700 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+        <span class="material-symbols-outlined">{{ isDeactivating() ? 'progress_activity' : 'lock_open' }}</span>
+        {{ isDeactivating() ? 'جارٍ إلغاء التفعيل...' : 'نعم، أرجعه مسودة' }}
+      </button>
+      <button (click)="deactivateConfirmOpen.set(false)"
+              [disabled]="isDeactivating()"
+              class="flex-1 px-4 py-2.5 rounded-lg border border-outline-variant text-on-surface hover:bg-surface-container font-label-md disabled:opacity-60">
+        إلغاء
       </button>
     </div>
   </div>

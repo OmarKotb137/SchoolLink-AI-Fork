@@ -2,6 +2,7 @@ using AutoMapper;
 using Common.Results;
 using Project.BLL.DTOs;
 using Project.BLL.DTOs.Users;
+using Project.BLL.DTOs.Teachers;
 using Project.BLL.Interfaces;
 using Project.DAL.Interfaces;
 using Project.Domain.Entities;
@@ -148,20 +149,41 @@ public class ClassSubjectTeacherService : IClassSubjectTeacherService
             "تم جلب تعيينات الفصل بنجاح");
     }
 
-    public async Task<OperationResult<IEnumerable<UserDto>>> GetAvailableTeachersForSubjectAsync(int subjectId, int classId, int academicYearId)
+    public async Task<OperationResult<IEnumerable<TeacherDto>>> GetAvailableTeachersForSubjectAsync(int subjectId, int classId, int academicYearId)
     {
-        var allTeachers = await _unitOfWork.Users.GetByRoleAsync(UserRole.Teacher);
-        var assigned = await _unitOfWork.ClassSubjectTeachers
-            .GetBySubjectAndYearAsync(subjectId, academicYearId);
+        var classExists = await _unitOfWork.Classes.GetByIdAsync(classId);
+        if (classExists is null || classExists.IsDeleted)
+            return OperationResult<IEnumerable<TeacherDto>>.Failure("الفصل غير موجود");
 
-        var assignedIds = assigned
-            .Where(cst => cst.ClassId == classId && !cst.IsDeleted)
+        var subjectExists = await _unitOfWork.Subjects.GetByIdAsync(subjectId);
+        if (subjectExists is null || subjectExists.IsDeleted)
+            return OperationResult<IEnumerable<TeacherDto>>.Failure("المادة غير موجودة");
+
+        var subjectLinks = await _unitOfWork.TeacherSubjects.GetBySubjectAsync(subjectId);
+        var eligibleTeacherIds = subjectLinks
+            .Select(link => link.TeacherId)
+            .Distinct()
+            .ToHashSet();
+
+        var allTeachers = await _unitOfWork.Users.GetByRoleAsync(UserRole.Teacher);
+
+        // المعلم المُعين بالفعل لنفس الفصل + المادة + السنة يجب استبعاده من قائمة الاختيار
+        var alreadyAssignedToThisClassIds = (await _unitOfWork.ClassSubjectTeachers
+                .GetBySubjectAndYearAsync(subjectId, academicYearId))
+            .Where(cst => cst.ClassId == classId)
             .Select(cst => cst.TeacherId)
             .ToHashSet();
 
-        var available = allTeachers.Where(t => !t.IsDeleted && !assignedIds.Contains(t.Id)).ToList();
-        var dtos = _mapper.Map<IEnumerable<UserDto>>(available);
-        return OperationResult<IEnumerable<UserDto>>.Success(dtos, "تم جلب المعلمين المتاحين بنجاح");
+        var available = allTeachers
+            .Where(t => !t.IsDeleted
+                     && t.IsActive
+                     && eligibleTeacherIds.Contains(t.Id)
+                     && !alreadyAssignedToThisClassIds.Contains(t.Id))
+            .OrderBy(t => t.FullName)
+            .ToList();
+
+        var dtos = _mapper.Map<IEnumerable<TeacherDto>>(available);
+        return OperationResult<IEnumerable<TeacherDto>>.Success(dtos, "تم جلب المعلمين المتاحين بنجاح");
     }
 
     public async Task<OperationResult> BulkAssignTeachersAsync(List<AssignTeacherRequest> requests)

@@ -1,4 +1,4 @@
-using FluentValidation;
+﻿using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Project.BLL.Interfaces;
 using Project.BLL.Mapping;
@@ -24,6 +24,7 @@ public static class ServiceExtensions
 
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IUserService, UserService>();
+        services.AddScoped<ITeacherService, TeacherService>();
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<IAnnouncementService, AnnouncementService>();
         services.AddScoped<IConversationService, ConversationService>();
@@ -86,3 +87,4 @@ public static class ServiceExtensions
         }
     }
 }
+

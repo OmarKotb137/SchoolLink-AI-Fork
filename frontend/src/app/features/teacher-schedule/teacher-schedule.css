@@ -12,3 +12,101 @@
 .tt-header-cell:first-child .cp-day { top:8px; left:8px; color:#64748b; font-weight:500; font-size:11px; }
 .tt-header-cell:first-child .cp-period { bottom:8px; right:8px; color:#00236f; }
 .break-cell { background: #f3f4f6; text-align: center; padding: 8px; font-size: 12px; font-weight: 600; color: #6b7280; display:flex;align-items:center;justify-content:center;gap:6px; }
+
+.teacher-hero {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.5rem;
+  border-radius: 1.75rem;
+  border: 1px solid rgba(0, 35, 111, 0.08);
+  background:
+    radial-gradient(circle at top right, rgba(59, 130, 246, 0.14), transparent 26%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(244, 247, 255, 0.94));
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.06);
+}
+
+.teacher-hero-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.teacher-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(0, 35, 111, 0.08);
+  color: #00236f;
+  font-size: 0.78rem;
+  font-weight: 700;
+  margin-bottom: 0.85rem;
+}
+
+.teacher-hero-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(180px, 1fr));
+  gap: 0.85rem;
+}
+
+.teacher-stat-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 1rem 1.05rem;
+  border-radius: 1.15rem;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+}
+
+.teacher-stat-card.accent {
+  border-color: rgba(0, 35, 111, 0.18);
+  background: linear-gradient(180deg, rgba(0, 35, 111, 0.06), rgba(255, 255, 255, 0.96));
+}
+
+.teacher-stat-label {
+  font-size: 0.78rem;
+  color: #64748b;
+  font-weight: 700;
+}
+
+.teacher-stat-value {
+  font-size: 1.8rem;
+  line-height: 1;
+  color: #0f172a;
+  font-weight: 800;
+}
+
+.teacher-stat-hint {
+  font-size: 0.76rem;
+  color: #94a3b8;
+  line-height: 1.6;
+}
+
+.teacher-table-shell {
+  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.05);
+}
+
+.teacher-table thead tr {
+  background: linear-gradient(180deg, #f8fafc, #f1f5f9);
+}
+
+.teacher-table tbody tr {
+  transition: background 0.18s ease;
+}
+
+.teacher-table tbody tr:hover {
+  background: rgba(248, 250, 252, 0.96);
+}
+
+@media (max-width: 1024px) {
+  .teacher-hero {
+    flex-direction: column;
+  }
+
+  .teacher-hero-stats {
+    grid-template-columns: 1fr;
+  }
+}

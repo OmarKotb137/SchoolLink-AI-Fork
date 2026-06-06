@@ -16,6 +16,7 @@ import { GradeLevelService, GradeLevel } from '../../core/services/grade-level.s
 export class Settings implements OnInit {
   sidebarOpen = signal(false);
   activeTab = signal('academic'); // 'permissions' | 'academic'
+  displayUserName = localStorage.getItem('fullName') || localStorage.getItem('username') || 'المشرف';
 
   // Services
   private academicYearService = inject(AcademicYearService);
@@ -25,6 +26,7 @@ export class Settings implements OnInit {
   academicYears = signal<AcademicYear[]>([]);
   gradeLevels = signal<GradeLevel[]>([]);
   editingYearId = signal<number | null>(null);
+  editingGradeId = signal<number | null>(null);
 
   // Error / Success messages
   yearError = signal<string | null>(null);
@@ -68,11 +70,18 @@ export class Settings implements OnInit {
     setTimeout(() => this.successMessage.set(null), 3000);
   }
 
+  private resetGradeForm() {
+    this.editingGradeId.set(null);
+    this.newGrade = { name: '', stage: null, levelOrder: 1 };
+    this.gradeError.set(null);
+  }
+
   // ─── Academic Year Methods ────────────────────────────────────────────────
 
   addAcademicYear() {
     if (!this.newYear.name || !this.newYear.startDate || !this.newYear.endDate) return;
     this.yearError.set(null);
+    const isEditing = !!this.editingYearId();
 
     const request = { ...this.newYear };
 
@@ -88,7 +97,7 @@ export class Settings implements OnInit {
         this.loadData();
         this.cancelYearEdit();
         this.showSuccess(
-          this.editingYearId() ? 'تم تحديث السنة الدراسية بنجاح' : 'تمت إضافة السنة الدراسية بنجاح'
+          isEditing ? 'تم تحديث السنة الدراسية بنجاح' : 'تمت إضافة السنة الدراسية بنجاح'
         );
       },
       error: (err) => {
@@ -144,17 +153,44 @@ export class Settings implements OnInit {
   addGradeLevel() {
     if (!this.newGrade.name) return;
     this.gradeError.set(null);
+    const isEditing = !!this.editingGradeId();
+    const request = {
+      name: this.newGrade.name,
+      stage: this.newGrade.stage,
+      levelOrder: this.newGrade.levelOrder,
+    };
 
-    this.gradeLevelService.create(this.newGrade).subscribe({
+    const action$ = this.editingGradeId()
+      ? this.gradeLevelService.update(this.editingGradeId()!, {
+          id: this.editingGradeId()!,
+          ...request,
+        })
+      : this.gradeLevelService.create(request);
+
+    action$.subscribe({
       next: () => {
         this.loadData();
-        this.newGrade = { name: '', stage: null, levelOrder: 1 };
-        this.showSuccess('تمت إضافة المرحلة الدراسية بنجاح');
+        this.resetGradeForm();
+        this.showSuccess(isEditing ? 'تم تحديث المرحلة الدراسية بنجاح' : 'تمت إضافة المرحلة الدراسية بنجاح');
       },
       error: (err) => {
-        this.gradeError.set(this.extractErrorMessage(err, 'حدث خطأ أثناء إضافة المرحلة الدراسية'));
+        this.gradeError.set(this.extractErrorMessage(err, 'حدث خطأ أثناء حفظ المرحلة الدراسية'));
       },
     });
+  }
+
+  editGradeLevel(grade: GradeLevel) {
+    this.editingGradeId.set(grade.id);
+    this.newGrade = {
+      name: grade.name,
+      stage: grade.stage ?? null,
+      levelOrder: grade.levelOrder,
+    };
+    this.gradeError.set(null);
+  }
+
+  cancelGradeEdit() {
+    this.resetGradeForm();
   }
 
   deleteGradeLevel(id: number) {
@@ -162,6 +198,9 @@ export class Settings implements OnInit {
     this.gradeLevelService.delete(id).subscribe({
       next: () => {
         this.loadData();
+        if (this.editingGradeId() === id) {
+          this.resetGradeForm();
+        }
         this.showSuccess('تم حذف المرحلة الدراسية بنجاح');
       },
       error: (err) => {

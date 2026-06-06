@@ -1,4 +1,4 @@
-namespace Project.BLL.DTOs.Users;
+﻿namespace Project.BLL.DTOs.Users;
 
 public class UserDto
 {

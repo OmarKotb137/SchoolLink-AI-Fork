@@ -1,112 +1,194 @@
 <app-sidebar [(isOpen)]="sidebarOpen" />
-<div class="main-content">
-  <app-topbar userName="طالب" />
-  <main class="pt-16 h-screen flex flex-col bg-background p-6">
 
-    <!-- Header -->
-    <div class="mb-6 flex justify-between items-end bg-surface-container-lowest p-6 rounded-2xl border border-outline-variant/30">
-      <div>
-        <h2 class="font-headline-lg text-headline-lg text-primary mb-2 flex items-center gap-2">
-          <span class="material-symbols-outlined text-4xl">view_timeline</span>
-          جدول فصلي الدراسي
-          <!-- FIX 5: اسم الفصل بييجي من timetable().className مباشرة -->
-          <span *ngIf="timetable()?.className"
-                class="text-2xl font-normal text-on-surface-variant">
-            — {{ timetable()!.className }}
-          </span>
-        </h2>
-        <p class="font-body-md text-on-surface-variant">الجدول الأسبوعي للفصل الدراسي الخاص بك مع المواعيد والمعلمين.</p>
+<div class="main-content">
+  <app-topbar [userName]="displayUserName" />
+
+  <main class="pt-16 min-h-screen bg-background flex flex-col gap-5 p-4 lg:p-6">
+
+    <!-- ═══════════════════ HEADER ═══════════════════ -->
+    <div class="glass-card p-5 lg:p-6">
+      <div class="flex items-start justify-between gap-4 flex-wrap">
+
+        <!-- Title + icon -->
+        <div class="flex items-center gap-4">
+          <div class="gradient-icon-box gradient-primary sch-icon-box">
+            <span class="material-symbols-outlined"
+                  style="font-size:24px;font-variation-settings:'FILL' 1;">view_timeline</span>
+          </div>
+          <div>
+            <h1 class="sch-page-title">
+              جدولي الدراسي
+              <ng-container *ngIf="timetable()?.className">
+                <span class="sch-class-sep">—</span>
+                <span class="sch-class-name">{{ timetable()!.className }}</span>
+              </ng-container>
+            </h1>
+            <p class="sch-page-sub">الجدول الأسبوعي · مواعيد الحصص والمعلمين</p>
+          </div>
+        </div>
+
+        <!-- Stats chips (بعد التحميل) -->
+        <div *ngIf="!isLoading() && timetable()" class="flex items-center gap-2 flex-wrap">
+          <div class="sch-chip sch-chip-primary">
+            <span class="material-symbols-outlined" style="font-size:13px;">school</span>
+            {{ lessonCount }} حصة أسبوعياً
+          </div>
+          <div class="sch-chip sch-chip-neutral">
+            <span class="material-symbols-outlined" style="font-size:13px;">menu_book</span>
+            {{ uniqueSubjects.length }} مادة
+          </div>
+        </div>
+      </div>
+
+      <!-- Today indicator -->
+      <div *ngIf="!isLoading() && timetable()"
+           class="flex items-center gap-2 mt-4 pt-4 border-t border-outline-variant/20">
+        <span class="sch-today-dot"></span>
+        <span class="text-xs text-on-surface-variant">
+          اليوم الحالي:
+          <span class="font-bold text-primary">{{ getTodayLabel() }}</span>
+        </span>
       </div>
     </div>
 
-    <!-- Error banner -->
-    <div *ngIf="errorMessage()"
-         class="flex items-center gap-3 p-4 mb-4 rounded-xl bg-red-50 text-error border border-error/20 font-body-sm">
-      <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">error</span>
-      {{ errorMessage() }}
-      <button (click)="loadSchedule()"
-              class="mr-auto text-xs underline hover:no-underline">
+    <!-- ═══════════════════ ERROR BANNER ═══════════════════ -->
+    <div *ngIf="errorMessage()" class="sch-error-banner">
+      <span class="material-symbols-outlined flex-shrink-0"
+            style="font-variation-settings:'FILL' 1;">error</span>
+      <span class="flex-1 text-sm">{{ errorMessage() }}</span>
+      <button (click)="loadSchedule()" class="sch-retry-btn">
+        <span class="material-symbols-outlined" style="font-size:14px;">refresh</span>
         إعادة المحاولة
       </button>
     </div>
 
-    <!-- Grid card -->
-    <div class="flex-1 overflow-auto bg-surface-container-lowest rounded-2xl border border-outline-variant/30 shadow-sm relative">
+    <!-- ═══════════════════ TABLE CARD ═══════════════════ -->
+    <div class="glass-table-container relative custom-scrollbar" style="overflow:auto;min-height:420px;">
 
-      <!-- Spinner -->
-      <div *ngIf="isLoading()" class="absolute inset-0 bg-white/80 z-10 flex items-center justify-center">
-        <span class="material-symbols-outlined animate-spin text-4xl text-primary">sync</span>
+      <!-- ── Loading overlay ── -->
+      <div *ngIf="isLoading()" class="sch-loading-overlay">
+        <div class="sch-loading-spinner gradient-primary">
+          <span class="material-symbols-outlined text-white animate-spin" style="font-size:22px;">progress_activity</span>
+        </div>
+        <p class="text-sm text-on-surface-variant font-medium mt-3">جاري تحميل الجدول…</p>
       </div>
 
-      <!--
-        FIX 6: كان *ngIf="scheduleData()" — وده دايماً truthy لأن scheduleData كانت
-                بتخزّن الـ OperationResult object كامل حتى لو data جوّاه null.
-                دلوقتي timetable() هو الـ TimetableDto نفسه أو null — فالشرط صحيح.
-      -->
+      <!-- ── Schedule table ── -->
       <table *ngIf="!isLoading() && timetable()?.slots?.length"
-             class="w-full border-collapse min-w-[800px] text-center">
+             class="sch-table">
+
+        <!-- HEADER ROW -->
         <thead>
-          <tr class="bg-surface-container-low border-b border-outline-variant/30">
-            <th class="p-4 border-l border-outline-variant/30 w-32 font-bold text-on-surface">اليوم / الحصة</th>
-            <th *ngFor="let p of periods" class="p-4 border-l border-outline-variant/30 font-bold text-on-surface">
-              <div class="text-sm">{{ p.label }}</div>
-              <div class="text-xs text-on-surface-variant font-normal">{{ p.start }} - {{ p.end }}</div>
+          <tr>
+            <!-- Corner -->
+            <th class="sch-corner-cell">
+              <div class="flex flex-col items-center gap-0.5">
+                <span class="material-symbols-outlined text-primary" style="font-size:15px;">date_range</span>
+                <span class="text-[10px] text-on-surface-variant font-semibold">اليوم</span>
+              </div>
+            </th>
+
+            <!-- Period headers -->
+            <th *ngFor="let p of periods()"
+                class="sch-period-header"
+                [class.sch-current-period-header]="getCurrentPeriodNum() === p.num">
+              <div class="sch-period-num">{{ p.label }}</div>
+              <div class="sch-period-time">{{ p.start }}<br/>{{ p.end }}</div>
+              <div *ngIf="getCurrentPeriodNum() === p.num" class="sch-now-dot"></div>
             </th>
           </tr>
         </thead>
+
+        <!-- BODY -->
         <tbody>
           <tr *ngFor="let day of days"
-              class="border-b border-outline-variant/30 hover:bg-surface-container-lowest transition-colors">
+              [class.sch-today-row]="isToday(day.value)">
 
-            <td class="p-4 border-l border-outline-variant/30 font-bold text-primary bg-surface-container-lowest/50">
-              {{ day.label }}
+            <!-- Day label -->
+            <td class="sch-day-label-cell" [class.sch-today-row]="isToday(day.value)">
+              <span class="sch-day-text"
+                    [class.text-primary]="isToday(day.value)"
+                    [class.text-on-surface]="!isToday(day.value)">
+                {{ day.label }}
+              </span>
+              <span *ngIf="isToday(day.value)" class="sch-today-badge">اليوم</span>
             </td>
 
-            <td *ngFor="let p of periods" class="border-l border-outline-variant/30 h-24 p-2 relative">
-              <!--
-                FIX 7: استخدام "as slot" بدل استدعاء getSlot() 4-5 مرات لكل خلية.
-                        كل خلية فيها slot كانت بتعمل: ngIf + isBreak + subjectName +
-                        teacherName + roomName = 5 استدعاءات × 35 خلية = 175 find() في كل render.
-                        دلوقتي: استدعاء واحد بس.
-              -->
-              <ng-container *ngIf="getSlot(day.value, p.num) as slot">
-                <div class="w-full h-full flex flex-col justify-center items-center text-sm p-1 rounded-xl bg-secondary/10 border border-secondary/20">
+            <!-- Slot cells -->
+            <td *ngFor="let p of periods()"
+                class="sch-slot-cell"
+                [class.sch-today-row]="isToday(day.value)"
+                [class.sch-current-cell]="isToday(day.value) && getCurrentPeriodNum() === p.num">
 
-                  <!-- Break -->
-                  <ng-container *ngIf="slot.isBreak; else lessonTpl">
-                    <span class="material-symbols-outlined text-secondary mb-1">local_cafe</span>
-                    <span class="font-bold text-secondary">راحة</span>
-                  </ng-container>
+              <!-- ① Has slot -->
+              <ng-container *ngIf="getSlot(day.value, p.num) as slot; else noSlot">
 
-                  <!-- Lesson -->
-                  <ng-template #lessonTpl>
-                    <span class="font-bold text-primary mb-1">{{ slot.subjectName }}</span>
-                    <div class="flex flex-col items-center text-xs text-on-surface-variant gap-0.5">
-                      <span *ngIf="slot.teacherName">{{ slot.teacherName }}</span>
-                      <span *ngIf="slot.roomName" class="text-secondary">{{ slot.roomName }}</span>
+                <!-- Break -->
+                <ng-container *ngIf="slot.isBreak; else lessonTpl">
+                  <div class="sch-break-card">
+                    <span class="material-symbols-outlined sch-break-icon">local_cafe</span>
+                    <span class="sch-break-label">استراحة</span>
+                    <span class="sch-break-time">
+                      {{ slot.startTime | slice:0:5 }} – {{ slot.endTime | slice:0:5 }}
+                    </span>
+                  </div>
+                </ng-container>
+
+                <!-- Lesson -->
+                <ng-template #lessonTpl>
+                  <div class="sch-lesson-card sch-occupied"
+                       [ngClass]="getSubjectColor(slot.subjectName)">
+                    <div class="sch-subject-name">{{ slot.subjectName }}</div>
+                    <div class="sch-lesson-meta">
+                      <div *ngIf="slot.teacherName" class="sch-meta-row">
+                        <span class="material-symbols-outlined sch-meta-icon">person</span>
+                        <span class="truncate">{{ slot.teacherName }}</span>
+                      </div>
+                      <div *ngIf="slot.roomName" class="sch-meta-row sch-meta-room">
+                        <span class="material-symbols-outlined sch-meta-icon">location_on</span>
+                        <span class="truncate">{{ slot.roomName }}</span>
+                      </div>
                     </div>
-                  </ng-template>
+                  </div>
+                </ng-template>
 
-                </div>
               </ng-container>
-            </td>
 
+              <!-- ② Empty -->
+              <ng-template #noSlot>
+                <div class="sch-empty-cell"></div>
+              </ng-template>
+
+            </td>
           </tr>
         </tbody>
       </table>
 
-      <!--
-        FIX 8: Empty state — كان *ngIf="!isLoading() && !scheduleData()" مش بيظهر أبداً
-                لأن scheduleData() كانت دايماً truthy (OperationResult object).
-                دلوقتي بنشيك على timetable() نفسه اللي بييجي null لو مفيش جدول.
-      -->
+      <!-- ── Empty state ── -->
       <div *ngIf="!isLoading() && hasLoaded() && !errorMessage() && !timetable()?.slots?.length"
-           class="h-full flex flex-col items-center justify-center text-on-surface-variant p-10">
-        <span class="material-symbols-outlined text-6xl mb-4 opacity-50">event_busy</span>
-        <h3 class="font-headline-md mb-2">لا يوجد جدول مسجل</h3>
-        <p class="font-body-md">لم يتم تسجيل جدول لفصلك بعد. يرجى مراجعة إدارة المدرسة.</p>
+           class="sch-empty-state">
+        <div class="sch-empty-icon-wrap">
+          <span class="material-symbols-outlined text-primary" style="font-size:30px;opacity:.5;">event_busy</span>
+        </div>
+        <h3 class="font-bold text-on-surface mb-1 text-base">لا يوجد جدول مسجل</h3>
+        <p class="text-sm text-on-surface-variant text-center max-w-xs">
+          لم يتم تسجيل جدول لفصلك بعد. يرجى مراجعة إدارة المدرسة.
+        </p>
       </div>
-
     </div>
+
+    <!-- ═══════════════════ LEGEND ═══════════════════ -->
+    <div *ngIf="!isLoading() && uniqueSubjects.length > 0" class="glass-card p-4">
+      <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <span class="text-xs font-bold text-on-surface-variant flex-shrink-0 ml-1">المواد الدراسية</span>
+        <div *ngFor="let s of uniqueSubjects"
+             class="sch-legend-item"
+             [ngClass]="s.color">
+          <span class="sch-legend-dot"></span>
+          <span>{{ s.name }}</span>
+        </div>
+      </div>
+    </div>
+
   </main>
 </div>

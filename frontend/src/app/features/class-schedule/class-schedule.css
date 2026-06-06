@@ -1,82 +1,356 @@
-.sch-header-corner {
+/* ═══════════════════════════════════════════════════════════
+   CLASS SCHEDULE  —  Student timetable view
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Header ─────────────────────────────────────────── */
+.glass-card {
+  border-radius: 24px;
+  border: 1px solid rgba(0, 35, 111, 0.08);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94));
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.05);
+}
+
+.glass-table-container {
+  border-radius: 24px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.05);
+}
+
+.sch-icon-box {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  flex-shrink: 0;
+}
+
+.sch-page-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--color-on-surface);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  line-height: 1.3;
+}
+
+.sch-class-sep  { color: var(--color-outline); font-weight: 300; }
+.sch-class-name { color: var(--color-primary); }
+.sch-page-sub   { font-size: 0.8rem; color: var(--color-on-surface-variant); margin-top: 2px; }
+
+/* ── Chips ───────────────────────────────────────────── */
+.sch-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.sch-chip-primary { background: rgba(0,35,111,.08); color: #00236f; }
+.sch-chip-neutral { background: rgba(107,114,128,.08); color: var(--color-on-surface-variant); }
+
+/* ── Today dot ───────────────────────────────────────── */
+.sch-today-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  animation: sch-pulse 2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+@keyframes sch-pulse {
+  0%,100% { opacity: 1; transform: scale(1);    }
+  50%      { opacity: .6; transform: scale(1.3); }
+}
+
+/* ── Error banner ────────────────────────────────────── */
+.sch-error-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  border-radius: 14px;
+  background: rgba(186,26,26,.06);
+  border: 1px solid rgba(186,26,26,.18);
+  color: var(--color-error);
+}
+.sch-retry-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  background: rgba(186,26,26,.1);
+  color: var(--color-error);
+  font-family: inherit;
+  transition: background .15s;
+  flex-shrink: 0;
+}
+.sch-retry-btn:hover { background: rgba(186,26,26,.18); }
+
+/* ── Loading overlay ─────────────────────────────────── */
+.sch-loading-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,.88);
+  backdrop-filter: blur(4px);
+}
+.sch-loading-spinner {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Table base ──────────────────────────────────────── */
+.sch-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 780px;
+  table-layout: fixed;
+}
+
+/* ── Sticky corner & day column ──────────────────────── */
+.sch-corner-cell,
+.sch-day-label-cell {
   position: sticky;
   right: 0;
+  background: rgba(255,255,255,.96);
+  backdrop-filter: blur(6px);
+  z-index: 2;
+}
+.sch-corner-cell {
+  z-index: 3;
+  width: 96px;
+  padding: 12px 8px;
+  text-align: center;
+  border-bottom: 2px solid rgba(0,35,111,.07);
+  border-left: 1px solid rgba(0,35,111,.06);
+}
+
+/* ── Period header cells ─────────────────────────────── */
+.sch-period-header {
+  padding: 10px 6px;
+  text-align: center;
+  border-left: 1px solid rgba(0,35,111,.05);
+  border-bottom: 2px solid rgba(0,35,111,.07);
+  background: rgba(255,255,255,.95);
+  transition: background .2s;
+}
+.sch-period-num  { font-size: 11px; font-weight: 700; color: var(--color-on-surface); margin-bottom: 2px; }
+.sch-period-time { font-size: 10px; color: var(--color-on-surface-variant); line-height: 1.4; }
+
+/* Active period indicator */
+.sch-now-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  margin: 4px auto 0;
+  animation: sch-pulse 2s ease-in-out infinite;
+}
+.sch-current-period-header {
+  background: rgba(0,35,111,.05) !important;
+}
+.sch-current-period-header .sch-period-num { color: var(--color-primary); }
+
+/* ── Day label cell ──────────────────────────────────── */
+.sch-day-label-cell {
+  padding: 10px 8px;
+  border-bottom: 1px solid rgba(0,35,111,.04);
+  border-left: 1px solid rgba(0,35,111,.06);
+  text-align: center;
+  vertical-align: middle;
+  width: 96px;
+}
+.sch-day-text   { display: block; font-size: 12px; font-weight: 700; }
+.sch-today-badge {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #00236f;
+  color: #fff;
+}
+
+/* ── TODAY row highlight ─────────────────────────────── */
+.sch-today-row > td,
+tr.sch-today-row > td {
+  background-color: rgba(0,35,111,.03) !important;
+}
+td.sch-day-label-cell.sch-today-row {
+  background: rgba(0,35,111,.05) !important;
+}
+
+/* ── Slot cell ───────────────────────────────────────── */
+.sch-slot-cell {
+  height: 90px;
+  padding: 6px;
+  border-left: 1px solid rgba(0,35,111,.05);
+  border-bottom: 1px solid rgba(0,35,111,.04);
+  vertical-align: middle;
+  transition: background .15s;
+}
+
+/* Current cell (today × current period) */
+.sch-current-cell {
+  box-shadow: inset 0 0 0 2px rgba(0,35,111,.45) !important;
+  background-color: rgba(0,35,111,.05) !important;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Break card ──────────────────────────────────────── */
+.sch-break-card {
+  width: 100%;
+  height: 100%;
+  min-height: 68px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border-radius: 10px;
+  background: rgba(107,114,128,.05);
+  border: 1px dashed rgba(107,114,128,.22);
+}
+.sch-break-icon  { font-size: 16px !important; color: var(--color-on-surface-variant); }
+.sch-break-label { font-size: 11px; font-weight: 600; color: var(--color-on-surface-variant); }
+.sch-break-time  { font-size: 10px; color: var(--color-outline); }
+
+/* ── Lesson card ─────────────────────────────────────── */
+.sch-lesson-card {
+  width: 100%;
+  height: 100%;
+  min-height: 68px;
+  border-radius: 10px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+}
+.sch-subject-name {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sch-lesson-meta { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
+.sch-meta-row    { display: flex; align-items: center; gap: 3px; font-size: 10px; color: var(--color-on-surface-variant); overflow: hidden; }
+.sch-meta-room   { color: var(--color-outline); }
+.sch-meta-icon   { font-size: 10px !important; flex-shrink: 0; }
+
+.sch-occupied {
+  cursor: default;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.sch-occupied:hover {
+  transform: scale(1.03);
+  box-shadow: 0 4px 14px rgba(0,0,0,.1);
+  position: relative;
   z-index: 2;
 }
 
-.sch-day-cell {
-  position: sticky;
-  right: 0;
-  z-index: 1;
+/* ── Empty cell ──────────────────────────────────────── */
+.sch-empty-cell {
+  width: 100%;
+  height: 68px;
+  border-radius: 10px;
 }
 
-.sch-today-indicator {
-  position: relative;
+/* ── Subject color themes ────────────────────────────── */
+.sch-subj-blue   { background: rgba(0,35,111,.07);    border-right: 3px solid #00236f; }
+.sch-subj-blue   .sch-subject-name { color: #00236f; }
+
+.sch-subj-cyan   { background: rgba(0,184,217,.07);   border-right: 3px solid #00b8d9; }
+.sch-subj-cyan   .sch-subject-name { color: #007a8a; }
+
+.sch-subj-green  { background: rgba(22,163,74,.07);   border-right: 3px solid #16a34a; }
+.sch-subj-green  .sch-subject-name { color: #15803d; }
+
+.sch-subj-orange { background: rgba(234,88,12,.07);   border-right: 3px solid #ea580c; }
+.sch-subj-orange .sch-subject-name { color: #c2410c; }
+
+.sch-subj-purple { background: rgba(139,92,246,.07);  border-right: 3px solid #7c3aed; }
+.sch-subj-purple .sch-subject-name { color: #6d28d9; }
+
+.sch-subj-gray   { background: rgba(107,114,128,.07); border-right: 3px solid #6b7280; }
+.sch-subj-gray   .sch-subject-name { color: #6b7280; }
+
+/* ── Empty state ─────────────────────────────────────── */
+.sch-empty-state {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px;
+}
+.sch-empty-icon-wrap {
+  width: 64px;
+  height: 64px;
+  border-radius: 20px;
+  background: rgba(0,35,111,.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-/* current day row */
-.sch-current-day {
-  background-color: #f0f4ff !important;
+/* ── Legend ──────────────────────────────────────────── */
+.sch-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.sch-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
-/* current period column */
-.sch-current-period {
-  background-color: #e8edff !important;
-}
+/* Legend color per theme */
+.sch-subj-blue.sch-legend-item   { background: rgba(0,35,111,.08);    color: #00236f; }
+.sch-subj-blue   .sch-legend-dot { background: #00236f; }
 
-/* intersection cell */
-.sch-current-cell {
-  box-shadow: inset 0 0 0 2px var(--color-primary);
-  position: relative;
-  z-index: 1;
-}
+.sch-subj-cyan.sch-legend-item   { background: rgba(0,184,217,.08);   color: #007a8a; }
+.sch-subj-cyan   .sch-legend-dot { background: #00b8d9; }
 
-/* break period cell */
-.sch-break {
-  background-color: #f8f7fc !important;
-}
+.sch-subj-green.sch-legend-item  { background: rgba(22,163,74,.08);   color: #15803d; }
+.sch-subj-green  .sch-legend-dot { background: #16a34a; }
 
-/* subject colors */
-.class-blue {
-  background-color: rgba(0, 35, 111, 0.08);
-  border-right: 4px solid #00236f;
-}
-.class-blue .font-title-md { color: #00236f; }
+.sch-subj-orange.sch-legend-item { background: rgba(234,88,12,.08);   color: #c2410c; }
+.sch-subj-orange .sch-legend-dot { background: #ea580c; }
 
-.class-cyan {
-  background-color: rgba(0, 184, 217, 0.08);
-  border-right: 4px solid #00b8d9;
-}
-.class-cyan .font-title-md { color: #007a8a; }
+.sch-subj-purple.sch-legend-item { background: rgba(139,92,246,.08);  color: #6d28d9; }
+.sch-subj-purple .sch-legend-dot { background: #7c3aed; }
 
-.class-green {
-  background-color: rgba(22, 163, 74, 0.08);
-  border-right: 4px solid #16a34a;
-}
-.class-green .font-title-md { color: #15803d; }
-
-.class-orange {
-  background-color: rgba(234, 88, 12, 0.08);
-  border-right: 4px solid #ea580c;
-}
-.class-orange .font-title-md { color: #c2410c; }
-
-.class-gray {
-  background-color: rgba(107, 114, 128, 0.08);
-  border-right: 4px solid #6b7280;
-}
-.class-gray .font-title-md { color: #6b7280; }
-
-/* occupied cell hover */
-.sch-occupied {
-  cursor: default;
-  transition: box-shadow 0.2s;
-}
-.sch-occupied:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-}
-
-/* empty cell */
-.sch-empty {
-  min-height: 90px;
-}
+.sch-subj-gray.sch-legend-item   { background: rgba(107,114,128,.08); color: #6b7280; }
+.sch-subj-gray   .sch-legend-dot { background: #6b7280; }

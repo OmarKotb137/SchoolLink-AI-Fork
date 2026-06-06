@@ -16,6 +16,7 @@ import { AcademicYearService, AcademicYear } from '../../core/services/academic-
 })
 export class ClassManagement implements OnInit {
   sidebarOpen = signal(false);
+  displayUserName = localStorage.getItem('fullName') || localStorage.getItem('username') || 'المشرف';
 
   private classService = inject(ClassService);
   private gradeLevelService = inject(GradeLevelService);
@@ -97,8 +98,8 @@ export class ClassManagement implements OnInit {
 
   editClass(cls: ClassEntity) {
     this.editingClassId.set(cls.id);
-    // FIX #3: كان { ...cls } فبيبعت id + gradeLevelName + academicYearName في الـ body
-    // الحل: الـ 3 fields المطلوبة بس
+    // نجهز فقط الحقول القابلة للتعديل بدل نسخ خصائص العرض الإضافية،
+    // والخدمة تضيف `id` تلقائيا عند تنفيذ التحديث.
     this.newClass = {
       name: cls.name,
       gradeLevelId: cls.gradeLevelId,
@@ -120,7 +121,7 @@ export class ClassManagement implements OnInit {
     if (!this.newClass.name?.trim() || !this.newClass.gradeLevelId || !this.newClass.academicYearId) return;
 
     if (this.editingClassId()) {
-      // FIX #3: بعت الـ 3 fields بس بدون id
+      // نمرر الحقول القابلة للتعديل فقط، والخدمة تضيف `id` تلقائيا.
       const { name, gradeLevelId, academicYearId } = this.newClass;
       this.classService.update(this.editingClassId()!, { name, gradeLevelId, academicYearId }).subscribe({
         next: () => {

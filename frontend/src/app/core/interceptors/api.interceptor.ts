@@ -13,9 +13,13 @@ interface OperationResultLike<T = unknown> {
  * ========================
  * الواجهة الخلفية (Backend) ترجع كل البيانات ملفوفة في كائن Result:
  * { isSuccess: true, message: "...", data: [...] }
- * 
+ *
  * هذا الـ Interceptor يقوم تلقائياً بفك الغلاف واستخراج .data
  * حتى لا نحتاج لتعديل كل Service يدوياً.
+ *
+ * في حالة isSuccess = false يرمي HttpErrorResponse يحمل:
+ *  - status : الـ HTTP status code الأصلي من الـ server (مش ثابت 400)
+ *  - error  : كائن الـ OperationResult كاملاً بما فيه message العربي
  */
 export const apiInterceptor: HttpInterceptorFn = (req, next) => {
   return next(req).pipe(
@@ -30,11 +34,12 @@ export const apiInterceptor: HttpInterceptorFn = (req, next) => {
       }
 
       if (!body.isSuccess) {
+        // نحتفظ بـ HTTP status الأصلي — لو كان 200 بشكل غلط نرجع 400 كـ fallback
         throw new HttpErrorResponse({
-          error: body,
-          status: 400,
-          statusText: 'Bad Request',
-          url: event.url ?? undefined,
+          error:      body,
+          status:     event.status >= 400 ? event.status : 400,
+          statusText: event.statusText,
+          url:        event.url ?? undefined,
         });
       }
 
@@ -51,7 +56,7 @@ export const apiInterceptor: HttpInterceptorFn = (req, next) => {
 
       return throwError(() => new HttpErrorResponse({
         error,
-        status: 0,
+        status:     0,
         statusText: 'Client Error',
       }));
     })

@@ -1,89 +1,69 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { Sidebar } from '../../layouts/sidebar/sidebar';
-import { Topbar } from '../../layouts/topbar/topbar';
-import { TimetableService } from '../../core/services/timetable.service';
-
-// Mirrors TimetableSlotDto from the backend
-export interface ClassScheduleSlot {
-  id:                    number;
-  timetableId:           number;
-  dayOfWeek:             string;
-  periodNumber:          number;
-  startTime:             string;
-  endTime:               string;
-  isBreak:               boolean;
-  classSubjectTeacherId: number | null;
-  subjectName:           string | null;
-  teacherName:           string | null;
-  roomId:                number | null;
-  roomName:              string | null;
-}
-
-// Mirrors TimetableDto from the backend
-export interface ClassScheduleData {
-  id:            number;
-  classId:       number;
-  className:     string;
-  academicYearId: number;
-  isActive:      boolean;
-  slots:         ClassScheduleSlot[];
-}
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { CommonModule }                       from '@angular/common';
+import { Sidebar }                            from '../../layouts/sidebar/sidebar';
+import { Topbar }                             from '../../layouts/topbar/topbar';
+import { TimetableService }                   from '../../core/services/timetable.service';
+import { TimetableDto, TimetableSlotDto }     from '../../core/models/timetable.models';
+import {
+  buildSchedulePeriods,
+  getCurrentPeriodNumber,
+  SchedulePeriodView,
+} from '../../core/utils/schedule-periods';
 
 @Component({
-  selector: 'app-class-schedule',
-  standalone: true,
-  imports: [CommonModule, Sidebar, Topbar],
+  selector:    'app-class-schedule',
+  standalone:  true,
+  imports:     [CommonModule, Sidebar, Topbar],
   templateUrl: './class-schedule.html',
-  styleUrl: './class-schedule.css',
+  styleUrl:    './class-schedule.css',
 })
 export class ClassSchedule implements OnInit {
   sidebarOpen  = signal(false);
+  displayUserName = localStorage.getItem('fullName') || localStorage.getItem('username') || 'الطالب';
 
   private timetableService = inject(TimetableService);
 
-  // FIX 1: بدل ما نخزّن الـ OperationResult كله نسحب الـ TimetableDto مباشرة من .data
-  //        فـ getSlot() والـ template بيشتغلوا على الـ object الحقيقي مش الـ wrapper
-  timetable    = signal<ClassScheduleData | null>(null);
+  timetable    = signal<TimetableDto | null>(null);
   isLoading    = signal(true);
   errorMessage = signal<string | null>(null);
   hasLoaded    = signal(false);
+
+  /* ── helpers ─────────────────────────────────────────────────── */
+
+  /** اليوم الحالي بالإنجليزي */
+  readonly todayValue = (() => {
+    const d = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    return d[new Date().getDay()];
+  })();
 
   days = [
     { value: 'Sunday',    label: 'الأحد' },
     { value: 'Monday',    label: 'الإثنين' },
     { value: 'Tuesday',   label: 'الثلاثاء' },
     { value: 'Wednesday', label: 'الأربعاء' },
-    { value: 'Thursday',  label: 'الخميس' }
+    { value: 'Thursday',  label: 'الخميس' },
   ];
 
-  periods = [
-    { num: 1, label: 'الحصة الأولى',  start: '08:00', end: '08:45' },
-    { num: 2, label: 'الحصة الثانية', start: '08:45', end: '09:30' },
-    { num: 3, label: 'الحصة الثالثة', start: '09:30', end: '10:15' },
-    { num: 4, label: 'الحصة الرابعة', start: '10:30', end: '11:15' },
-    { num: 5, label: 'الحصة الخامسة', start: '11:15', end: '12:00' },
-    { num: 6, label: 'الحصة السادسة', start: '12:00', end: '12:45' },
-    { num: 7, label: 'الحصة السابعة', start: '12:45', end: '13:30' }
-  ];
+  periods = computed<SchedulePeriodView[]>(() => buildSchedulePeriods(this.timetable()?.slots ?? []));
 
-  ngOnInit() {
-    this.loadSchedule();
-  }
+  /* ── lifecycle ─────────────────────────────────────────────────── */
+
+  ngOnInit() { this.loadSchedule(); }
 
   loadSchedule() {
-    // FIX 2: reset الـ state عند كل محاولة تحميل (مهم لزرار إعادة المحاولة)
     this.isLoading.set(true);
     this.errorMessage.set(null);
     this.hasLoaded.set(false);
 
     this.timetableService.getMyStudentScheduleCurrentYear().subscribe({
       next: (response) => {
-        // FIX 3 (CRITICAL): الـ API بيرجع OperationResult<TimetableDto>
-        //   أي: { isSuccess: true, data: { id, classId, className, slots:[...] }, message: "..." }
-        //   الكود القديم كان بيحط الـ response كله في scheduleData ثم بيشوف .slots
-        //   لكن .slots على الـ OperationResult مش موجود — الـ TimetableDto بييجي في .data
-        this.timetable.set(response?.data ?? null);
+        /*
+         * FIX (CRITICAL):
+         *   apiInterceptor يعمل unwrap للـ OperationResult تلقائياً
+         *   فـ response هنا = TimetableDto مباشرة (مش الـ wrapper).
+         *   الكود القديم كان يعمل response?.data وكانت دايماً undefined.
+         */
+        this.timetable.set(response ?? null);
         this.hasLoaded.set(true);
         this.isLoading.set(false);
       },
@@ -92,16 +72,61 @@ export class ClassSchedule implements OnInit {
         this.hasLoaded.set(true);
         this.isLoading.set(false);
         this.errorMessage.set('تعذر تحميل الجدول الدراسي. يرجى المحاولة مرة أخرى.');
-      }
+      },
     });
   }
 
-  // FIX 4: بتشوف في timetable().slots مباشرة — مش scheduleData().slots
-  //        والـ template بيستخدم "*ngIf="getSlot() as slot"
-  //        فبتتنادى مرة واحدة بس للخلية بدل 4-5 مرات
-  getSlot(dayValue: string, periodNum: number): ClassScheduleSlot | null {
+  /* ── grid helpers ─────────────────────────────────────────────── */
+
+  getSlot(dayValue: string, periodNum: number): TimetableSlotDto | null {
     return this.timetable()?.slots?.find(
       s => s.dayOfWeek === dayValue && s.periodNumber === periodNum
     ) ?? null;
+  }
+
+  isToday(dayValue: string): boolean {
+    return dayValue === this.todayValue;
+  }
+
+  /** رقم الحصة الحالية بناءً على الوقت، أو null لو مش في وقت حصة */
+  getCurrentPeriodNum(): number | null {
+    return getCurrentPeriodNumber(this.periods());
+  }
+
+  /* ── subject color ────────────────────────────────────────────── */
+
+  private readonly palette = [
+    'sch-subj-blue',
+    'sch-subj-cyan',
+    'sch-subj-green',
+    'sch-subj-orange',
+    'sch-subj-purple',
+  ];
+
+  getSubjectColor(name: string | null): string {
+    if (!name) return 'sch-subj-gray';
+    let h = 0;
+    for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
+    return this.palette[Math.abs(h) % this.palette.length];
+  }
+
+  /* ── stats ────────────────────────────────────────────────────── */
+
+  get lessonCount(): number {
+    return this.timetable()?.slots?.filter(s => !s.isBreak).length ?? 0;
+  }
+
+  get uniqueSubjects(): Array<{ name: string; color: string }> {
+    const seen = new Map<string, string>();
+    this.timetable()?.slots?.forEach(s => {
+      if (!s.isBreak && s.subjectName && !seen.has(s.subjectName))
+        seen.set(s.subjectName, this.getSubjectColor(s.subjectName));
+    });
+    return [...seen.entries()].map(([name, color]) => ({ name, color }));
+  }
+
+  /** اسم اليوم الحالي بالعربي */
+  getTodayLabel(): string {
+    return this.days.find(d => d.value === this.todayValue)?.label ?? '';
   }
 }

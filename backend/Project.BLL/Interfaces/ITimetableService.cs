@@ -6,7 +6,9 @@ namespace Project.BLL.Interfaces;
 public interface ITimetableService
 {
     Task<OperationResult<TimetableDto>>     CreateTimetableAsync(CreateTimetableRequest request);
+    Task<OperationResult<TimetableDto>>     CloneDraftTimetableAsync(int classId, int academicYearId);
     Task<OperationResult<TimetableDto>>     GetTimetableByIdAsync(int timetableId);
+    Task<OperationResult<TimetableValidationResultDto>> ValidateTimetableAsync(int timetableId);
     Task<OperationResult>                   ActivateTimetableAsync(int timetableId);
     Task<OperationResult>                   DeactivateTimetableAsync(int timetableId);
     Task<OperationResult>                   DeleteTimetableAsync(int timetableId);

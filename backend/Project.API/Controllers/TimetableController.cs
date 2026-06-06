@@ -35,6 +35,16 @@ public class TimetableController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = result.Data!.Id }, result);
     }
 
+    [Authorize(Roles = "Admin")]
+    [HttpPost("clone-draft")]
+    public async Task<IActionResult> CloneDraft([FromQuery] int classId, [FromQuery] int academicYearId)
+    {
+        var result = await _timetableService.CloneDraftTimetableAsync(classId, academicYearId);
+        if (!result.IsSuccess)
+            return BadRequest(result);
+        return Ok(result);
+    }
+
     [Authorize(Roles = "Admin,Teacher")]
     [HttpGet("{id:int}")]
     public async Task<IActionResult> GetById(int id)
@@ -108,7 +118,7 @@ public class TimetableController : ControllerBase
         return Ok(result);
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Student,Parent")]
     [HttpGet("student/{enrollmentId:int}")]
     public async Task<IActionResult> GetByStudent(int enrollmentId)
     {
@@ -127,7 +137,7 @@ public class TimetableController : ControllerBase
         return Ok(result);
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Teacher")]
     [HttpGet("teacher-schedule/{teacherId:int}")]
     public async Task<IActionResult> GetTeacherSchedule(int teacherId, [FromQuery] int academicYearId)
     {
@@ -217,6 +227,16 @@ public class TimetableController : ControllerBase
 
         var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
         var result = await _timetableService.GetMyChildSchedulesAsync(currentUserId, currentYearResult.Data.Id);
+        if (!result.IsSuccess)
+            return NotFound(result);
+        return Ok(result);
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpGet("{id:int}/validate")]
+    public async Task<IActionResult> Validate(int id)
+    {
+        var result = await _timetableService.ValidateTimetableAsync(id);
         if (!result.IsSuccess)
             return NotFound(result);
         return Ok(result);

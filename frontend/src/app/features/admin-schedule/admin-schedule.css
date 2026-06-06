@@ -4,3 +4,201 @@
 .class-cyan { background-color: rgba(0, 184, 217, 0.12); border-right: 4px solid #00b8d9; }
 .empty-cell { background-color: #f8f9ff; border: 2px dashed #e0e1f3; }
 .empty-cell:hover { border-color: #0052cc; background-color: #f0f4ff; }
+
+.schedule-dashboard-hero {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+  border-radius: 1.75rem;
+  border: 1px solid rgba(0, 35, 111, 0.08);
+  background:
+    radial-gradient(circle at top right, rgba(16, 185, 129, 0.14), transparent 24%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(244, 247, 255, 0.94));
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.06);
+}
+
+.schedule-dashboard-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.schedule-dashboard-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(0, 35, 111, 0.08);
+  color: #00236f;
+  font-size: 0.78rem;
+  font-weight: 700;
+  margin-bottom: 0.85rem;
+}
+
+.schedule-dashboard-text {
+  max-width: 52rem;
+  line-height: 1.8;
+}
+
+.schedule-dashboard-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(180px, 1fr));
+  gap: 0.85rem;
+}
+
+.schedule-summary-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 1rem 1.05rem;
+  border-radius: 1.2rem;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+}
+
+.schedule-summary-card.accent {
+  border-color: rgba(0, 35, 111, 0.18);
+  background: linear-gradient(180deg, rgba(0, 35, 111, 0.06), rgba(255, 255, 255, 0.96));
+}
+
+.schedule-summary-label {
+  font-size: 0.78rem;
+  color: #64748b;
+  font-weight: 700;
+}
+
+.schedule-summary-value {
+  font-size: 1.8rem;
+  line-height: 1;
+  color: #0f172a;
+  font-weight: 800;
+}
+
+.schedule-summary-value.compact {
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.schedule-summary-hint {
+  font-size: 0.76rem;
+  color: #94a3b8;
+  line-height: 1.6;
+}
+
+/* Fullscreen editor — above app sidebar (z-index 100) */
+.schedule-editor-overlay {
+  z-index: 110;
+}
+
+/* Responsive table helpers for admin schedule */
+.admin-schedule-scroll {
+  -webkit-overflow-scrolling: touch;
+}
+
+.admin-schedule-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.admin-schedule-table th,
+.admin-schedule-table td {
+  min-width: 120px;
+  word-break: break-word;
+}
+
+/* Make the table more compact and allow columns to shrink evenly */
+.admin-schedule-table {
+  table-layout: fixed;
+}
+.admin-schedule-table th,
+.admin-schedule-table td {
+  padding: 0.5rem;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 90px;
+}
+.admin-schedule-table th:first-child,
+.admin-schedule-table td:first-child {
+  min-width: 120px;
+  width: 120px;
+  white-space: normal;
+}
+
+/* Reduce sizes on medium and small screens to avoid extreme zooming */
+@media (max-width: 1280px) {
+  .admin-schedule-table th,
+  .admin-schedule-table td {
+    min-width: 80px;
+    font-size: 12px;
+    padding: 0.4rem;
+  }
+
+  .schedule-dashboard-stats {
+    grid-template-columns: repeat(2, minmax(180px, 1fr));
+  }
+}
+
+@media (max-width: 1024px) {
+  .admin-schedule-table th,
+  .admin-schedule-table td {
+    min-width: 70px;
+    font-size: 11px;
+    padding: 0.35rem;
+  }
+
+  .schedule-dashboard-hero {
+    flex-direction: column;
+  }
+
+  .schedule-dashboard-stats {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .schedule-dashboard-hero {
+    padding: 1rem;
+    border-radius: 1.2rem;
+  }
+
+  .schedule-dashboard-copy h1 {
+    font-size: 1.35rem;
+    line-height: 1.4;
+  }
+
+  .schedule-dashboard-text {
+    font-size: 0.92rem;
+  }
+
+  .admin-schedule-table-expanded th,
+  .admin-schedule-table-expanded td {
+    min-width: 92px;
+    font-size: 12px;
+    padding: 0.55rem;
+  }
+
+  .admin-schedule-table-expanded th:first-child,
+  .admin-schedule-table-expanded td:first-child {
+    min-width: 96px;
+    width: 96px;
+  }
+}
+
+/* Expanded editor table — full width, readable cells */
+.admin-schedule-table-expanded th,
+.admin-schedule-table-expanded td {
+  min-width: 110px;
+  font-size: 14px;
+  padding: 0.75rem;
+  white-space: normal;
+}
+
+.admin-schedule-table-expanded th:first-child,
+.admin-schedule-table-expanded td:first-child {
+  min-width: 130px;
+  width: 130px;
+}

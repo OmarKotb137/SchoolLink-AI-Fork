@@ -14,6 +14,7 @@ import { RoomService, Room } from '../../core/services/room.service';
 })
 export class RoomManagement implements OnInit {
   sidebarOpen = signal(false);
+  displayUserName = localStorage.getItem('fullName') || localStorage.getItem('username') || 'المشرف';
 
   private roomService = inject(RoomService);
 

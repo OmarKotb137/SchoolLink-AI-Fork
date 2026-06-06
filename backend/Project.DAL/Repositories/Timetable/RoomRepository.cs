@@ -38,10 +38,15 @@ public class RoomRepository : Repository<Room>, IRoomRepository
         RoomType? type = null,
         CancellationToken ct = default)
         => await _context.Rooms
+            // FIX: exclude soft-deleted rooms (كانت الغرف المحذوفة بتظهر في القائمة)
+            .Where(r => !r.IsDeleted)
             .Where(r => !type.HasValue || r.Type == type.Value)
+            // FIX: exclude soft-deleted slots & soft-deleted timetables from the conflict check
             .Where(r => !_context.TimetableSlots.Any(s =>
-                s.RoomId == r.Id &&
-                s.DayOfWeek == day &&
+                !s.IsDeleted          &&
+                !s.Timetable.IsDeleted &&
+                s.RoomId == r.Id      &&
+                s.DayOfWeek == day    &&
                 s.PeriodNumber == periodNumber &&
                 s.Timetable.IsActive))
             .OrderBy(r => r.Type)

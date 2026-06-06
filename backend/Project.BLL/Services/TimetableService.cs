@@ -12,6 +12,14 @@ public class TimetableService : ITimetableService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper     _mapper;
+    private static readonly SchoolDay[] OrderedSchoolDays =
+    {
+        SchoolDay.Sunday,
+        SchoolDay.Monday,
+        SchoolDay.Tuesday,
+        SchoolDay.Wednesday,
+        SchoolDay.Thursday
+    };
 
     public TimetableService(IUnitOfWork unitOfWork, IMapper mapper)
     {
@@ -32,7 +40,14 @@ public class TimetableService : ITimetableService
         if (academicYear is null || academicYear.IsDeleted)
             return OperationResult<TimetableDto>.Failure("السنة الدراسية غير موجودة");
 
-        // 3. Create entity with IsActive explicitly set to false
+        // 3. Allow only one draft timetable per class/year at a time.
+        var existingTimetables = await _unitOfWork.Timetables
+            .GetByClassAndYearAsync(request.ClassId, request.AcademicYearId);
+        if (existingTimetables.Any(t => !t.IsDeleted && !t.IsActive))
+            return OperationResult<TimetableDto>.Failure(
+                "توجد بالفعل مسودة جدول لهذا الفصل وهذه السنة الدراسية");
+
+        // 4. Create entity with IsActive explicitly set to false
         var entity = new Timetable
         {
             ClassId        = request.ClassId,
@@ -40,16 +55,78 @@ public class TimetableService : ITimetableService
             IsActive       = false
         };
 
-        // 4. Persist
+        // 5. Persist
         await _unitOfWork.Timetables.AddAsync(entity);
         await _unitOfWork.SaveChangesAsync();
 
-        // 5. Reload with Class navigation; slots are expected to be empty for a new draft
+        // 6. Reload with Class navigation; slots are expected to be empty for a new draft
         var withClass = await _unitOfWork.Timetables.GetWithClassAndAllSlotsAsync(entity.Id);
 
         return OperationResult<TimetableDto>.Success(
             _mapper.Map<TimetableDto>(withClass),
             "تم إنشاء الجدول الدراسي بنجاح");
+    }
+
+    public async Task<OperationResult<TimetableDto>> CloneDraftTimetableAsync(
+        int classId,
+        int academicYearId)
+    {
+        var schoolClass = await _unitOfWork.Classes.GetByIdAsync(classId);
+        if (schoolClass is null || schoolClass.IsDeleted)
+            return OperationResult<TimetableDto>.Failure("الفصل غير موجود");
+
+        var academicYear = await _unitOfWork.AcademicYears.GetByIdAsync(academicYearId);
+        if (academicYear is null || academicYear.IsDeleted)
+            return OperationResult<TimetableDto>.Failure("السنة الدراسية غير موجودة");
+
+        var existingTimetables = await _unitOfWork.Timetables
+            .GetByClassAndYearWithDetailsAsync(classId, academicYearId);
+
+        if (existingTimetables.Any(t => !t.IsDeleted && !t.IsActive))
+            return OperationResult<TimetableDto>.Failure(
+                "توجد بالفعل مسودة جدول لهذا الفصل وهذه السنة الدراسية");
+
+        var source = existingTimetables
+            .Where(t => !t.IsDeleted)
+            .OrderByDescending(t => t.IsActive)
+            .ThenByDescending(t => t.CreatedAt)
+            .FirstOrDefault();
+
+        if (source is null)
+            return OperationResult<TimetableDto>.Failure(
+                "لا يوجد جدول سابق يمكن إنشاء مسودة منه لهذا الفصل وهذه السنة الدراسية");
+
+        var draft = new Timetable
+        {
+            ClassId = classId,
+            AcademicYearId = academicYearId,
+            IsActive = false
+        };
+
+        await _unitOfWork.Timetables.AddAsync(draft);
+        await _unitOfWork.SaveChangesAsync();
+
+        foreach (var slot in source.Slots.Where(s => !s.IsDeleted))
+        {
+            await _unitOfWork.TimetableSlots.AddAsync(new TimetableSlot
+            {
+                TimetableId = draft.Id,
+                DayOfWeek = slot.DayOfWeek,
+                PeriodNumber = slot.PeriodNumber,
+                StartTime = slot.StartTime,
+                EndTime = slot.EndTime,
+                ClassSubjectTeacherId = slot.IsBreak ? null : slot.ClassSubjectTeacherId,
+                IsBreak = slot.IsBreak,
+                RoomId = slot.IsBreak ? null : slot.RoomId
+            });
+        }
+
+        await _unitOfWork.SaveChangesAsync();
+
+        var cloned = await _unitOfWork.Timetables.GetWithClassAndAllSlotsAsync(draft.Id);
+        return OperationResult<TimetableDto>.Success(
+            _mapper.Map<TimetableDto>(cloned),
+            "تم إنشاء مسودة جديدة بنسخ الجدول الحالي بنجاح");
     }
 
     public async Task<OperationResult<TimetableDto>> GetTimetableByIdAsync(int timetableId)
@@ -63,32 +140,40 @@ public class TimetableService : ITimetableService
             "تم جلب الجدول الدراسي بنجاح");
     }
 
+    public async Task<OperationResult<TimetableValidationResultDto>> ValidateTimetableAsync(int timetableId)
+    {
+        var validation = await BuildValidationResultAsync(timetableId);
+        if (validation is null)
+            return OperationResult<TimetableValidationResultDto>.Failure("الجدول الدراسي غير موجود");
+
+        return OperationResult<TimetableValidationResultDto>.Success(
+            validation,
+            validation.CanActivate
+                ? "الجدول جاهز للتفعيل"
+                : "تم العثور على ملاحظات تحتاج مراجعة قبل التفعيل");
+    }
+
     public async Task<OperationResult> ActivateTimetableAsync(int timetableId)
     {
         // 1. Find timetable
         var timetable = await _unitOfWork.Timetables.GetByIdAsync(timetableId);
         if (timetable is null || timetable.IsDeleted)
             return OperationResult.Failure("الجدول الدراسي غير موجود");
+        if (timetable.IsActive)
+            return OperationResult.Success("الجدول الدراسي مفعل بالفعل");
 
-        // 2. Must have at least one non-deleted slot
-        var hasSlots = await _unitOfWork.TimetableSlots.AnyAsync(
-            s => s.TimetableId == timetableId && !s.IsDeleted);
-        if (!hasSlots)
-            return OperationResult.Failure("لا يمكن تفعيل جدول دراسي بدون حصص");
-
-        // 3. Rooms are reserved only on activation, so validate the draft now.
-        var draftSlots = await _unitOfWork.TimetableSlots.GetByTimetableIdAsync(timetableId);
-        foreach (var slot in draftSlots.Where(s => s.RoomId.HasValue))
+        var validation = await BuildValidationResultAsync(timetableId);
+        if (validation is null)
+            return OperationResult.Failure("الجدول الدراسي غير موجود");
+        if (!validation.CanActivate)
         {
-            if (await _unitOfWork.TimetableSlots.HasRoomConflictAgainstActiveTimetablesAsync(
-                    slot.RoomId!.Value,
-                    slot.DayOfWeek,
-                    slot.PeriodNumber,
-                    timetableId))
-            {
-                return OperationResult.Failure(
-                    $"لا يمكن تفعيل الجدول لأن الغرفة '{slot.Room?.Name ?? slot.RoomId.Value.ToString()}' محجوزة في نفس اليوم ونفس الحصة");
-            }
+            var reasons = validation.Errors
+                .Take(3)
+                .Select(i => i.Message)
+                .ToList();
+            var suffix = validation.Errors.Count > 3 ? "..." : string.Empty;
+            return OperationResult.Failure(
+                $"لا يمكن تفعيل الجدول قبل معالجة الملاحظات الحرجة: {string.Join(" | ", reasons)}{suffix}");
         }
 
         // 4. Transaction: deactivate current timetable, then activate this one
@@ -114,6 +199,12 @@ public class TimetableService : ITimetableService
 
         if (!timetable.IsActive)
             return OperationResult.Success("الجدول الدراسي غير مفعل بالفعل");
+
+        var existingTimetables = await _unitOfWork.Timetables
+            .GetByClassAndYearAsync(timetable.ClassId, timetable.AcademicYearId);
+        if (existingTimetables.Any(t => !t.IsDeleted && !t.IsActive && t.Id != timetableId))
+            return OperationResult.Failure(
+                "يوجد بالفعل مسودة أخرى لهذا الفصل وهذه السنة. افتحها من قائمة الجداول بدل إلغاء تفعيل الجدول المنشور.");
 
         timetable.IsActive  = false;
         timetable.UpdatedAt = DateTime.UtcNow;
@@ -152,6 +243,12 @@ public class TimetableService : ITimetableService
         var timetable = await _unitOfWork.Timetables.GetByIdAsync(request.TimetableId);
         if (timetable is null || timetable.IsDeleted)
             return OperationResult<TimetableSlotDto>.Failure("الجدول الدراسي غير موجود");
+        if (timetable.IsActive)
+            return OperationResult<TimetableSlotDto>.Failure(
+                "لا يمكن تعديل جدول منشور مباشرة. أنشئ مسودة جديدة ثم فعّلها بعد المراجعة");
+
+        var effectiveClassSubjectTeacherId = request.IsBreak ? null : request.ClassSubjectTeacherId;
+        var effectiveRoomId                = request.IsBreak ? null : request.RoomId;
 
         // 2. Day + Period uniqueness
         if (await _unitOfWork.TimetableSlots.HasConflictAsync(
@@ -167,12 +264,12 @@ public class TimetableService : ITimetableService
         // 4. Non-break validation
         if (!request.IsBreak)
         {
-            if (request.ClassSubjectTeacherId is null)
+            if (effectiveClassSubjectTeacherId is null)
                 return OperationResult<TimetableSlotDto>.Failure(
                     "يجب تحديد تعيين المعلم عند إضافة حصة عادية");
 
             var cst = await _unitOfWork.ClassSubjectTeachers
-                .GetByIdAsync(request.ClassSubjectTeacherId.Value);
+                .GetByIdAsync(effectiveClassSubjectTeacherId.Value);
             if (cst is null || cst.IsDeleted)
                 return OperationResult<TimetableSlotDto>.Failure(
                     "تعيين المعلم غير موجود");
@@ -191,9 +288,9 @@ public class TimetableService : ITimetableService
         }
 
         // 5. Validate room (optional)
-        if (request.RoomId.HasValue)
+        if (effectiveRoomId.HasValue)
         {
-            var room = await _unitOfWork.Rooms.GetByIdAsync(request.RoomId.Value);
+            var room = await _unitOfWork.Rooms.GetByIdAsync(effectiveRoomId.Value);
             if (room is null || room.IsDeleted)
                 return OperationResult<TimetableSlotDto>.Failure("الغرفة غير موجودة");
         }
@@ -207,8 +304,8 @@ public class TimetableService : ITimetableService
             StartTime             = request.StartTime,
             EndTime               = request.EndTime,
             IsBreak               = request.IsBreak,
-            ClassSubjectTeacherId = request.ClassSubjectTeacherId,
-            RoomId                = request.RoomId
+            ClassSubjectTeacherId = effectiveClassSubjectTeacherId,
+            RoomId                = effectiveRoomId
         };
 
         // 7. Persist
@@ -234,6 +331,12 @@ public class TimetableService : ITimetableService
         var timetable = await _unitOfWork.Timetables.GetByIdAsync(slot.TimetableId);
         if (timetable is null || timetable.IsDeleted)
             return OperationResult<TimetableSlotDto>.Failure("الجدول الدراسي غير موجود");
+        if (timetable.IsActive)
+            return OperationResult<TimetableSlotDto>.Failure(
+                "لا يمكن تعديل جدول منشور مباشرة. أنشئ مسودة جديدة ثم فعّلها بعد المراجعة");
+
+        var effectiveClassSubjectTeacherId = request.IsBreak ? null : request.ClassSubjectTeacherId;
+        var effectiveRoomId                = request.IsBreak ? null : request.RoomId;
 
         // 2. Day/period uniqueness excluding the current slot
         if (await _unitOfWork.TimetableSlots.HasConflictAsync(
@@ -252,12 +355,12 @@ public class TimetableService : ITimetableService
         // 4. Validate non-break assignment
         if (!request.IsBreak)
         {
-            if (request.ClassSubjectTeacherId is null)
+            if (effectiveClassSubjectTeacherId is null)
                 return OperationResult<TimetableSlotDto>.Failure(
                     "يجب تحديد تعيين المعلم عند تعديل حصة عادية");
 
             var cst = await _unitOfWork.ClassSubjectTeachers
-                .GetByIdAsync(request.ClassSubjectTeacherId.Value);
+                .GetByIdAsync(effectiveClassSubjectTeacherId.Value);
             if (cst is null || cst.IsDeleted)
                 return OperationResult<TimetableSlotDto>.Failure(
                     "تعيين المعلم غير موجود");
@@ -277,9 +380,9 @@ public class TimetableService : ITimetableService
         }
 
         // 5. Validate room (optional)
-        if (request.RoomId.HasValue)
+        if (effectiveRoomId.HasValue)
         {
-            var room = await _unitOfWork.Rooms.GetByIdAsync(request.RoomId.Value);
+            var room = await _unitOfWork.Rooms.GetByIdAsync(effectiveRoomId.Value);
             if (room is null || room.IsDeleted)
                 return OperationResult<TimetableSlotDto>.Failure("الغرفة غير موجودة");
         }
@@ -290,8 +393,8 @@ public class TimetableService : ITimetableService
         slot.StartTime             = request.StartTime;
         slot.EndTime               = request.EndTime;
         slot.IsBreak               = request.IsBreak;
-        slot.ClassSubjectTeacherId = request.IsBreak ? null : request.ClassSubjectTeacherId;
-        slot.RoomId                = request.RoomId;
+        slot.ClassSubjectTeacherId = effectiveClassSubjectTeacherId;
+        slot.RoomId                = effectiveRoomId;
         slot.UpdatedAt             = DateTime.UtcNow;
 
         _unitOfWork.TimetableSlots.Update(slot);
@@ -310,6 +413,13 @@ public class TimetableService : ITimetableService
         var slot = await _unitOfWork.TimetableSlots.GetByIdAsync(slotId);
         if (slot is null || slot.IsDeleted)
             return OperationResult.Failure("الحصة غير موجودة");
+
+        var timetable = await _unitOfWork.Timetables.GetByIdAsync(slot.TimetableId);
+        if (timetable is null || timetable.IsDeleted)
+            return OperationResult.Failure("الجدول الدراسي غير موجود");
+        if (timetable.IsActive)
+            return OperationResult.Failure(
+                "لا يمكن حذف حصة من جدول منشور مباشرة. أنشئ مسودة جديدة ثم فعّلها بعد المراجعة");
 
         _unitOfWork.TimetableSlots.SoftDelete(slot);
         await _unitOfWork.SaveChangesAsync();
@@ -486,5 +596,170 @@ public class TimetableService : ITimetableService
         return OperationResult<IEnumerable<TeacherScheduleSlotDto>>.Success(
             result,
             "تم جلب جدول المعلم بنجاح");
+    }
+
+    private async Task<TimetableValidationResultDto?> BuildValidationResultAsync(int timetableId)
+    {
+        var timetable = await _unitOfWork.Timetables.GetWithClassAndAllSlotsAsync(timetableId);
+        if (timetable is null || timetable.IsDeleted)
+            return null;
+
+        var assignments = await _unitOfWork.ClassSubjectTeachers.GetByClassWithAllDetailsAsync(
+            timetable.ClassId,
+            timetable.AcademicYearId);
+
+        var slots = timetable.Slots
+            .Where(s => !s.IsDeleted)
+            .OrderBy(s => s.DayOfWeek)
+            .ThenBy(s => s.PeriodNumber)
+            .ToList();
+
+        var result = new TimetableValidationResultDto
+        {
+            TimetableId = timetable.Id,
+            TotalSlots = slots.Count,
+            LessonSlots = slots.Count(s => !s.IsBreak),
+            BreakSlots = slots.Count(s => s.IsBreak)
+        };
+
+        if (!slots.Any())
+        {
+            result.Errors.Add(new TimetableValidationIssueDto
+            {
+                Severity = "Error",
+                Code = "EMPTY_TIMETABLE",
+                Message = "لا يمكن تفعيل جدول بدون أي حصص أو فترات راحة."
+            });
+        }
+
+        foreach (var slot in slots)
+        {
+            if (slot.EndTime <= slot.StartTime)
+            {
+                result.Errors.Add(new TimetableValidationIssueDto
+                {
+                    Severity = "Error",
+                    Code = "INVALID_TIME_RANGE",
+                    Message = $"الحصة في {slot.DayOfWeek} رقم {slot.PeriodNumber} لديها وقت نهاية غير صالح.",
+                    SlotId = slot.Id,
+                    DayOfWeek = slot.DayOfWeek.ToString(),
+                    PeriodNumber = slot.PeriodNumber,
+                    ClassSubjectTeacherId = slot.ClassSubjectTeacherId
+                });
+            }
+
+            if (slot.IsBreak)
+            {
+                if (slot.ClassSubjectTeacherId.HasValue || slot.RoomId.HasValue)
+                {
+                    result.Errors.Add(new TimetableValidationIssueDto
+                    {
+                        Severity = "Error",
+                        Code = "BREAK_HAS_HIDDEN_DATA",
+                        Message = $"فترة الراحة في {slot.DayOfWeek} رقم {slot.PeriodNumber} تحتوي على بيانات مادة أو قاعة ويجب تنظيفها.",
+                        SlotId = slot.Id,
+                        DayOfWeek = slot.DayOfWeek.ToString(),
+                        PeriodNumber = slot.PeriodNumber,
+                        ClassSubjectTeacherId = slot.ClassSubjectTeacherId
+                    });
+                }
+
+                continue;
+            }
+
+            if (!slot.ClassSubjectTeacherId.HasValue || slot.ClassSubjectTeacher is null)
+            {
+                result.Errors.Add(new TimetableValidationIssueDto
+                {
+                    Severity = "Error",
+                    Code = "LESSON_WITHOUT_ASSIGNMENT",
+                    Message = $"توجد حصة دراسية في {slot.DayOfWeek} رقم {slot.PeriodNumber} بدون مادة/معلم صالح.",
+                    SlotId = slot.Id,
+                    DayOfWeek = slot.DayOfWeek.ToString(),
+                    PeriodNumber = slot.PeriodNumber
+                });
+                continue;
+            }
+
+            if (slot.ClassSubjectTeacher.ClassId != timetable.ClassId ||
+                slot.ClassSubjectTeacher.AcademicYearId != timetable.AcademicYearId)
+            {
+                result.Errors.Add(new TimetableValidationIssueDto
+                {
+                    Severity = "Error",
+                    Code = "ASSIGNMENT_OUTSIDE_CLASS",
+                    Message = $"الحصة في {slot.DayOfWeek} رقم {slot.PeriodNumber} مرتبطة بتعيين من فصل أو سنة مختلفة.",
+                    SlotId = slot.Id,
+                    DayOfWeek = slot.DayOfWeek.ToString(),
+                    PeriodNumber = slot.PeriodNumber,
+                    ClassSubjectTeacherId = slot.ClassSubjectTeacherId
+                });
+            }
+
+            if (slot.RoomId.HasValue &&
+                await _unitOfWork.TimetableSlots.HasRoomConflictAgainstActiveTimetablesAsync(
+                    slot.RoomId.Value,
+                    slot.DayOfWeek,
+                    slot.PeriodNumber,
+                    timetable.Id))
+            {
+                result.Errors.Add(new TimetableValidationIssueDto
+                {
+                    Severity = "Error",
+                    Code = "ROOM_CONFLICT",
+                    Message = $"الغرفة '{slot.Room?.Name ?? slot.RoomId.Value.ToString()}' محجوزة في {slot.DayOfWeek} للحصة رقم {slot.PeriodNumber}.",
+                    SlotId = slot.Id,
+                    DayOfWeek = slot.DayOfWeek.ToString(),
+                    PeriodNumber = slot.PeriodNumber,
+                    ClassSubjectTeacherId = slot.ClassSubjectTeacherId
+                });
+            }
+        }
+
+        foreach (var assignment in assignments)
+        {
+            var scheduledCount = slots.Count(s => !s.IsBreak && s.ClassSubjectTeacherId == assignment.Id);
+            if (scheduledCount < assignment.WeeklyPeriods)
+            {
+                result.Warnings.Add(new TimetableValidationIssueDto
+                {
+                    Severity = "Warning",
+                    Code = "ASSIGNMENT_UNDER_SCHEDULED",
+                    Message = $"المادة '{assignment.Subject?.Name ?? assignment.SubjectId.ToString()}' للمعلم '{assignment.Teacher?.FullName ?? assignment.TeacherId.ToString()}' تحتاج {assignment.WeeklyPeriods - scheduledCount} حصة إضافية.",
+                    ClassSubjectTeacherId = assignment.Id
+                });
+            }
+
+            if (scheduledCount > assignment.WeeklyPeriods)
+            {
+                result.Errors.Add(new TimetableValidationIssueDto
+                {
+                    Severity = "Error",
+                    Code = "ASSIGNMENT_OVER_SCHEDULED",
+                    Message = $"المادة '{assignment.Subject?.Name ?? assignment.SubjectId.ToString()}' مجدولة أكثر من العدد الأسبوعي المسموح به.",
+                    ClassSubjectTeacherId = assignment.Id
+                });
+            }
+        }
+
+        foreach (var day in OrderedSchoolDays)
+        {
+            var daySlots = slots.Where(s => s.DayOfWeek == day).ToList();
+            if (!daySlots.Any())
+            {
+                result.Warnings.Add(new TimetableValidationIssueDto
+                {
+                    Severity = "Warning",
+                    Code = "EMPTY_DAY",
+                    Message = $"اليوم {day} لا يحتوي على أي حصص أو فترات راحة."
+                });
+            }
+        }
+
+        result.MissingAssignmentsCount = result.Warnings.Count(w => w.Code == "ASSIGNMENT_UNDER_SCHEDULED");
+        result.OverScheduledAssignmentsCount = result.Errors.Count(e => e.Code == "ASSIGNMENT_OVER_SCHEDULED");
+        result.CanActivate = result.Errors.Count == 0;
+
+        return result;
     }
 }

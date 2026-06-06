@@ -1,14 +1,12 @@
-import { Injectable, inject } from '@angular/core';
+﻿import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { Teacher } from './teacher.service';
 
 export interface ClassSubjectTeacher {
   id?: number;
   classId: number;
-  // FIX Issue 4: backend ClassSubjectTeacherDto already returns these name fields —
-  //              added to the interface so we can use them directly in the template
-  //              instead of doing redundant lookups in local arrays.
   className?: string;
   subjectId: number;
   subjectName?: string;
@@ -40,8 +38,16 @@ export class ClassSubjectTeacherService {
     return this.http.get<ClassSubjectTeacher[]>(url);
   }
 
-  getByTeacher(teacherId: number): Observable<ClassSubjectTeacher[]> {
-    return this.http.get<ClassSubjectTeacher[]>(`${this.apiUrl}/by-teacher/${teacherId}`);
+  getByTeacher(teacherId: number, academicYearId?: number): Observable<ClassSubjectTeacher[]> {
+    let url = `${this.apiUrl}/by-teacher/${teacherId}`;
+    if (academicYearId) url += `?academicYearId=${academicYearId}`;
+    return this.http.get<ClassSubjectTeacher[]>(url);
+  }
+
+  getAvailableTeachers(subjectId: number, classId: number, academicYearId: number): Observable<Teacher[]> {
+    return this.http.get<Teacher[]>(
+      `${this.apiUrl}/available-teachers?subjectId=${subjectId}&classId=${classId}&academicYearId=${academicYearId}`
+    );
   }
 
   assignTeacherToClass(data: Partial<ClassSubjectTeacher>): Observable<ClassSubjectTeacher> {
@@ -52,9 +58,6 @@ export class ClassSubjectTeacherService {
     return this.http.post<any>(`${this.apiUrl}/bulk`, data);
   }
 
-  // FIX: ClassSubjectTeacherController.UpdateAssignment checks `if (id != request.AssignmentId)`
-  //      so the body must carry `assignmentId` matching the URL segment.
-  //      Only teacherId and weeklyPeriods are editable (class & subject are immutable).
   update(id: number, data: { teacherId: number; weeklyPeriods: number }): Observable<ClassSubjectTeacher> {
     return this.http.put<ClassSubjectTeacher>(`${this.apiUrl}/${id}`, { ...data, assignmentId: id });
   }

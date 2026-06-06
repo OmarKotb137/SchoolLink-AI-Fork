@@ -10,13 +10,19 @@ public class UserRepository : Repository<User>, IUserRepository
 {
     public UserRepository(AppDbContext context) : base(context) { }
 
-
+    // IgnoreQueryFilters() is intentional here:
+    // The global query filter hides soft-deleted records, but email uniqueness must
+    // be checked against ALL rows in the DB (active + deleted) because the unique
+    // index IX_Users_Email still covers them. Without IgnoreQueryFilters, the check
+    // passes for a deleted user's email and the DB throws a duplicate-key exception.
     public async Task<User?> GetByEmailAsync(string email, CancellationToken ct = default)
         => await _context.Users
+            .IgnoreQueryFilters()
             .FirstOrDefaultAsync(u => u.Email == email.Trim().ToLower(), ct);
 
     public async Task<bool> ExistsByEmailAsync(string email, CancellationToken ct = default)
         => await _context.Users
+            .IgnoreQueryFilters()
             .AnyAsync(u => u.Email == email.Trim().ToLower(), ct);
 
     public async Task<User?> GetActiveByIdAsync(int id, CancellationToken ct = default)
@@ -84,6 +90,3 @@ public class UserRepository : Repository<User>, IUserRepository
         => await _context.Users
             .CountAsync(u => u.Role == role, ct);
 }
-
-
-

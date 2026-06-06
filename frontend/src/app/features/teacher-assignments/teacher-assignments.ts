@@ -6,7 +6,7 @@ import { Topbar } from '../../layouts/topbar/topbar';
 import { ClassSubjectTeacherService, ClassSubjectTeacher } from '../../core/services/class-subject-teacher.service';
 import { ClassService, ClassEntity } from '../../core/services/class.service';
 import { SubjectService, Subject } from '../../core/services/subject.service';
-import { UserService, User } from '../../core/services/user.service';
+import { TeacherService, Teacher } from '../../core/services/teacher.service';
 import { AcademicYearService } from '../../core/services/academic-year.service';
 
 @Component({
@@ -18,38 +18,43 @@ import { AcademicYearService } from '../../core/services/academic-year.service';
 })
 export class TeacherAssignments implements OnInit {
   sidebarOpen = signal(false);
+  displayUserName = localStorage.getItem('fullName') || localStorage.getItem('username') || 'المشرف';
 
   private assignmentService = inject(ClassSubjectTeacherService);
   private classService = inject(ClassService);
   private subjectService = inject(SubjectService);
-  private userService = inject(UserService);
+  private teacherService = inject(TeacherService);
   private academicYearService = inject(AcademicYearService);
 
   assignments = signal<ClassSubjectTeacher[]>([]);
   classes = signal<ClassEntity[]>([]);
   subjects = signal<Subject[]>([]);
-  teachers = signal<User[]>([]);
+  teachers = signal<Teacher[]>([]);
 
-  // FIX 1: plain property instead of signal — [(ngModel)] needs a plain value, not a WritableSignal
+  formSubjects = signal<Subject[]>([]);
+  formTeachers = signal<Teacher[]>([]);
+  noTeachersAvailable = signal(false);
+  editFormTeachers = signal<Teacher[]>([]);
+  editNoTeachersAvailable = signal(false);
+
   selectedClassFilter: number | null = null;
 
   currentAcademicYearId: number | null = null;
+  currentAcademicYearName = signal('غير محددة');
+  private availableTeachersRequestVersion = 0;
+  private editTeachersRequestVersion = 0;
 
   newAssignment: Partial<ClassSubjectTeacher> = { classId: 0, subjectId: 0, teacherId: 0, weeklyPeriods: 1 };
 
-  // Edit state
   editingAssignmentId = signal<number | null>(null);
   editForm: { teacherId: number; weeklyPeriods: number } = { teacherId: 0, weeklyPeriods: 1 };
 
-  // UI state
   isLoading = signal(false);
   errorMessage = signal<string | null>(null);
   successMessage = signal<string | null>(null);
 
   ngOnInit() {
-    // FIX 2: load academic year first so assignTeacher() always has currentAcademicYearId ready
     this.loadAcademicYear();
-    this.loadClasses();
     this.loadSubjects();
     this.loadTeachers();
   }
@@ -58,14 +63,21 @@ export class TeacherAssignments implements OnInit {
     this.academicYearService.getAll().subscribe({
       next: (years) => {
         const current = years.find(y => y.isCurrent);
-        if (current) this.currentAcademicYearId = current.id;
+        if (!current) {
+          this.showError('تعذر تحديد السنة الدراسية الحالية');
+          return;
+        }
+
+        this.currentAcademicYearId = current.id;
+        this.currentAcademicYearName.set(current.name || 'السنة الحالية');
+        this.loadClasses(current.id);
       },
       error: () => this.showError('تعذر تحميل السنة الدراسية الحالية')
     });
   }
 
-  loadClasses() {
-    this.classService.getAll().subscribe({
+  loadClasses(academicYearId?: number) {
+    this.classService.getAll(academicYearId ? { academicYearId } : undefined).subscribe({
       next: (data) => this.classes.set(data),
       error: () => this.showError('تعذر تحميل بيانات الفصول')
     });
@@ -73,17 +85,72 @@ export class TeacherAssignments implements OnInit {
 
   loadSubjects() {
     this.subjectService.getAll().subscribe({
-      next: (data) => this.subjects.set(data),
+      next: (data) => {
+        this.subjects.set(data);
+        this.formSubjects.set(data);
+      },
       error: () => this.showError('تعذر تحميل بيانات المواد')
     });
   }
 
   loadTeachers() {
-    // FIX 3: pass pageSize=1000 via user.service so all teachers are fetched (not just page 1)
-    this.userService.getByRole('Teacher', 1000).subscribe({
-      next: (res) => this.teachers.set(res.items || []),
+    this.teacherService.getAll(1000).subscribe({
+      next: (res) => {
+        const list = res.items || [];
+        this.teachers.set(list);
+        this.formTeachers.set(list);
+      },
       error: () => this.showError('تعذر تحميل بيانات المعلمين')
     });
+  }
+
+  onNewClassChange() {
+    this.availableTeachersRequestVersion++;
+    this.newAssignment.subjectId = 0;
+    this.newAssignment.teacherId = 0;
+    this.formSubjects.set(this.subjects());
+    this.formTeachers.set([]);
+    this.noTeachersAvailable.set(false);
+  }
+
+  onNewSubjectChange() {
+    this.newAssignment.teacherId = 0;
+    this.noTeachersAvailable.set(false);
+
+    const classId = Number(this.newAssignment.classId);
+    const subjectId = Number(this.newAssignment.subjectId);
+
+    if (!classId || !subjectId || !this.currentAcademicYearId) {
+      this.formTeachers.set([]);
+      return;
+    }
+
+    const requestVersion = ++this.availableTeachersRequestVersion;
+
+    this.assignmentService
+      .getAvailableTeachers(subjectId, classId, this.currentAcademicYearId)
+      .subscribe({
+        next: (list) => {
+          if (requestVersion !== this.availableTeachersRequestVersion) return;
+
+          if (list.length > 0) {
+            this.formTeachers.set(list);
+            this.noTeachersAvailable.set(false);
+          } else {
+            this.formTeachers.set([]);
+            this.noTeachersAvailable.set(true);
+          }
+        },
+        error: () => {
+          if (requestVersion !== this.availableTeachersRequestVersion) return;
+          this.formTeachers.set([]);
+          this.noTeachersAvailable.set(false);
+          this.showError('تعذر تحميل المعلمين المتاحين لهذه المادة');
+        },
+      });
+  }
+
+  onNewTeacherChange() {
   }
 
   loadAssignments() {
@@ -93,7 +160,6 @@ export class TeacherAssignments implements OnInit {
     }
 
     this.isLoading.set(true);
-    // FIX 4: pass academicYearId to filter by current year only
     this.assignmentService.getByClass(this.selectedClassFilter, this.currentAcademicYearId ?? undefined).subscribe({
       next: (data) => {
         this.assignments.set(data);
@@ -111,7 +177,6 @@ export class TeacherAssignments implements OnInit {
     this.loadAssignments();
   }
 
-  // Lookup helpers (fallback if DTO name fields are empty)
   getTeacherName(teacherId: number): string {
     return this.teachers().find(t => t.id == teacherId)?.fullName || 'غير محدد';
   }
@@ -124,6 +189,27 @@ export class TeacherAssignments implements OnInit {
     return this.classes().find(c => c.id == classId)?.name || 'غير محدد';
   }
 
+  getSelectedClassName(): string {
+    if (!this.selectedClassFilter) return 'لم يتم اختيار فصل';
+    return this.getClassName(this.selectedClassFilter);
+  }
+
+  getAssignmentsCount(): number {
+    return this.assignments().length;
+  }
+
+  getTeachersCount(): number {
+    return this.teachers().length;
+  }
+
+  canAssign(): boolean {
+    return !!this.newAssignment.classId
+      && !!this.newAssignment.subjectId
+      && !!this.newAssignment.teacherId
+      && !!this.currentAcademicYearId
+      && !this.noTeachersAvailable();
+  }
+
   assignTeacher() {
     if (!this.newAssignment.classId || !this.newAssignment.subjectId || !this.newAssignment.teacherId) {
       this.showError('يرجى تعبئة جميع الحقول المطلوبة');
@@ -131,7 +217,7 @@ export class TeacherAssignments implements OnInit {
     }
 
     if (!this.currentAcademicYearId) {
-      this.showError('لم يتم تحديد السنة الدراسية الحالية، يرجى إعداد سنة دراسية نشطة أولاً');
+      this.showError('لم يتم تحديد السنة الدراسية الحالية، يرجى إعداد سنة دراسية نشطة أولا');
       return;
     }
 
@@ -140,21 +226,20 @@ export class TeacherAssignments implements OnInit {
       subjectId: Number(this.newAssignment.subjectId),
       teacherId: Number(this.newAssignment.teacherId),
       weeklyPeriods: Number(this.newAssignment.weeklyPeriods),
-      // FIX 5: include academicYearId in the create payload
       academicYearId: this.currentAcademicYearId,
     };
 
     this.assignmentService.assignTeacherToClass(payload).subscribe({
       next: () => {
-        // keep same classId selected, reset rest
         this.newAssignment = { classId: this.newAssignment.classId, subjectId: 0, teacherId: 0, weeklyPeriods: 1 };
+        this.noTeachersAvailable.set(false);
+        this.formTeachers.set([]);
         this.loadAssignments();
-        this.showSuccess('تم تعيين المعلم بنجاح');
+        this.showSuccess('تم إسناد المعلم بنجاح');
       },
-      // FIX 6: replace alert() with inline error banner
       error: (err) => {
         const msg = err?.error?.message || err?.error || 'تأكد من عدم تكرار التعيين لنفس المادة والفصل.';
-        this.showError('حدث خطأ أثناء التعيين: ' + msg);
+        this.showError('حدث خطأ أثناء الإسناد: ' + msg);
       }
     });
   }
@@ -162,7 +247,6 @@ export class TeacherAssignments implements OnInit {
   removeAssignment(id: number) {
     if (!confirm('هل أنت متأكد من حذف هذا التعيين؟ سيؤدي ذلك إلى إزالة المعلم من تدريس هذه المادة لهذا الفصل.')) return;
 
-    // FIX 7: add error handler for delete
     this.assignmentService.delete(id).subscribe({
       next: () => {
         this.loadAssignments();
@@ -172,15 +256,50 @@ export class TeacherAssignments implements OnInit {
     });
   }
 
-  // ── Edit functionality ──────────────────────────────────────────────────────
-
   startEdit(assignment: ClassSubjectTeacher) {
     this.editingAssignmentId.set(assignment.id!);
     this.editForm = { teacherId: assignment.teacherId, weeklyPeriods: assignment.weeklyPeriods };
+    this.editNoTeachersAvailable.set(false);
+    this.editTeachersRequestVersion++;
+
+    if (this.currentAcademicYearId) {
+      const requestVersion = this.editTeachersRequestVersion;
+      this.assignmentService
+        .getAvailableTeachers(assignment.subjectId, assignment.classId, this.currentAcademicYearId)
+        .subscribe({
+          next: (list) => {
+            if (requestVersion !== this.editTeachersRequestVersion) return;
+
+            const current = this.teachers().find(t => t.id === assignment.teacherId);
+            const others = list.filter(t => t.id !== assignment.teacherId);
+            const merged = current ? [current, ...others] : others;
+
+            if (merged.length > 0) {
+              this.editFormTeachers.set(merged);
+              this.editNoTeachersAvailable.set(false);
+            } else {
+              this.editFormTeachers.set(current ? [current] : []);
+              this.editNoTeachersAvailable.set(!current);
+            }
+          },
+          error: () => {
+            if (requestVersion !== this.editTeachersRequestVersion) return;
+            const current = this.teachers().find(t => t.id === assignment.teacherId);
+            this.editFormTeachers.set(current ? [current] : []);
+            this.editNoTeachersAvailable.set(!current);
+          },
+        });
+    } else {
+      const current = this.teachers().find(t => t.id === assignment.teacherId);
+      this.editFormTeachers.set(current ? [current] : []);
+    }
   }
 
   cancelEdit() {
+    this.editTeachersRequestVersion++;
     this.editingAssignmentId.set(null);
+    this.editFormTeachers.set([]);
+    this.editNoTeachersAvailable.set(false);
   }
 
   saveEdit(id: number) {
@@ -194,14 +313,13 @@ export class TeacherAssignments implements OnInit {
     }).subscribe({
       next: () => {
         this.editingAssignmentId.set(null);
+        this.editNoTeachersAvailable.set(false);
         this.loadAssignments();
         this.showSuccess('تم تحديث التعيين بنجاح');
       },
       error: () => this.showError('تعذر تحديث التعيين')
     });
   }
-
-  // ── Notification helpers ────────────────────────────────────────────────────
 
   private showError(msg: string) {
     this.errorMessage.set(msg);

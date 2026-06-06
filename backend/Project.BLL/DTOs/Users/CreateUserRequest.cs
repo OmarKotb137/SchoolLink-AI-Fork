@@ -1,4 +1,4 @@
-using Project.Domain.Enums;
+﻿using Project.Domain.Enums;
 using System.ComponentModel.DataAnnotations;
 
 namespace Project.BLL.DTOs.Users;

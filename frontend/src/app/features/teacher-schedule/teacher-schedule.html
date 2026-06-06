@@ -1,15 +1,30 @@
 <app-sidebar [(isOpen)]="sidebarOpen" />
 <div class="main-content">
-  <app-topbar userName="معلم" />
+  <app-topbar [userName]="displayUserName" />
   <main class="pt-16 h-screen flex flex-col bg-background p-6">
 
     <!-- Header -->
-    <div class="mb-6 flex justify-between items-end bg-surface-container-lowest p-6 rounded-2xl border border-outline-variant/30">
-      <div>
+    <div class="mb-6 teacher-hero">
+      <div class="teacher-hero-copy">
+        <span class="teacher-eyebrow">Teacher Timetable</span>
         <h2 class="font-headline-lg text-headline-lg text-primary mb-2 flex items-center gap-2">
           <span class="material-symbols-outlined text-4xl">calendar_today</span> جدولي الشخصي
         </h2>
         <p class="font-body-md text-on-surface-variant">يعرض هذا الجدول جميع الحصص المكلف بها عبر مختلف الفصول.</p>
+      </div>
+
+      <div class="teacher-hero-stats">
+        <div class="teacher-stat-card">
+          <span class="teacher-stat-label">إجمالي الحصص</span>
+          <strong class="teacher-stat-value">{{ slots().length }}</strong>
+          <span class="teacher-stat-hint">الحصص المسندة لك هذا العام</span>
+        </div>
+
+        <div class="teacher-stat-card accent">
+          <span class="teacher-stat-label">عدد الفترات اليومية</span>
+          <strong class="teacher-stat-value">{{ periods().length }}</strong>
+          <span class="teacher-stat-hint">مستخرجة تلقائيًا من بيانات الجدول</span>
+        </div>
       </div>
     </div>
 
@@ -25,7 +40,7 @@
     </div>
 
     <!-- Schedule grid card -->
-    <div class="flex-1 overflow-auto bg-surface-container-lowest rounded-2xl border border-outline-variant/30 shadow-sm relative">
+    <div class="flex-1 overflow-auto bg-surface-container-lowest rounded-2xl border border-outline-variant/30 shadow-sm relative teacher-table-shell">
 
       <!-- Loading spinner -->
       <div *ngIf="isLoading()" class="absolute inset-0 bg-white/80 z-10 flex items-center justify-center">
@@ -38,11 +53,11 @@
              دلوقتي slots() هي الـ array نفسها — فالشرط واضح ومباشر.
       -->
       <table *ngIf="!isLoading() && slots().length > 0"
-             class="w-full border-collapse min-w-[800px] text-center">
+             class="w-full border-collapse min-w-[800px] text-center teacher-table">
         <thead>
           <tr class="bg-surface-container-low border-b border-outline-variant/30">
             <th class="p-4 border-l border-outline-variant/30 w-32 font-bold text-on-surface">اليوم / الحصة</th>
-            <th *ngFor="let p of periods" class="p-4 border-l border-outline-variant/30 font-bold text-on-surface">
+            <th *ngFor="let p of periods()" class="p-4 border-l border-outline-variant/30 font-bold text-on-surface">
               <div class="text-sm">{{ p.label }}</div>
               <div class="text-xs text-on-surface-variant font-normal">{{ p.start }} - {{ p.end }}</div>
             </th>
@@ -56,7 +71,7 @@
               {{ day.label }}
             </td>
 
-            <td *ngFor="let p of periods" class="border-l border-outline-variant/30 h-24 p-2 relative">
+            <td *ngFor="let p of periods()" class="border-l border-outline-variant/30 h-24 p-2 relative">
               <!--
                 getSlot() بتتنادى مرة واحدة بس للخلية بفضل "as slot"
                 بدل ما كانت بتتنادى 4-5 مرات لكل خلية (مرة للـ ngIf + مرة لكل property)

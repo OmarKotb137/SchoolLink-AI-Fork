@@ -50,7 +50,7 @@ export class ClassService {
   }
 
   update(id: number, data: Partial<ClassEntity>): Observable<ClassEntity> {
-    return this.http.put<ClassEntity>(`${this.apiUrl}/${id}`, data);
+    return this.http.put<ClassEntity>(`${this.apiUrl}/${id}`, { ...data, id });
   }
 
   delete(id: number): Observable<void> {

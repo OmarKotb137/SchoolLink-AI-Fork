@@ -14,6 +14,7 @@ import { SubjectService, Subject } from '../../core/services/subject.service';
 })
 export class SubjectManagement implements OnInit {
   sidebarOpen = signal(false);
+  displayUserName = localStorage.getItem('fullName') || localStorage.getItem('username') || 'المشرف';
 
   private subjectService = inject(SubjectService);
   subjects = signal<Subject[]>([]);
@@ -77,8 +78,8 @@ export class SubjectManagement implements OnInit {
 
   editSubject(subject: Subject) {
     this.editingSubjectId.set(subject.id);
-    // FIX #3: كان { ...subject } فبيبعت id في الـ body
-    // الحل: spread name و code فقط بدون id
+    // نرسل فقط الحقول القابلة للتعديل هنا، والخدمة نفسها تضيف `id`
+    // حتى يطابق الـ URL ويقبلها الـ backend.
     this.newSubject = { name: subject.name, code: subject.code };
   }
 
@@ -91,7 +92,7 @@ export class SubjectManagement implements OnInit {
     if (!this.newSubject.name?.trim() || !this.newSubject.code?.trim()) return;
 
     if (this.editingSubjectId()) {
-      // FIX #3: بعت name و code فقط بدون id
+      // نمرر الحقول القابلة للتعديل فقط، والخدمة تضيف `id` تلقائيا.
       const { name, code } = this.newSubject;
       this.subjectService.update(this.editingSubjectId()!, { name, code }).subscribe({
         next: () => {

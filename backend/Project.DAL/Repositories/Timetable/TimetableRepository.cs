@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Project.DAL.Interfaces.Repositories.Timetable;
 using Project.Domain.Entities;
 using Project.DAL.Context;
@@ -59,6 +59,9 @@ public class TimetableRepository : Repository<Project.Domain.Entities.Timetable>
                 .Where(s => !s.IsDeleted))
                 .ThenInclude(s => s.ClassSubjectTeacher)
                     .ThenInclude(cst => cst!.Teacher)
+            .Include(t => t.Slots
+                .Where(s => !s.IsDeleted))
+                .ThenInclude(s => s.Room)
             .OrderByDescending(t => t.CreatedAt)
             .ToListAsync(ct);
 
@@ -105,6 +108,9 @@ public class TimetableRepository : Repository<Project.Domain.Entities.Timetable>
                 .Where(s => !s.IsDeleted))
                 .ThenInclude(s => s.ClassSubjectTeacher)
                     .ThenInclude(cst => cst!.Teacher)
+            .Include(t => t.Slots
+                .Where(s => !s.IsDeleted))
+                .ThenInclude(s => s.Room)
             .FirstOrDefaultAsync(t => t.Id == timetableId, ct);
 }
 

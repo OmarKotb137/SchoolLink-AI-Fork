@@ -34,7 +34,7 @@ export class SubjectService {
   }
 
   update(id: number, data: Partial<Subject>): Observable<Subject> {
-    return this.http.put<Subject>(`${this.apiUrl}/${id}`, data);
+    return this.http.put<Subject>(`${this.apiUrl}/${id}`, { ...data, id });
   }
 
   delete(id: number): Observable<void> {
