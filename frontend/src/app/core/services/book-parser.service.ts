@@ -6,6 +6,7 @@ import { OperationResult } from '../models/library.model';
 
 export interface ParsedLessonDto {
   title: string;
+  content?: string;
   pageStart: number | null;
   pageEnd: number | null;
   displayOrder: number;
@@ -28,6 +29,7 @@ export interface CreateUnitDto {
   displayOrder: number;
   lessons: {
     title: string;
+    content?: string;
     pageStart: number | null;
     pageEnd: number | null;
     displayOrder: number;
@@ -45,6 +47,7 @@ export interface UnitDto {
   lessons: {
     id: number;
     title: string;
+    content?: string;
     pageStart: number | null;
     pageEnd: number | null;
     displayOrder: number;
@@ -65,6 +68,13 @@ export class BookParserService {
   save(subjectId: number, units: CreateUnitDto[]): Observable<OperationResult<UnitDto[]>> {
     return this.http.post<OperationResult<UnitDto[]>>(
       `${this.base}/book-parser/save?subjectId=${subjectId}`, units);
+  }
+
+  generateLessonContent(rawContent: string, title: string): Observable<OperationResult<string>> {
+    return this.http.post<OperationResult<string>>(`${this.base}/book-parser/lesson/generate-content`, {
+      title,
+      rawContent
+    });
   }
 
   getGradeLevels(): Observable<any> {

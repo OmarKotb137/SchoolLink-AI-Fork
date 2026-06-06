@@ -2,23 +2,20 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Configuration;
-using Project.BLL.AI.ExamAgent.Interfaces;
-using Project.BLL.AI.ExamAgent.Models;
+using Project.BLL.AI.Interfaces;
+using Project.BLL.AI.Models;
 
-namespace Project.BLL.AI.ExamAgent.Infrastructure;
+namespace Project.BLL.AI.Infrastructure;
 
-public class HuggingFaceLlmClient : ILlmClient
+public class OpenRouterLlmClient : ILlmClient
 {
     private readonly HttpClient _http;
     private readonly string _model;
-    private readonly string _baseUrl;
 
-    public HuggingFaceLlmClient(HttpClient http, IConfiguration config)
+    public OpenRouterLlmClient(HttpClient http, IConfiguration config)
     {
         _http = http;
-        _model = config["LlmSettings:HuggingFace:Model"] ?? "Qwen/Qwen3-32B:groq";
-        _baseUrl = config["LlmSettings:HuggingFace:BaseUrl"]
-                   ?? "https://router.huggingface.co/v1";
+        _model = config["LlmSettings:OpenRouter:Model"] ?? "openai/gpt-4o-mini";
     }
 
     public async Task<LlmResponse> ChatAsync(
@@ -67,12 +64,11 @@ public class HuggingFaceLlmClient : ILlmClient
         {
             ["model"] = _model,
             ["messages"] = msgsArray,
-            ["stream"] = false
+            ["tools"] = toolsArray
         };
 
-        var url = $"{_baseUrl.TrimEnd('/')}/chat/completions";
         var content = new StringContent(body.ToJsonString(), Encoding.UTF8, "application/json");
-        var resp = await _http.PostAsync(url, content);
+        var resp = await _http.PostAsync("https://openrouter.ai/api/v1/chat/completions", content);
         resp.EnsureSuccessStatusCode();
 
         var json = await resp.Content.ReadAsStringAsync();

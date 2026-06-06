@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace Project.BLL.AI.ExamAgent.Models;
+namespace Project.BLL.AI.Models;
 
 public enum MessageRole { System, User, Assistant, Tool }
 

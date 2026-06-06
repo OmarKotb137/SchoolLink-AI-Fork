@@ -2,24 +2,29 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Configuration;
-using Project.BLL.AI.ExamAgent.Interfaces;
-using Project.BLL.AI.ExamAgent.Models;
+using Project.BLL.AI.Interfaces;
+using Project.BLL.AI.Models;
 
-namespace Project.BLL.AI.ExamAgent.Infrastructure;
+namespace Project.BLL.AI.Infrastructure;
 
-public class OpenCodeAILlmClient : ILlmClient
+public class CloudflareAILlmClient : ILlmClient
 {
     private readonly HttpClient _http;
     private readonly string _model;
+    private readonly string _accountId;
+    private readonly string _gateway;
     private readonly string _baseUrl;
 
-    public OpenCodeAILlmClient(HttpClient http, IConfiguration config)
+    public CloudflareAILlmClient(HttpClient http, IConfiguration config)
     {
         _http = http;
-        _model = config["LlmSettings:OpenCodeAI:Model"]
-                 ?? "deepseek-v4-flash-free";
-        _baseUrl = config["LlmSettings:OpenCodeAI:BaseUrl"]
-                   ?? "https://opencode.ai/zen/v1";
+        _model = config["LlmSettings:CloudflareAI:Model"]
+                 ?? "workers-ai/@cf/meta/llama-3.1-8b-instruct";
+        _accountId = config["LlmSettings:CloudflareAI:AccountId"]
+                     ?? throw new InvalidOperationException("CloudflareAI AccountId is missing");
+        _gateway = config["LlmSettings:CloudflareAI:Gateway"] ?? "default";
+        _baseUrl = config["LlmSettings:CloudflareAI:BaseUrl"]
+                   ?? "https://gateway.ai.cloudflare.com/v1";
     }
 
     public async Task<LlmResponse> ChatAsync(
@@ -46,69 +51,38 @@ public class OpenCodeAILlmClient : ILlmClient
             if (m.ToolCallId is not null)
                 node["tool_call_id"] = m.ToolCallId;
 
-            if (m.ToolCalls is not null && m.ToolCalls.Count > 0)
-            {
-                var toolCallsArray = new JsonArray();
-                foreach (var call in m.ToolCalls)
-                {
-                    toolCallsArray.Add(new JsonObject
-                    {
-                        ["id"] = call.Id,
-                        ["type"] = "function",
-                        ["function"] = new JsonObject
-                        {
-                            ["name"] = call.Name,
-                            ["arguments"] = call.Arguments
-                        }
-                    });
-                }
-                node["tool_calls"] = toolCallsArray;
-            }
-
             msgsArray.Add(node);
+        }
+
+        var toolsArray = new JsonArray();
+        foreach (var t in tools)
+        {
+            toolsArray.Add(new JsonObject
+            {
+                ["type"] = "function",
+                ["function"] = new JsonObject
+                {
+                    ["name"] = t.Name,
+                    ["description"] = t.Description,
+                    ["parameters"] = JsonNode.Parse(JsonSerializer.Serialize(t.InputSchema))
+                }
+            });
         }
 
         var body = new JsonObject
         {
             ["model"] = _model,
             ["messages"] = msgsArray,
+            ["tools"] = toolsArray,
             ["stream"] = false,
-            ["max_tokens"] = 4096
+            ["tool_choice"] = "auto"
         };
 
-        if (tools.Any())
-        {
-            var toolsArray = new JsonArray();
-            foreach (var t in tools)
-            {
-                toolsArray.Add(new JsonObject
-                {
-                    ["type"] = "function",
-                    ["function"] = new JsonObject
-                    {
-                        ["name"] = t.Name,
-                        ["description"] = t.Description,
-                        ["parameters"] = JsonNode.Parse(JsonSerializer.Serialize(t.InputSchema))
-                    }
-                });
-            }
-            body["tools"] = toolsArray;
-            body["tool_choice"] = "auto";
-        }
+        var url = $"{_baseUrl.TrimEnd('/')}/{_accountId}/{_gateway}/compat/chat/completions";
 
-        var url = $"{_baseUrl.TrimEnd('/')}/chat/completions";
-
-        var jsonString = body.ToJsonString();
-        var content = new StringContent(jsonString, Encoding.UTF8, "application/json");
-
+        var content = new StringContent(body.ToJsonString(), Encoding.UTF8, "application/json");
         var resp = await _http.PostAsync(url, content);
-
-        if (!resp.IsSuccessStatusCode)
-        {
-            var errorBody = await resp.Content.ReadAsStringAsync();
-            throw new InvalidOperationException(
-                $"OpenCodeAI API error {resp.StatusCode}: {errorBody}");
-        }
+        resp.EnsureSuccessStatusCode();
 
         var json = await resp.Content.ReadAsStringAsync();
         var doc = JsonDocument.Parse(json);
