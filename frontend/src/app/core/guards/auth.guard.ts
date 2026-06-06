@@ -14,7 +14,7 @@ export const authGuard: CanActivateFn = (route) => {
   }
 
   if (!roleService.hasRole()) {
-    authService.logout();
+    authService.clearSession();
     return router.createUrlTree([roleService.getLoginRouteForAllowedRoles(allowedRoles)]);
   }
 

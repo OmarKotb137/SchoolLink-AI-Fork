@@ -1,6 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, tap, catchError, throwError, map } from 'rxjs';
+import { Observable, of, tap, catchError, throwError, map, finalize } from 'rxjs';
 import { buildApiUrl } from '../utils/api-url';
 import { AppRole, RoleService } from '../../shared/role.service';
 
@@ -84,6 +84,10 @@ export class AuthService {
     return localStorage.getItem(this.TOKEN_KEY);
   }
 
+  getRefreshToken(): string | null {
+    return localStorage.getItem(this.REFRESH_KEY);
+  }
+
   login(role: AppRole, email: string, password: string): Observable<AuthSession> {
     return this.http.post<RawAuthSession>(`${this.base}/login/${role}`, { email, password }).pipe(
       map(res => ({
@@ -123,13 +127,30 @@ export class AuthService {
     );
   }
 
-  logout() {
+  clearSession() {
     localStorage.removeItem(this.TOKEN_KEY);
     localStorage.removeItem(this.REFRESH_KEY);
     localStorage.removeItem(this.USER_KEY);
     this.roleService.clearRole();
     this.token.set(null);
     this.user.set(null);
+  }
+
+  logout(): Observable<void> {
+    const refreshToken = this.getRefreshToken();
+
+    if (!refreshToken) {
+      this.clearSession();
+      return of(void 0);
+    }
+
+    return this.http.post<void>(`${this.base}/logout`, { refreshToken }).pipe(
+      map(() => void 0),
+      catchError(() => of(void 0)),
+      finalize(() => {
+        this.clearSession();
+      })
+    );
   }
 
   isAuthenticated(): boolean {

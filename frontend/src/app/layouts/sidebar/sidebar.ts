@@ -1,5 +1,6 @@
 import { Component, inject, input, output, computed } from '@angular/core';
 import { RouterLink, RouterLinkActive, Router } from '@angular/router';
+import { AuthService } from '../../core/services/auth.service';
 import { ROLE_MENUS, SidebarMenuItem } from '../../shared/menus';
 import { RoleService } from '../../shared/role.service';
 export type { SidebarMenuItem };
@@ -16,6 +17,7 @@ export class Sidebar {
   isOpenChange = output<boolean>();
 
   private roleService = inject(RoleService);
+  private authService = inject(AuthService);
   router = inject(Router);
 
   items = computed(() => {
@@ -35,6 +37,15 @@ export class Sidebar {
   navigate(route: string) {
     this.close();
     this.router.navigate([route]);
+  }
+
+  logout() {
+    this.close();
+    this.authService.logout().subscribe({
+      next: () => {
+        this.router.navigate(['/login']);
+      }
+    });
   }
 
   currentRole = computed(() => this.roleService.currentRole());

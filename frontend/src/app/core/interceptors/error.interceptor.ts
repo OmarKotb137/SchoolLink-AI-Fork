@@ -27,7 +27,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
       } else if (error.status === 401) {
         message = backendMessage || (isAuthRequest ? 'بيانات الدخول غير صحيحة' : 'انتهت الجلسة، يرجى تسجيل الدخول مجدداً');
         if (!isAuthRequest) {
-          authService.logout();
+          authService.clearSession();
           router.navigate([roleService.getLoginRoute()]);
         }
       } else if (error.status === 403) {
