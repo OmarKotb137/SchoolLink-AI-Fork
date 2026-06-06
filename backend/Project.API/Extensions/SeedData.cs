@@ -260,7 +260,20 @@ public static class SeedData
         }
         await ctx.SaveChangesAsync();
 
-        // ── 8. ClassSubjectTeacher ──
+        // ── 8a. TeacherSubject (teacher specializations) ──
+        foreach (var kv in teacherMap)
+        {
+            ctx.Set<TeacherSubject>().Add(new TeacherSubject
+            {
+                TeacherId  = kv.Value,
+                SubjectId  = subj[kv.Key],
+                CreatedAt  = now,
+                UpdatedAt  = now
+            });
+        }
+        await ctx.SaveChangesAsync();
+
+        // ── 8b. ClassSubjectTeacher ──
         var cstList = new List<ClassSubjectTeacher>();
         foreach (var cls in new[] { class1, class2 })
         {

@@ -333,6 +333,11 @@ export class TeacherAssignments implements OnInit {
     this.editNoTeachersAvailable.set(false);
     this.editTeachersRequestVersion++;
 
+    // Pre-populate immediately with the current teacher so the select has
+    // a valid option from the very first render (fixes the ngModel race condition)
+    const currentTeacher = this.teachers().find(t => t.id === assignment.teacherId);
+    this.editFormTeachers.set(currentTeacher ? [currentTeacher] : []);
+
     if (this.currentAcademicYearId) {
       const requestVersion = this.editTeachersRequestVersion;
       this.assignmentService

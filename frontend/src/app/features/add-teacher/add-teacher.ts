@@ -19,8 +19,11 @@ export class AddTeacher implements OnInit {
   private userService = inject(UserService);
 
   sidebarOpen = signal(false);
+  displayUserName = localStorage.getItem('fullName') || localStorage.getItem('username') || 'المشرف';
   showEditModal = signal(false);
   editingTeacherId = signal<number | null>(null);
+  modalErrorMessage = signal<string | null>(null);
+  modalSuccessMessage = signal<string | null>(null);
   searchQuery = signal('');
   statusFilter = signal<'all' | 'active' | 'inactive'>('all');
   subjectFilter = signal<number | 'all'>('all');
@@ -187,12 +190,12 @@ export class AddTeacher implements OnInit {
     if (!id) return;
 
     if (!this.newName()) {
-      this.showError('يرجى إدخال الاسم');
+      this.showModalError('يرجى إدخال الاسم');
       return;
     }
 
     if (this.selectedSubjectIds().length === 0) {
-      this.showError('يجب أن يكون للمعلم مادة واحدة على الأقل');
+      this.showModalError('يجب أن يكون للمعلم مادة واحدة على الأقل');
       return;
     }
 
@@ -206,14 +209,14 @@ export class AddTeacher implements OnInit {
 
     this.teacherService.updateTeacher(id, payload).subscribe({
       next: () => {
+        this.isLoading.set(false);
         this.showSuccess('تم تحديث بيانات المعلم بنجاح');
         this.closeEditModal();
         this.loadTeachers();
-        this.isLoading.set(false);
       },
       error: (err) => {
         const msg = err?.error?.message || 'حدث خطأ أثناء التحديث';
-        this.showError(msg);
+        this.showModalError(msg);
         this.isLoading.set(false);
       }
     });
@@ -222,6 +225,8 @@ export class AddTeacher implements OnInit {
   closeEditModal() {
     this.showEditModal.set(false);
     this.editingTeacherId.set(null);
+    this.modalErrorMessage.set(null);
+    this.modalSuccessMessage.set(null);
     this.resetForm();
   }
 
@@ -249,6 +254,7 @@ export class AddTeacher implements OnInit {
     this.userService.setActiveStatus(teacher.id, nextStatus).subscribe({
       next: () => {
         this.showSuccess(nextStatus ? 'تم تفعيل المعلم بنجاح' : 'تم تعطيل المعلم بنجاح');
+        this.isLoading.set(false);
         this.loadTeachers();
       },
       error: err => {
@@ -306,5 +312,11 @@ export class AddTeacher implements OnInit {
     this.successMessage.set(msg);
     this.errorMessage.set(null);
     setTimeout(() => this.successMessage.set(null), 3000);
+  }
+
+  private showModalError(msg: string) {
+    this.modalErrorMessage.set(msg);
+    this.modalSuccessMessage.set(null);
+    setTimeout(() => this.modalErrorMessage.set(null), 5000);
   }
 }

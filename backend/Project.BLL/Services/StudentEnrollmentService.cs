@@ -152,6 +152,42 @@ public class StudentEnrollmentService : IStudentEnrollmentService
         return OperationResult<EnrollmentDto>.Success(dto);
     }
 
+    public async Task<OperationResult<IEnumerable<TransferHistoryDto>>> GetTransferHistoryAsync(int academicYearId)
+    {
+        var transfers = await _unitOfWork.StudentEnrollments.GetTransfersHistoryAsync(academicYearId);
+        
+        var dtos = transfers.Select(e => new TransferHistoryDto
+        {
+            Id = e.Id,
+            StudentName = e.Student?.FullName ?? string.Empty,
+            FromClass = e.Class?.Name ?? string.Empty,
+            // To find the "ToClass", we'd need to look at the next enrollment for the same student.
+            // But since the current enrollment tracks the destination class? Wait.
+            // In TransferStudentAsync: 
+            // currentEnrollment.LeftAt = request.TransferDate; currentEnrollment.TransferReason = request.TransferReason; _unitOfWork.Update(currentEnrollment);
+            // var newEnrollment = new StudentEnrollment { ClassId = request.NewClassId ... }
+            // This means `e.Class.Name` is the OLD class. We don't have the NEW class directly on the closed enrollment.
+            // A quick way is to set ToClass = "تم النقل", or we fetch their active enrollment.
+            // Let's resolve the next enrollment.
+        }).ToList();
+
+        // Let's properly fill ToClass by looking up their next active enrollment for this year.
+        foreach (var dto in dtos)
+        {
+            var nextEnrollment = await _unitOfWork.StudentEnrollments.GetActiveByStudentAndYearAsync(transfers.First(t => t.Id == dto.Id).StudentId, academicYearId);
+            if (nextEnrollment != null)
+            {
+                var nextClass = await _unitOfWork.Classes.GetByIdAsync(nextEnrollment.ClassId);
+                dto.ToClass = nextClass?.Name ?? "غير معروف";
+            }
+            var original = transfers.First(t => t.Id == dto.Id);
+            dto.TransferDate = original.LeftAt;
+            dto.Reason = original.TransferReason;
+        }
+
+        return OperationResult<IEnumerable<TransferHistoryDto>>.Success(dtos);
+    }
+
     public async Task<OperationResult<BulkEnrollResultDto>> BulkEnrollStudentsAsync(BulkEnrollStudentsRequest request)
     {
         if (request.StudentIds == null || request.StudentIds.Count == 0)

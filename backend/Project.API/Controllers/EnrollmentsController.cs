@@ -70,4 +70,13 @@ public class EnrollmentsController : ControllerBase
             return NotFound(result);
         return Ok(result);
     }
+
+    [HttpGet("transfers-history")]
+    public async Task<IActionResult> GetTransferHistory([FromQuery] int academicYearId)
+    {
+        var result = await _enrollmentService.GetTransferHistoryAsync(academicYearId);
+        if (!result.IsSuccess)
+            return BadRequest(result);
+        return Ok(result);
+    }
 }

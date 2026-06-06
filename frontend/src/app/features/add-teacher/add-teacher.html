@@ -1,6 +1,6 @@
 <app-sidebar [(isOpen)]="sidebarOpen" />
 <div class="main-content">
-  <app-topbar userName="أحمد" />
+  <app-topbar [userName]="displayUserName" />
   <main class="pt-16 min-h-screen bg-gray-50 flex flex-col">
     <div class="flex-1 p-4 md:p-6 lg:p-8">
       <div class="max-w-7xl mx-auto space-y-6 pb-10">
@@ -124,10 +124,10 @@
                     [class.bg-blue-600]="selectedSubjectIds().includes(s.id)"
                     [class.text-white]="selectedSubjectIds().includes(s.id)"
                     [class.border-blue-600]="selectedSubjectIds().includes(s.id)"
+                    [class.shadow-md]="selectedSubjectIds().includes(s.id)"
                     [class.bg-white]="!selectedSubjectIds().includes(s.id)"
                     [class.text-gray-700]="!selectedSubjectIds().includes(s.id)"
                     [class.border-gray-200]="!selectedSubjectIds().includes(s.id)"
-                    [class.hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5]="!selectedSubjectIds().includes(s.id)"
                     (click)="toggleSubject(s.id)">{{ s.name }}</button>
                 }
               </div>
@@ -230,38 +230,46 @@
                       </div>
                     </td>
                   </tr>
-                }
-                @for (t of paginatedTeachers(); track t.id) {
-                  <tr class="hover:bg-gray-50 transition-colors bg-white">
-                    <td class="px-6 py-4 font-bold text-gray-900">{{ t.fullName }}</td>
-                    <td class="px-6 py-4 text-gray-600">{{ t.email }}</td>
-                    <td class="px-6 py-4 text-gray-600">{{ t.phone || '—' }}</td>
-                    <td class="px-6 py-4 text-gray-600 max-w-xs truncate" [title]="getTeacherSubjectsText(t)">{{ getTeacherSubjectsText(t) }}</td>
-                    <td class="px-6 py-4 text-center">
-                      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border"
-                            [class.bg-emerald-50]="t.isActive"
-                            [class.text-green-700]="t.isActive"
-                            [class.border-green-200]="t.isActive"
-                            [class.bg-gray-100]="!t.isActive"
-                            [class.text-gray-700]="!t.isActive"
-                            [class.border-gray-200]="!t.isActive">
-                        {{ t.isActive ? 'نشط' : 'غير نشط' }}
-                      </span>
-                    </td>
-                    <td class="px-6 py-4 text-center">
-                      <div class="flex items-center justify-center gap-2">
-                        <button class="p-2 text-blue-600 hover:bg-blue-50 rounded-2xl transition-colors" (click)="editTeacher(t)" title="تعديل بيانات المعلم">
-                          <span class="material-symbols-outlined text-sm">edit</span>
-                        </button>
-                        <button class="p-2 text-gray-600 hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 rounded-2xl transition-colors" (click)="toggleTeacherStatus(t)" [title]="t.isActive ? 'تعطيل المعلم' : 'تفعيل المعلم'">
-                          <span class="material-symbols-outlined text-sm">{{ t.isActive ? 'toggle_off' : 'toggle_on' }}</span>
-                        </button>
-                        <button class="p-2 text-red-600 hover:bg-red-50 rounded-2xl transition-colors" (click)="deleteTeacher(t.id)" title="حذف المعلم أو تعطيله نهائيًا حسب التعيينات">
-                          <span class="material-symbols-outlined text-sm">delete</span>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                } @else {
+                  @for (t of paginatedTeachers(); track t.id) {
+                    <tr class="hover:bg-gray-50 transition-colors bg-white">
+                      <td class="px-6 py-4 font-bold text-gray-900">{{ t.fullName || '—' }}</td>
+                      <td class="px-6 py-4 text-gray-600">{{ t.email || '—' }}</td>
+                      <td class="px-6 py-4 text-gray-600">{{ t.phone || '—' }}</td>
+                      <td class="px-6 py-4 text-gray-600 max-w-xs truncate" [title]="getTeacherSubjectsText(t)">{{ getTeacherSubjectsText(t) }}</td>
+                      <td class="px-6 py-4 text-center">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border"
+                              [class.bg-emerald-50]="t.isActive"
+                              [class.text-green-700]="t.isActive"
+                              [class.border-green-200]="t.isActive"
+                              [class.bg-gray-100]="!t.isActive"
+                              [class.text-gray-600]="!t.isActive"
+                              [class.border-gray-200]="!t.isActive">
+                          {{ t.isActive ? 'نشط' : 'غير نشط' }}
+                        </span>
+                      </td>
+                      <td class="px-6 py-4 text-center">
+                        <div class="flex items-center justify-center gap-2">
+                          <button class="p-2 text-blue-600 hover:bg-blue-50 rounded-2xl transition-colors" (click)="editTeacher(t)" title="تعديل بيانات المعلم">
+                            <span class="material-symbols-outlined text-sm">edit</span>
+                          </button>
+                          <button
+                            class="p-2 rounded-2xl transition-colors"
+                            [class.text-orange-500]="t.isActive"
+                            [class.hover:bg-orange-50]="t.isActive"
+                            [class.text-green-600]="!t.isActive"
+                            [class.hover:bg-green-50]="!t.isActive"
+                            (click)="toggleTeacherStatus(t)"
+                            [title]="t.isActive ? 'تعطيل المعلم' : 'تفعيل المعلم'">
+                            <span class="material-symbols-outlined text-sm">{{ t.isActive ? 'block' : 'check_circle' }}</span>
+                          </button>
+                          <button class="p-2 text-red-600 hover:bg-red-50 rounded-2xl transition-colors" (click)="deleteTeacher(t.id)" title="حذف المعلم">
+                            <span class="material-symbols-outlined text-sm">delete</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  }
                 }
               </tbody>
             </table>
@@ -337,6 +345,12 @@
       </div>
 
       <div class="p-6 overflow-y-auto flex-1">
+        @if (modalErrorMessage()) {
+          <div class="flex items-center gap-3 p-4 mb-4 text-sm text-red-800 rounded-2xl bg-red-50 border border-red-200">
+            <span class="material-symbols-outlined text-lg">error</span>
+            <span class="font-medium">{{ modalErrorMessage() }}</span>
+          </div>
+        }
         <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
           <div class="flex flex-col gap-2">
             <label class="text-sm font-medium text-gray-900">الاسم <span class="text-red-500">*</span></label>
@@ -364,18 +378,18 @@
           <p class="text-sm text-gray-600 mb-4">{{ getSelectedSubjectsText() }}</p>
 
           <div class="flex flex-wrap gap-2">
-            @for (s of allSubjects(); track s.id) {
-              <button class="px-3 py-1.5 rounded-2xl text-sm font-medium transition-all border"
-                type="button"
-                [class.bg-blue-600]="selectedSubjectIds().includes(s.id)"
-                [class.text-white]="selectedSubjectIds().includes(s.id)"
-                [class.border-blue-600]="selectedSubjectIds().includes(s.id)"
-                [class.bg-white]="!selectedSubjectIds().includes(s.id)"
-                [class.text-gray-700]="!selectedSubjectIds().includes(s.id)"
-                [class.border-gray-200]="!selectedSubjectIds().includes(s.id)"
-                [class.hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5]="!selectedSubjectIds().includes(s.id)"
-                (click)="toggleSubject(s.id)">{{ s.name }}</button>
-            }
+          @for (s of allSubjects(); track s.id) {
+          <button class="px-3 py-1.5 rounded-2xl text-sm font-medium transition-all border"
+          type="button"
+          [class.bg-blue-600]="selectedSubjectIds().includes(s.id)"
+          [class.text-white]="selectedSubjectIds().includes(s.id)"
+          [class.border-blue-600]="selectedSubjectIds().includes(s.id)"
+          [class.shadow-md]="selectedSubjectIds().includes(s.id)"
+          [class.bg-white]="!selectedSubjectIds().includes(s.id)"
+          [class.text-gray-700]="!selectedSubjectIds().includes(s.id)"
+          [class.border-gray-200]="!selectedSubjectIds().includes(s.id)"
+          (click)="toggleSubject(s.id)">{{ s.name }}</button>
+          }
           </div>
         </div>
 

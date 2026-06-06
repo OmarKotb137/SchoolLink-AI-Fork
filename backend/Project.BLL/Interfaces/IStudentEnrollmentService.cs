@@ -10,5 +10,6 @@ public interface IStudentEnrollmentService
     Task<OperationResult<IEnumerable<EnrollmentDto>>> GetEnrollmentsByStudentAsync(int studentId);
     Task<OperationResult<IEnumerable<EnrollmentDto>>> GetEnrollmentsByClassAsync(int classId, int academicYearId, bool activeOnly);
     Task<OperationResult<EnrollmentDto>> GetActiveEnrollmentByStudentAsync(int studentId, int academicYearId);
+    Task<OperationResult<IEnumerable<TransferHistoryDto>>> GetTransferHistoryAsync(int academicYearId);
     Task<OperationResult<BulkEnrollResultDto>> BulkEnrollStudentsAsync(BulkEnrollStudentsRequest request);
 }
