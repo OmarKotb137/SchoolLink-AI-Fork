@@ -1,7 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { RoleService } from '../../shared/role.service';
+import { AuthService } from '../../core/services/auth.service';
 
 @Component({
   selector: 'app-login-teacher',
@@ -10,7 +10,7 @@ import { RoleService } from '../../shared/role.service';
   styleUrl: './login-teacher.css'
 })
 export class LoginTeacher {
-  private roleService = inject(RoleService);
+  private auth = inject(AuthService);
   private router = inject(Router);
 
   togglePwd(pwd: HTMLInputElement) {
@@ -18,7 +18,10 @@ export class LoginTeacher {
   }
   handleLogin(f: any) {
     if (!f.valid) { alert('يرجى إدخال البريد الإلكتروني وكلمة المرور'); return; }
-    this.roleService.setRole('teacher');
-    this.router.navigate(['/teacher']);
+    const { email, password } = f.value;
+    this.auth.login('teacher', email, password).subscribe({
+      next: () => this.router.navigate(['/teacher']),
+      error: (err) => alert(err.message)
+    });
   }
 }

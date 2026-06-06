@@ -1,9 +1,4 @@
 ﻿using Project.Domain.Enums;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Project.BLL.DTOs.Exam
 {
@@ -23,12 +18,16 @@ namespace Project.BLL.DTOs.Exam
         public string TeacherName { get; set; } = string.Empty;
         public int QuestionsCount { get; set; }
         public DateTime CreatedAt { get; set; }
-        public List<GetExamQuestionDto> Questions { get; set; } = new();
+        public List<GetExamQuestionGroupDto> Groups { get; set; } = new();
+        public List<GetExamQuestionDto> StandaloneQuestions { get; set; } = new();
     }
 
     public class GetExamQuestionDto
     {
         public int Id { get; set; }
+        public int? GroupId { get; set; }
+        public TemplateContentType DisplayType { get; set; }
+        public string? ContentText { get; set; }
         public string QuestionText { get; set; } = string.Empty;
         public QuestionType QuestionType { get; set; }
         public string? ImageUrl { get; set; }

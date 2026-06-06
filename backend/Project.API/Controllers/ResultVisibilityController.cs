@@ -7,7 +7,7 @@ using Project.Domain.Enums;
 
 namespace Project.API.Controllers;
 
-[Authorize]
+[Authorize(Roles = "Admin,Teacher")]
 [ApiController]
 [Route("api/[controller]")]
 public class ResultVisibilityController : ControllerBase

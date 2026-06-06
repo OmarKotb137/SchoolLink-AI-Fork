@@ -8,6 +8,7 @@ namespace Project.API.Controllers;
 
 [ApiController]
 [Route("api/subjects")]
+[Authorize(Roles = "Admin,Teacher")]
 public class SubjectController : ControllerBase
 {
     private readonly ISubjectService _subjectService;

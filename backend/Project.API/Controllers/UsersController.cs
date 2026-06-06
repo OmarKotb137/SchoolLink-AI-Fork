@@ -9,7 +9,7 @@ using Project.Domain.Enums;
 
 namespace Project.API.Controllers;
 
-[Authorize]
+[Authorize(Roles = "Admin")]
 [ApiController]
 [Route("api/[controller]")]
 public class UsersController : ControllerBase

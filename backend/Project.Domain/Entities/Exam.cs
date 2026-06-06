@@ -16,6 +16,7 @@ namespace Project.Domain.Entities
 
         // Navigation Properties
         public ClassSubjectTeacher ClassSubjectTeacher { get; set; } = null!;
+        public ICollection<ExamQuestionGroup> Groups { get; set; } = new List<ExamQuestionGroup>();
         public ICollection<ExamQuestion> Questions { get; set; } = new List<ExamQuestion>();
         public ICollection<StudentExamAttempt> Attempts { get; set; } = new List<StudentExamAttempt>();
     }

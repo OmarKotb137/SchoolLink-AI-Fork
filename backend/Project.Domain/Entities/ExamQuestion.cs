@@ -5,6 +5,9 @@ namespace Project.Domain.Entities
     public class ExamQuestion : BaseEntity
     {
         public int ExamId { get; set; }
+        public int? GroupId { get; set; }
+        public TemplateContentType DisplayType { get; set; } = TemplateContentType.None;
+        public string? ContentText { get; set; }
         public string QuestionText { get; set; } = string.Empty;
         public QuestionType QuestionType { get; set; }
         public string? CorrectAnswer { get; set; }
@@ -14,6 +17,7 @@ namespace Project.Domain.Entities
 
         // Navigation Properties
         public Exam Exam { get; set; } = null!;
+        public ExamQuestionGroup? Group { get; set; }
         public ICollection<ExamQuestionOption> Options { get; set; } = new List<ExamQuestionOption>();
     }
 }

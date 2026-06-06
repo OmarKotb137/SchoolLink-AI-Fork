@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ExamAgent - صفحة الدردشة</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h1>وكيل الامتحانات</h1>
+            <p class="subtitle">مساعدك الذكي في إنشاء وحل الامتحانات</p>
+        </div>
+
+        <div class="chat-messages" id="chatMessages">
+            <div class="message bot-message">
+                <div class="message-content">
+                    <p>السلام عليكم!</p>
+                    <p>أنا وكيل الامتحانات الذكي. يمكنني مساعدتك في:</p>
+                    <ul>
+                        <li>عرض الدروس المتاحة</li>
+                        <li>الحصول على محتوى الدرس</li>
+                        <li>إنشاء امتحانات ذكية</li>
+                    </ul>
+                    <p>كيف يمكنني مساعدتك؟</p>
+                </div>
+                <div class="message-time">الآن</div>
+            </div>
+        </div>
+
+        <div class="chat-input-area">
+            <div class="input-wrapper">
+                <input 
+                    type="text" 
+                    id="userInput" 
+                    class="chat-input" 
+                    placeholder="اكتب رسالتك هنا..."
+                    autocomplete="off"
+                >
+                <button class="send-button" id="sendButton" title="إرسال">
+                    <span>إرسال</span>
+                </button>
+            </div>
+            <div class="loading-indicator" id="loadingIndicator" style="display: none;">
+                <span class="spinner"></span>
+                <span>جاري المعالجة...</span>
+            </div>
+        </div>
+    </div>
+
+    <script src="chat.js"></script>
+</body>
+</html>

@@ -8,7 +8,7 @@ namespace Project.API.Controllers;
 
 [ApiController]
 [Route("api/lesson-feedback")]
-//[Authorize(Roles = "Admin")]
+[Authorize(Roles = "Admin,Teacher,Student")]
 public class LessonFeedbackController : ControllerBase
 {
     private readonly ILessonFeedbackService _feedbackService;

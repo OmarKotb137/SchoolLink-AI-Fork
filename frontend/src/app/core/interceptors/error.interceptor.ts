@@ -1,6 +1,6 @@
 import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
-import { NotificationService } from '../services/notification.service';
+import { AuthService } from '../services/auth.service';
 import { catchError, throwError } from 'rxjs';
 import { Router } from '@angular/router';
 import { AuthService } from '../services/auth.service';
@@ -9,7 +9,7 @@ import { RoleService } from '../../shared/role.service';
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const notificationService = inject(NotificationService);
   const router              = inject(Router);
-  const authService         = inject(AuthService);
+  const auth         = inject(AuthService);
   const roleService         = inject(RoleService);
 
   return next(req).pipe(
@@ -40,8 +40,6 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
       } else {
         message = backendMessage || 'حدث خطأ غير متوقع';
       }
-
-      notificationService.addMessage(message);
       return throwError(() => error);
     })
   );

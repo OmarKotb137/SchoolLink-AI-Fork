@@ -35,6 +35,7 @@ public class AppDbContext : DbContext
     public DbSet<StudentAssignmentSubmission> StudentAssignmentSubmissions => Set<StudentAssignmentSubmission>();
     public DbSet<StudentAssignmentAnswer> StudentAssignmentAnswers => Set<StudentAssignmentAnswer>();
     public DbSet<Exam> Exams => Set<Exam>();
+    public DbSet<ExamQuestionGroup> ExamQuestionGroups => Set<ExamQuestionGroup>();
     public DbSet<ExamQuestion> ExamQuestions => Set<ExamQuestion>();
     public DbSet<ExamQuestionOption> ExamQuestionOptions => Set<ExamQuestionOption>();
     public DbSet<StudentExamAttempt> StudentExamAttempts => Set<StudentExamAttempt>();
@@ -60,6 +61,10 @@ public class AppDbContext : DbContext
     
     public DbSet<StudyPlan> StudyPlans => Set<StudyPlan>();
     public DbSet<StudyPlanItem> StudyPlanItems => Set<StudyPlanItem>();
+
+    public DbSet<AgentConversationMessage> AgentConversationMessages => Set<AgentConversationMessage>();
+    public DbSet<Unit> Units => Set<Unit>();
+    public DbSet<Lesson> Lessons => Set<Lesson>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

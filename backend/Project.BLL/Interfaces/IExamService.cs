@@ -14,5 +14,7 @@ namespace Project.BLL.Interfaces
         Task<OperationResult> UnPublishAsync(int id);
         Task<OperationResult<List<ExamSummaryDto>>> GetExamsByStudentAsync(int enrollmentId);
         Task<OperationResult<List<ExamSummaryDto>>> GetUpcomingExamsAsync(int classId, int academicYearId);
+        Task<OperationResult<GetExamDto>> CreateFromAiAsync(CreateExamFromAiDto dto, CancellationToken ct = default);
+        Task<OperationResult<string>> RenderHtmlAsync(int examId, CancellationToken ct = default);
     }
 }

@@ -50,6 +50,7 @@ public class UnitOfWork : IUnitOfWork
         IAssignmentQuestionOptionRepository    assignmentQuestionOptions,
         IStudentAssignmentSubmissionRepository studentAssignmentSubmissions,
         IStudentAssignmentAnswerRepository     studentAssignmentAnswers,
+        IRepository<ExamQuestionGroup>         examQuestionGroups,
         IExamRepository                        exams,
         IExamQuestionRepository                examQuestions,
         IExamQuestionOptionRepository          examQuestionOptions,
@@ -109,6 +110,7 @@ public class UnitOfWork : IUnitOfWork
         AssignmentQuestionOptions    = assignmentQuestionOptions;
         StudentAssignmentSubmissions = studentAssignmentSubmissions;
         StudentAssignmentAnswers     = studentAssignmentAnswers;
+        ExamQuestionGroups           = examQuestionGroups;
         Exams                        = exams;
         ExamQuestions                = examQuestions;
         ExamQuestionOptions          = examQuestionOptions;
@@ -175,6 +177,7 @@ public class UnitOfWork : IUnitOfWork
     public IAssignmentQuestionOptionRepository    AssignmentQuestionOptions    { get; }
     public IStudentAssignmentSubmissionRepository StudentAssignmentSubmissions { get; }
     public IStudentAssignmentAnswerRepository     StudentAssignmentAnswers     { get; }
+    public IRepository<ExamQuestionGroup>         ExamQuestionGroups           { get; }
     public IExamRepository                        Exams                        { get; }
     public IExamQuestionRepository                ExamQuestions                { get; }
     public IExamQuestionOptionRepository          ExamQuestionOptions          { get; }

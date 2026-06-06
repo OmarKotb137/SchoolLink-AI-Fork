@@ -20,6 +20,9 @@ namespace Project.DAL.Configurations
             builder.Property(x => x.ImageUrl)
                 .HasMaxLength(500);
 
+            builder.Property(x => x.ContentText)
+                .HasColumnType("nvarchar(max)");
+
             builder.Property(x => x.Points)
                 .HasColumnType("decimal(4,2)");
 
@@ -27,6 +30,13 @@ namespace Project.DAL.Configurations
                 .WithMany(x => x.Questions)
                 .HasForeignKey(x => x.ExamId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne(x => x.Group)
+                .WithMany(x => x.Questions)
+                .HasForeignKey(x => x.GroupId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            builder.HasIndex(x => new { x.ExamId, x.GroupId });
 
             builder.HasQueryFilter(x => !x.IsDeleted);
         }
