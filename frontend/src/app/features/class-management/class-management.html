@@ -1,166 +1,173 @@
 <app-sidebar [(isOpen)]="sidebarOpen" />
 <div class="main-content">
   <app-topbar [userName]="displayUserName" />
-  <main class="pt-16 h-screen flex flex-col bg-background">
-    <div class="flex-1 p-stack-lg overflow-y-auto custom-scrollbar">
-      <div class="max-w-7xl mx-auto space-y-stack-lg pb-10 class-page-shell">
+  <main class="pt-16 min-h-screen bg-gray-50 flex flex-col">
+    <div class="flex-1 p-4 md:p-6 lg:p-8">
+      <div class="max-w-7xl mx-auto space-y-6 pb-10">
 
-        <section class="management-hero">
-          <div class="hero-copy">
-            <span class="hero-eyebrow">Class Management</span>
-            <h2 class="font-headline-lg text-headline-lg text-on-surface hero-title">إدارة الفصول الدراسية</h2>
-            <p class="font-body-md text-body-md text-on-surface-variant hero-description">
+        <!-- Header / Hero Section -->
+        <section class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+          <div>
+            <span class="text-sm font-medium text-blue-600 mb-1 block">Class Management</span>
+            <h2 class="text-2xl font-bold text-gray-900 mb-2">إدارة الفصول الدراسية</h2>
+            <p class="text-sm text-gray-500 max-w-2xl">
               واجهة أكثر ترتيبًا لإدارة الفصول وربطها بالمراحل والسنوات الدراسية مع فلترة أسرع وقراءة أوضح للقائمة.
             </p>
           </div>
 
-          <div class="hero-stats">
-            <div class="hero-stat-card">
-              <span class="hero-stat-label">الفصول المعروضة</span>
-              <strong class="hero-stat-value">{{ classes().length }}</strong>
-              <span class="hero-stat-hint">القائمة تتأثر بالفلاتر الحالية</span>
+          <div class="flex items-center gap-4 w-full md:w-auto">
+            <div class="bg-blue-50 border border-blue-100 p-4 rounded-lg flex-1 md:w-40 text-center">
+              <span class="block text-xs text-blue-600 font-medium mb-1">الفصول المعروضة</span>
+              <strong class="block text-2xl font-bold text-blue-900">{{ classes().length }}</strong>
             </div>
-
-            <div class="hero-stat-card accent">
-              <span class="hero-stat-label">السنة المختارة</span>
-              <strong class="hero-stat-value compact">
-                {{ selectedYearFilter ? 'تصفية حسب سنة' : 'كل السنوات' }}
-              </strong>
-              <span class="hero-stat-hint">{{ editingClassId() ? 'يوجد فصل قيد التعديل' : 'يمكنك إضافة فصل جديد الآن' }}</span>
+            <div class="bg-gray-50 border border-gray-200 p-4 rounded-lg flex-1 md:w-48 text-center">
+              <span class="block text-xs text-gray-500 font-medium mb-1">حالة الفلترة</span>
+              <strong class="block text-lg font-bold text-gray-900">{{ selectedYearFilter || selectedGradeFilter ? 'عرض مفلتر' : 'كل الفصول' }}</strong>
             </div>
           </div>
         </section>
 
-        <div class="feedback-stack">
-          <div *ngIf="errorMessage()" class="feedback-banner error">
-            <span class="material-symbols-outlined text-base">error</span>
-            <span class="font-body-md">{{ errorMessage() }}</span>
+        <!-- Feedback Messages -->
+        <div class="flex flex-col gap-3">
+          <div *ngIf="errorMessage()" class="flex items-center gap-3 p-4 text-sm text-red-800 rounded-lg bg-red-50 border border-red-200">
+            <span class="material-symbols-outlined text-lg">error</span>
+            <span class="font-medium">{{ errorMessage() }}</span>
           </div>
-          <div *ngIf="successMessage()" class="feedback-banner success">
-            <span class="material-symbols-outlined text-base">check_circle</span>
-            <span class="font-body-md">{{ successMessage() }}</span>
+          <div *ngIf="successMessage()" class="flex items-center gap-3 p-4 text-sm text-green-800 rounded-lg bg-green-50 border border-green-200">
+            <span class="material-symbols-outlined text-lg">check_circle</span>
+            <span class="font-medium">{{ successMessage() }}</span>
           </div>
         </div>
 
-        <div class="management-grid">
-          <section class="editor-card" [class.editor-card-active]="editingClassId()">
-            <div class="section-heading">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <!-- Editor Form -->
+          <section class="lg:col-span-4 bg-white rounded-lg border border-gray-200 shadow-sm h-fit">
+            <div class="p-5 border-b border-gray-200 flex justify-between items-center bg-gray-50/50 rounded-t-lg">
               <div>
-                <h3 class="font-headline-md text-headline-md text-primary flex items-center gap-2">
-                  <span class="material-symbols-outlined">{{ editingClassId() ? 'edit' : 'school' }}</span>
+                <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <span class="material-symbols-outlined text-blue-600">{{ editingClassId() ? 'edit' : 'school' }}</span>
                   {{ editingClassId() ? 'تعديل بيانات الفصل' : 'إضافة فصل جديد' }}
                 </h3>
-                <p class="text-sm text-on-surface-variant mt-1">
-                  استخدم اسمًا واضحًا للفصل وحدد المرحلة والسنة لضمان صحة الربط مع الجداول والطلاب.
-                </p>
               </div>
-
-              <span class="editor-chip">
-                {{ editingClassId() ? (newClass.name || 'فصل قيد التعديل') : 'إنشاء فصل' }}
+              <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-1 rounded border border-blue-200">
+                {{ editingClassId() ? 'تعديل' : 'جديد' }}
               </span>
             </div>
 
-            <div class="form-grid">
+            <div class="p-5 space-y-5">
               <div>
-                <label class="field-label">اسم الفصل</label>
+                <label class="block mb-2 text-sm font-medium text-gray-900">اسم الفصل</label>
                 <input
                   type="text"
                   [(ngModel)]="newClass.name"
-                  class="field-input"
+                  class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
                   placeholder="مثال: 1/أ">
               </div>
 
               <div>
-                <label class="field-label">المرحلة الدراسية</label>
-                <select [(ngModel)]="newClass.gradeLevelId" class="field-input">
+                <label class="block mb-2 text-sm font-medium text-gray-900">المرحلة الدراسية</label>
+                <select [(ngModel)]="newClass.gradeLevelId" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
                   <option [ngValue]="0">-- اختر المرحلة --</option>
                   <option *ngFor="let g of gradeLevels()" [ngValue]="g.id">{{ g.name }}</option>
                 </select>
               </div>
 
               <div>
-                <label class="field-label">السنة الدراسية</label>
-                <select [(ngModel)]="newClass.academicYearId" class="field-input">
+                <label class="block mb-2 text-sm font-medium text-gray-900">السنة الدراسية</label>
+                <select [(ngModel)]="newClass.academicYearId" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
                   <option [ngValue]="0">-- اختر السنة --</option>
                   <option *ngFor="let y of academicYears()" [ngValue]="y.id">
                     {{ y.name }} {{ y.isCurrent ? '(الحالية)' : '' }}
                   </option>
                 </select>
               </div>
-            </div>
 
-            <div class="editor-actions">
-              <button *ngIf="editingClassId()" (click)="cancelEdit()" class="secondary-btn">
-                إلغاء
-              </button>
-              <button (click)="saveClass()" class="primary-btn">
-                <span class="material-symbols-outlined">save</span>
-                {{ editingClassId() ? 'حفظ التحديث' : 'إضافة الفصل' }}
-              </button>
+              <div class="flex items-center gap-3 pt-2">
+                <button
+                  *ngIf="editingClassId()"
+                  (click)="cancelEdit()"
+                  class="flex-1 text-gray-900 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-gray-100 font-medium rounded-lg text-sm px-5 py-2.5 transition-colors">
+                  إلغاء
+                </button>
+
+                <button
+                  (click)="saveClass()"
+                  class="flex-1 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 transition-colors flex items-center justify-center gap-2">
+                  <span class="material-symbols-outlined text-lg">save</span>
+                  {{ editingClassId() ? 'حفظ التحديث' : 'إضافة الفصل' }}
+                </button>
+              </div>
             </div>
           </section>
 
-          <section class="data-card">
-            <div class="section-heading">
+          <!-- Data Table -->
+          <section class="lg:col-span-8 bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden flex flex-col">
+            <div class="p-5 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gray-50/50">
               <div>
-                <h3 class="font-headline-md text-headline-md text-primary flex items-center gap-2">
-                  <span class="material-symbols-outlined">dataset</span>
+                <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <span class="material-symbols-outlined text-blue-600">dataset</span>
                   قائمة الفصول
                 </h3>
-                <p class="text-sm text-on-surface-variant mt-1">
-                  فلترة مباشرة حسب المرحلة أو السنة ثم إدارة الفصول من نفس الجدول.
-                </p>
               </div>
-
-              <span class="data-chip">{{ selectedGradeFilter || selectedYearFilter ? 'عرض مفلتر' : 'عرض شامل' }}</span>
             </div>
 
-            <div class="filters-panel">
-              <div class="filter-field">
-                <label class="field-label">المرحلة</label>
-                <select [(ngModel)]="selectedGradeFilter" (change)="onFilterChange()" class="field-input filter-input">
+            <!-- Filters Panel -->
+            <div class="flex flex-col sm:flex-row gap-4 p-5 border-b border-gray-200 bg-white">
+              <div class="flex-1">
+                <label class="block mb-2 text-sm font-medium text-gray-900">فلترة بالمرحلة</label>
+                <select [(ngModel)]="selectedGradeFilter" (change)="onFilterChange()" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
                   <option [ngValue]="null">كل المراحل الدراسية</option>
                   <option *ngFor="let g of gradeLevels()" [ngValue]="g.id">{{ g.name }}</option>
                 </select>
               </div>
 
-              <div class="filter-field">
-                <label class="field-label">السنة</label>
-                <select [(ngModel)]="selectedYearFilter" (change)="onFilterChange()" class="field-input filter-input">
+              <div class="flex-1">
+                <label class="block mb-2 text-sm font-medium text-gray-900">فلترة بالسنة</label>
+                <select [(ngModel)]="selectedYearFilter" (change)="onFilterChange()" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
                   <option [ngValue]="null">كل السنوات الدراسية</option>
                   <option *ngFor="let y of academicYears()" [ngValue]="y.id">{{ y.name }}</option>
                 </select>
               </div>
             </div>
 
-            <div class="table-shell">
-              <table class="management-table">
-                <thead>
+            <!-- Table -->
+            <div class="relative overflow-x-auto flex-1">
+              <table class="w-full text-sm text-right text-gray-500">
+                <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200">
                   <tr>
-                    <th>اسم الفصل</th>
-                    <th>المرحلة الدراسية</th>
-                    <th>السنة الدراسية</th>
-                    <th class="text-center">إجراءات</th>
+                    <th scope="col" class="px-6 py-4">اسم الفصل</th>
+                    <th scope="col" class="px-6 py-4">المرحلة الدراسية</th>
+                    <th scope="col" class="px-6 py-4">السنة الدراسية</th>
+                    <th scope="col" class="px-6 py-4 text-center">إجراءات</th>
                   </tr>
                 </thead>
-
                 <tbody>
-                  <tr *ngFor="let cls of paginatedClasses()">
-                    <td>
-                      <div class="item-title">{{ cls.name }}</div>
+                  <tr *ngFor="let cls of paginatedClasses()" class="bg-white border-b hover:bg-gray-50 transition-colors">
+                    <td class="px-6 py-4 font-bold text-gray-900">
+                      {{ cls.name }}
                     </td>
-                    <td>
-                      <span class="soft-badge">{{ cls.gradeLevelName || 'غير محدد' }}</span>
+                    <td class="px-6 py-4">
+                      <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded border border-blue-200">
+                        {{ cls.gradeLevelName || 'غير محدد' }}
+                      </span>
                     </td>
-                    <td>
-                      <span class="muted-value">{{ cls.academicYearName || cls.academicYearId }}</span>
+                    <td class="px-6 py-4">
+                      <span class="bg-gray-100 text-gray-800 text-xs font-medium px-2.5 py-0.5 rounded border border-gray-200">
+                        {{ cls.academicYearName || cls.academicYearId }}
+                      </span>
                     </td>
-                    <td>
-                      <div class="table-actions">
-                        <button (click)="editClass(cls)" class="icon-btn primary" title="تعديل">
+                    <td class="px-6 py-4 text-center">
+                      <div class="flex items-center justify-center gap-2">
+                        <button
+                          (click)="editClass(cls)"
+                          class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="تعديل">
                           <span class="material-symbols-outlined text-sm">edit</span>
                         </button>
-                        <button (click)="deleteClass(cls.id)" class="icon-btn danger" title="حذف">
+                        <button
+                          (click)="deleteClass(cls.id)"
+                          class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="حذف">
                           <span class="material-symbols-outlined text-sm">delete</span>
                         </button>
                       </div>
@@ -168,10 +175,11 @@
                   </tr>
 
                   <tr *ngIf="classes().length === 0">
-                    <td colspan="4" class="empty-cell">
-                      <div class="empty-state">
-                        <span class="material-symbols-outlined text-4xl opacity-50">meeting_room</span>
-                        <p>لا توجد فصول دراسية مطابقة. قم بإضافة فصول جديدة.</p>
+                    <td colspan="4" class="px-6 py-12 text-center">
+                      <div class="flex flex-col items-center justify-center text-gray-500">
+                        <span class="material-symbols-outlined text-4xl mb-3 text-gray-400">meeting_room</span>
+                        <p class="text-base font-medium text-gray-900 mb-1">لا توجد فصول دراسية مطابقة</p>
+                        <p class="text-sm">قم بإضافة فصول جديدة أو غير الفلاتر</p>
                       </div>
                     </td>
                   </tr>
@@ -179,29 +187,34 @@
               </table>
             </div>
 
+            <!-- Pagination -->
             @if (totalPages() > 1) {
-              <div class="flex items-center justify-between p-4" style="border-top: 1px solid rgba(0,0,0,0.05); flex-wrap: wrap; gap: 1rem;">
-                <div class="font-body-sm text-outline">
-                  إظهار {{ (currentPage() - 1) * itemsPerPage() + 1 }} إلى {{ (currentPage() * itemsPerPage()) > classes().length ? classes().length : (currentPage() * itemsPerPage()) }} من أصل {{ classes().length }} فصل
-                </div>
+              <div class="flex flex-col sm:flex-row items-center justify-between p-4 bg-gray-50 border-t border-gray-200 gap-4">
+                <span class="text-sm text-gray-700">
+                  إظهار <span class="font-semibold text-gray-900">{{ (currentPage() - 1) * itemsPerPage() + 1 }}</span> إلى <span class="font-semibold text-gray-900">{{ (currentPage() * itemsPerPage()) > classes().length ? classes().length : (currentPage() * itemsPerPage()) }}</span> من أصل <span class="font-semibold text-gray-900">{{ classes().length }}</span> فصل
+                </span>
                 
                 <div class="flex items-center gap-2">
-                  <button class="secondary-btn flex items-center justify-center" [disabled]="currentPage() === 1" (click)="prevPage()" style="padding: 6px 12px; height: auto; gap: 4px;">
-                    <span class="material-symbols-outlined" style="font-size: 18px;">chevron_right</span>
+                  <button class="flex items-center justify-center px-3 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed" [disabled]="currentPage() === 1" (click)="prevPage()">
+                    <span class="material-symbols-outlined text-sm mr-1">chevron_right</span>
                     السابق
                   </button>
                   
-                  <div class="flex items-center gap-1 hidden md:flex">
+                  <div class="hidden sm:flex items-center gap-1">
                     @for (p of [].constructor(totalPages()); track $index) {
                       @if (
                         $index + 1 === 1 ||
                         $index + 1 === totalPages() ||
                         ($index + 1 >= currentPage() - 1 && $index + 1 <= currentPage() + 1)
                       ) {
-                        <button class="transition-all font-label-md" 
-                                [class.primary-btn]="$index + 1 === currentPage()" 
-                                [class.secondary-btn]="$index + 1 !== currentPage()" 
-                                style="min-width: 34px; height: 34px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: 8px; border: none; cursor: pointer;"
+                        <button class="flex items-center justify-center w-8 h-8 text-sm font-medium rounded-lg transition-colors border" 
+                                [class.bg-blue-600]="( $index + 1 ) === currentPage()"
+                                [class.text-white]="( $index + 1 ) === currentPage()"
+                                [class.border-blue-600]="( $index + 1 ) === currentPage()"
+                                [class.bg-white]="( $index + 1 ) !== currentPage()"
+                                [class.text-gray-900]="( $index + 1 ) !== currentPage()"
+                                [class.border-gray-300]="( $index + 1 ) !== currentPage()"
+                                [class.hover:bg-gray-100]="( $index + 1 ) !== currentPage()"
                                 (click)="goToPage($index + 1)">
                           {{ $index + 1 }}
                         </button>
@@ -209,14 +222,14 @@
                         ($index + 1 === currentPage() - 2 && currentPage() > 3) ||
                         ($index + 1 === currentPage() + 2 && currentPage() < totalPages() - 2)
                       ) {
-                        <span class="text-outline flex items-center justify-center" style="min-width: 24px;">...</span>
+                        <span class="flex items-center justify-center w-8 h-8 text-sm font-medium text-gray-500">...</span>
                       }
                     }
                   </div>
 
-                  <button class="secondary-btn flex items-center justify-center" [disabled]="currentPage() === totalPages()" (click)="nextPage()" style="padding: 6px 12px; height: auto; gap: 4px;">
+                  <button class="flex items-center justify-center px-3 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed" [disabled]="currentPage() === totalPages()" (click)="nextPage()">
                     التالي
-                    <span class="material-symbols-outlined" style="font-size: 18px;">chevron_left</span>
+                    <span class="material-symbols-outlined text-sm ml-1">chevron_left</span>
                   </button>
                 </div>
               </div>

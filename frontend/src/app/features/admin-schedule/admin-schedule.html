@@ -64,118 +64,118 @@
           </div>
         </section>
 
-        <!-- Filters & Actions -->
-        <div class="shrink-0 flex flex-wrap gap-4 mb-4 bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/30">
-          <div class="flex flex-wrap gap-4 items-center flex-1">
-            <div class="w-48">
-              <label class="block font-label-sm text-on-surface-variant mb-1">السنة الدراسية</label>
+        <!-- Filters & Actions (Flowbite Style) -->
+        <div class="shrink-0 flex flex-wrap items-center justify-between gap-4 p-4 mb-4 bg-white border border-gray-200 rounded-lg shadow-sm">
+          
+          <div class="flex flex-wrap items-center gap-3 flex-1 min-w-[280px]">
+            <div class="w-full sm:w-auto flex-1 min-w-[150px]">
+              <label class="block mb-2 text-sm font-medium text-gray-900">السنة الدراسية</label>
               <select [(ngModel)]="selectedYearId" (ngModelChange)="onFilterChange()"
-                      class="w-full px-4 py-2 rounded-lg border border-outline-variant bg-white focus:outline-primary">
+                      class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
                 <option [ngValue]="null" disabled>-- اختر السنة --</option>
                 <option *ngFor="let y of academicYears()" [ngValue]="y.id">{{ y.name }}</option>
               </select>
             </div>
-            <div class="w-48">
-              <label class="block font-label-sm text-on-surface-variant mb-1">الصف الدراسي</label>
+            <div class="w-full sm:w-auto flex-1 min-w-[150px]">
+              <label class="block mb-2 text-sm font-medium text-gray-900">الصف الدراسي</label>
               <select [(ngModel)]="selectedGradeId" (ngModelChange)="onGradeFilterChange()"
-                      class="w-full px-4 py-2 rounded-lg border border-outline-variant bg-white focus:outline-primary">
+                      class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
                 <option [ngValue]="null" disabled>-- اختر الصف --</option>
                 <option *ngFor="let g of grades()" [ngValue]="g.id">{{ g.name }}</option>
               </select>
             </div>
-            <div class="w-48">
-              <label class="block font-label-sm text-on-surface-variant mb-1">الفصل الدراسي</label>
+            <div class="w-full sm:w-auto flex-1 min-w-[150px]">
+              <label class="block mb-2 text-sm font-medium text-gray-900">الفصل الدراسي</label>
               <select [(ngModel)]="selectedClassId" (ngModelChange)="onFilterChange()"
                       [disabled]="!selectedGradeId"
-                      class="w-full px-4 py-2 rounded-lg border border-outline-variant bg-white focus:outline-primary disabled:opacity-50 disabled:cursor-not-allowed">
+                      class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 disabled:bg-gray-100 disabled:cursor-not-allowed">
                 <option [ngValue]="null" disabled>{{ !selectedGradeId ? 'اختر الصف أولاً' : '-- اختر الفصل --' }}</option>
                 <option *ngFor="let c of filterClasses()" [ngValue]="c.id">{{ c.name }}</option>
               </select>
             </div>
           </div>
 
-          <div class="flex flex-wrap items-center gap-2 sm:gap-3 justify-start lg:justify-end">
+          <div class="flex flex-wrap items-center gap-2 justify-start lg:justify-end w-full lg:w-auto">
             <button *ngIf="allTimetables().length"
                     (click)="toggleTimetablesPicker()"
-                    class="px-3 py-2 rounded-lg border border-outline-variant bg-white text-on-surface font-label-sm hover:bg-surface-container flex items-center gap-2">
-              <span class="material-symbols-outlined">layers</span>
+                    class="flex items-center justify-center py-2 px-3 text-sm font-medium text-gray-900 focus:outline-none bg-white rounded-lg border border-gray-200 hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-4 focus:ring-gray-200 gap-2 transition-colors">
+              <span class="material-symbols-outlined text-lg">layers</span>
               <span>كل الجداول</span>
-              <span class="inline-flex min-w-5 h-5 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold px-1.5">
+              <span class="inline-flex min-w-5 h-5 items-center justify-center rounded-full bg-blue-100 text-blue-800 text-xs font-bold px-1.5 ml-1">
                 {{ allTimetables().length }}
               </span>
             </button>
 
             <!-- بنك الحصص -->
             <button (click)="toggleAssignmentBank()"
-                    class="px-3 py-2 rounded-lg border border-outline-variant bg-white text-on-surface font-label-sm hover:bg-surface-container flex items-center gap-2"
-                    [class.bg-primary/10]="isAssignmentBankVisible()"
-                    [class.border-primary/30]="isAssignmentBankVisible()">
-              <span class="material-symbols-outlined">view_list</span>
+                    class="flex items-center justify-center py-2 px-3 text-sm font-medium focus:outline-none rounded-lg border transition-colors gap-2"
+                    [ngClass]="isAssignmentBankVisible() ? 'bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100' : 'text-gray-900 bg-white border-gray-200 hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-4 focus:ring-gray-200'">
+              <span class="material-symbols-outlined text-lg">view_list</span>
               <span>بنك الحصص</span>
             </button>
 
             <!-- تحرير الجدول -->
             <button *ngIf="currentTimetable()"
                     (click)="openScheduleEditor()"
-                    class="px-4 py-2.5 rounded-lg bg-primary text-white font-label-md hover:bg-primary/90 flex items-center gap-2 shadow-sm">
-              <span class="material-symbols-outlined">open_in_full</span>
+                    class="flex items-center justify-center text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-4 py-2 focus:outline-none gap-2 transition-colors shadow-sm">
+              <span class="material-symbols-outlined text-lg">open_in_full</span>
               تحرير الجدول
             </button>
 
             <!-- إنشاء مسودة فارغة -->
             <button *ngIf="canCreateDraft()"
                     (click)="createTimetable()"
-                    class="px-6 py-2.5 rounded-lg bg-primary text-white font-label-md hover:bg-primary/90 flex items-center gap-2 shadow-sm">
-              <span class="material-symbols-outlined">add_box</span> إنشاء مسودة فارغة
+                    class="flex items-center justify-center text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-4 py-2 focus:outline-none gap-2 transition-colors shadow-sm">
+              <span class="material-symbols-outlined text-lg">add_box</span> إنشاء مسودة
             </button>
 
             <!-- نسخ من الحالي -->
             <button *ngIf="canCloneDraft()"
                     (click)="cloneDraftFromCurrent()"
                     [disabled]="isCloning()"
-                    class="px-6 py-2.5 rounded-lg border border-outline-variant bg-white text-on-surface font-label-md hover:bg-surface-container disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2 shadow-sm">
-              <span class="material-symbols-outlined">{{ isCloning() ? 'progress_activity' : 'content_copy' }}</span>
-              {{ isCloning() ? 'جارٍ النسخ...' : 'نسخ من الحالي' }}
+                    class="flex items-center justify-center py-2 px-4 text-sm font-medium text-gray-900 focus:outline-none bg-white rounded-lg border border-gray-200 hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-4 focus:ring-gray-200 disabled:opacity-50 disabled:cursor-not-allowed gap-2 transition-colors shadow-sm">
+              <span class="material-symbols-outlined text-lg">{{ isCloning() ? 'progress_activity' : 'content_copy' }}</span>
+              {{ isCloning() ? 'جارٍ النسخ...' : 'نسخ' }}
             </button>
 
             <!-- مراجعة قبل التفعيل -->
             <button *ngIf="currentTimetable()"
                     (click)="validateCurrentTimetable()"
                     [disabled]="isValidating()"
-                    class="px-6 py-2.5 rounded-lg border border-outline-variant bg-white text-on-surface font-label-md hover:bg-surface-container disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2 shadow-sm">
-              <span class="material-symbols-outlined">{{ isValidating() ? 'progress_activity' : 'fact_check' }}</span>
-              {{ isValidating() ? 'جارٍ المراجعة...' : 'مراجعة قبل التفعيل' }}
+                    class="flex items-center justify-center py-2 px-4 text-sm font-medium text-gray-900 focus:outline-none bg-white rounded-lg border border-gray-200 hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-4 focus:ring-gray-200 disabled:opacity-50 disabled:cursor-not-allowed gap-2 transition-colors shadow-sm">
+              <span class="material-symbols-outlined text-lg">{{ isValidating() ? 'progress_activity' : 'fact_check' }}</span>
+              {{ isValidating() ? 'جارٍ المراجعة...' : 'مراجعة' }}
             </button>
 
             <!-- تفعيل الجدول (مسودة فقط) -->
             <button *ngIf="currentTimetable() && !currentTimetable()!.isActive"
                     (click)="publishCurrentTimetable()"
                     [disabled]="isPublishing() || hasBlockingValidationErrors()"
-                    class="relative px-6 py-2.5 rounded-lg bg-secondary text-white font-label-md hover:bg-secondary/90 disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2 shadow-sm">
-              <span class="material-symbols-outlined">{{ isPublishing() ? 'progress_activity' : 'publish' }}</span>
-              {{ isPublishing() ? 'جارٍ التفعيل...' : 'تفعيل الجدول' }}
-              <!-- FIX: بادج تحذير لما المراجعة لم تُجرَ بعد -->
+                    class="relative flex items-center justify-center text-white bg-green-600 hover:bg-green-700 focus:ring-4 focus:ring-green-300 font-medium rounded-lg text-sm px-4 py-2 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed gap-2 transition-colors shadow-sm">
+              <span class="material-symbols-outlined text-lg">{{ isPublishing() ? 'progress_activity' : 'publish' }}</span>
+              {{ isPublishing() ? 'جارٍ التفعيل...' : 'تفعيل' }}
+              <!-- بادج تحذير -->
               <span *ngIf="!validationResult() && !isPublishing()"
-                    class="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-amber-400 text-[9px] font-black text-white shadow"
+                    class="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-yellow-400 text-[10px] font-black text-gray-900 shadow border-2 border-white"
                     title="المراجعة لم تُجرَ بعد — انقر للتحقق أولاً">!</span>
             </button>
 
-            <!-- ✅ FIX: إلغاء تفعيل الجدول (منشور فقط) -->
+            <!-- إلغاء تفعيل الجدول (منشور فقط) -->
             <button *ngIf="canDeactivateTimetable()"
                     (click)="deactivateConfirmOpen.set(true)"
                     [disabled]="isDeactivating()"
-                    class="px-6 py-2.5 rounded-lg border border-amber-300 bg-white text-amber-800 font-label-md hover:bg-amber-50 disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2 shadow-sm">
-              <span class="material-symbols-outlined">{{ isDeactivating() ? 'progress_activity' : 'lock_open' }}</span>
-              {{ isDeactivating() ? 'جارٍ إلغاء التفعيل...' : 'إلغاء تفعيل الجدول' }}
+                    class="flex items-center justify-center py-2 px-4 text-sm font-medium focus:outline-none rounded-lg border focus:z-10 focus:ring-4 disabled:opacity-50 disabled:cursor-not-allowed gap-2 transition-colors text-yellow-800 bg-yellow-50 border-yellow-300 hover:bg-yellow-100 focus:ring-yellow-200 shadow-sm">
+              <span class="material-symbols-outlined text-lg">{{ isDeactivating() ? 'progress_activity' : 'lock_open' }}</span>
+              {{ isDeactivating() ? 'إلغاء...' : 'إلغاء التفعيل' }}
             </button>
 
-            <!-- ✅ FIX: حذف المسودة (مسودة فقط) -->
+            <!-- حذف المسودة (مسودة فقط) -->
             <button *ngIf="canDeleteTimetable()"
                     (click)="deleteTimetableConfirmOpen.set(true)"
                     [disabled]="isDeletingTimetable()"
-                    class="px-6 py-2.5 rounded-lg border border-error/30 bg-white text-error font-label-md hover:bg-red-50 disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2 shadow-sm">
-              <span class="material-symbols-outlined">{{ isDeletingTimetable() ? 'progress_activity' : 'delete' }}</span>
-              {{ isDeletingTimetable() ? 'جارٍ الحذف...' : 'حذف المسودة' }}
+                    class="flex items-center justify-center py-2 px-4 text-sm font-medium focus:outline-none rounded-lg border focus:z-10 focus:ring-4 disabled:opacity-50 disabled:cursor-not-allowed gap-2 transition-colors text-red-700 bg-white border-red-300 hover:bg-red-50 focus:ring-red-300 shadow-sm">
+              <span class="material-symbols-outlined text-lg">{{ isDeletingTimetable() ? 'progress_activity' : 'delete' }}</span>
+              {{ isDeletingTimetable() ? 'حذف...' : 'حذف' }}
             </button>
           </div>
         </div>
@@ -381,24 +381,25 @@
   </div>
 
   <!-- Editor Body -->
-  <div class="flex-1 min-h-0 flex overflow-hidden">
+  <div class="flex-1 min-h-0 flex overflow-hidden bg-gray-50">
     <div class="flex-1 min-h-0 min-w-0 overflow-auto admin-schedule-scroll p-4 md:p-6">
 
-      <!-- جدول الحصص -->
-      <table class="admin-schedule-table admin-schedule-table-expanded w-full border-collapse text-center">
-        <thead>
-          <tr class="bg-surface-container-low border-b border-outline-variant/30 sticky top-0 z-10">
-            <th class="p-4 border-l border-outline-variant/30 w-36 font-bold text-on-surface bg-surface-container-low">اليوم / الحصة</th>
-            <th *ngFor="let p of periods" class="p-4 border-l border-outline-variant/30 font-bold text-on-surface bg-surface-container-low">
-              <div class="text-sm">{{ p.label }}</div>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let day of days" class="border-b border-outline-variant/30 hover:bg-surface-container-lowest transition-colors">
-            <td class="p-4 border-l border-outline-variant/30 font-bold text-primary bg-surface-container-lowest/50">{{ day.label }}</td>
+      <!-- جدول الحصص (Flowbite Style) -->
+      <div class="relative overflow-x-auto shadow-md sm:rounded-lg">
+        <table class="w-full text-sm text-center text-gray-500">
+          <thead class="text-xs text-gray-700 uppercase bg-gray-100 border-b border-gray-200 sticky top-0 z-10 shadow-sm">
+            <tr>
+              <th scope="col" class="px-6 py-4 border-l border-gray-200 font-bold bg-gray-100 w-36">اليوم / الحصة</th>
+              <th scope="col" *ngFor="let p of periods" class="px-6 py-4 border-l border-gray-200 font-bold bg-gray-100">
+                <div class="text-sm">{{ p.label }}</div>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let day of days" class="bg-white border-b border-gray-200 hover:bg-gray-50 transition-colors">
+              <th scope="row" class="px-6 py-4 border-l border-gray-200 font-bold text-gray-900 bg-gray-50 whitespace-nowrap">{{ day.label }}</th>
 
-            <!-- ✅ FIX: cursor يستخدم getCellCursor() بدل cursor-not-allowed الثابت -->
+              <!-- ✅ FIX: cursor يستخدم getCellCursor() بدل cursor-not-allowed الثابت -->
             <td *ngFor="let p of periods"
                 class="border-l border-outline-variant/30 relative group h-28 md:h-32 lg:h-36 p-2 transition-colors"
                 [ngClass]="[getCellClass(day.value, p.num), getCellCursor(day.value, p.num)]"
@@ -464,6 +465,7 @@
           </tr>
         </tbody>
       </table>
+      </div>
 
       <!-- لوحة فحص الخلية المختارة -->
       <div *ngIf="currentTimetable()" class="mt-4 rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-4">
