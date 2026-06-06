@@ -28,6 +28,8 @@ export class UserManagement implements OnInit {
   sidebarOpen = signal(false);
   activeTab = signal<AccountTab>('all');
   searchQuery = signal('');
+  currentPage = signal(1);
+  itemsPerPage = signal(10);
   users = signal<User[]>([]);
   isLoading = signal(false);
   errorMessage = signal<string | null>(null);
@@ -70,6 +72,31 @@ export class UserManagement implements OnInit {
       return matchesTab && matchesQuery;
     });
   });
+
+  paginatedUsers = computed(() => {
+    const start = (this.currentPage() - 1) * this.itemsPerPage();
+    return this.filteredUsers().slice(start, start + this.itemsPerPage());
+  });
+
+  totalPages = computed(() => {
+    return Math.max(1, Math.ceil(this.filteredUsers().length / this.itemsPerPage()));
+  });
+
+  nextPage() {
+    if (this.currentPage() < this.totalPages()) {
+      this.currentPage.update(p => p + 1);
+    }
+  }
+
+  prevPage() {
+    if (this.currentPage() > 1) {
+      this.currentPage.update(p => p - 1);
+    }
+  }
+
+  goToPage(page: number) {
+    this.currentPage.set(page);
+  }
 
   totalCount = computed(() => this.users().length);
   adminCount = computed(() => this.users().filter(user => user.role.toLowerCase() === 'admin').length);

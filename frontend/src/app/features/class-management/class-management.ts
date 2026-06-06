@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
@@ -25,6 +25,34 @@ export class ClassManagement implements OnInit {
   classes = signal<ClassEntity[]>([]);
   gradeLevels = signal<GradeLevel[]>([]);
   academicYears = signal<AcademicYear[]>([]);
+
+  currentPage = signal(1);
+  itemsPerPage = signal(10);
+
+  paginatedClasses = computed(() => {
+    const start = (this.currentPage() - 1) * this.itemsPerPage();
+    return this.classes().slice(start, start + this.itemsPerPage());
+  });
+
+  totalPages = computed(() => {
+    return Math.max(1, Math.ceil(this.classes().length / this.itemsPerPage()));
+  });
+
+  nextPage() {
+    if (this.currentPage() < this.totalPages()) {
+      this.currentPage.update(p => p + 1);
+    }
+  }
+
+  prevPage() {
+    if (this.currentPage() > 1) {
+      this.currentPage.update(p => p - 1);
+    }
+  }
+
+  goToPage(page: number) {
+    this.currentPage.set(page);
+  }
 
   // FIX #1: كانوا signals — [(ngModel)] بتبطل تشتغل مع signals
   // الحل: plain properties عادية
@@ -84,7 +112,10 @@ export class ClassManagement implements OnInit {
     if (this.selectedYearFilter) filter.academicYearId = this.selectedYearFilter;
 
     this.classService.getAll(filter).subscribe({
-      next: (data) => this.classes.set(data),
+      next: (data) => {
+        this.classes.set(data);
+        this.currentPage.set(1);
+      },
       error: (err) => {
         console.error('Failed to load classes', err);
         this.showError('فشل في تحميل الفصول الدراسية.');

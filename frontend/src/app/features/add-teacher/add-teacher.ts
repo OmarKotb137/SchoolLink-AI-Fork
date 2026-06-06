@@ -1,4 +1,4 @@
-﻿import { Component, OnInit, signal, inject, computed } from '@angular/core';
+import { Component, OnInit, signal, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
 import { Topbar } from '../../layouts/topbar/topbar';
@@ -24,6 +24,9 @@ export class AddTeacher implements OnInit {
   searchQuery = signal('');
   statusFilter = signal<'all' | 'active' | 'inactive'>('all');
   subjectFilter = signal<number | 'all'>('all');
+
+  currentPage = signal(1);
+  itemsPerPage = signal(10);
 
   newName = signal('');
   newEmail = signal('');
@@ -63,6 +66,31 @@ export class AddTeacher implements OnInit {
     });
   });
 
+  paginatedTeachers = computed(() => {
+    const start = (this.currentPage() - 1) * this.itemsPerPage();
+    return this.filteredTeachers().slice(start, start + this.itemsPerPage());
+  });
+
+  totalPages = computed(() => {
+    return Math.max(1, Math.ceil(this.filteredTeachers().length / this.itemsPerPage()));
+  });
+
+  nextPage() {
+    if (this.currentPage() < this.totalPages()) {
+      this.currentPage.update(p => p + 1);
+    }
+  }
+
+  prevPage() {
+    if (this.currentPage() > 1) {
+      this.currentPage.update(p => p - 1);
+    }
+  }
+
+  goToPage(page: number) {
+    this.currentPage.set(page);
+  }
+
   ngOnInit() {
     this.loadSubjects();
     this.loadTeachers();
@@ -96,6 +124,7 @@ export class AddTeacher implements OnInit {
     this.searchQuery.set('');
     this.statusFilter.set('all');
     this.subjectFilter.set('all');
+    this.currentPage.set(1);
   }
 
   resetForm() {

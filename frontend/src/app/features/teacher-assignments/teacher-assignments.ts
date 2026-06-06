@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
@@ -33,6 +33,34 @@ export class TeacherAssignments implements OnInit {
   grades = signal<GradeLevel[]>([]);
   subjects = signal<Subject[]>([]);
   teachers = signal<Teacher[]>([]);
+
+  currentPage = signal(1);
+  itemsPerPage = signal(10);
+
+  paginatedAssignments = computed(() => {
+    const start = (this.currentPage() - 1) * this.itemsPerPage();
+    return this.assignments().slice(start, start + this.itemsPerPage());
+  });
+
+  totalPages = computed(() => {
+    return Math.max(1, Math.ceil(this.assignments().length / this.itemsPerPage()));
+  });
+
+  nextPage() {
+    if (this.currentPage() < this.totalPages()) {
+      this.currentPage.update(p => p + 1);
+    }
+  }
+
+  prevPage() {
+    if (this.currentPage() > 1) {
+      this.currentPage.update(p => p - 1);
+    }
+  }
+
+  goToPage(page: number) {
+    this.currentPage.set(page);
+  }
 
   formSubjects = signal<Subject[]>([]);
   formTeachers = signal<Teacher[]>([]);
@@ -193,6 +221,7 @@ export class TeacherAssignments implements OnInit {
     this.assignmentService.getByClass(this.selectedClassFilter, this.currentAcademicYearId ?? undefined).subscribe({
       next: (data) => {
         this.assignments.set(data);
+        this.currentPage.set(1);
         this.isLoading.set(false);
       },
       error: () => {

@@ -149,7 +149,7 @@
                 </thead>
 
                 <tbody>
-                  <tr *ngFor="let subject of subjects()">
+                  <tr *ngFor="let subject of paginatedSubjects()">
                     <td>
                       <span class="code-badge">{{ subject.code }}</span>
                     </td>
@@ -185,6 +185,49 @@
                 </tbody>
               </table>
             </div>
+
+            @if (totalPages() > 1) {
+              <div class="flex items-center justify-between p-4" style="border-top: 1px solid rgba(0,0,0,0.05); flex-wrap: wrap; gap: 1rem;">
+                <div class="font-body-sm text-outline">
+                  إظهار {{ (currentPage() - 1) * itemsPerPage() + 1 }} إلى {{ (currentPage() * itemsPerPage()) > subjects().length ? subjects().length : (currentPage() * itemsPerPage()) }} من أصل {{ subjects().length }} مادة
+                </div>
+                
+                <div class="flex items-center gap-2">
+                  <button class="secondary-btn flex items-center justify-center" [disabled]="currentPage() === 1" (click)="prevPage()" style="padding: 6px 12px; height: auto; gap: 4px;">
+                    <span class="material-symbols-outlined" style="font-size: 18px;">chevron_right</span>
+                    السابق
+                  </button>
+                  
+                  <div class="flex items-center gap-1 hidden md:flex">
+                    @for (p of [].constructor(totalPages()); track $index) {
+                      @if (
+                        $index + 1 === 1 ||
+                        $index + 1 === totalPages() ||
+                        ($index + 1 >= currentPage() - 1 && $index + 1 <= currentPage() + 1)
+                      ) {
+                        <button class="transition-all font-label-md" 
+                                [class.primary-btn]="$index + 1 === currentPage()" 
+                                [class.secondary-btn]="$index + 1 !== currentPage()" 
+                                style="min-width: 34px; height: 34px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: 8px; border: none; cursor: pointer;"
+                                (click)="goToPage($index + 1)">
+                          {{ $index + 1 }}
+                        </button>
+                      } @else if (
+                        ($index + 1 === currentPage() - 2 && currentPage() > 3) ||
+                        ($index + 1 === currentPage() + 2 && currentPage() < totalPages() - 2)
+                      ) {
+                        <span class="text-outline flex items-center justify-center" style="min-width: 24px;">...</span>
+                      }
+                    }
+                  </div>
+
+                  <button class="secondary-btn flex items-center justify-center" [disabled]="currentPage() === totalPages()" (click)="nextPage()" style="padding: 6px 12px; height: auto; gap: 4px;">
+                    التالي
+                    <span class="material-symbols-outlined" style="font-size: 18px;">chevron_left</span>
+                  </button>
+                </div>
+              </div>
+            }
           </section>
         </div>
 

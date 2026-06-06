@@ -158,13 +158,13 @@
               class="glass-input"
               placeholder="ابحث بالاسم أو البريد أو الهاتف..."
               [value]="searchQuery()"
-              (input)="searchQuery.set($any($event.target).value)"
+              (input)="searchQuery.set($any($event.target).value); currentPage.set(1)"
             />
           </div>
 
           <div class="filter-group">
             <label class="field-label">الحالة</label>
-            <select class="glass-select compact-select" [value]="statusFilter()" (change)="statusFilter.set($any($event.target).value)">
+            <select class="glass-select compact-select" [value]="statusFilter()" (change)="statusFilter.set($any($event.target).value); currentPage.set(1)">
               <option value="all">الكل</option>
               <option value="active">نشط</option>
               <option value="inactive">غير نشط</option>
@@ -173,7 +173,7 @@
 
           <div class="filter-group">
             <label class="field-label">المادة</label>
-            <select class="glass-select compact-select" [value]="subjectFilter()" (change)="subjectFilter.set($any($event.target).value === 'all' ? 'all' : +$any($event.target).value)">
+            <select class="glass-select compact-select" [value]="subjectFilter()" (change)="subjectFilter.set($any($event.target).value === 'all' ? 'all' : +$any($event.target).value); currentPage.set(1)">
               <option value="all">كل المواد</option>
               @for (subject of allSubjects(); track subject.id) {
                 <option [value]="subject.id">{{ subject.name }}</option>
@@ -220,7 +220,7 @@
                   </td>
                 </tr>
               }
-              @for (t of filteredTeachers(); track t.id) {
+              @for (t of paginatedTeachers(); track t.id) {
                 <tr>
                   <td class="p-4 font-body-md teacher-name-cell">{{ t.fullName }}</td>
                   <td class="p-4 font-body-md text-outline">{{ t.email }}</td>
@@ -251,6 +251,49 @@
             </tbody>
           </table>
         </div>
+
+        @if (totalPages() > 1) {
+          <div class="flex items-center justify-between p-4" style="border-top: 1px solid rgba(0,0,0,0.05); flex-wrap: wrap; gap: 1rem;">
+            <div class="font-body-sm text-outline">
+              إظهار {{ (currentPage() - 1) * itemsPerPage() + 1 }} إلى {{ (currentPage() * itemsPerPage()) > filteredTeachers().length ? filteredTeachers().length : (currentPage() * itemsPerPage()) }} من أصل {{ filteredTeachers().length }} معلم
+            </div>
+            
+            <div class="flex items-center gap-2">
+              <button class="secondary-btn-glass small-btn" [disabled]="currentPage() === 1" (click)="prevPage()" style="padding: 6px 12px; height: auto; display: flex; align-items: center; gap: 4px;">
+                <span class="material-symbols-outlined" style="font-size: 18px;">chevron_right</span>
+                السابق
+              </button>
+              
+              <div class="flex items-center gap-1 hidden md:flex">
+                @for (p of [].constructor(totalPages()); track $index) {
+                  @if (
+                    $index + 1 === 1 ||
+                    $index + 1 === totalPages() ||
+                    ($index + 1 >= currentPage() - 1 && $index + 1 <= currentPage() + 1)
+                  ) {
+                    <button class="transition-all font-label-md" 
+                            [class.gradient-btn]="$index + 1 === currentPage()" 
+                            [class.secondary-btn-glass]="$index + 1 !== currentPage()" 
+                            style="min-width: 34px; height: 34px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: 8px; border: none; cursor: pointer;"
+                            (click)="goToPage($index + 1)">
+                      {{ $index + 1 }}
+                    </button>
+                  } @else if (
+                    ($index + 1 === currentPage() - 2 && currentPage() > 3) ||
+                    ($index + 1 === currentPage() + 2 && currentPage() < totalPages() - 2)
+                  ) {
+                    <span class="text-outline flex items-center justify-center" style="min-width: 24px;">...</span>
+                  }
+                }
+              </div>
+
+              <button class="secondary-btn-glass small-btn" [disabled]="currentPage() === totalPages()" (click)="nextPage()" style="padding: 6px 12px; height: auto; display: flex; align-items: center; gap: 4px;">
+                التالي
+                <span class="material-symbols-outlined" style="font-size: 18px;">chevron_left</span>
+              </button>
+            </div>
+          </div>
+        }
       </div>
 
     </div>

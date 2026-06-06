@@ -31,6 +31,34 @@ export class StudentManagement implements OnInit {
   successMessage = signal<string | null>(null);
   searchQuery = signal('');
 
+  currentPage = signal(1);
+  itemsPerPage = signal(10);
+
+  paginatedStudents = computed(() => {
+    const start = (this.currentPage() - 1) * this.itemsPerPage();
+    return this.filteredStudents().slice(start, start + this.itemsPerPage());
+  });
+
+  totalPages = computed(() => {
+    return Math.max(1, Math.ceil(this.filteredStudents().length / this.itemsPerPage()));
+  });
+
+  nextPage() {
+    if (this.currentPage() < this.totalPages()) {
+      this.currentPage.update(p => p + 1);
+    }
+  }
+
+  prevPage() {
+    if (this.currentPage() > 1) {
+      this.currentPage.update(p => p - 1);
+    }
+  }
+
+  goToPage(page: number) {
+    this.currentPage.set(page);
+  }
+
   selectedStudentId = signal<number | null>(null);
   selectedStudentUserId = signal<number | null>(null);
   selectedParentId = signal<number | null>(null);
@@ -89,6 +117,7 @@ export class StudentManagement implements OnInit {
     this.studentService.getAll().subscribe({
       next: students => {
         this.students.set(students);
+        this.currentPage.set(1);
 
         const selectedId = this.selectedStudentId();
         if (selectedId && students.some(student => student.id === selectedId)) {
