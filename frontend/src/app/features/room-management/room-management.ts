@@ -76,7 +76,7 @@ export class RoomManagement implements OnInit {
     if (this.selectedTypeFilter) {
       this.roomService.getByType(this.selectedTypeFilter).subscribe({
         next: (data) => {
-          this.rooms.set(data);
+          this.rooms.set(data.data ?? data);
           this.currentPage.set(1);
         },
         error: (err) => {
@@ -87,7 +87,7 @@ export class RoomManagement implements OnInit {
     } else {
       this.roomService.getAll().subscribe({
         next: (data) => {
-          this.rooms.set(data);
+          this.rooms.set(data.data ?? data);
           this.currentPage.set(1);
         },
         error: (err) => {

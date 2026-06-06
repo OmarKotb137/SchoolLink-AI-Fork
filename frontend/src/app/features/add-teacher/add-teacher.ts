@@ -101,14 +101,14 @@ export class AddTeacher implements OnInit {
 
   loadSubjects() {
     this.subjectService.getAll().subscribe({
-      next: (data) => this.allSubjects.set(data),
+      next: (data) => this.allSubjects.set(data.data ?? data),
       error: () => this.showError('تعذر تحميل المواد الدراسية')
     });
   }
 
   loadTeachers() {
     this.teacherService.getAll(1000).subscribe({
-      next: (res) => this.teachers.set(res.items || []),
+      next: (res) => this.teachers.set(res.data?.items ?? []),
       error: () => this.showError('تعذر تحميل قائمة المعلمين')
     });
   }

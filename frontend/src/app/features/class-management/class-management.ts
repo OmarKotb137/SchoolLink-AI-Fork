@@ -77,8 +77,9 @@ export class ClassManagement implements OnInit {
   loadAcademicYears() {
     this.academicYearService.getAll().subscribe({
       next: (data) => {
-        this.academicYears.set(data);
-        const activeYear = data.find(y => y.isCurrent);
+        const d = data.data ?? data;
+        this.academicYears.set(d);
+        const activeYear = d.find(y => y.isCurrent);
         if (activeYear) {
           this.newClass.academicYearId = activeYear.id;
           // FIX #2: هنا بس نستدعي loadClasses بعد ما السنة اتضبطت
@@ -97,7 +98,7 @@ export class ClassManagement implements OnInit {
 
   loadGradeLevels() {
     this.gradeLevelService.getAll().subscribe({
-      next: (data) => this.gradeLevels.set(data),
+      next: (data) => this.gradeLevels.set(data.data ?? data),
       error: (err) => {
         console.error('Failed to load grade levels', err);
         this.showError('فشل في تحميل المراحل الدراسية.');
@@ -113,7 +114,7 @@ export class ClassManagement implements OnInit {
 
     this.classService.getAll(filter).subscribe({
       next: (data) => {
-        this.classes.set(data);
+        this.classes.set(data.data ?? data);
         this.currentPage.set(1);
       },
       error: (err) => {

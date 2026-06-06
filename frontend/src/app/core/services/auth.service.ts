@@ -89,11 +89,14 @@ export class AuthService {
   }
 
   login(role: AppRole, email: string, password: string): Observable<AuthSession> {
-    return this.http.post<RawAuthSession>(`${this.base}/login/${role}`, { email, password }).pipe(
-      map(res => ({
-        ...res,
-        role: this.normalizeRole(res.role),
-      })),
+    return this.http.post<any>(`${this.base}/login/${role}`, { email, password }).pipe(
+      map(res => {
+        const data = res.data ?? res;
+        return {
+          ...data,
+          role: this.normalizeRole(data.role),
+        };
+      }),
       tap(session => {
         this.persist(session);
       }),
@@ -112,11 +115,14 @@ export class AuthService {
       return throwError(() => new Error('لا توجد جلسة صالحة لتحديثها'));
     }
 
-    return this.http.post<RawAuthSession>(`${this.base}/refresh-token`, { expiredAccessToken, refreshToken }).pipe(
-      map(res => ({
-        ...res,
-        role: this.normalizeRole(res.role),
-      })),
+    return this.http.post<any>(`${this.base}/refresh-token`, { expiredAccessToken, refreshToken }).pipe(
+      map(res => {
+        const data = res.data ?? res;
+        return {
+          ...data,
+          role: this.normalizeRole(data.role),
+        };
+      }),
       tap(session => {
         this.persist(session);
       }),

@@ -1,8 +1,6 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { environment } from '../../../environments/environment';
-import { OperationResult } from '../models/library.model';
 
 export interface ParsedLessonDto {
   title: string;
@@ -57,34 +55,34 @@ export interface UnitDto {
 @Injectable({ providedIn: 'root' })
 export class BookParserService {
   private http = inject(HttpClient);
-  private base = environment.apiUrl;
+  private parserBase = buildApiUrl('book-parser');
 
-  preview(file: File): Observable<OperationResult<ParsedUnitDto[]>> {
+  preview(file: File): Observable<ParsedUnitDto[]> {
     const formData = new FormData();
     formData.append('file', file);
-    return this.http.post<OperationResult<ParsedUnitDto[]>>(`${this.base}/book-parser/preview`, formData);
+    return this.http.post<ParsedUnitDto[]>(`${this.parserBase}/preview`, formData);
   }
 
-  save(subjectId: number, units: CreateUnitDto[]): Observable<OperationResult<UnitDto[]>> {
-    return this.http.post<OperationResult<UnitDto[]>>(
-      `${this.base}/book-parser/save?subjectId=${subjectId}`, units);
+  save(subjectId: number, units: CreateUnitDto[]): Observable<UnitDto[]> {
+    return this.http.post<UnitDto[]>(
+      `${this.parserBase}/save?subjectId=${subjectId}`, units);
   }
 
-  generateLessonContent(rawContent: string, title: string): Observable<OperationResult<string>> {
-    return this.http.post<OperationResult<string>>(`${this.base}/book-parser/lesson/generate-content`, {
+  generateLessonContent(rawContent: string, title: string): Observable<string> {
+    return this.http.post<string>(`${this.parserBase}/lesson/generate-content`, {
       title,
       rawContent
     });
   }
 
   getGradeLevels(): Observable<any> {
-    return this.http.get(`${this.base}/grade-levels`);
+    return this.http.get(buildApiUrl('grade-levels'));
   }
 
   getSubjects(gradeLevelId?: number): Observable<any> {
     if (gradeLevelId) {
-      return this.http.get(`${this.base}/subjects/by-grade-level/${gradeLevelId}`);
+      return this.http.get(buildApiUrl(`subjects/by-grade-level/${gradeLevelId}`));
     }
-    return this.http.get(`${this.base}/subjects`);
+    return this.http.get(buildApiUrl('subjects'));
   }
 }

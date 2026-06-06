@@ -89,13 +89,10 @@ export class BookParser {
     this.parsedUnits.set([]);
     this.service.preview(file).subscribe({
       next: (res) => {
-        if (res.isSuccess) {
-          this.parsedUnits.set(res.data);
-          this.totalLessons.set(res.data.reduce((a, u) => a + u.lessons.length, 0));
-          this.step.set('preview');
-        } else {
-          this.showToast(res.message || 'فشل تحليل الكتاب', 'error');
-        }
+        const data = res.data ?? res;
+        this.parsedUnits.set(data);
+        this.totalLessons.set(Array.isArray(data) ? data.reduce((a, u) => a + u.lessons.length, 0) : 0);
+        this.step.set('preview');
         this.loadingPreview.set(false);
       },
       error: (err) => {
@@ -129,13 +126,9 @@ export class BookParser {
     }));
 
     this.service.save(subjectId, units).subscribe({
-      next: (res) => {
-        if (res.isSuccess) {
-          this.step.set('saved');
-          this.showToast('تم حفظ هيكل الكتاب بنجاح!', 'success');
-        } else {
-          this.showToast(res.message || 'فشل حفظ الكتاب', 'error');
-        }
+      next: () => {
+        this.step.set('saved');
+        this.showToast('تم حفظ هيكل الكتاب بنجاح!', 'success');
         this.saving.set(false);
       },
       error: (err) => {
@@ -186,22 +179,17 @@ export class BookParser {
     this.generatingContent.set(true);
     this.service.generateLessonContent(lesson.content, lesson.title).subscribe({
       next: (res) => {
-        if (res.isSuccess && res.data) {
-          // Update the local modal state
-          const updatedLesson = { ...lesson, content: res.data };
-          this.selectedLesson.set(updatedLesson);
+        const content = typeof res === 'string' ? res : (res?.data ?? '');
+        const updatedLesson = { ...lesson, content };
+        this.selectedLesson.set(updatedLesson);
 
-          // Update the main parsedUnits state
-          const uIdx = this.selectedLessonUnitIndex()!;
-          const lIdx = this.selectedLessonIndex()!;
-          const currentUnits = [...this.parsedUnits()];
-          currentUnits[uIdx].lessons[lIdx] = updatedLesson;
-          this.parsedUnits.set(currentUnits);
+        const uIdx = this.selectedLessonUnitIndex()!;
+        const lIdx = this.selectedLessonIndex()!;
+        const currentUnits = [...this.parsedUnits()];
+        currentUnits[uIdx].lessons[lIdx] = updatedLesson;
+        this.parsedUnits.set(currentUnits);
 
-          this.showToast('تم تنسيق محتوى الدرس بنجاح!', 'success');
-        } else {
-          this.showToast(res.message || 'فشل توليد المحتوى', 'error');
-        }
+        this.showToast('تم تنسيق محتوى الدرس بنجاح!', 'success');
         this.generatingContent.set(false);
       },
       error: (err) => {

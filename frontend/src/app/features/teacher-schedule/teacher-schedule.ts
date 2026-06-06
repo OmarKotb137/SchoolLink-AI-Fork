@@ -51,9 +51,9 @@ export class TeacherSchedule implements OnInit {
     this.hasLoaded.set(false);
 
     this.timetableService.getMyScheduleCurrentYear().subscribe({
-      next: (response) => {
-        // apiInterceptor بيفك OperationResult تلقائياً، فـ response هنا هو الـ array نفسه.
-        this.slots.set(Array.isArray(response) ? response : []);
+      next: (response: any) => {
+        const data = response.isSuccess ? (response.data ?? []) : [];
+        this.slots.set(Array.isArray(data) ? data : []);
         this.hasLoaded.set(true);
         this.isLoading.set(false);
       },
