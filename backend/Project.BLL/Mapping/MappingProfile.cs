@@ -45,20 +45,12 @@ public class MappingProfile : Profile
             .ForMember(d => d.TeacherName,
                 opt => opt.MapFrom(s => s.Teacher.FullName))
             .ForMember(d => d.AcademicYearName,
-                opt => opt.MapFrom(s => s.AcademicYear.Name))
-            .ForMember(d => d.WeeklyPeriods,
-                opt => opt.MapFrom(s => s.WeeklyPeriods));
+                opt => opt.MapFrom(s => s.AcademicYear.Name));
 
         // Timetable
         CreateMap<Timetable, TimetableDto>()
             .ForMember(d => d.ClassName,
                 opt => opt.MapFrom(s => s.Class.Name));
-
-        // ChildScheduleDto inherits TimetableDto; StudentId/StudentName are set manually after mapping
-        CreateMap<Timetable, ChildScheduleDto>()
-            .IncludeBase<Timetable, TimetableDto>()
-            .ForMember(d => d.StudentId,   opt => opt.Ignore())
-            .ForMember(d => d.StudentName, opt => opt.Ignore());
 
         // TimetableSlot
         CreateMap<TimetableSlot, TimetableSlotDto>()

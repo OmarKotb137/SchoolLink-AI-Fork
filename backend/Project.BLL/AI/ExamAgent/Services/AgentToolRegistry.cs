@@ -1,4 +1,4 @@
-using Project.BLL.AI.ExamAgent.Interfaces;
+using Project.BLL.AI.Interfaces;
 
 namespace Project.BLL.AI.ExamAgent.Services;
 

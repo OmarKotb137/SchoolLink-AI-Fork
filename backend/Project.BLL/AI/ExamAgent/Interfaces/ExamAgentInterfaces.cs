@@ -1,22 +1,6 @@
-using System.Text.Json;
 using Project.BLL.AI.ExamAgent.Models;
 
 namespace Project.BLL.AI.ExamAgent.Interfaces;
-
-public interface IAgentTool
-{
-    string Name { get; }
-    string Description { get; }
-    FunctionDefinition ToFunctionDefinition();
-    Task<ToolResult> ExecuteAsync(JsonElement args);
-}
-
-public interface ILlmClient
-{
-    Task<LlmResponse> ChatAsync(
-        List<LlmChatMessage> messages,
-        IEnumerable<FunctionDefinition> tools);
-}
 
 public interface ILessonRepository
 {

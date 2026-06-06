@@ -1,6 +1,7 @@
 ﻿using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Project.BLL.AI.Agents;
+using Project.BLL.AI.Infrastructure;
 using Project.BLL.AI.ExamAgent.Infrastructure;
 using Project.BLL.AI.ExamAgent.Interfaces;
 using Project.BLL.AI.ExamAgent.Services;
@@ -121,42 +122,15 @@ public static class ServiceExtensions
         services.AddHttpClient("DeepSeek", c => c.Timeout = TimeSpan.FromSeconds(60));
         services.AddHttpClient("MistralOcr", c =>
         {
-            c.Timeout = TimeSpan.FromMinutes(5); // OCR على ملفات كبيرة قد يحتاج وقتاً أطول
+            c.Timeout = TimeSpan.FromMinutes(5);
         });
 
-        services.AddScoped<GeminiProvider>(sp =>
-        {
-            var factory = sp.GetRequiredService<IHttpClientFactory>();
-            var http = factory.CreateClient("Gemini");
-            var logger = sp.GetRequiredService<ILogger<GeminiProvider>>();
-            var apiKey = config["AI:Gemini:ApiKey"] ?? "";
-            var model = config["AI:Gemini:Model"] ?? "gemini-2.0-flash";
-            return new GeminiProvider(http, logger, apiKey, model);
-        });
-
-        services.AddScoped<DeepSeekProvider>(sp =>
-        {
-            var factory = sp.GetRequiredService<IHttpClientFactory>();
-            var http = factory.CreateClient("DeepSeek");
-            var logger = sp.GetRequiredService<ILogger<DeepSeekProvider>>();
-            var apiKey = config["AI:DeepSeek:ApiKey"] ?? "";
-            var model = config["AI:DeepSeek:Model"] ?? "deepseek-chat";
-            return new DeepSeekProvider(http, logger, apiKey, model);
-        });
-
-        services.AddScoped<OpenRouterProvider>(sp =>
-        {
-            var factory = sp.GetRequiredService<IHttpClientFactory>();
-            var http = factory.CreateClient();
-            var logger = sp.GetRequiredService<ILogger<OpenRouterProvider>>();
-            var apiKey = config["LlmSettings:OpenRouter:ApiKey"] ?? "";
-            var model = config["LlmSettings:OpenRouter:LessonCorrectionModel"] ?? "openrouter/owl-alpha";
-            return new OpenRouterProvider(http, logger, apiKey, model);
-        });
-
-        services.AddScoped<ILLMProvider>(sp => sp.GetRequiredService<GeminiProvider>());
-        services.AddScoped<ILLMProvider>(sp => sp.GetRequiredService<DeepSeekProvider>());
-        services.AddScoped<ILLMProvider>(sp => sp.GetRequiredService<OpenRouterProvider>());
+        RegisterProvider<GeminiProvider>(services, "Gemini");
+        RegisterProvider<DeepSeekProvider>(services, "DeepSeek");
+        RegisterProvider<OpenRouterProvider>(services, null);
+        RegisterProvider<HuggingFaceProvider>(services, null);
+        RegisterProvider<CloudflareAIProvider>(services, null);
+        RegisterProvider<OpenCodeAIProvider>(services, null);
 
         services.AddScoped<IToolRegistry, ToolRegistry>();
         services.AddScoped<ILLMRouter, LLMRouter>();
@@ -170,6 +144,19 @@ public static class ServiceExtensions
         services.AddScoped<IStudyScheduleOptimizerService, StudyScheduleOptimizerService>();
         services.AddScoped<IStudentImportService, StudentImportService>();
         services.AddScoped<IBookParserService, BookParserService>();
+    }
+
+    private static void RegisterProvider<T>(IServiceCollection services, string? httpClientName) where T : class, ILLMProvider
+    {
+        services.AddScoped<T>(sp =>
+        {
+            var factory = sp.GetRequiredService<IHttpClientFactory>();
+            var http = httpClientName != null ? factory.CreateClient(httpClientName) : factory.CreateClient();
+            var logger = sp.GetRequiredService<ILogger<T>>();
+            var config = sp.GetRequiredService<IConfiguration>();
+            return (T)ActivatorUtilities.CreateInstance(sp, typeof(T), http, logger, config);
+        });
+        services.AddScoped<ILLMProvider>(sp => sp.GetRequiredService<T>());
     }
 
     private static void RegisterExamAgentServices(IServiceCollection services, IConfiguration config)
