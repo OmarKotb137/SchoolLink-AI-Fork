@@ -56,6 +56,7 @@ public class ParsedUnitDto
 public class ParsedLessonDto
 {
     public string Title { get; set; } = string.Empty;
+    public string? Content { get; set; }
     public int DisplayOrder { get; set; }
     public int? PageStart { get; set; }
     public int? PageEnd { get; set; }

@@ -90,7 +90,7 @@
           </div>
         }
 
-        <!-- Step 2: Preview -->
+        <!-- Step 2: Preview / Saved -->
         @if (step() === 'preview' || step() === 'saved') {
           <!-- Summary bar -->
           <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5 shadow-sm flex flex-wrap items-center justify-between gap-4">
@@ -103,10 +103,16 @@
                 <span class="material-symbols-outlined text-secondary">menu_book</span>
                 <span class="text-label-md font-label-md text-on-surface font-semibold">{{totalLessons()}} درس</span>
               </div>
+              @if (step() === 'saved') {
+                <span class="text-label-sm text-green-700 bg-green-50 border border-green-200 px-3 py-1 rounded-full flex items-center gap-1">
+                  <span class="material-symbols-outlined text-[14px]">check_circle</span>
+                  تم الحفظ في قاعدة البيانات
+                </span>
+              }
             </div>
             <div class="flex items-center gap-3">
               @if (step() === 'preview') {
-                <button (click)="reset()" class="px-4 py-2 rounded-full border border-outline-variant text-on-surface font-label-md text-label-md hover:bg-surface-container transition-colors">
+                <button (click)="reset()" class="px-4 py-2 rounded-full border border-outline-variant text-on-surface font-label-md text-label-md hover:bg-surface-container transition-colors flex items-center gap-1">
                   <span class="material-symbols-outlined text-[18px]">close</span>
                   إلغاء
                 </button>
@@ -121,11 +127,8 @@
                   }
                 </button>
               } @else {
-                <span class="text-label-md font-label-md text-green-600 bg-green-50 px-4 py-2 rounded-full flex items-center gap-2">
-                  <span class="material-symbols-outlined text-[18px]">check_circle</span>
-                  تم الحفظ بنجاح
-                </span>
-                <button (click)="reset()" class="px-4 py-2 rounded-full bg-primary text-on-primary font-label-md text-label-md hover:bg-primary/90 transition-colors">
+                <button (click)="reset()" class="px-4 py-2 rounded-full bg-primary text-on-primary font-label-md text-label-md hover:bg-primary/90 transition-colors flex items-center gap-2">
+                  <span class="material-symbols-outlined text-[18px]">upload_file</span>
                   رفع كتاب آخر
                 </button>
               }
@@ -136,21 +139,39 @@
           <div class="flex flex-col gap-4">
             @for (unit of parsedUnits(); track $index; let idx = $index) {
               <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+
                 <!-- Unit header -->
                 <button (click)="toggleUnit(idx)"
                         class="w-full flex items-center justify-between p-5 hover:bg-surface-container/50 transition-colors text-right">
                   <div class="flex items-center gap-4">
-                    <div class="w-10 h-10 rounded-xl bg-primary-fixed flex items-center justify-center shrink-0">
-                      <span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">folder</span>
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                         [class.bg-primary-fixed]="unit.lessons.length > 0"
+                         [class.bg-secondary-fixed]="unit.lessons.length === 0">
+                      <span class="material-symbols-outlined"
+                            [class.text-primary]="unit.lessons.length > 0"
+                            [class.text-secondary]="unit.lessons.length === 0"
+                            style="font-variation-settings: 'FILL' 1;">
+                        {{ unit.lessons.length > 0 ? 'folder' : 'auto_stories' }}
+                      </span>
                     </div>
                     <div class="text-right">
-                      <h3 class="text-body-md font-body-md font-semibold text-on-surface">{{unit.name}}</h3>
-                      <p class="text-label-sm font-label-sm text-on-surface-variant">
-                        @if (unit.pageStart) {
-                          <span>ص {{unit.pageStart}}{{unit.pageEnd ? ' - ص ' + unit.pageEnd : ''}} • </span>
+                      <div class="flex items-center gap-2 flex-wrap">
+                        <h3 class="text-body-md font-body-md font-semibold text-on-surface">{{unit.name}}</h3>
+                        @if (unit.lessons.length > 0) {
+                          <span class="text-label-xs bg-primary-fixed text-primary px-2 py-0.5 rounded-full text-xs">
+                            {{unit.lessons.length}} درس
+                          </span>
+                        } @else {
+                          <span class="text-label-xs bg-secondary-fixed text-secondary px-2 py-0.5 rounded-full text-xs">
+                            وحدة بدون دروس مفصلة
+                          </span>
                         }
-                        <span>{{unit.lessons.length}} درس • </span>
-                        <span>{{unit.content ? (unit.content.length > 50 ? (unit.content.slice(0, 50) + '...') : unit.content.length + ' حرف') : 'بدون محتوى'}}</span>
+                      </div>
+                      <p class="text-label-sm font-label-sm text-on-surface-variant mt-0.5">
+                        @if (unit.pageStart) {
+                          <span>ص {{unit.pageStart}}{{unit.pageEnd ? ' — ص ' + unit.pageEnd : ''}} • </span>
+                        }
+                        <span>{{unit.content ? (unit.content.length > 80 ? (unit.content.slice(0, 80) + '...') : unit.content) : 'بدون محتوى مستخرج'}}</span>
                       </p>
                     </div>
                   </div>
@@ -161,6 +182,7 @@
                 <!-- Expanded content -->
                 @if (expandedUnit() === idx) {
                   <div class="border-t border-outline-variant">
+
                     @if (unit.lessons.length > 0) {
                       <!-- Lessons table -->
                       <div class="overflow-x-auto">
@@ -169,38 +191,65 @@
                             <tr class="bg-surface-container text-label-md font-label-md text-on-surface-variant">
                               <th class="py-3 px-5 font-semibold">#</th>
                               <th class="py-3 px-5 font-semibold">اسم الدرس</th>
-                              <th class="py-3 px-5 font-semibold">صفحة البداية</th>
-                              <th class="py-3 px-5 font-semibold">صفحة النهاية</th>
+                              <th class="py-3 px-5 font-semibold text-center">صفحة البداية</th>
+                              <th class="py-3 px-5 font-semibold text-center">صفحة النهاية</th>
+                              <th class="py-3 px-5 font-semibold text-center">الصفحات</th>
+                              <th class="py-3 px-5 font-semibold text-center">الإجراءات</th>
                             </tr>
                           </thead>
                           <tbody>
-                            @for (lesson of unit.lessons; track $index) {
+                            @for (lesson of unit.lessons; track $index; let lIdx = $index) {
                               <tr class="border-t border-outline-variant hover:bg-surface-container/50 transition-colors text-body-md font-body-md">
                                 <td class="py-3 px-5 text-on-surface-variant">{{$index + 1}}</td>
                                 <td class="py-3 px-5 font-medium text-on-surface">{{lesson.title}}</td>
-                                <td class="py-3 px-5 text-on-surface-variant">{{lesson.pageStart ?? '—'}}</td>
-                                <td class="py-3 px-5 text-on-surface-variant">{{lesson.pageEnd ?? '—'}}</td>
+                                <td class="py-3 px-5 text-on-surface-variant text-center">{{lesson.pageStart ?? '—'}}</td>
+                                <td class="py-3 px-5 text-on-surface-variant text-center">{{lesson.pageEnd ?? '—'}}</td>
+                                <td class="py-3 px-5 text-center">
+                                  @if (lesson.pageStart && lesson.pageEnd) {
+                                    <span class="bg-primary-fixed text-primary text-label-xs px-2 py-0.5 rounded-full text-xs font-medium">
+                                      {{ lesson.pageEnd - lesson.pageStart + 1 }} ص
+                                    </span>
+                                  } @else {
+                                    <span class="text-on-surface-variant">—</span>
+                                  }
+                                </td>
+                                <td class="py-3 px-5 text-center">
+                                  <button (click)="openLessonModal(idx, lIdx)"
+                                          class="px-4 py-1.5 rounded-full border border-outline-variant text-primary font-label-sm text-label-sm hover:bg-primary-fixed transition-colors">
+                                    عرض المحتوى
+                                  </button>
+                                </td>
                               </tr>
                             }
                           </tbody>
                         </table>
                       </div>
+
                     } @else if (unit.content) {
-                      <!-- Content preview for lesson-less units -->
+                      <!-- Content preview for lesson-less units (e.g. English books) -->
                       <div class="p-5">
-                        <h4 class="text-label-md font-label-md font-semibold text-on-surface mb-3 flex items-center gap-2">
-                          <span class="material-symbols-outlined text-[18px] text-secondary">article</span>
-                          محتوى الوحدة
-                        </h4>
-                        <div class="bg-surface-container rounded-xl p-4 text-body-sm font-body-sm text-on-surface leading-relaxed whitespace-pre-line max-h-80 overflow-y-auto">
+                        <div class="flex items-center justify-between mb-3">
+                          <h4 class="text-label-md font-label-md font-semibold text-on-surface flex items-center gap-2">
+                            <span class="material-symbols-outlined text-[18px] text-secondary">article</span>
+                            محتوى الوحدة المستخرج
+                          </h4>
+                          <span class="text-label-xs bg-secondary-fixed text-secondary px-2 py-0.5 rounded-full text-xs">
+                            ص {{unit.pageStart}} — ص {{unit.pageEnd}}
+                          </span>
+                        </div>
+                        <div class="bg-surface-container rounded-xl p-4 text-body-sm font-body-sm text-on-surface leading-relaxed whitespace-pre-line max-h-80 overflow-y-auto border border-outline-variant">
                           {{unit.content}}
                         </div>
                       </div>
+
                     } @else {
-                      <div class="p-5 text-center text-on-surface-variant text-label-md">
-                        لا توجد دروس أو محتوى لهذه الوحدة
+                      <div class="p-8 text-center">
+                        <span class="material-symbols-outlined text-4xl text-on-surface-variant mb-2 block">info</span>
+                        <p class="text-on-surface-variant text-label-md">لا توجد دروس أو محتوى لهذه الوحدة</p>
+                        <p class="text-on-surface-variant text-label-sm mt-1">قد يكون هذا سطر فهرس وليس وحدة حقيقية</p>
                       </div>
                     }
+
                   </div>
                 }
               </div>
@@ -211,6 +260,59 @@
     </div>
   </main>
 </div>
+
+<!-- Lesson Content Modal -->
+@if (showLessonModal() && selectedLesson()) {
+  <div class="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" style="direction: rtl;">
+    <div class="bg-surface-container-lowest rounded-3xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-outline-variant">
+      
+      <!-- Modal Header -->
+      <div class="p-6 border-b border-outline-variant flex items-center justify-between bg-surface-container">
+        <div>
+          <h3 class="text-headline-sm font-headline-sm font-bold text-on-surface">{{ selectedLesson()?.title }}</h3>
+          <p class="text-label-md font-label-md text-on-surface-variant mt-1">
+            ص {{ selectedLesson()?.pageStart }} — ص {{ selectedLesson()?.pageEnd }}
+          </p>
+        </div>
+        <button (click)="closeLessonModal()" class="w-10 h-10 rounded-full hover:bg-surface-container-high flex items-center justify-center text-on-surface-variant transition-colors">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <!-- Modal Body (Content) -->
+      <div class="flex-1 overflow-y-auto p-6 bg-surface-container-lowest">
+        @if (selectedLesson()?.content) {
+          <div class="prose prose-sm md:prose-base prose-headings:text-primary prose-a:text-primary prose-strong:text-on-surface max-w-none leading-relaxed text-on-surface font-body-md"
+               [innerHTML]="formattedLessonContent()">
+          </div>
+        } @else {
+          <div class="h-full flex flex-col items-center justify-center text-on-surface-variant p-12">
+            <span class="material-symbols-outlined text-6xl mb-4 opacity-50">article</span>
+            <p class="text-body-lg font-body-lg">لا يوجد محتوى مستخرج لهذا الدرس.</p>
+          </div>
+        }
+      </div>
+
+      <!-- Modal Footer (Actions) -->
+      <div class="p-6 border-t border-outline-variant bg-surface-container flex items-center justify-end gap-3">
+        <button (click)="closeLessonModal()" 
+                class="px-6 py-2.5 rounded-full border border-outline-variant text-on-surface font-label-md text-label-md hover:bg-surface-container-high transition-colors">
+          إغلاق
+        </button>
+        <button (click)="generateLessonContent()" [disabled]="generatingContent() || !selectedLesson()?.content"
+                class="px-6 py-2.5 rounded-full bg-primary text-on-primary font-label-md text-label-md hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2 shadow-sm">
+          @if (generatingContent()) {
+            <span class="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
+            جاري المعالجة...
+          } @else {
+            <span class="material-symbols-outlined text-[18px]">auto_awesome</span>
+            تظبيط بالـ AI
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+}
 
 <!-- Toast -->
 @if (toastMessage()) {

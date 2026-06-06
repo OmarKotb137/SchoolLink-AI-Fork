@@ -7,8 +7,8 @@ using Project.BLL.AI.ExamAgent.Services;
 using Project.BLL.AI.ExamAgent.Tools;
 using Project.BLL.AI.Infrastructure;
 using Project.BLL.AI.Interfaces;
-using Project.BLL.AI.Providers;
 using Project.BLL.AI.Services;
+using Project.BLL.AI.Providers;
 using Project.BLL.Interfaces;
 using Project.BLL.Mapping;
 using Project.BLL.Services;
@@ -82,13 +82,12 @@ public static class ServiceExtensions
         services.AddScoped<IStudyPlanService, StudyPlanService>();
         services.AddScoped<ILessonFeedbackService, LessonFeedbackService>();
         services.AddScoped<IUnitService, UnitService>();
-        services.AddScoped<IBookParserService, BookParserService>();
 
         // AI Services
         RegisterAiServices(services, config);
         RegisterExamAgentServices(services, config);
 
-        services.AddAutoMapper(cfg => cfg.AddMaps(typeof(UserMappingProfile).Assembly));
+        services.AddAutoMapper(cfg => cfg.AddMaps(typeof(MappingProfile).Assembly));
 
         services.AddValidatorsFromAssemblyContaining<CreateUserValidator>();
 
@@ -119,6 +118,10 @@ public static class ServiceExtensions
     {
         services.AddHttpClient("Gemini", c => c.Timeout = TimeSpan.FromSeconds(60));
         services.AddHttpClient("DeepSeek", c => c.Timeout = TimeSpan.FromSeconds(60));
+        services.AddHttpClient("MistralOcr", c =>
+        {
+            c.Timeout = TimeSpan.FromMinutes(5); // OCR على ملفات كبيرة قد يحتاج وقتاً أطول
+        });
 
         services.AddScoped<GeminiProvider>(sp =>
         {
@@ -140,8 +143,19 @@ public static class ServiceExtensions
             return new DeepSeekProvider(http, logger, apiKey, model);
         });
 
+        services.AddScoped<OpenRouterProvider>(sp =>
+        {
+            var factory = sp.GetRequiredService<IHttpClientFactory>();
+            var http = factory.CreateClient();
+            var logger = sp.GetRequiredService<ILogger<OpenRouterProvider>>();
+            var apiKey = config["LlmSettings:OpenRouter:ApiKey"] ?? "";
+            var model = config["LlmSettings:OpenRouter:LessonCorrectionModel"] ?? "openrouter/owl-alpha";
+            return new OpenRouterProvider(http, logger, apiKey, model);
+        });
+
         services.AddScoped<ILLMProvider>(sp => sp.GetRequiredService<GeminiProvider>());
         services.AddScoped<ILLMProvider>(sp => sp.GetRequiredService<DeepSeekProvider>());
+        services.AddScoped<ILLMProvider>(sp => sp.GetRequiredService<OpenRouterProvider>());
 
         services.AddScoped<IToolRegistry, ToolRegistry>();
         services.AddScoped<ILLMRouter, LLMRouter>();
@@ -154,6 +168,7 @@ public static class ServiceExtensions
         services.AddScoped<IEvaluationReportService, EvaluationReportService>();
         services.AddScoped<IStudyScheduleOptimizerService, StudyScheduleOptimizerService>();
         services.AddScoped<IStudentImportService, StudentImportService>();
+        services.AddScoped<IBookParserService, BookParserService>();
     }
 
     private static void RegisterExamAgentServices(IServiceCollection services, IConfiguration config)
