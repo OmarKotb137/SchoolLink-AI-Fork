@@ -1,0 +1,498 @@
+/* ════════════════════════════════════════════════
+   parent-schedule.css
+   ════════════════════════════════════════════════ */
+
+/* ─── Page wrapper ─── */
+main.pt-16 { direction: rtl; }
+
+/* ══════════════ HEADER ══════════════ */
+.ps-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  background: linear-gradient(
+    135deg,
+    rgba(0, 35, 111, 0.055) 0%,
+    rgba(0, 35, 111, 0.02)  60%,
+    rgba(59, 130, 246, 0.03) 100%
+  );
+  border: 1px solid rgba(197, 197, 211, 0.45);
+  border-radius: 20px;
+  padding: 1.375rem 1.5rem;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.05);
+}
+
+.ps-header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* Gradient icon box */
+.ps-header-icon {
+  width: 54px;
+  height: 54px;
+  border-radius: 15px;
+  background: linear-gradient(135deg, #00236f 0%, #3b82f6 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  box-shadow: 0 6px 18px rgba(0, 35, 111, 0.28);
+  flex-shrink: 0;
+}
+
+.ps-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #00236f;
+  line-height: 1.3;
+  margin: 0;
+}
+
+.ps-subtitle {
+  font-size: 0.8rem;
+  color: #444651;
+  margin-top: 0.2rem;
+}
+
+/* ─── Child selector tabs ─── */
+.ps-child-tabs {
+  display: flex;
+  gap: 0.625rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.ps-child-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.5rem 1rem 0.5rem 0.6rem;
+  border-radius: 50px;
+  border: 1.5px solid #c5c5d3;
+  background: #f4f3fa;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+  font-family: inherit;
+}
+
+.ps-child-tab:hover:not(.ps-child-tab--active) {
+  border-color: #00236f;
+  background: #eef2ff;
+}
+
+.ps-child-tab--active {
+  background: #00236f;
+  border-color: #00236f;
+  box-shadow: 0 4px 14px rgba(0, 35, 111, 0.3);
+}
+
+.ps-child-tab--active .ps-tab-name { color: #fff; }
+.ps-child-tab--active .ps-tab-class { color: rgba(255,255,255,0.65); }
+.ps-child-tab--active .ps-avatar {
+  background: rgba(255,255,255,0.2);
+  color: #fff;
+}
+
+/* ─── Avatar circle ─── */
+.ps-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(0, 35, 111, 0.1);
+  color: #00236f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+  transition: background 0.2s, color 0.2s;
+}
+
+.ps-avatar--lg {
+  width: 46px;
+  height: 46px;
+  font-size: 1.05rem;
+}
+
+.ps-tab-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.ps-tab-name {
+  font-size: 0.83rem;
+  font-weight: 600;
+  color: #1a1b21;
+  line-height: 1.25;
+  transition: color 0.2s;
+}
+
+.ps-tab-class {
+  font-size: 0.7rem;
+  color: #444651;
+  transition: color 0.2s;
+}
+
+/* ─── Single child badge ─── */
+.ps-single-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 1.25rem;
+  border-radius: 50px;
+  background: rgba(0, 35, 111, 0.07);
+  border: 1.5px solid rgba(0, 35, 111, 0.18);
+}
+
+.ps-single-name {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #00236f;
+  line-height: 1.2;
+}
+
+.ps-single-class {
+  font-size: 0.72rem;
+  color: #444651;
+}
+
+/* ══════════════ ERROR BANNER ══════════════ */
+.ps-error-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1.25rem;
+  border-radius: 14px;
+  background: rgba(186, 26, 26, 0.07);
+  border: 1.5px solid rgba(186, 26, 26, 0.22);
+  color: #ba1a1a;
+  font-size: 0.875rem;
+}
+
+.ps-retry-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-right: auto;
+  padding: 0.35rem 0.875rem;
+  border-radius: 8px;
+  border: 1.5px solid rgba(186, 26, 26, 0.3);
+  color: #ba1a1a;
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-family: inherit;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.18s;
+}
+
+.ps-retry-btn:hover { background: rgba(186,26,26,0.1); }
+
+/* ══════════════ GRID CARD ══════════════ */
+.ps-grid-card {
+  background: #ffffff;
+  border-radius: 20px;
+  border: 1px solid rgba(197, 197, 211, 0.38);
+  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.042);
+  overflow: auto;
+  position: relative;
+  min-height: 420px;
+}
+
+/* Scrollbar styling */
+.ps-grid-card::-webkit-scrollbar { width: 5px; height: 5px; }
+.ps-grid-card::-webkit-scrollbar-track { background: transparent; }
+.ps-grid-card::-webkit-scrollbar-thumb { background: #c5c5d3; border-radius: 10px; }
+
+/* ══════════════ LOADING OVERLAY ══════════════ */
+.ps-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.84);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 20px;
+}
+
+.ps-spinner-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.ps-spinner {
+  font-size: 2.5rem !important;
+  color: #00236f;
+  animation: ps-spin 0.9s linear infinite;
+}
+
+@keyframes ps-spin { to { transform: rotate(360deg); } }
+
+.ps-loading-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #444651;
+}
+
+/* ══════════════ TABLE ══════════════ */
+.ps-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 840px;
+  direction: rtl;
+}
+
+/* ─── Corner cell (diagonal) ─── */
+.ps-corner {
+  position: sticky;
+  right: 0;
+  top: 0;
+  z-index: 4;
+  width: 118px;
+  min-width: 118px;
+  height: 72px;
+  background: linear-gradient(
+    to top left,
+    #eef2ff 49%,
+    #c5c5d3 49%,
+    #c5c5d3 51%,
+    #f8f9ff 51%
+  );
+  border-bottom: 2px solid rgba(197, 197, 211, 0.55);
+  border-left: 1px solid rgba(197, 197, 211, 0.4);
+}
+
+.ps-corner-top {
+  position: absolute;
+  top: 9px;
+  right: 10px;
+  font-size: 0.67rem;
+  font-weight: 600;
+  color: #444651;
+}
+
+.ps-corner-btm {
+  position: absolute;
+  bottom: 9px;
+  left: 10px;
+  font-size: 0.67rem;
+  font-weight: 700;
+  color: #00236f;
+}
+
+/* ─── Period headers ─── */
+.ps-period-th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 0.9rem 0.75rem 0.8rem;
+  background: #f8f9ff;
+  border-bottom: 2px solid rgba(197, 197, 211, 0.55);
+  border-left: 1px solid rgba(197, 197, 211, 0.25);
+  min-width: 130px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.ps-period-name {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #1a1b21;
+  letter-spacing: -0.01em;
+}
+
+.ps-period-time {
+  display: block;
+  font-size: 0.67rem;
+  color: #444651;
+  font-weight: 400;
+  margin-top: 0.22rem;
+  letter-spacing: 0.01em;
+}
+
+/* ─── Day rows ─── */
+.ps-day-row {
+  border-bottom: 1px solid rgba(197, 197, 211, 0.2);
+  transition: background 0.18s;
+}
+
+.ps-day-row:hover { background: rgba(0, 35, 111, 0.013); }
+.ps-day-row:last-child { border-bottom: none; }
+
+/* ─── Day label (sticky right) ─── */
+.ps-day-td {
+  position: sticky;
+  right: 0;
+  z-index: 1;
+  width: 118px;
+  min-width: 118px;
+  padding: 1rem;
+  font-weight: 700;
+  font-size: 0.82rem;
+  color: #00236f;
+  background: linear-gradient(to left, rgba(0,35,111,0.045), rgba(0,35,111,0.01));
+  border-left: 1px solid rgba(197, 197, 211, 0.3);
+  border-bottom: 1px solid rgba(197, 197, 211, 0.16);
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* ─── Data cells ─── */
+.ps-cell {
+  height: 98px;
+  padding: 0.375rem;
+  vertical-align: middle;
+  border-left: 1px solid rgba(197, 197, 211, 0.18);
+  border-bottom: 1px solid rgba(197, 197, 211, 0.14);
+}
+
+/* ─── Lesson card ─── */
+.ps-lesson {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.5rem 0.375rem;
+  border-radius: 11px;
+  background: linear-gradient(
+    148deg,
+    rgba(0, 35, 111, 0.082) 0%,
+    rgba(0, 35, 111, 0.038) 100%
+  );
+  border: 1px solid rgba(0, 35, 111, 0.13);
+  border-right: 3.5px solid #00236f;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  cursor: default;
+}
+
+.ps-lesson:hover {
+  background: linear-gradient(
+    148deg,
+    rgba(0, 35, 111, 0.13) 0%,
+    rgba(0, 35, 111, 0.065) 100%
+  );
+  box-shadow: 0 3px 14px rgba(0, 35, 111, 0.12);
+  transform: scale(1.018);
+}
+
+.ps-subject {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #00236f;
+  text-align: center;
+  line-height: 1.3;
+  display: block;
+}
+
+.ps-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  width: 100%;
+}
+
+.ps-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.67rem;
+  color: #444651;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ps-ico {
+  font-size: 0.7rem !important;
+  flex-shrink: 0;
+  color: #6b7280;
+}
+
+.ps-meta-room { color: #374151; }
+
+/* ─── Break cell ─── */
+.ps-break {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  border-radius: 11px;
+  background: rgba(107, 114, 128, 0.048);
+  border: 1.5px dashed rgba(107, 114, 128, 0.28);
+}
+
+.ps-break-icon {
+  font-size: 1.2rem !important;
+  color: #6b7280;
+}
+
+.ps-break-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+/* ══════════════ EMPTY STATE ══════════════ */
+.ps-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 4.5rem 2rem;
+  min-height: 420px;
+}
+
+.ps-empty-circle {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: linear-gradient(
+    135deg,
+    rgba(0, 35, 111, 0.07),
+    rgba(0, 35, 111, 0.03)
+  );
+  border: 1px solid rgba(0, 35, 111, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #00236f;
+  opacity: 0.6;
+  margin-bottom: 0.5rem;
+}
+
+.ps-empty-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1a1b21;
+  margin: 0;
+}
+
+.ps-empty-sub {
+  font-size: 0.84rem;
+  color: #444651;
+  text-align: center;
+  max-width: 360px;
+  line-height: 1.65;
+  margin: 0;
+}

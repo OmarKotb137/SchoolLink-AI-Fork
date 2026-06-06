@@ -1,111 +1,115 @@
-    <app-sidebar [(isOpen)]="sidebarOpen" />
-    <div class="main-content">
-      <app-topbar userName="أحمد" />
-      <main class="p-gutter-desktop">
-        <!-- Header -->
-        <header class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-stack-lg ai-glass p-6 rounded-2xl shadow-sm gap-4" style="background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.3);">
-          <div class="flex items-center gap-4 flex-1">
-            <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-blue-700 flex items-center justify-center text-white text-2xl font-bold shadow-lg shadow-primary/20 flex-shrink-0">أ</div>
-            <div class="flex flex-col gap-1">
-              <div class="flex items-center gap-3">
-                <h2 class="font-headline-lg text-headline-lg text-primary">جدول المدرس</h2>
-              </div>
-              <div class="flex items-center gap-4 text-on-surface-variant flex-wrap">
-                <span class="flex items-center gap-1"><span class="material-symbols-outlined text-base">badge</span> {{ teacherName }}</span>
-                <span class="w-1 h-1 bg-outline-variant rounded-full"></span>
-                <span class="flex items-center gap-1"><span class="material-symbols-outlined text-base">functions</span> {{ subject }}</span>
-                <span class="w-1 h-1 bg-outline-variant rounded-full"></span>
-                <span class="flex items-center gap-1"><span class="material-symbols-outlined text-base">school</span> {{ classes }} فصول</span>
-              </div>
-            </div>
-          </div>
-          <div class="flex items-center gap-3 flex-wrap">
-            <span class="flex items-center gap-1 px-4 py-2 bg-white rounded-xl border border-green-200 text-sm text-green-700"><span class="w-2 h-2 rounded-full bg-green-500"></span> {{ freeCount }} فترات متاحة</span>
-            <span class="flex items-center gap-1 px-4 py-2 bg-white rounded-xl border border-red-200 text-sm text-red-700"><span class="w-2 h-2 rounded-full bg-red-500"></span> {{ busyCount }} فترات مشغولة</span>
-          </div>
-        </header>
-        <!-- Summary Stats -->
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-stack-lg">
-          <div class="stat-card" style="background:#fff;border-radius:16px;padding:16px;text-align:center;border:1px solid #e8ecf5;">
-            <div class="stat-icon bg-primary/10 text-primary" style="width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 8px;">
-              <span class="material-symbols-outlined">schedule</span>
-            </div>
-            <div class="text-2xl font-bold text-primary">{{ busyCount + freeCount }}</div>
-            <div class="text-xs text-outline mt-1">إجمالي الفترات</div>
-          </div>
-          <div class="stat-card" style="background:#fff;border-radius:16px;padding:16px;text-align:center;border:1px solid #e8ecf5;">
-            <div class="stat-icon bg-red-50 text-red-600" style="width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 8px;">
-              <span class="material-symbols-outlined">work</span>
-            </div>
-            <div class="text-2xl font-bold text-red-600">{{ busyCount }}</div>
-            <div class="text-xs text-outline mt-1">حصص مشغولة</div>
-          </div>
-          <div class="stat-card" style="background:#fff;border-radius:16px;padding:16px;text-align:center;border:1px solid #e8ecf5;">
-            <div class="stat-icon bg-green-50 text-green-600" style="width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 8px;">
-              <span class="material-symbols-outlined">check_circle</span>
-            </div>
-            <div class="text-2xl font-bold text-green-600">{{ freeCount }}</div>
-            <div class="text-xs text-outline mt-1">فترات متاحة</div>
-          </div>
-          <div class="stat-card" style="background:#fff;border-radius:16px;padding:16px;text-align:center;border:1px solid #e8ecf5;">
-            <div class="stat-icon bg-amber-50 text-amber-600" style="width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 8px;">
-              <span class="material-symbols-outlined">access_time</span>
-            </div>
-            <div class="text-2xl font-bold text-amber-600">{{ totalHours.toFixed(1) }}</div>
-            <div class="text-xs text-outline mt-1">ساعات التدريس</div>
-          </div>
+<app-sidebar [(isOpen)]="sidebarOpen" />
+<div class="main-content">
+  <app-topbar [userName]="displayUserName" />
+  <main class="pt-16 h-screen flex flex-col bg-background p-6">
+
+    <!-- Header -->
+    <div class="mb-6 teacher-hero">
+      <div class="teacher-hero-copy">
+        <span class="teacher-eyebrow">Teacher Timetable</span>
+        <h2 class="font-headline-lg text-headline-lg text-primary mb-2 flex items-center gap-2">
+          <span class="material-symbols-outlined text-4xl">calendar_today</span> جدولي الشخصي
+        </h2>
+        <p class="font-body-md text-on-surface-variant">يعرض هذا الجدول جميع الحصص المكلف بها عبر مختلف الفصول.</p>
+      </div>
+
+      <div class="teacher-hero-stats">
+        <div class="teacher-stat-card">
+          <span class="teacher-stat-label">إجمالي الحصص</span>
+          <strong class="teacher-stat-value">{{ slots().length }}</strong>
+          <span class="teacher-stat-hint">الحصص المسندة لك هذا العام</span>
         </div>
-        <!-- Timetable Grid -->
-        <div id="timetableContainer" class="bg-surface rounded-2xl shadow-sm border border-outline-variant/10 overflow-x-auto">
-          <div class="tt-grid" style="display: grid; grid-template-columns: 90px repeat(5, 1fr); gap: 1px; background-color: #e0e1f3; border-radius: 12px; overflow: hidden;">
-            <div class="tt-header-cell" style="background: #f8f9ff; padding: 14px 12px; display:flex;align-items:center;justify-content:center;font-weight:600;color:#475569;border-bottom:2px solid #e0e1f3;">
-              <span style="position:absolute;font-size:12px;font-weight:600;top:8px;left:8px;color:#64748b;font-weight:500;font-size:11px;">اليوم</span>
-              <span style="position:absolute;font-size:12px;font-weight:600;bottom:8px;right:8px;color:#00236f;">الفترة</span>
-            </div>
-            @for (day of days; track day) {
-              <div class="tt-header-cell" style="background: #f8f9ff; padding: 14px 12px; display:flex;align-items:center;justify-content:center;font-weight:600;color:#475569;border-bottom:2px solid #e0e1f3;">{{ day }}</div>
-            }
-            @for (period of periods; track period.label; let pi = $index) {
-              @if (period.isBreak) {
-                <div class="break-cell" style="grid-column: span 6;background:#f3f4f6;text-align:center;padding:8px;font-size:12px;font-weight:600;color:#6b7280;display:flex;align-items:center;justify-content:center;gap:6px;">
-                  <span class="material-symbols-outlined text-sm">free_breakfast</span>
-                  {{ period.label }} ({{ period.start }} - {{ period.end }})
-                </div>
-              } @else {
-                <div class="tt-cell" style="background:#f8f9ff;border-left:1px solid #e8ecf5;min-height:auto;padding:10px 8px;display:flex;flex-direction:column;justify-content:center;">
-                  <div class="font-bold text-primary text-xs">{{ period.label }}</div>
-                  <div class="text-[10px] text-outline">{{ period.start }} - {{ period.end }}</div>
-                </div>
-                @for (day of days; track day; let di = $index) {
-                  @let cellData = getCell(pi, di);
-                  @if (cellData) {
-                    <div class="tt-cell {{ classTypes[cellData.type % classTypes.length] }}" style="padding:12px;min-height:80px;display:flex;flex-direction:column;justify-content:center;">
-                      <div class="flex items-center justify-between mb-1">
-                        <span class="font-bold text-sm" style="color:#1e293b;">{{ cellData.name }}</span>
-                        <span class="badge-busy" style="font-size:11px;background:rgba(239,68,68,0.1);color:#dc2626;padding:3px 10px;border-radius:100px;display:inline-flex;align-items:center;gap:4px;font-weight:600;"><span class="material-symbols-outlined text-[10px]">circle</span> مشغول</span>
-                      </div>
-                      <div class="flex items-center gap-1 text-[11px] text-outline">
-                        <span class="material-symbols-outlined text-[11px]">pin_drop</span> {{ cellData.loc }}
-                      </div>
-                    </div>
-                  } @else {
-                    <div class="tt-cell available" style="background:#f0fdf4;border-right:4px solid #86efac;padding:12px;min-height:80px;display:flex;flex-direction:column;justify-content:center;">
-                      <div class="flex items-center justify-center h-full">
-                        <span class="badge-free" style="font-size:11px;background:rgba(22,163,74,0.1);color:#16a34a;padding:3px 10px;border-radius:100px;display:inline-flex;align-items:center;gap:4px;font-weight:600;"><span class="material-symbols-outlined text-[10px]">check_circle</span> متاح</span>
-                      </div>
-                    </div>
-                  }
-                }
-              }
-            }
-          </div>
+
+        <div class="teacher-stat-card accent">
+          <span class="teacher-stat-label">عدد الفترات اليومية</span>
+          <strong class="teacher-stat-value">{{ periods().length }}</strong>
+          <span class="teacher-stat-hint">مستخرجة تلقائيًا من بيانات الجدول</span>
         </div>
-        <!-- Legend -->
-        <div class="mt-4 flex items-center gap-6 text-xs text-outline flex-wrap">
-          <div class="flex items-center gap-2"><span class="w-3 h-3 rounded" style="background:#0052cc;"></span> مشغول</div>
-          <div class="flex items-center gap-2"><span class="w-3 h-3 rounded" style="background:#86efac;"></span> متاح</div>
-          <div class="flex items-center gap-2"><span class="w-3 h-3 rounded" style="background:#f3f4f6;"></span> استراحة</div>
-          <div class="mr-auto">آخر تحديث: <span>{{ today }}</span></div>
-        </div>
-      </main>
+      </div>
     </div>
+
+    <!-- Error banner: بيظهر لما يحصل خطأ في الـ API -->
+    <div *ngIf="errorMessage()"
+         class="flex items-center gap-3 p-4 mb-4 rounded-xl bg-red-50 text-error border border-error/20 font-body-sm">
+      <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">error</span>
+      {{ errorMessage() }}
+      <button (click)="loadSchedule()"
+              class="mr-auto text-xs underline hover:no-underline">
+        إعادة المحاولة
+      </button>
+    </div>
+
+    <!-- Schedule grid card -->
+    <div class="flex-1 overflow-auto bg-surface-container-lowest rounded-2xl border border-outline-variant/30 shadow-sm relative teacher-table-shell">
+
+      <!-- Loading spinner -->
+      <div *ngIf="isLoading()" class="absolute inset-0 bg-white/80 z-10 flex items-center justify-center">
+        <span class="material-symbols-outlined animate-spin text-4xl text-primary">progress_activity</span>
+      </div>
+
+      <!--
+        FIX: كان الشرط "scheduleData()" — بس scheduleData كانت بتتحط فيها الـ OperationResult
+             كاملاً (object) فكانت دايماً truthy حتى لو مفيش slots.
+             دلوقتي slots() هي الـ array نفسها — فالشرط واضح ومباشر.
+      -->
+      <table *ngIf="!isLoading() && slots().length > 0"
+             class="w-full border-collapse min-w-[800px] text-center teacher-table">
+        <thead>
+          <tr class="bg-surface-container-low border-b border-outline-variant/30">
+            <th class="p-4 border-l border-outline-variant/30 w-32 font-bold text-on-surface">اليوم / الحصة</th>
+            <th *ngFor="let p of periods()" class="p-4 border-l border-outline-variant/30 font-bold text-on-surface">
+              <div class="text-sm">{{ p.label }}</div>
+              <div class="text-xs text-on-surface-variant font-normal">{{ p.start }} - {{ p.end }}</div>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let day of days"
+              class="border-b border-outline-variant/30 hover:bg-surface-container-lowest transition-colors">
+
+            <td class="p-4 border-l border-outline-variant/30 font-bold text-primary bg-surface-container-lowest/50">
+              {{ day.label }}
+            </td>
+
+            <td *ngFor="let p of periods()" class="border-l border-outline-variant/30 h-24 p-2 relative">
+              <!--
+                getSlot() بتتنادى مرة واحدة بس للخلية بفضل "as slot"
+                بدل ما كانت بتتنادى 4-5 مرات لكل خلية (مرة للـ ngIf + مرة لكل property)
+              -->
+              <ng-container *ngIf="getSlot(day.value, p.num) as slot">
+                <div class="w-full h-full flex flex-col justify-center items-center text-sm p-1 rounded-xl bg-primary/10 border border-primary/20">
+
+                  <!-- Break -->
+                  <ng-container *ngIf="slot.isBreak; else lessonTpl">
+                    <span class="material-symbols-outlined text-secondary mb-1">local_cafe</span>
+                    <span class="font-bold text-secondary">راحة</span>
+                  </ng-container>
+
+                  <!-- Lesson -->
+                  <ng-template #lessonTpl>
+                    <span class="font-bold text-primary mb-1">{{ slot.subjectName }}</span>
+                    <div class="flex flex-col items-center text-xs text-on-surface-variant gap-0.5">
+                      <span>{{ slot.className }}</span>
+                      <span *ngIf="slot.roomName" class="text-secondary">{{ slot.roomName }}</span>
+                    </div>
+                  </ng-template>
+
+                </div>
+              </ng-container>
+            </td>
+
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Empty state: الـ API رجع بنجاح بس مفيش حصص للمعلم ده -->
+      <div *ngIf="!isLoading() && hasLoaded() && !errorMessage() && slots().length === 0"
+           class="h-full flex flex-col items-center justify-center text-on-surface-variant p-10">
+        <span class="material-symbols-outlined text-6xl mb-4 opacity-50">event_busy</span>
+        <h3 class="font-headline-md mb-2">لا توجد حصص مجدولة</h3>
+        <p class="font-body-md">لم يتم تسجيل أي حصص لك في العام الدراسي الحالي بعد.</p>
+      </div>
+
+    </div>
+  </main>
+</div>

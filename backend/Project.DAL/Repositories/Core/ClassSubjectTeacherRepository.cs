@@ -59,7 +59,8 @@ public class ClassSubjectTeacherRepository : Repository<ClassSubjectTeacher>, IC
         => await _context.ClassSubjectTeachers
             .Where(cst =>
                 cst.SubjectId == subjectId &&
-                cst.AcademicYearId == academicYearId)
+                cst.AcademicYearId == academicYearId &&
+                !cst.IsDeleted)
             .Include(cst => cst.Class)
                 .ThenInclude(c => c.GradeLevel)
             .Include(cst => cst.Teacher)
@@ -90,7 +91,8 @@ public class ClassSubjectTeacherRepository : Repository<ClassSubjectTeacher>, IC
             .AnyAsync(cst =>
                 cst.ClassId == classId &&
                 cst.SubjectId == subjectId &&
-                cst.AcademicYearId == academicYearId, ct);
+                cst.AcademicYearId == academicYearId &&
+                !cst.IsDeleted, ct);
 
 
     public async Task<IReadOnlyList<SchoolClass>> GetClassesForTeacherAsync(

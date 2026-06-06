@@ -10,6 +10,9 @@ public class TeacherScheduleSlotDto
     public int      PeriodNumber          { get; set; }
     public TimeOnly StartTime             { get; set; }
     public TimeOnly EndTime               { get; set; }
+    // FIX 1: IsBreak was missing — the frontend template reads slot.isBreak
+    //        and the entity carries this flag on every slot.
+    public bool     IsBreak               { get; set; }
     public int?     ClassSubjectTeacherId { get; set; }
     public string?  SubjectName           { get; set; }
     public string?  RoomName              { get; set; }

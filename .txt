@@ -1,0 +1,36 @@
+
+دلوقتي كنت براجع من ai الصفح سواءا في backend او front ودلوقتي وصلت 
+ل 8. class-schedule/عرض جدول الفصل/الطالب
+وهو اللي عايزينه مش البقاقي علشان فيه كذا جدول زي بتاع الادمن والملعلم وولي الامر بس لا احنا دلوقتي فقي الطالب
+وتوقلي المشاكل سواء في الاتنين والتحسيناتنعمل خطه عمل
+وشوف ملفات Interceptor ‘لشان هو الصفحات بتتعامل مع operationresult بطريقة معينه
+و اتعلم من الصفح ده معمول صح فحللها وشوها عامله ايه واتعلم علشان صفحة جدول الطالب كويس 
+إدارة المواد الدراسية
+class-management/
+إدارة الفصول الدراسية
+room-management/
+إدارة قاعات المدرسة وأنواعها
+teacher-assignments/
+
+
+. admin-schedule/ — الأدمن بيدير ويشوف جداول الفصول ✅ خلصت
+2. class-schedule/ — الطالب بيشوف جدول فصله هو 👈 دي اللي بنشتغل عليها دلوقتي، بتنادي /my-student-schedule/current-year وبترجع TimetableDto مباشرة
+3. teacher-schedule/ — المعلم بيشوف جدول حصصه هو، بينادي /my-schedule/current-year وبترجع IEnumerable<TeacherScheduleSlotDto> — وده structure مختلف عن الـ TimetableDto
+4. parent-schedule/ — ولي الأمر بيشوف جداول أبناؤه كلهم، بينادي /my-child-schedules/current-year وبترجع IEnumerable<ChildScheduleDto>settings/
+إدارة السنوات الدراسية والمراحل التعليمية
+subject-management/
+إدارة المواد الدراسية
+class-management/
+إدارة الفصول الدراسية
+room-management/
+إدارة قاعات المدرسة وأنواعها
+teacher-assignments/
+ربط المعلم + المادة + الفصل + النصاب الأسبوعي
+admin-schedule/
+بناء الجداول الدراسية التفاعلية للأدمن
+teacher-schedule/
+عرض جدول المعلم
+class-schedule/
+عرض جدول الفصل/الطالب
+parent-schedule/
+عرض جداول الأبناء لولي الأمر

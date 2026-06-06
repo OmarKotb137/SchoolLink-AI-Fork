@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Project.DAL.Interfaces;
 using Project.DAL.Interfaces.Repositories.Communication;
@@ -38,6 +38,7 @@ public class UnitOfWork : IUnitOfWork
         IStudentEnrollmentRepository           studentEnrollments,
         IParentStudentRepository               parentStudents,
         IClassSubjectTeacherRepository         classSubjectTeachers,
+        ITeacherSubjectRepository              teacherSubjects,
 
         IEvaluationTemplateRepository          evaluationTemplates,
         IEvaluationItemRepository              evaluationItems,
@@ -97,6 +98,7 @@ public class UnitOfWork : IUnitOfWork
         ClassSubjectTeachers         = classSubjectTeachers;
         Units                        = units;
         Lessons                      = lessons;
+        TeacherSubjects              = teacherSubjects;
 
         // Section B
         EvaluationTemplates          = evaluationTemplates;
@@ -163,6 +165,7 @@ public class UnitOfWork : IUnitOfWork
     public IStudentEnrollmentRepository           StudentEnrollments           { get; }
     public IParentStudentRepository               ParentStudents               { get; }
     public IClassSubjectTeacherRepository         ClassSubjectTeachers         { get; }
+    public ITeacherSubjectRepository              TeacherSubjects              { get; }
     public IRepository<Unit>                      Units                        { get; }
     public IRepository<Lesson>                    Lessons                      { get; }
 

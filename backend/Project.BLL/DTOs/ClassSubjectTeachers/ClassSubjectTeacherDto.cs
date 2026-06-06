@@ -11,4 +11,5 @@ public class ClassSubjectTeacherDto
     public string TeacherName      { get; set; } = string.Empty;
     public int    AcademicYearId   { get; set; }
     public string AcademicYearName { get; set; } = string.Empty;
+    public int    WeeklyPeriods    { get; set; }
 }

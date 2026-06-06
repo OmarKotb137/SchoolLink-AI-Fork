@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Project.Domain.Entities;
 
 namespace Project.DAL.Context;
@@ -16,6 +16,7 @@ public class AppDbContext : DbContext
     public DbSet<StudentEnrollment> StudentEnrollments => Set<StudentEnrollment>();
     public DbSet<ParentStudent> ParentStudents => Set<ParentStudent>();
     public DbSet<ClassSubjectTeacher> ClassSubjectTeachers => Set<ClassSubjectTeacher>();
+    public DbSet<TeacherSubject> TeacherSubjects => Set<TeacherSubject>();
     public DbSet<ClassTemplateLink> ClassTemplateLinks => Set<ClassTemplateLink>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     

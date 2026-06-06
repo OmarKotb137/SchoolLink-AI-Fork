@@ -21,3 +21,5 @@ Thumbs.db
 /tests/SchoolLink.Tests
 /backend/Project.API/logs
 /backend/Project.DAL/Migrations
+docs/platform.md
+/chat.txt

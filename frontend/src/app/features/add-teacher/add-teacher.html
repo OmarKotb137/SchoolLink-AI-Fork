@@ -2,86 +2,250 @@
 <div class="main-content">
   <app-topbar userName="أحمد" />
   <main class="p-gutter-desktop">
-    <div class="max-w-4xl mx-auto flex flex-col gap-stack-lg">
+    <div class="max-w-6xl mx-auto flex flex-col gap-stack-lg">
 
-      <div>
-        <h1 class="font-headline-lg text-headline-lg" style="font-weight:800;background:linear-gradient(135deg,#00236f,#6b7280);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">إضافة معلم جديد</h1>
-        <p class="font-body-md text-body-md text-outline">إضافة مدرس جديد وتحديد المواد والفصول التي يدرسها</p>
+      <div class="page-header-card">
+        <div>
+          <span class="section-eyebrow">إدارة المعلمين</span>
+          <h1 class="font-headline-lg text-headline-lg page-title">بيانات المعلم وتخصصاته</h1>
+          <p class="font-body-md text-body-md text-outline page-description">
+            من هنا تضيف حساب المعلم وتحدد المواد التي يمكنه تدريسها. أما إسناده الفعلي لفصل ومادة خلال سنة دراسية معينة فيتم من صفحة التعيينات.
+          </p>
+        </div>
       </div>
 
-      <div class="glass-card" style="padding:24px;">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-stack-md">
-          <div class="flex flex-col gap-1">
-            <label class="font-label-md text-label-md" style="font-weight:600;">الاسم</label>
-            <input class="glass-input" placeholder="مثال: أ. أحمد علي" [value]="newName()" (input)="newName.set($any($event.target).value)" />
+      <div class="summary-grid">
+        <div class="summary-card">
+          <span class="summary-label">إجمالي المعلمين</span>
+          <strong class="summary-value">{{ getTeachersCount() }}</strong>
+          <span class="summary-hint">عدد الحسابات المسجلة في النظام</span>
+        </div>
+        <div class="summary-card success">
+          <span class="summary-label">المعلمين النشطين</span>
+          <strong class="summary-value">{{ getActiveTeachersCount() }}</strong>
+          <span class="summary-hint">المتاحون للعمل حاليا</span>
+        </div>
+        <div class="summary-card warning">
+          <span class="summary-label">غير النشطين</span>
+          <strong class="summary-value">{{ getInactiveTeachersCount() }}</strong>
+          <span class="summary-hint">حسابات موقوفة أو معطلة</span>
+        </div>
+        <div class="summary-card">
+          <span class="summary-label">نتائج الفلترة الحالية</span>
+          <strong class="summary-value">{{ getFilteredTeachersCount() }}</strong>
+          <span class="summary-hint">عدد المعلمين الظاهرين حسب البحث والفلاتر</span>
+        </div>
+      </div>
+
+      @if (errorMessage()) {
+        <div class="banner error-banner">
+          <span class="material-symbols-outlined">error</span>
+          <span>{{ errorMessage() }}</span>
+        </div>
+      }
+      @if (successMessage()) {
+        <div class="banner success-banner">
+          <span class="material-symbols-outlined">check_circle</span>
+          <span>{{ successMessage() }}</span>
+        </div>
+      }
+
+      <div class="glass-card teacher-form-card">
+        <div class="card-heading-row">
+          <div>
+            <h2 class="font-headline-md text-headline-md">إضافة معلم جديد</h2>
+            <p class="font-body-sm text-outline">هذه الصفحة خاصة ببيانات المعلم العامة وتخصصاته فقط.</p>
           </div>
-          <div class="flex flex-col gap-1">
-            <label class="font-label-md text-label-md" style="font-weight:600;">البريد الإلكتروني</label>
-            <input class="glass-input" type="email" placeholder="teacher@school.com" [value]="newEmail()" (input)="newEmail.set($any($event.target).value)" />
-          </div>
-          <div class="flex flex-col gap-1">
-            <label class="font-label-md text-label-md" style="font-weight:600;">كلمة المرور</label>
-            <input class="glass-input" type="password" placeholder="******" [value]="newPassword()" (input)="newPassword.set($any($event.target).value)" />
-          </div>
-          <div class="flex flex-col gap-1">
-            <label class="font-label-md text-label-md" style="font-weight:600;">رقم الهاتف</label>
-            <input class="glass-input" type="tel" placeholder="01012345678" [value]="newPhone()" (input)="newPhone.set($any($event.target).value)" />
+          <div class="inline-tip-chip">
+            <span class="material-symbols-outlined">school</span>
+            <span>الخطوة التالية بعد الحفظ: صفحة التعيينات</span>
           </div>
         </div>
 
-        <div class="flex flex-col gap-1 mt-4">
-          <label class="font-label-md text-label-md" style="font-weight:600;">المواد الدراسية</label>
-          <div class="flex flex-wrap gap-2">
-            @for (s of allSubjects; track s) {
-              <button class="px-3 py-1.5 rounded-lg text-label-sm font-label-sm transition-all"
-                [class.gradient-btn]="selectedSubjects().includes(s)"
-                [class.secondary-btn-glass]="!selectedSubjects().includes(s)"
-                (click)="toggleSubject(s)">{{ s }}</button>
+        <div class="section-block">
+          <div class="section-block-header">
+            <h3 class="font-label-lg">1. بيانات الحساب</h3>
+            <p class="font-body-sm text-outline">أدخل الاسم والبريد الإلكتروني وكلمة المرور الأساسية للمعلم.</p>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-stack-md">
+            <div class="flex flex-col gap-1">
+              <label class="font-label-md text-label-md field-label">الاسم <span class="required-star">*</span></label>
+              <input class="glass-input" placeholder="مثال: أ. أحمد علي" [value]="newName()" (input)="newName.set($any($event.target).value)" />
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="font-label-md text-label-md field-label">البريد الإلكتروني <span class="required-star">*</span></label>
+              <input class="glass-input" type="email" placeholder="teacher@school.com" [value]="newEmail()" (input)="newEmail.set($any($event.target).value)" />
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="font-label-md text-label-md field-label">كلمة المرور <span class="required-star">*</span></label>
+              <input class="glass-input" type="password" placeholder="6 أحرف على الأقل" [value]="newPassword()" (input)="newPassword.set($any($event.target).value)" />
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="font-label-md text-label-md field-label">رقم الهاتف</label>
+              <input class="glass-input" type="tel" placeholder="01012345678" [value]="newPhone()" (input)="newPhone.set($any($event.target).value)" />
+            </div>
+          </div>
+        </div>
+
+        <div class="section-block specialization-block">
+          <div class="section-block-header row-between">
+            <div>
+              <h3 class="font-label-lg">2. المواد التي يمكنه تدريسها</h3>
+              <p class="font-body-sm text-outline">هذه المواد تحفظ كتخصصات للمعلم، وليست تعيينا على فصل.</p>
+            </div>
+            @if (selectedSubjectIds().length > 0) {
+              <button class="secondary-btn-glass small-btn" type="button" (click)="clearSelectedSubjects()">
+                مسح التحديد
+              </button>
             }
           </div>
-        </div>
 
-        <div class="flex flex-col gap-1 mt-4">
-          <label class="font-label-md text-label-md" style="font-weight:600;">الفصول</label>
-          <div class="flex flex-wrap gap-2">
-            @for (c of allClasses; track c) {
-              <button class="px-3 py-1.5 rounded-lg text-label-sm font-label-sm transition-all"
-                [class.gradient-btn]="selectedClasses().includes(c)"
-                [class.secondary-btn-glass]="!selectedClasses().includes(c)"
-                (click)="toggleClass(c)">{{ c }}</button>
-            }
+          <div class="selected-subjects-panel">
+            <div class="selected-subjects-count">
+              <span class="material-symbols-outlined">menu_book</span>
+              <span>عدد المواد المختارة: {{ selectedSubjectIds().length }}</span>
+            </div>
+            <p class="selected-subjects-text">{{ getSelectedSubjectsText() }}</p>
+          </div>
+
+          @if (allSubjects().length === 0) {
+            <p class="text-outline font-body-sm">جار تحميل المواد...</p>
+          } @else {
+            <div class="flex flex-wrap gap-2">
+              @for (s of allSubjects(); track s.id) {
+                <button class="px-3 py-1.5 rounded-lg text-label-sm font-label-sm transition-all"
+                  type="button"
+                  [class.gradient-btn]="selectedSubjectIds().includes(s.id)"
+                  [class.secondary-btn-glass]="!selectedSubjectIds().includes(s.id)"
+                  (click)="toggleSubject(s.id)">{{ s.name }}</button>
+              }
+            </div>
+          }
+
+          <div class="info-note">
+            <span class="material-symbols-outlined">info</span>
+            <p>الفصول والسنة الدراسية لا يتم تحديدها هنا، لأن الإسناد الفعلي يدار من صفحة التعيينات بحسب كل سنة دراسية.</p>
           </div>
         </div>
 
-        <div class="flex justify-end gap-3 mt-6 pt-4" style="border-top:1px solid rgba(0,0,0,0.06);">
-          <button class="secondary-btn-glass" (click)="resetForm()">إلغاء</button>
-          <button class="gradient-btn" (click)="saveTeacher()">
-            <span class="material-symbols-outlined">save</span>
-            حفظ المعلم
+        <div class="form-actions-row">
+          <button class="secondary-btn-glass" (click)="resetForm()">تفريغ الحقول</button>
+          <button class="gradient-btn" (click)="saveTeacher()" [disabled]="!canSaveTeacher()">
+            @if (isLoading()) {
+              <span class="material-symbols-outlined spin-icon">refresh</span>
+              جار الحفظ...
+            } @else {
+              <span class="material-symbols-outlined">person_add</span>
+              إضافة المعلم
+            }
           </button>
         </div>
       </div>
 
       <div class="glass-table-container">
+        <div class="table-header-row">
+          <div>
+            <h2 class="font-headline-md text-headline-md">قائمة المعلمين</h2>
+            <p class="font-body-sm text-outline">تستطيع مراجعة حالة كل معلم وتعديل تخصصاته أو تفعيله أو تعطيله أو حذفه عند الحاجة.</p>
+          </div>
+        </div>
+
+        <div class="teacher-filters-card">
+          <div class="search-box teacher-search-box">
+            <span class="material-symbols-outlined">search</span>
+            <input
+              class="glass-input"
+              placeholder="ابحث بالاسم أو البريد أو الهاتف..."
+              [value]="searchQuery()"
+              (input)="searchQuery.set($any($event.target).value)"
+            />
+          </div>
+
+          <div class="filter-group">
+            <label class="field-label">الحالة</label>
+            <select class="glass-select compact-select" [value]="statusFilter()" (change)="statusFilter.set($any($event.target).value)">
+              <option value="all">الكل</option>
+              <option value="active">نشط</option>
+              <option value="inactive">غير نشط</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label class="field-label">المادة</label>
+            <select class="glass-select compact-select" [value]="subjectFilter()" (change)="subjectFilter.set($any($event.target).value === 'all' ? 'all' : +$any($event.target).value)">
+              <option value="all">كل المواد</option>
+              @for (subject of allSubjects(); track subject.id) {
+                <option [value]="subject.id">{{ subject.name }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="filter-actions">
+            <button class="secondary-btn-glass small-btn" type="button" (click)="resetFilters()">
+              إعادة ضبط
+            </button>
+          </div>
+        </div>
+
         <div class="overflow-x-auto">
           <table class="w-full">
             <thead>
               <tr>
                 <th class="text-right p-4 font-label-md text-outline">الاسم</th>
                 <th class="text-right p-4 font-label-md text-outline">البريد الإلكتروني</th>
-                <th class="text-right p-4 font-label-md text-outline">المواد</th>
-                <th class="text-right p-4 font-label-md text-outline">الفصول</th>
-                <th class="text-center p-4 font-label-md text-outline"></th>
+                <th class="text-right p-4 font-label-md text-outline">الهاتف</th>
+                <th class="text-right p-4 font-label-md text-outline">التخصصات</th>
+                <th class="text-right p-4 font-label-md text-outline">الحالة</th>
+                <th class="text-center p-4 font-label-md text-outline">إجراءات</th>
               </tr>
             </thead>
             <tbody>
-              @for (t of teachers(); track t.id) {
+              @if (teachers().length === 0) {
                 <tr>
-                  <td class="p-4 font-body-md" style="font-weight:700;">{{ t.name }}</td>
+                  <td colspan="6" class="p-10 text-center text-outline font-body-md">
+                    <div class="empty-state-block">
+                      <span class="material-symbols-outlined">person_search</span>
+                      <p>لا يوجد معلمون مسجلون حتى الآن. أضف أول معلم من النموذج أعلاه.</p>
+                    </div>
+                  </td>
+                </tr>
+              } @else if (filteredTeachers().length === 0) {
+                <tr>
+                  <td colspan="6" class="p-10 text-center text-outline font-body-md">
+                    <div class="empty-state-block">
+                      <span class="material-symbols-outlined">filter_alt_off</span>
+                      <p>لا توجد نتائج مطابقة للفلاتر الحالية.</p>
+                    </div>
+                  </td>
+                </tr>
+              }
+              @for (t of filteredTeachers(); track t.id) {
+                <tr>
+                  <td class="p-4 font-body-md teacher-name-cell">{{ t.fullName }}</td>
                   <td class="p-4 font-body-md text-outline">{{ t.email }}</td>
-                  <td class="p-4"><div class="flex flex-wrap gap-1">@for (s of t.subjects; track s) {<span class="px-2 py-0.5 bg-white/40 backdrop-blur-sm rounded text-label-sm text-primary" style="font-weight:600;">{{ s }}</span>}</div></td>
-                  <td class="p-4"><div class="flex flex-wrap gap-1">@for (c of t.classes; track c) {<span class="px-2 py-0.5 bg-secondary/10 rounded text-label-sm text-secondary" style="font-weight:600;">{{ c }}</span>}</div></td>
-                  <td class="p-4"><div class="flex items-center justify-center gap-1"><button class="p-2 rounded-lg hover:bg-white/50 text-outline hover:text-secondary" (click)="editTeacher(t)"><span class="material-symbols-outlined">edit</span></button><button class="p-2 rounded-lg hover:bg-white/50 text-outline hover:text-error" (click)="deleteTeacher(t.id)"><span class="material-symbols-outlined">delete</span></button></div></td>
+                  <td class="p-4 font-body-md text-outline">{{ t.phone || '—' }}</td>
+                  <td class="p-4 font-body-md text-outline subjects-cell">{{ getTeacherSubjectsText(t) }}</td>
+                  <td class="p-4">
+                    <span class="status-chip"
+                      [class.active-chip]="t.isActive"
+                      [class.inactive-chip]="!t.isActive">
+                      {{ t.isActive ? 'نشط' : 'غير نشط' }}
+                    </span>
+                  </td>
+                  <td class="p-4">
+                    <div class="flex items-center justify-center gap-1">
+                      <button class="icon-action-btn" (click)="editTeacher(t)" title="تعديل بيانات المعلم">
+                        <span class="material-symbols-outlined">edit</span>
+                      </button>
+                      <button class="icon-action-btn" (click)="toggleTeacherStatus(t)" [title]="t.isActive ? 'تعطيل المعلم' : 'تفعيل المعلم'">
+                        <span class="material-symbols-outlined">{{ t.isActive ? 'toggle_off' : 'toggle_on' }}</span>
+                      </button>
+                      <button class="icon-action-btn danger" (click)="deleteTeacher(t.id)" title="حذف المعلم أو تعطيله نهائيًا حسب التعيينات">
+                        <span class="material-symbols-outlined">delete</span>
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               }
             </tbody>
@@ -95,29 +259,71 @@
 
 @if (showEditModal()) {
   <div class="fixed inset-0 z-[60] flex items-center justify-center glass-overlay p-margin-mobile" (click)="closeEditModal()">
-    <div class="glass-modal max-w-xl w-full max-h-[90vh] overflow-y-auto" (click)="$event.stopPropagation()">
+    <div class="glass-modal max-w-2xl w-full max-h-[90vh] overflow-y-auto" (click)="$event.stopPropagation()">
       <div class="glass-modal-header flex justify-between items-center">
-        <h2 class="font-headline-md text-headline-md" style="font-weight:700;">تعديل معلم</h2>
-        <button class="p-2 rounded-full hover:bg-black/5 transition-colors" (click)="closeEditModal()"><span class="material-symbols-outlined">close</span></button>
+        <div>
+          <h2 class="font-headline-md text-headline-md modal-title">تعديل بيانات المعلم</h2>
+          <p class="font-body-sm text-outline">يمكنك تعديل البيانات الأساسية والتخصصات فقط من هنا.</p>
+        </div>
+        <button class="p-2 rounded-full hover:bg-black/5 transition-colors" (click)="closeEditModal()">
+          <span class="material-symbols-outlined">close</span>
+        </button>
       </div>
+
       <div class="p-stack-lg flex flex-col gap-stack-md">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-stack-md">
-          <div class="flex flex-col gap-1"><label class="font-label-md" style="font-weight:600;">الاسم</label><input class="glass-input" [value]="newName()" (input)="newName.set($any($event.target).value)" /></div>
-          <div class="flex flex-col gap-1"><label class="font-label-md" style="font-weight:600;">البريد الإلكتروني</label><input class="glass-input" type="email" [value]="newEmail()" (input)="newEmail.set($any($event.target).value)" /></div>
-          <div class="flex flex-col gap-1"><label class="font-label-md" style="font-weight:600;">رقم الهاتف</label><input class="glass-input" type="tel" [value]="newPhone()" (input)="newPhone.set($any($event.target).value)" /></div>
+          <div class="flex flex-col gap-1">
+            <label class="font-label-md field-label">الاسم <span class="required-star">*</span></label>
+            <input class="glass-input" [value]="newName()" (input)="newName.set($any($event.target).value)" />
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="font-label-md field-label">رقم الهاتف</label>
+            <input class="glass-input" type="tel" [value]="newPhone()" (input)="newPhone.set($any($event.target).value)" />
+          </div>
         </div>
-        <div class="flex flex-col gap-1">
-          <label class="font-label-md" style="font-weight:600;">المواد</label>
-          <div class="flex flex-wrap gap-2">@for (s of allSubjects; track s) {<button class="px-3 py-1.5 rounded-lg text-label-sm font-label-sm transition-all" [class.gradient-btn]="selectedSubjects().includes(s)" [class.secondary-btn-glass]="!selectedSubjects().includes(s)" (click)="toggleSubject(s)">{{ s }}</button>}</div>
+
+        <div class="section-block specialization-block compact-block">
+          <div class="section-block-header row-between">
+            <div>
+              <h3 class="font-label-lg">تخصصات المعلم</h3>
+              <p class="font-body-sm text-outline">يجب أن تظل هناك مادة واحدة على الأقل مربوطة بالمعلم.</p>
+            </div>
+            @if (selectedSubjectIds().length > 0) {
+              <button class="secondary-btn-glass small-btn" type="button" (click)="clearSelectedSubjects()">
+                مسح التحديد
+              </button>
+            }
+          </div>
+
+          <p class="selected-subjects-text compact-text">{{ getSelectedSubjectsText() }}</p>
+
+          <div class="flex flex-wrap gap-2">
+            @for (s of allSubjects(); track s.id) {
+              <button class="px-3 py-1.5 rounded-lg text-label-sm font-label-sm transition-all"
+                type="button"
+                [class.gradient-btn]="selectedSubjectIds().includes(s.id)"
+                [class.secondary-btn-glass]="!selectedSubjectIds().includes(s.id)"
+                (click)="toggleSubject(s.id)">{{ s.name }}</button>
+            }
+          </div>
         </div>
-        <div class="flex flex-col gap-1">
-          <label class="font-label-md" style="font-weight:600;">الفصول</label>
-          <div class="flex flex-wrap gap-2">@for (c of allClasses; track c) {<button class="px-3 py-1.5 rounded-lg text-label-sm font-label-sm transition-all" [class.gradient-btn]="selectedClasses().includes(c)" [class.secondary-btn-glass]="!selectedClasses().includes(c)" (click)="toggleClass(c)">{{ c }}</button>}</div>
+
+        <div class="info-note soft-note">
+          <span class="material-symbols-outlined">tips_and_updates</span>
+          <p>لتغيير البريد الإلكتروني أو كلمة المرور استخدم إدارة الحسابات، أما إسناد المعلم للفصول فيتم من صفحة التعيينات.</p>
         </div>
       </div>
+
       <div class="glass-modal-footer flex justify-end gap-3">
         <button class="secondary-btn-glass" (click)="closeEditModal()">إلغاء</button>
-        <button class="gradient-btn" (click)="updateTeacher()">حفظ التغييرات</button>
+        <button class="gradient-btn" (click)="updateTeacher()" [disabled]="!canUpdateTeacher()">
+          @if (isLoading()) {
+            <span class="material-symbols-outlined spin-icon">refresh</span>
+            جار الحفظ...
+          } @else {
+            حفظ التغييرات
+          }
+        </button>
       </div>
     </div>
   </div>

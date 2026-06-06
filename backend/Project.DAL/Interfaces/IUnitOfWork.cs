@@ -1,4 +1,4 @@
-﻿using Project.DAL.Interfaces.Repositories.Core;
+using Project.DAL.Interfaces.Repositories.Core;
 using Project.DAL.Interfaces.Repositories.Evaluation;
 using Project.DAL.Interfaces.Repositories.Learning;
 using Project.DAL.Interfaces.Repositories.Communication;
@@ -29,6 +29,7 @@ public interface IUnitOfWork : IDisposable, IAsyncDisposable
     IClassSubjectTeacherRepository         ClassSubjectTeachers         { get; }
     IRepository<Unit>                      Units                        { get; }
     IRepository<Lesson>                    Lessons                      { get; }
+    ITeacherSubjectRepository              TeacherSubjects              { get; }
 
     // Section B: Evaluation (Academic)
     IEvaluationTemplateRepository          EvaluationTemplates          { get; }

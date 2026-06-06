@@ -15,4 +15,7 @@ public class AssignTeacherRequest
 
     [Range(1, int.MaxValue)]
     public int AcademicYearId { get; set; }
+
+    [Range(1, int.MaxValue)]
+    public int WeeklyPeriods { get; set; }
 }

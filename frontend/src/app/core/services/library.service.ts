@@ -1,12 +1,12 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { GetLibraryFilter, LibraryItemDto, OperationResult, PagedResult } from '../models/library.model';
-import { environment } from '../../../environments/environment';
+import { buildApiUrl } from '../utils/api-url';
 
 @Injectable({ providedIn: 'root' })
 export class LibraryService {
   private http = inject(HttpClient);
-  private base = environment.apiUrl;
+  private base = buildApiUrl();
 
   // --- Library Endpoints ---
 

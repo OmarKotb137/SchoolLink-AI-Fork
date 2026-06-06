@@ -3,24 +3,109 @@
   <app-topbar userName="أحمد" />
   <main class="p-gutter-desktop">
     <div class="max-w-6xl mx-auto flex flex-col gap-stack-lg">
-
-      <div>
-        <h1 class="font-headline-lg text-headline-lg" style="font-weight:800;background:linear-gradient(135deg,#00236f,#1a4a9e);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">إدارة المستخدمين</h1>
-        <p class="font-body-md text-body-md text-outline">إدارة المدرسين والطلاب في النظام</p>
+      <div class="page-header-card">
+        <div>
+          <span class="section-eyebrow">إدارة الحسابات</span>
+          <h1 class="font-headline-lg text-headline-lg page-title">حسابات الأدمن وأولياء الأمور وحسابات الطلاب</h1>
+          <p class="font-body-md text-body-md text-outline page-description">
+            هذه الصفحة مخصصة للحسابات العامة فقط. من هنا تنشئ حسابات الأدمن وأولياء الأمور وحسابات الطلاب، كما يمكنك إدارة أبناء ولي الأمر مباشرة من نفس الصفحة.
+          </p>
+        </div>
       </div>
 
-      <div class="glass-tabs">
-        <button class="glass-tab" [class.active]="activeTab() === 'teachers'" (click)="activeTab.set('teachers')">المدرسون</button>
-        <button class="glass-tab" [class.active]="activeTab() === 'students'" (click)="activeTab.set('students')">الطلاب</button>
+      <div class="summary-grid">
+        <div class="summary-card">
+          <span class="summary-label">إجمالي الحسابات</span>
+          <strong class="summary-value">{{ totalCount() }}</strong>
+          <span class="summary-hint">كل الحسابات العامة في النظام</span>
+        </div>
+        <div class="summary-card success">
+          <span class="summary-label">الحسابات النشطة</span>
+          <strong class="summary-value">{{ activeCount() }}</strong>
+          <span class="summary-hint">جاهزة لتسجيل الدخول حاليا</span>
+        </div>
+        <div class="summary-card">
+          <span class="summary-label">الأدمن</span>
+          <strong class="summary-value">{{ adminCount() }}</strong>
+          <span class="summary-hint">حسابات الإدارة</span>
+        </div>
+        <div class="summary-card">
+          <span class="summary-label">أولياء الأمور</span>
+          <strong class="summary-value">{{ parentCount() }}</strong>
+          <span class="summary-hint">حسابات أولياء الأمور</span>
+        </div>
+        <div class="summary-card warning">
+          <span class="summary-label">حسابات الطلاب</span>
+          <strong class="summary-value">{{ studentCount() }}</strong>
+          <span class="summary-hint">حسابات الدخول الخاصة بالطلاب</span>
+        </div>
       </div>
 
-      @if (activeTab() === 'teachers') {
-        <div class="flex justify-between items-center">
-          <p class="font-body-md text-body-md text-outline">إجمالي المدرسين: {{ teachers().length }}</p>
-          <button class="gradient-btn" (click)="openAddTeacher()">
-            <span class="material-symbols-outlined">add</span>
-            إضافة مدرس
+      @if (errorMessage()) {
+        <div class="banner error-banner">
+          <span class="material-symbols-outlined">error</span>
+          <span>{{ errorMessage() }}</span>
+        </div>
+      }
+      @if (successMessage()) {
+        <div class="banner success-banner">
+          <span class="material-symbols-outlined">check_circle</span>
+          <span>{{ successMessage() }}</span>
+        </div>
+      }
+
+      <div class="quick-actions-grid">
+        <button class="glass-action-card" type="button" (click)="openCreateModal('Admin')">
+          <span class="material-symbols-outlined">admin_panel_settings</span>
+          <strong>إضافة أدمن</strong>
+          <span>إنشاء حساب إداري جديد</span>
+        </button>
+        <button class="glass-action-card" type="button" (click)="openCreateModal('Parent')">
+          <span class="material-symbols-outlined">family_restroom</span>
+          <strong>إضافة ولي أمر</strong>
+          <span>ثم إدارة الأبناء والربط من هنا</span>
+        </button>
+        <button class="glass-action-card" type="button" (click)="openCreateModal('Student')">
+          <span class="material-symbols-outlined">badge</span>
+          <strong>إضافة حساب طالب</strong>
+          <span>حساب دخول فقط بدون ملف أكاديمي</span>
+        </button>
+        <button class="glass-action-card secondary" type="button" (click)="navigateTo('/teacher-management')">
+          <span class="material-symbols-outlined">school</span>
+          <strong>إدارة المعلمين</strong>
+          <span>للبيانات والتخصصات والتعيينات</span>
+        </button>
+        <button class="glass-action-card secondary" type="button" (click)="navigateTo('/student-management')">
+          <span class="material-symbols-outlined">groups</span>
+          <strong>إدارة الطلاب</strong>
+          <span>للملفات الأكاديمية وربط الحسابات</span>
+        </button>
+      </div>
+
+      <div class="glass-card teacher-form-card">
+        <div class="card-heading-row">
+          <div>
+            <h2 class="font-headline-md text-headline-md">قائمة الحسابات</h2>
+            <p class="font-body-sm text-outline">يمكنك البحث والتصفية وإدارة حالة الحسابات العامة من هنا.</p>
+          </div>
+          <button class="gradient-btn" type="button" (click)="openCreateModal()">
+            <span class="material-symbols-outlined">person_add</span>
+            إضافة حساب
           </button>
+        </div>
+
+        <div class="toolbar-row">
+          <div class="glass-tabs">
+            <button class="glass-tab" [class.active]="activeTab() === 'all'" (click)="activeTab.set('all')">الكل</button>
+            <button class="glass-tab" [class.active]="activeTab() === 'admins'" (click)="activeTab.set('admins')">الأدمن</button>
+            <button class="glass-tab" [class.active]="activeTab() === 'parents'" (click)="activeTab.set('parents')">أولياء الأمور</button>
+            <button class="glass-tab" [class.active]="activeTab() === 'students'" (click)="activeTab.set('students')">حسابات الطلاب</button>
+          </div>
+
+          <div class="search-box">
+            <span class="material-symbols-outlined">search</span>
+            <input class="glass-input" placeholder="ابحث بالاسم أو البريد أو الهاتف..." [value]="searchQuery()" (input)="searchQuery.set($any($event.target).value)" />
+          </div>
         </div>
 
         <div class="glass-table-container">
@@ -29,125 +114,318 @@
               <thead>
                 <tr>
                   <th class="text-right p-4 font-label-md text-outline">الاسم</th>
+                  <th class="text-right p-4 font-label-md text-outline">الدور</th>
                   <th class="text-right p-4 font-label-md text-outline">البريد الإلكتروني</th>
-                  <th class="text-right p-4 font-label-md text-outline">المواد</th>
-                  <th class="text-right p-4 font-label-md text-outline">الفصول</th>
-                  <th class="text-center p-4 font-label-md text-outline"></th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (t of teachers(); track t.id) {
-                  <tr>
-                    <td class="p-4 font-body-md" style="font-weight:700;">{{ t.name }}</td>
-                    <td class="p-4 font-body-md text-outline">{{ t.email }}</td>
-                    <td class="p-4"><div class="flex flex-wrap gap-1">@for (s of t.subjects; track s) {<span class="px-2 py-0.5 bg-white/40 backdrop-blur-sm rounded text-label-sm text-primary" style="font-weight:600;">{{ s }}</span>}</div></td>
-                    <td class="p-4"><div class="flex flex-wrap gap-1">@for (c of t.classes; track c) {<span class="px-2 py-0.5 bg-secondary/10 rounded text-label-sm text-secondary" style="font-weight:600;">{{ c }}</span>}</div></td>
-                    <td class="p-4"><div class="flex items-center justify-center gap-1"><button class="p-2 rounded-lg hover:bg-white/50 text-outline hover:text-secondary" (click)="openEditTeacher(t)"><span class="material-symbols-outlined">edit</span></button><button class="p-2 rounded-lg hover:bg-white/50 text-outline hover:text-error" (click)="deleteTeacher(t.id)"><span class="material-symbols-outlined">delete</span></button></div></td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
-        </div>
-      }
-
-      @if (activeTab() === 'students') {
-        <div class="flex justify-between items-center">
-          <div class="flex items-center gap-3">
-            <p class="font-body-md text-body-md text-outline">إجمالي الطلاب: {{ students().length }}</p>
-            <select class="glass-select" style="padding:8px 14px;" [value]="classFilter()" (change)="classFilter.set($any($event.target).value)">
-              <option value="all">كل الفصول</option>
-              @for (c of studentClasses(); track c) { <option [value]="c">{{ c }}</option> }
-            </select>
-          </div>
-          <button class="gradient-btn" (click)="openAddStudent()">
-            <span class="material-symbols-outlined">add</span>
-            إضافة طالب
-          </button>
-        </div>
-
-        <div class="glass-table-container">
-          <div class="overflow-x-auto">
-            <table class="w-full">
-              <thead>
-                <tr>
-                  <th class="text-right p-4 font-label-md text-outline">اسم الطالب</th>
-                  <th class="text-right p-4 font-label-md text-outline">الفصل</th>
-                  <th class="text-right p-4 font-label-md text-outline">ولي الأمر</th>
                   <th class="text-right p-4 font-label-md text-outline">الهاتف</th>
-                  <th class="text-center p-4 font-label-md text-outline"></th>
+                  <th class="text-right p-4 font-label-md text-outline">الحالة</th>
+                  <th class="text-right p-4 font-label-md text-outline">إدارة الأبناء</th>
+                  <th class="text-center p-4 font-label-md text-outline">الإجراءات</th>
                 </tr>
               </thead>
               <tbody>
-                @for (s of filteredStudents(); track s.id) {
+                @if (isLoading()) {
                   <tr>
-                    <td class="p-4 font-body-md" style="font-weight:700;">{{ s.name }}</td>
-                    <td class="p-4 font-body-md text-outline">{{ s.class }}</td>
-                    <td class="p-4 font-body-md text-outline">{{ s.guardianName }}</td>
-                    <td class="p-4 font-body-md text-outline" dir="ltr">{{ s.guardianPhone }}</td>
-                    <td class="p-4"><div class="flex items-center justify-center gap-1"><button class="p-2 rounded-lg hover:bg-white/50 text-outline hover:text-secondary" (click)="openEditStudent(s)"><span class="material-symbols-outlined">edit</span></button><button class="p-2 rounded-lg hover:bg-white/50 text-outline hover:text-error" (click)="deleteStudent(s.id)"><span class="material-symbols-outlined">delete</span></button></div></td>
+                    <td colspan="7" class="p-10 text-center text-outline font-body-md">جار تحميل الحسابات...</td>
+                  </tr>
+                } @else if (filteredUsers().length === 0) {
+                  <tr>
+                    <td colspan="7" class="p-10 text-center text-outline font-body-md">
+                      <div class="empty-state-block">
+                        <span class="material-symbols-outlined">manage_accounts</span>
+                        <p>لا توجد حسابات مطابقة للفلاتر الحالية.</p>
+                      </div>
+                    </td>
+                  </tr>
+                }
+
+                @for (user of filteredUsers(); track user.id) {
+                  <tr>
+                    <td class="p-4 font-body-md teacher-name-cell">{{ user.fullName }}</td>
+                    <td class="p-4">
+                      <span class="role-chip">{{ getRoleLabel(user.role) }}</span>
+                    </td>
+                    <td class="p-4 font-body-md text-outline">{{ user.email }}</td>
+                    <td class="p-4 font-body-md text-outline">{{ user.phone || '—' }}</td>
+                    <td class="p-4">
+                      <span class="status-chip" [class.active-chip]="user.isActive" [class.inactive-chip]="!user.isActive">
+                        {{ user.isActive ? 'نشط' : 'غير نشط' }}
+                      </span>
+                    </td>
+                    <td class="p-4">
+                      @if (user.role.toLowerCase() === 'parent') {
+                        <button class="secondary-btn-glass small-btn" type="button" (click)="openParentLinksModal(user)">
+                          <span class="material-symbols-outlined">groups</span>
+                          إدارة الأبناء
+                        </button>
+                      } @else {
+                        <span class="text-outline">—</span>
+                      }
+                    </td>
+                    <td class="p-4">
+                      <div class="flex items-center justify-center gap-1">
+                        <button class="icon-action-btn" type="button" title="تعديل الحساب" (click)="openEditModal(user)">
+                          <span class="material-symbols-outlined">edit</span>
+                        </button>
+                        <button class="icon-action-btn" type="button" [title]="user.isActive ? 'تعطيل الحساب' : 'تفعيل الحساب'" (click)="toggleAccountStatus(user)">
+                          <span class="material-symbols-outlined">{{ user.isActive ? 'toggle_off' : 'toggle_on' }}</span>
+                        </button>
+                        <button class="icon-action-btn danger" type="button" title="حذف الحساب" (click)="deleteAccount(user)">
+                          <span class="material-symbols-outlined">delete</span>
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 }
               </tbody>
             </table>
           </div>
         </div>
-      }
-
+      </div>
     </div>
   </main>
 </div>
 
-@if (showAddModal()) {
-  <div class="fixed inset-0 z-[60] flex items-center justify-center glass-overlay p-margin-mobile" (click)="closeModal()">
-    <div class="glass-modal max-w-xl w-full max-h-[90vh] overflow-y-auto" (click)="$event.stopPropagation()">
+@if (showCreateModal()) {
+  <div class="fixed inset-0 z-[60] flex items-center justify-center glass-overlay p-margin-mobile" (click)="closeModals()">
+    <div class="glass-modal max-w-2xl w-full max-h-[90vh] overflow-y-auto" (click)="$event.stopPropagation()">
       <div class="glass-modal-header flex justify-between items-center">
-        <h2 class="font-headline-md text-headline-md" style="font-weight:700;">
-          @if (activeTab() === 'teachers') {
-            {{ editingTeacherId() ? 'تعديل مدرس' : 'إضافة مدرس' }}
-          } @else {
-            {{ editingStudentId() ? 'تعديل طالب' : 'إضافة طالب' }}
-          }
-        </h2>
-        <button class="p-2 rounded-full hover:bg-black/5" (click)="closeModal()"><span class="material-symbols-outlined">close</span></button>
+        <div>
+          <h2 class="font-headline-md text-headline-md modal-title">إضافة حساب جديد</h2>
+          <p class="font-body-sm text-outline">هذه الصفحة للحسابات العامة فقط: أدمن، ولي أمر، أو حساب طالب.</p>
+        </div>
+        <button class="p-2 rounded-full hover:bg-black/5 transition-colors" (click)="closeModals()">
+          <span class="material-symbols-outlined">close</span>
+        </button>
       </div>
+
       <div class="p-stack-lg flex flex-col gap-stack-md">
-        @if (activeTab() === 'teachers') {
-          <div class="grid grid-cols-1 gap-stack-md">
-            <div class="flex flex-col gap-1"><label class="font-label-md" style="font-weight:600;">الاسم</label><input class="glass-input" [value]="newTeacherName()" (input)="newTeacherName.set($any($event.target).value)" /></div>
-            <div class="flex flex-col gap-1"><label class="font-label-md" style="font-weight:600;">البريد الإلكتروني</label><input class="glass-input" type="email" [value]="newTeacherEmail()" (input)="newTeacherEmail.set($any($event.target).value)" /></div>
-            @if (!editingTeacherId()) {
-              <div class="flex flex-col gap-1"><label class="font-label-md" style="font-weight:600;">كلمة المرور</label><input class="glass-input" type="password" [value]="newTeacherPassword()" (input)="newTeacherPassword.set($any($event.target).value)" /></div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-stack-md">
+          <div class="flex flex-col gap-1">
+            <label class="font-label-md field-label">الاسم الكامل <span class="required-star">*</span></label>
+            <input class="glass-input" [value]="formName()" (input)="formName.set($any($event.target).value)" />
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="font-label-md field-label">نوع الحساب <span class="required-star">*</span></label>
+            <select class="glass-select" [value]="formRole()" (change)="formRole.set($any($event.target).value)">
+              <option value="Admin">أدمن</option>
+              <option value="Parent">ولي أمر</option>
+              <option value="Student">حساب طالب</option>
+            </select>
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="font-label-md field-label">البريد الإلكتروني <span class="required-star">*</span></label>
+            <input class="glass-input" type="email" [value]="formEmail()" (input)="formEmail.set($any($event.target).value)" />
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="font-label-md field-label">رقم الهاتف</label>
+            <input class="glass-input" type="tel" [value]="formPhone()" (input)="formPhone.set($any($event.target).value)" />
+          </div>
+          <div class="flex flex-col gap-1 md:col-span-2">
+            <label class="font-label-md field-label">كلمة المرور <span class="required-star">*</span></label>
+            <input class="glass-input" type="password" [value]="formPassword()" (input)="formPassword.set($any($event.target).value)" />
+          </div>
+        </div>
+
+        <div class="info-note">
+          <span class="material-symbols-outlined">info</span>
+          <p>إنشاء المعلمين يتم من إدارة المعلمين. يمكنك بعد إنشاء ولي الأمر فتح "إدارة الأبناء" من الجدول لربطه بالطلاب وتعديل صلة القرابة.</p>
+        </div>
+      </div>
+
+      <div class="glass-modal-footer flex justify-end gap-3">
+        <button class="secondary-btn-glass" (click)="closeModals()">إلغاء</button>
+        <button class="gradient-btn" (click)="saveAccount()" [disabled]="!canSaveAccount()">
+          @if (isLoading()) {
+            <span class="material-symbols-outlined spin-icon">refresh</span>
+            جار الحفظ...
+          } @else {
+            حفظ الحساب
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (showEditModal()) {
+  <div class="fixed inset-0 z-[60] flex items-center justify-center glass-overlay p-margin-mobile" (click)="closeModals()">
+    <div class="glass-modal max-w-2xl w-full max-h-[90vh] overflow-y-auto" (click)="$event.stopPropagation()">
+      <div class="glass-modal-header flex justify-between items-center">
+        <div>
+          <h2 class="font-headline-md text-headline-md modal-title">تعديل الحساب</h2>
+          <p class="font-body-sm text-outline">يمكن تعديل الاسم والهاتف من هنا. تغيير الدور أو البريد غير متاح حاليًا من الـ API.</p>
+        </div>
+        <button class="p-2 rounded-full hover:bg-black/5 transition-colors" (click)="closeModals()">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <div class="p-stack-lg flex flex-col gap-stack-md">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-stack-md">
+          <div class="flex flex-col gap-1">
+            <label class="font-label-md field-label">الاسم الكامل <span class="required-star">*</span></label>
+            <input class="glass-input" [value]="formName()" (input)="formName.set($any($event.target).value)" />
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="font-label-md field-label">نوع الحساب</label>
+            <input class="glass-input" [value]="getRoleLabel(formRole())" disabled />
+          </div>
+          <div class="flex flex-col gap-1 md:col-span-2">
+            <label class="font-label-md field-label">رقم الهاتف</label>
+            <input class="glass-input" type="tel" [value]="formPhone()" (input)="formPhone.set($any($event.target).value)" />
+          </div>
+        </div>
+
+        <div class="info-note soft-note">
+          <span class="material-symbols-outlined">tips_and_updates</span>
+          <p>لإنشاء أو إدارة المعلمين استخدم إدارة المعلمين. أما أولياء الأمور فإدارة الحساب والربط بالأبناء تتم من هنا.</p>
+        </div>
+      </div>
+
+      <div class="glass-modal-footer flex justify-end gap-3">
+        <button class="secondary-btn-glass" (click)="closeModals()">إلغاء</button>
+        <button class="gradient-btn" (click)="updateAccount()" [disabled]="!canUpdateAccount()">
+          @if (isLoading()) {
+            <span class="material-symbols-outlined spin-icon">refresh</span>
+            جار الحفظ...
+          } @else {
+            حفظ التغييرات
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (showParentLinksModal()) {
+  <div class="fixed inset-0 z-[60] flex items-center justify-center glass-overlay p-margin-mobile" (click)="closeParentLinksModal()">
+    <div class="glass-modal parent-links-modal max-w-4xl w-full max-h-[90vh] overflow-y-auto" (click)="$event.stopPropagation()">
+      <div class="glass-modal-header flex justify-between items-center">
+        <div>
+          <h2 class="font-headline-md text-headline-md modal-title">إدارة أبناء ولي الأمر</h2>
+          <p class="font-body-sm text-outline">
+            @if (managingParent(); as parent) {
+              {{ parent.fullName }} - {{ parent.email }}
             }
-            <div class="flex flex-col gap-1">
-              <label class="font-label-md" style="font-weight:600;">المواد</label>
-              <div class="flex flex-wrap gap-2">@for (s of allSubjects; track s) {<button class="px-3 py-1.5 rounded-lg text-label-sm font-label-sm transition-all" [class.gradient-btn]="newTeacherSubjects().includes(s)" [class.secondary-btn-glass]="!newTeacherSubjects().includes(s)" (click)="toggleSubject(s)">{{ s }}</button>}</div>
+          </p>
+        </div>
+        <button class="p-2 rounded-full hover:bg-black/5 transition-colors" (click)="closeParentLinksModal()">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <div class="p-stack-lg flex flex-col gap-stack-md">
+        <div class="parent-links-summary">
+          <div class="summary-mini-card">
+            <span class="summary-label">عدد الأبناء الحالي</span>
+            <strong class="summary-value mini">{{ managedParentChildrenCount() }}</strong>
+          </div>
+          <div class="summary-mini-card">
+            <span class="summary-label">طلاب متاحون للربط</span>
+            <strong class="summary-value mini">{{ availableStudentsForParent().length }}</strong>
+          </div>
+        </div>
+
+        <div class="parent-link-create">
+          <div class="flex flex-col gap-1">
+            <label class="font-label-md field-label">اختر الطالب</label>
+            <select class="glass-select" [value]="selectedStudentToLink() ?? ''" (change)="selectedStudentToLink.set($any($event.target).value ? +$any($event.target).value : null)">
+              <option value="">اختر طالبًا للربط</option>
+              @for (student of availableStudentsForParent(); track student.id) {
+                <option [value]="student.id">{{ student.fullName }} @if (student.nationalId) { - {{ student.nationalId }} }</option>
+              }
+            </select>
+          </div>
+
+          <div class="flex flex-col gap-1">
+            <label class="font-label-md field-label">صلة القرابة</label>
+            <select class="glass-select" [value]="selectedRelationship()" (change)="setSelectedRelationshipFromValue($any($event.target).value)">
+              <option value="1">الأب</option>
+              <option value="2">الأم</option>
+              <option value="3">الوصي</option>
+              <option value="4">أخ / أخت</option>
+              <option value="5">أخرى</option>
+            </select>
+          </div>
+
+          <div class="parent-link-actions">
+            <button class="gradient-btn" type="button" (click)="linkStudentToParent()" [disabled]="isLoading() || !selectedStudentToLink()">
+              <span class="material-symbols-outlined">person_add</span>
+              ربط الطالب
+            </button>
+          </div>
+        </div>
+
+        <div class="glass-table-container">
+          <div class="table-caption-row">
+            <div>
+              <h3 class="font-headline-md text-headline-md">الأبناء المرتبطون</h3>
+              <p class="font-body-sm text-outline">يمكنك تعديل صلة القرابة أو فك الربط من هنا.</p>
             </div>
-            <div class="flex flex-col gap-1">
-              <label class="font-label-md" style="font-weight:600;">الفصول</label>
-              <div class="flex flex-wrap gap-2">@for (c of allClasses; track c) {<button class="px-3 py-1.5 rounded-lg text-label-sm font-label-sm transition-all" [class.gradient-btn]="newTeacherClasses().includes(c)" [class.secondary-btn-glass]="!newTeacherClasses().includes(c)" (click)="toggleClass(c)">{{ c }}</button>}</div>
-            </div>
           </div>
-          <div class="glass-modal-footer flex justify-end gap-3" style="border-top:1px solid rgba(0,0,0,0.06);margin-top:16px;padding-top:16px;">
-            <button class="secondary-btn-glass" (click)="closeModal()">إلغاء</button>
-            <button class="gradient-btn" (click)="saveTeacher()">حفظ</button>
+
+          <div class="overflow-x-auto">
+            <table class="w-full">
+              <thead>
+                <tr>
+                  <th class="text-right p-4 font-label-md text-outline">الطالب</th>
+                  <th class="text-right p-4 font-label-md text-outline">الرقم القومي</th>
+                  <th class="text-right p-4 font-label-md text-outline">صلة القرابة</th>
+                  <th class="text-center p-4 font-label-md text-outline">إجراءات</th>
+                </tr>
+              </thead>
+              <tbody>
+                @if (isLoading() && parentLinkedStudents().length === 0) {
+                  <tr>
+                    <td colspan="4" class="p-10 text-center text-outline font-body-md">جار تحميل أبناء ولي الأمر...</td>
+                  </tr>
+                } @else if (parentLinkedStudents().length === 0) {
+                  <tr>
+                    <td colspan="4" class="p-10 text-center text-outline font-body-md">
+                      <div class="empty-state-block">
+                        <span class="material-symbols-outlined">family_restroom</span>
+                        <p>لا يوجد أبناء مرتبطون بهذا الحساب حتى الآن.</p>
+                      </div>
+                    </td>
+                  </tr>
+                }
+
+                @for (item of parentLinkedStudents(); track item.student.id) {
+                  <tr>
+                    <td class="p-4 font-body-md teacher-name-cell">{{ item.student.fullName }}</td>
+                    <td class="p-4 font-body-md text-outline">{{ item.student.nationalId || '—' }}</td>
+                    <td class="p-4">
+                      @if (item.link) {
+                        <select class="glass-select compact-select" [value]="item.link.relationship" (change)="updateParentRelationship(item.link, $any($event.target).value)">
+                          <option value="1">الأب</option>
+                          <option value="2">الأم</option>
+                          <option value="3">الوصي</option>
+                          <option value="4">أخ / أخت</option>
+                          <option value="5">أخرى</option>
+                        </select>
+                      } @else {
+                        <span class="text-outline">{{ getRelationshipLabel(null) }}</span>
+                      }
+                    </td>
+                    <td class="p-4">
+                      <div class="flex items-center justify-center gap-1">
+                        @if (item.link) {
+                          <button class="icon-action-btn danger" type="button" title="فك الربط" (click)="unlinkStudentFromParent(item.link)">
+                            <span class="material-symbols-outlined">link_off</span>
+                          </button>
+                        }
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
           </div>
-        }
-        @if (activeTab() === 'students') {
-          <div class="grid grid-cols-1 gap-stack-md">
-            <div class="flex flex-col gap-1"><label class="font-label-md" style="font-weight:600;">اسم الطالب</label><input class="glass-input" [value]="newStudentName()" (input)="newStudentName.set($any($event.target).value)" /></div>
-            <div class="flex flex-col gap-1">
-              <label class="font-label-md" style="font-weight:600;">الفصل</label>
-              <select class="glass-select" [value]="newStudentClass()" (change)="newStudentClass.set($any($event.target).value)"><option value="">اختر الفصل...</option>@for (c of allClasses; track c) {<option [value]="c">{{ c }}</option>}</select>
-            </div>
-            <div class="flex flex-col gap-1"><label class="font-label-md" style="font-weight:600;">اسم ولي الأمر</label><input class="glass-input" [value]="newGuardianName()" (input)="newGuardianName.set($any($event.target).value)" /></div>
-            <div class="flex flex-col gap-1"><label class="font-label-md" style="font-weight:600;">هاتف ولي الأمر</label><input class="glass-input" type="tel" [value]="newGuardianPhone()" (input)="newGuardianPhone.set($any($event.target).value)" /></div>
-          </div>
-          <div class="glass-modal-footer flex justify-end gap-3" style="border-top:1px solid rgba(0,0,0,0.06);margin-top:16px;padding-top:16px;">
-            <button class="secondary-btn-glass" (click)="closeModal()">إلغاء</button>
-            <button class="gradient-btn" (click)="saveStudent()">حفظ</button>
-          </div>
-        }
+        </div>
+      </div>
+
+      <div class="glass-modal-footer flex justify-end gap-3">
+        <button class="secondary-btn-glass" (click)="closeParentLinksModal()">إغلاق</button>
       </div>
     </div>
   </div>

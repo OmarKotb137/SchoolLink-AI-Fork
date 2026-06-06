@@ -1,7 +1,7 @@
 import { Component, input, inject, computed } from '@angular/core';
 import { Router } from '@angular/router';
 import { RoleService } from '../../shared/role.service';
-import { ROLE_MENUS } from '../../shared/menus';
+import { ROLE_MENUS, SidebarMenuItem } from '../../shared/menus';
 
 @Component({
   selector: 'app-topbar',
@@ -27,14 +27,16 @@ export class Topbar {
       student: 'طالب',
       parent: 'ولي أمر',
     };
-    return roleLabels[this.roleService.currentRole()] ?? '';
+    const role = this.roleService.currentRole();
+    return role ? roleLabels[role] ?? '' : '';
   });
 
   navItems = computed(() => {
-    const items = ROLE_MENUS[this.roleService.currentRole()] ?? [];
+    const role = this.roleService.currentRole();
+    const items: SidebarMenuItem[] = role ? (ROLE_MENUS[role] ?? []) : [];
     const homeItem = items[0];
-    const chatItem = items.find(i => i.icon === 'chat' || i.label.includes('المحادثات'));
-    const notifItem = items.find(i => i.icon === 'notifications');
+    const chatItem = items.find((i: SidebarMenuItem) => i.icon === 'chat' || i.label.includes('المحادثات'));
+    const notifItem = items.find((i: SidebarMenuItem) => i.icon === 'notifications');
     return { home: homeItem, chat: chatItem, notif: notifItem };
   });
 

@@ -1,0 +1,175 @@
+<app-sidebar [(isOpen)]="sidebarOpen" />
+<div class="main-content">
+  <app-topbar [userName]="displayUserName" />
+  <main class="pt-16 h-screen flex flex-col bg-background">
+    <div class="flex-1 p-stack-lg overflow-y-auto custom-scrollbar">
+      <div class="max-w-7xl mx-auto space-y-stack-lg pb-10 room-page-shell">
+
+        <section class="management-hero">
+          <div class="hero-copy">
+            <span class="hero-eyebrow">Room Management</span>
+            <h2 class="font-headline-lg text-headline-lg text-on-surface hero-title">إدارة القاعات والمرافق</h2>
+            <p class="font-body-md text-body-md text-on-surface-variant hero-description">
+              تنظيم أوضح لإدارة القاعات وأنواعها وسعتها، مع عرض أنظف يسهل مراجعته قبل استخدامه داخل الجداول.
+            </p>
+          </div>
+
+          <div class="hero-stats">
+            <div class="hero-stat-card">
+              <span class="hero-stat-label">القاعات المعروضة</span>
+              <strong class="hero-stat-value">{{ rooms().length }}</strong>
+              <span class="hero-stat-hint">تعكس نتيجة الفلتر الحالية</span>
+            </div>
+
+            <div class="hero-stat-card accent">
+              <span class="hero-stat-label">أنواع القاعات</span>
+              <strong class="hero-stat-value">{{ roomTypes.length }}</strong>
+              <span class="hero-stat-hint">{{ editingRoomId() ? 'يوجد عنصر قيد التعديل' : 'جاهزة لإضافة قاعة جديدة' }}</span>
+            </div>
+          </div>
+        </section>
+
+        <div class="feedback-stack">
+          <div *ngIf="errorMessage()" class="feedback-banner error">
+            <span class="material-symbols-outlined text-base">error</span>
+            <span class="font-body-md">{{ errorMessage() }}</span>
+          </div>
+          <div *ngIf="successMessage()" class="feedback-banner success">
+            <span class="material-symbols-outlined text-base">check_circle</span>
+            <span class="font-body-md">{{ successMessage() }}</span>
+          </div>
+        </div>
+
+        <div class="management-grid">
+          <section class="editor-card" [class.editor-card-active]="editingRoomId()">
+            <div class="section-heading">
+              <div>
+                <h3 class="font-headline-md text-headline-md text-primary flex items-center gap-2">
+                  <span class="material-symbols-outlined">{{ editingRoomId() ? 'edit' : 'domain_add' }}</span>
+                  {{ editingRoomId() ? 'تعديل بيانات القاعة' : 'إضافة قاعة جديدة' }}
+                </h3>
+                <p class="text-sm text-on-surface-variant mt-1">
+                  استخدم اسمًا واضحًا ونوعًا مناسبًا وسعة دقيقة حتى تكون القاعات جاهزة للتخصيص في الجداول.
+                </p>
+              </div>
+
+              <span class="editor-chip">
+                {{ editingRoomId() ? (newRoom.name || 'قاعة قيد التعديل') : 'عنصر جديد' }}
+              </span>
+            </div>
+
+            <div class="form-grid">
+              <div>
+                <label class="field-label">اسم/رقم القاعة</label>
+                <input
+                  type="text"
+                  [(ngModel)]="newRoom.name"
+                  placeholder="مثال: معمل الحاسب أو غرفة 12"
+                  class="field-input">
+              </div>
+
+              <div>
+                <label class="field-label">السعة الاستيعابية</label>
+                <input
+                  type="number"
+                  [(ngModel)]="newRoom.capacity"
+                  min="1"
+                  class="field-input">
+              </div>
+
+              <div>
+                <label class="field-label">نوع القاعة</label>
+                <select [(ngModel)]="newRoom.type" class="field-input">
+                  <option *ngFor="let t of roomTypes" [value]="t.value">{{ t.label }}</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="editor-actions">
+              <button *ngIf="editingRoomId()" (click)="cancelEdit()" class="secondary-btn">
+                إلغاء
+              </button>
+              <button (click)="saveRoom()" class="primary-btn">
+                <span class="material-symbols-outlined">save</span>
+                {{ editingRoomId() ? 'حفظ التحديث' : 'إضافة القاعة' }}
+              </button>
+            </div>
+          </section>
+
+          <section class="data-card">
+            <div class="section-heading">
+              <div>
+                <h3 class="font-headline-md text-headline-md text-primary flex items-center gap-2">
+                  <span class="material-symbols-outlined">meeting_room</span>
+                  قائمة القاعات
+                </h3>
+                <p class="text-sm text-on-surface-variant mt-1">
+                  فلترة حسب النوع ثم تعديل أو حذف أي قاعة مباشرة من الجدول.
+                </p>
+              </div>
+
+              <span class="data-chip">{{ selectedTypeFilter || 'كل الأنواع' }}</span>
+            </div>
+
+            <div class="filters-panel">
+              <div class="filter-field full">
+                <label class="field-label">فلترة حسب النوع</label>
+                <select [(ngModel)]="selectedTypeFilter" (change)="onFilterChange()" class="field-input filter-input">
+                  <option value="">كل الأنواع</option>
+                  <option *ngFor="let t of roomTypes" [value]="t.value">{{ t.label }}</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="table-shell">
+              <table class="management-table">
+                <thead>
+                  <tr>
+                    <th>اسم/رقم القاعة</th>
+                    <th>النوع</th>
+                    <th class="text-center">السعة</th>
+                    <th class="text-center">إجراءات</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  <tr *ngFor="let room of rooms()">
+                    <td>
+                      <div class="item-title">{{ room.name }}</div>
+                    </td>
+                    <td>
+                      <span class="soft-badge secondary">{{ getRoomTypeLabel(room.type) }}</span>
+                    </td>
+                    <td class="text-center">
+                      <div class="capacity-pill">{{ room.capacity ?? '—' }}</div>
+                    </td>
+                    <td>
+                      <div class="table-actions">
+                        <button (click)="editRoom(room)" class="icon-btn primary" title="تعديل">
+                          <span class="material-symbols-outlined text-sm">edit</span>
+                        </button>
+                        <button (click)="deleteRoom(room.id)" class="icon-btn danger" title="حذف">
+                          <span class="material-symbols-outlined text-sm">delete</span>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+
+                  <tr *ngIf="rooms().length === 0">
+                    <td colspan="4" class="empty-cell">
+                      <div class="empty-state">
+                        <span class="material-symbols-outlined text-4xl opacity-50">meeting_room</span>
+                        <p>لا توجد قاعات مطابقة. قم بإضافة قاعات جديدة.</p>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+      </div>
+    </div>
+  </main>
+</div>

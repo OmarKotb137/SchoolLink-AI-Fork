@@ -1,0 +1,194 @@
+<app-sidebar [(isOpen)]="sidebarOpen" />
+<div class="main-content">
+  <app-topbar [userName]="displayUserName" />
+  <main class="pt-16 h-screen flex flex-col bg-background">
+    <div class="flex-1 p-stack-lg overflow-y-auto custom-scrollbar">
+      <div class="max-w-7xl mx-auto space-y-stack-lg pb-10 subject-page-shell">
+
+        <section class="management-hero">
+          <div class="hero-copy">
+            <span class="hero-eyebrow">Subject Management</span>
+            <h2 class="font-headline-lg text-headline-lg text-on-surface hero-title">إدارة المواد الدراسية</h2>
+            <p class="font-body-md text-body-md text-on-surface-variant hero-description">
+              شاشة أوضح لإضافة المواد وتعديلها والبحث فيها بسرعة، مع فصل واضح بين منطقة الإدخال ومنطقة البيانات.
+            </p>
+          </div>
+
+          <div class="hero-stats">
+            <div class="hero-stat-card">
+              <span class="hero-stat-label">المواد المعروضة</span>
+              <strong class="hero-stat-value">{{ subjects().length }}</strong>
+              <span class="hero-stat-hint">يتغير العدد حسب البحث الحالي</span>
+            </div>
+
+            <div class="hero-stat-card accent">
+              <span class="hero-stat-label">وضع الشاشة</span>
+              <strong class="hero-stat-value compact">{{ editingSubjectId() ? 'تعديل مادة' : 'إضافة جديدة' }}</strong>
+              <span class="hero-stat-hint">{{ editingSubjectId() ? 'يتم تحرير مادة موجودة' : 'جاهزة لإضافة مادة جديدة' }}</span>
+            </div>
+          </div>
+        </section>
+
+        <div class="feedback-stack">
+          <div *ngIf="errorMessage()" class="feedback-banner error">
+            <span class="material-symbols-outlined text-base">error</span>
+            <span class="font-body-md">{{ errorMessage() }}</span>
+          </div>
+          <div *ngIf="successMessage()" class="feedback-banner success">
+            <span class="material-symbols-outlined text-base">check_circle</span>
+            <span class="font-body-md">{{ successMessage() }}</span>
+          </div>
+        </div>
+
+        <div class="management-grid">
+          <section class="editor-card" [class.editor-card-active]="editingSubjectId()">
+            <div class="section-heading">
+              <div>
+                <h3 class="font-headline-md text-headline-md text-primary flex items-center gap-2">
+                  <span class="material-symbols-outlined">{{ editingSubjectId() ? 'edit' : 'add_circle' }}</span>
+                  {{ editingSubjectId() ? 'تعديل المادة' : 'إضافة مادة جديدة' }}
+                </h3>
+                <p class="text-sm text-on-surface-variant mt-1">
+                  أدخل اسم المادة وكودها بالشكل الذي سيظهر لاحقًا في الربط والجداول.
+                </p>
+              </div>
+
+              <span class="editor-chip">
+                {{ editingSubjectId() ? (newSubject.name || 'عنصر قيد التعديل') : 'إنشاء عنصر جديد' }}
+              </span>
+            </div>
+
+            <div class="form-grid">
+              <div>
+                <label class="field-label">اسم المادة</label>
+                <input
+                  type="text"
+                  [(ngModel)]="newSubject.name"
+                  class="field-input"
+                  placeholder="مثال: الرياضيات">
+              </div>
+
+              <div>
+                <label class="field-label">كود المادة</label>
+                <input
+                  type="text"
+                  [(ngModel)]="newSubject.code"
+                  class="field-input"
+                  placeholder="مثال: MATH101">
+              </div>
+            </div>
+
+            <div class="editor-actions">
+              <button
+                *ngIf="editingSubjectId()"
+                (click)="cancelEdit()"
+                class="secondary-btn">
+                إلغاء
+              </button>
+
+              <button
+                (click)="saveSubject()"
+                class="primary-btn">
+                <span class="material-symbols-outlined">save</span>
+                {{ editingSubjectId() ? 'حفظ التحديث' : 'إضافة المادة' }}
+              </button>
+            </div>
+          </section>
+
+          <section class="data-card">
+            <div class="section-heading">
+              <div>
+                <h3 class="font-headline-md text-headline-md text-primary flex items-center gap-2">
+                  <span class="material-symbols-outlined">library_books</span>
+                  قائمة المواد
+                </h3>
+                <p class="text-sm text-on-surface-variant mt-1">
+                  ابحث بالاسم أو الكود، ثم عدّل أو احذف مباشرة من القائمة.
+                </p>
+              </div>
+
+              <span class="data-chip">{{ searchTerm ? 'نتائج بحث مفلترة' : 'كل المواد' }}</span>
+            </div>
+
+            <div class="search-toolbar">
+              <div class="search-box">
+                <span class="material-symbols-outlined search-icon">search</span>
+                <input
+                  type="text"
+                  [(ngModel)]="searchTerm"
+                  (keyup.enter)="onSearch()"
+                  (ngModelChange)="!$event && clearSearch()"
+                  placeholder="ابحث باسم أو كود المادة..."
+                  class="search-input">
+
+                <button
+                  *ngIf="searchTerm"
+                  (click)="clearSearch()"
+                  class="clear-search-btn"
+                  title="مسح البحث">
+                  <span class="material-symbols-outlined text-base leading-none">close</span>
+                </button>
+              </div>
+
+              <button
+                (click)="onSearch()"
+                class="search-action-btn">
+                <span class="material-symbols-outlined text-sm">search</span>
+                بحث
+              </button>
+            </div>
+
+            <div class="table-shell">
+              <table class="management-table">
+                <thead>
+                  <tr>
+                    <th>كود المادة</th>
+                    <th>اسم المادة</th>
+                    <th class="text-center">إجراءات</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  <tr *ngFor="let subject of subjects()">
+                    <td>
+                      <span class="code-badge">{{ subject.code }}</span>
+                    </td>
+                    <td>
+                      <div class="item-title">{{ subject.name }}</div>
+                    </td>
+                    <td>
+                      <div class="table-actions">
+                        <button
+                          (click)="editSubject(subject)"
+                          class="icon-btn primary"
+                          title="تعديل">
+                          <span class="material-symbols-outlined text-sm">edit</span>
+                        </button>
+                        <button
+                          (click)="deleteSubject(subject.id)"
+                          class="icon-btn danger"
+                          title="حذف">
+                          <span class="material-symbols-outlined text-sm">delete</span>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+
+                  <tr *ngIf="subjects().length === 0">
+                    <td colspan="3" class="empty-cell">
+                      <div class="empty-state">
+                        <span class="material-symbols-outlined text-4xl opacity-50">book</span>
+                        <p>لا توجد مواد دراسية حالياً. قم بإضافة مادة جديدة.</p>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+      </div>
+    </div>
+  </main>
+</div>

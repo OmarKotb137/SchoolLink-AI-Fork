@@ -1,171 +1,132 @@
-import { Component, signal, computed } from '@angular/core';
-import { Sidebar } from '../../layouts/sidebar/sidebar';
-import { Topbar } from '../../layouts/topbar/topbar';
-
-interface ScheduleCell {
-  subject: string;
-  class: string;
-  room: string;
-  teacher: string;
-  color: 'blue' | 'cyan' | 'green' | 'orange' | 'purple' | 'none';
-}
-
-interface Period {
-  label: string;
-  time: string;
-  start: string;
-  end: string;
-}
-
-interface DayRow {
-  dayAr: string;
-  dayEn: string;
-  cells: ScheduleCell[];
-}
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { CommonModule }                       from '@angular/common';
+import { Sidebar }                            from '../../layouts/sidebar/sidebar';
+import { Topbar }                             from '../../layouts/topbar/topbar';
+import { TimetableService }                   from '../../core/services/timetable.service';
+import { TimetableDto, TimetableSlotDto }     from '../../core/models/timetable.models';
+import {
+  buildSchedulePeriods,
+  getCurrentPeriodNumber,
+  SchedulePeriodView,
+} from '../../core/utils/schedule-periods';
 
 @Component({
-  selector: 'app-class-schedule',
-  imports: [Sidebar, Topbar],
+  selector:    'app-class-schedule',
+  standalone:  true,
+  imports:     [CommonModule, Sidebar, Topbar],
   templateUrl: './class-schedule.html',
-  styleUrl: './class-schedule.css',
+  styleUrl:    './class-schedule.css',
 })
-export class ClassSchedule {
-  sidebarOpen = signal(false);
+export class ClassSchedule implements OnInit {
+  sidebarOpen  = signal(false);
+  displayUserName = localStorage.getItem('fullName') || localStorage.getItem('username') || 'الطالب';
 
-  periods: Period[] = [
-    { label: 'الحصة 1', time: '8:00 - 9:00', start: '08:00', end: '09:00' },
-    { label: 'الحصة 2', time: '9:00 - 10:00', start: '09:00', end: '10:00' },
-    { label: 'استراحة', time: '10:00 - 10:30', start: '10:00', end: '10:30', },
-    { label: 'الحصة 3', time: '10:30 - 11:30', start: '10:30', end: '11:30' },
-    { label: 'الحصة 4', time: '11:30 - 12:30', start: '11:30', end: '12:30' },
-    { label: 'الحصة 5', time: '12:30 - 1:30', start: '12:30', end: '13:30' },
+  private timetableService = inject(TimetableService);
+
+  timetable    = signal<TimetableDto | null>(null);
+  isLoading    = signal(true);
+  errorMessage = signal<string | null>(null);
+  hasLoaded    = signal(false);
+
+  /* ── helpers ─────────────────────────────────────────────────── */
+
+  /** اليوم الحالي بالإنجليزي */
+  readonly todayValue = (() => {
+    const d = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    return d[new Date().getDay()];
+  })();
+
+  days = [
+    { value: 'Sunday',    label: 'الأحد' },
+    { value: 'Monday',    label: 'الإثنين' },
+    { value: 'Tuesday',   label: 'الثلاثاء' },
+    { value: 'Wednesday', label: 'الأربعاء' },
+    { value: 'Thursday',  label: 'الخميس' },
   ];
 
-  days: DayRow[] = [
-    {
-      dayAr: 'السبت', dayEn: 'Saturday',
-      cells: [
-        { subject: 'الرياضيات', class: 'ثالث إعدادي أ', room: 'معمل الرياضيات', teacher: 'أ. أحمد سالم', color: 'blue' },
-        { subject: '', class: '', room: '', teacher: '', color: 'none' },
-        { subject: '', class: '', room: '', teacher: '', color: 'none' },
-        { subject: 'العلوم', class: 'ثالث إعدادي أ', room: 'معمل العلوم', teacher: 'أ. فاطمة حسن', color: 'green' },
-        { subject: '', class: '', room: '', teacher: '', color: 'none' },
-        { subject: '', class: '', room: '', teacher: '', color: 'none' },
-      ],
-    },
-    {
-      dayAr: 'الأحد', dayEn: 'Sunday',
-      cells: [
-        { subject: '', class: '', room: '', teacher: '', color: 'none' },
-        { subject: 'الرياضيات', class: 'ثالث إعدادي أ', room: 'معمل الرياضيات', teacher: 'أ. أحمد سالم', color: 'blue' },
-        { subject: '', class: '', room: '', teacher: '', color: 'none' },
-        { subject: 'اللغة العربية', class: 'ثالث إعدادي أ', room: 'القاعة 2', teacher: 'أ. محمد علي', color: 'orange' },
-        { subject: '', class: '', room: '', teacher: '', color: 'none' },
-        { subject: 'الرياضيات', class: 'ثالث إعدادي أ', room: 'معمل الرياضيات', teacher: 'أ. أحمد سالم', color: 'blue' },
-      ],
-    },
-    {
-      dayAr: 'الاثنين', dayEn: 'Monday',
-      cells: [
-        { subject: 'اللغة العربية', class: 'ثالث إعدادي ب', room: 'القاعة 4', teacher: 'أ. محمد علي', color: 'orange' },
-        { subject: 'الرياضيات', class: 'ثالث إعدادي أ', room: 'معمل الرياضيات', teacher: 'أ. أحمد سالم', color: 'blue' },
-        { subject: '', class: '', room: '', teacher: '', color: 'none' },
-        { subject: '', class: '', room: '', teacher: '', color: 'none' },
-        { subject: 'اللغة الإنجليزية', class: 'ثالث إعدادي ب', room: 'القاعة 4', teacher: 'أ. سارة أحمد', color: 'purple' },
-        { subject: '', class: '', room: '', teacher: '', color: 'none' },
-      ],
-    },
-    {
-      dayAr: 'الثلاثاء', dayEn: 'Tuesday',
-      cells: [
-        { subject: '', class: '', room: '', teacher: '', color: 'none' },
-        { subject: '', class: '', room: '', teacher: '', color: 'none' },
-        { subject: '', class: '', room: '', teacher: '', color: 'none' },
-        { subject: 'الرياضيات', class: 'ثالث إعدادي أ', room: 'معمل الرياضيات', teacher: 'أ. أحمد سالم', color: 'blue' },
-        { subject: 'العلوم', class: 'ثالث إعدادي أ', room: 'معمل العلوم', teacher: 'أ. فاطمة حسن', color: 'green' },
-        { subject: '', class: '', room: '', teacher: '', color: 'none' },
-      ],
-    },
-    {
-      dayAr: 'الأربعاء', dayEn: 'Wednesday',
-      cells: [
-        { subject: 'العلوم', class: 'ثالث إعدادي أ', room: 'معمل العلوم', teacher: 'أ. فاطمة حسن', color: 'green' },
-        { subject: '', class: '', room: '', teacher: '', color: 'none' },
-        { subject: '', class: '', room: '', teacher: '', color: 'none' },
-        { subject: '', class: '', room: '', teacher: '', color: 'none' },
-        { subject: 'الرياضيات', class: 'ثالث إعدادي ب', room: 'معمل الرياضيات', teacher: 'أ. أحمد سالم', color: 'blue' },
-        { subject: 'اللغة الإنجليزية', class: 'ثالث إعدادي أ', room: 'القاعة 2', teacher: 'أ. سارة أحمد', color: 'purple' },
-      ],
-    },
-    {
-      dayAr: 'الخميس', dayEn: 'Thursday',
-      cells: [
-        { subject: '', class: '', room: '', teacher: '', color: 'none' },
-        { subject: 'اللغة العربية', class: 'ثالث إعدادي أ', room: 'القاعة 2', teacher: 'أ. محمد علي', color: 'orange' },
-        { subject: '', class: '', room: '', teacher: '', color: 'none' },
-        { subject: '', class: '', room: '', teacher: '', color: 'none' },
-        { subject: '', class: '', room: '', teacher: '', color: 'none' },
-        { subject: 'اللغة العربية', class: 'ثالث إعدادي ب', room: 'القاعة 4', teacher: 'أ. محمد علي', color: 'orange' },
-      ],
-    },
+  periods = computed<SchedulePeriodView[]>(() => buildSchedulePeriods(this.timetable()?.slots ?? []));
+
+  /* ── lifecycle ─────────────────────────────────────────────────── */
+
+  ngOnInit() { this.loadSchedule(); }
+
+  loadSchedule() {
+    this.isLoading.set(true);
+    this.errorMessage.set(null);
+    this.hasLoaded.set(false);
+
+    this.timetableService.getMyStudentScheduleCurrentYear().subscribe({
+      next: (response) => {
+        /*
+         * FIX (CRITICAL):
+         *   apiInterceptor يعمل unwrap للـ OperationResult تلقائياً
+         *   فـ response هنا = TimetableDto مباشرة (مش الـ wrapper).
+         *   الكود القديم كان يعمل response?.data وكانت دايماً undefined.
+         */
+        this.timetable.set(response ?? null);
+        this.hasLoaded.set(true);
+        this.isLoading.set(false);
+      },
+      error: () => {
+        this.timetable.set(null);
+        this.hasLoaded.set(true);
+        this.isLoading.set(false);
+        this.errorMessage.set('تعذر تحميل الجدول الدراسي. يرجى المحاولة مرة أخرى.');
+      },
+    });
+  }
+
+  /* ── grid helpers ─────────────────────────────────────────────── */
+
+  getSlot(dayValue: string, periodNum: number): TimetableSlotDto | null {
+    return this.timetable()?.slots?.find(
+      s => s.dayOfWeek === dayValue && s.periodNumber === periodNum
+    ) ?? null;
+  }
+
+  isToday(dayValue: string): boolean {
+    return dayValue === this.todayValue;
+  }
+
+  /** رقم الحصة الحالية بناءً على الوقت، أو null لو مش في وقت حصة */
+  getCurrentPeriodNum(): number | null {
+    return getCurrentPeriodNumber(this.periods());
+  }
+
+  /* ── subject color ────────────────────────────────────────────── */
+
+  private readonly palette = [
+    'sch-subj-blue',
+    'sch-subj-cyan',
+    'sch-subj-green',
+    'sch-subj-orange',
+    'sch-subj-purple',
   ];
 
-  dayNames = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
-
-  currentDayIndex = signal(new Date().getDay());
-  currentTime = signal(this.getTimeStr());
-
-  currentDayAr = computed(() => {
-    const idx = this.currentDayIndex();
-    return this.dayNames[idx];
-  });
-
-  currentPeriodIndex = computed(() => {
-    const now = this.currentTime();
-    return this.periods.findIndex(p => now >= p.start && now < p.end);
-  });
-
-  private getTimeStr(): string {
-    const d = new Date();
-    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  getSubjectColor(name: string | null): string {
+    if (!name) return 'sch-subj-gray';
+    let h = 0;
+    for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
+    return this.palette[Math.abs(h) % this.palette.length];
   }
 
-  getColorClass(color: string): string {
-    const map: Record<string, string> = {
-      blue: 'class-blue',
-      cyan: 'class-cyan',
-      green: 'class-green',
-      orange: 'class-orange',
-      purple: 'class-purple',
-    };
-    return map[color] || '';
+  /* ── stats ────────────────────────────────────────────────────── */
+
+  get lessonCount(): number {
+    return this.timetable()?.slots?.filter(s => !s.isBreak).length ?? 0;
   }
 
-  getPeriodBgColor(pi: number): string {
-    if (pi === 2) return ''; // break
-    const cp = this.currentPeriodIndex();
-    if (cp >= 0 && pi === cp) return 'bg-primary/10';
-    return '';
+  get uniqueSubjects(): Array<{ name: string; color: string }> {
+    const seen = new Map<string, string>();
+    this.timetable()?.slots?.forEach(s => {
+      if (!s.isBreak && s.subjectName && !seen.has(s.subjectName))
+        seen.set(s.subjectName, this.getSubjectColor(s.subjectName));
+    });
+    return [...seen.entries()].map(([name, color]) => ({ name, color }));
   }
 
-  isCurrentDay(di: number): boolean {
-    return di === this.currentDayIndex();
+  /** اسم اليوم الحالي بالعربي */
+  getTodayLabel(): string {
+    return this.days.find(d => d.value === this.todayValue)?.label ?? '';
   }
-
-  isCurrentPeriod(pi: number): boolean {
-    const cp = this.currentPeriodIndex();
-    if (cp < 0) return false;
-    if (pi === 2) return false; // break
-    return pi === cp;
-  }
-
-  isCurrentCell(di: number, pi: number): boolean {
-    return this.isCurrentDay(di) && this.isCurrentPeriod(pi);
-  }
-
-  getStudent() {
-    return { name: 'عمر محمود', class: 'ثالث إعدادي أ' };
-  }
-
-  str(i: number): string { return String(i); }
 }

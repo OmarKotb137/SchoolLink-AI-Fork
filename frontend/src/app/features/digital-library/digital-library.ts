@@ -65,12 +65,8 @@ export class DigitalLibrary implements OnInit {
   loadSubjects() {
     this.libraryService.getSubjects().subscribe({
       next: (res) => {
-        if (res) {
-          if (res.data) {
-            this.subjects.set(res.data);
-          } else if (Array.isArray(res)) {
-            this.subjects.set(res);
-          }
+        if (Array.isArray(res)) {
+          this.subjects.set(res);
         }
       },
       error: (err) => console.error('Error fetching subjects', err)
@@ -80,9 +76,7 @@ export class DigitalLibrary implements OnInit {
   loadLatest() {
     this.libraryService.getLatest(1).subscribe({
       next: (res) => {
-        if (res.isSuccess) {
-          this.latestItems.set(res.data);
-        }
+        this.latestItems.set(Array.isArray(res.data) ? res.data : []);
       },
       error: (err) => console.error('Error fetching latest items', err)
     });
@@ -98,10 +92,9 @@ export class DigitalLibrary implements OnInit {
       searchTerm: this.searchTerm() || null
     }).subscribe({
       next: (res) => {
-        if (res.isSuccess) {
-          this.items.set(res.data.items);
-          this.hasMore.set(res.data.items.length >= this.pageSize);
-        }
+        const items = res.data?.items ?? [];
+        this.items.set(items);
+        this.hasMore.set(items.length >= this.pageSize);
         this.loading.set(false);
       },
       error: (err) => {
@@ -122,11 +115,10 @@ export class DigitalLibrary implements OnInit {
       searchTerm: this.searchTerm() || null
     }).subscribe({
       next: (res) => {
-        if (res.isSuccess) {
-          this.items.update(prev => [...prev, ...res.data.items]);
-          this.currentPage.set(nextPage);
-          this.hasMore.set(res.data.items.length >= this.pageSize);
-        }
+        const items = res.data?.items ?? [];
+        this.items.update(prev => [...prev, ...items]);
+        this.currentPage.set(nextPage);
+        this.hasMore.set(items.length >= this.pageSize);
         this.loadingMore.set(false);
       },
       error: () => {
@@ -264,16 +256,11 @@ export class DigitalLibrary implements OnInit {
       null, // academicYearId
       this.uploadForm.description
     ).subscribe({
-      next: (res) => {
-        if (res.isSuccess) {
-          this.closeUploadModal();
-          this.loadItems();
-          this.loadLatest();
-          this.showToast('تم رفع الملف بنجاح!', 'success');
-        } else {
-          console.error(res.message || 'Upload failed');
-          this.showToast('فشل الرفع: ' + (res.message || 'خطأ غير معروف'), 'error');
-        }
+      next: () => {
+        this.closeUploadModal();
+        this.loadItems();
+        this.loadLatest();
+        this.showToast('تم رفع الملف بنجاح!', 'success');
         this.uploading.set(false);
       },
       error: (err) => {

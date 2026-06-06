@@ -1,92 +1,193 @@
-import { Component, signal, computed } from '@angular/core';
+﻿import { Component, OnInit, signal, inject, computed } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
 import { Topbar } from '../../layouts/topbar/topbar';
-
-interface Teacher {
-  id: number;
-  name: string;
-  email: string;
-  password?: string;
-  phone?: string;
-  subjects: string[];
-  classes: string[];
-}
+import { SubjectService, Subject } from '../../core/services/subject.service';
+import { TeacherService, Teacher, CreateTeacherRequest, UpdateTeacherRequest } from '../../core/services/teacher.service';
+import { UserService } from '../../core/services/user.service';
 
 @Component({
   selector: 'app-add-teacher',
-  imports: [Sidebar, Topbar],
+  standalone: true,
+  imports: [CommonModule, Sidebar, Topbar],
   templateUrl: './add-teacher.html',
   styleUrl: './add-teacher.css'
 })
-export class AddTeacher {
+export class AddTeacher implements OnInit {
+  private subjectService = inject(SubjectService);
+  private teacherService = inject(TeacherService);
+  private userService = inject(UserService);
+
   sidebarOpen = signal(false);
   showEditModal = signal(false);
   editingTeacherId = signal<number | null>(null);
+  searchQuery = signal('');
+  statusFilter = signal<'all' | 'active' | 'inactive'>('all');
+  subjectFilter = signal<number | 'all'>('all');
 
   newName = signal('');
   newEmail = signal('');
   newPassword = signal('');
   newPhone = signal('');
-  selectedSubjects = signal<string[]>([]);
-  selectedClasses = signal<string[]>([]);
+  selectedSubjectIds = signal<number[]>([]);
 
-  allSubjects = ['الرياضيات', 'اللغة العربية', 'اللغة الإنجليزية', 'العلوم', 'الدراسات الاجتماعية', 'التربية الدينية'];
-  allClasses = ['الصف الأول - أ', 'الصف الأول - ب', 'الصف الثاني - أ', 'الصف الثاني - ب', 'الصف الثالث - أ', 'الصف الثالث - ب'];
+  allSubjects = signal<Subject[]>([]);
+  teachers = signal<Teacher[]>([]);
 
-  teachers = signal<Teacher[]>([
-    { id: 1, name: 'أ. سارة أحمد', email: 'sara.ahmed@school.com', phone: '01001234567', subjects: ['الرياضيات', 'العلوم'], classes: ['الصف الثالث - أ', 'الصف الثالث - ب'] },
-    { id: 2, name: 'أ. محمد علي', email: 'mohamed.ali@school.com', phone: '01002345678', subjects: ['اللغة العربية'], classes: ['الصف الثالث - أ', 'الصف الثاني - أ'] },
-    { id: 3, name: 'أ. فاطمة حسن', email: 'fatma.hassan@school.com', phone: '01003456789', subjects: ['اللغة الإنجليزية'], classes: ['الصف الثالث - ب', 'الصف الثاني - ب'] },
-    { id: 4, name: 'م. عمر الحسيني', email: 'omar.husseini@school.com', phone: '01004567890', subjects: ['الرياضيات', 'الدراسات الاجتماعية'], classes: ['الصف الثاني - أ', 'الصف الثاني - ب'] },
-  ]);
+  isLoading = signal(false);
+  errorMessage = signal<string | null>(null);
+  successMessage = signal<string | null>(null);
 
-  toggleSubject(subj: string) {
-    this.selectedSubjects.update(list => list.includes(subj) ? list.filter(s => s !== subj) : [...list, subj]);
+  filteredTeachers = computed(() => {
+    const query = this.searchQuery().trim().toLowerCase();
+    const status = this.statusFilter();
+    const subjectId = this.subjectFilter();
+
+    return this.teachers().filter(teacher => {
+      const matchesQuery =
+        !query ||
+        teacher.fullName.toLowerCase().includes(query) ||
+        teacher.email.toLowerCase().includes(query) ||
+        (teacher.phone ?? '').toLowerCase().includes(query);
+
+      const matchesStatus =
+        status === 'all' ||
+        (status === 'active' && teacher.isActive) ||
+        (status === 'inactive' && !teacher.isActive);
+
+      const matchesSubject =
+        subjectId === 'all' ||
+        (teacher.subjectIds ?? []).includes(subjectId);
+
+      return matchesQuery && matchesStatus && matchesSubject;
+    });
+  });
+
+  ngOnInit() {
+    this.loadSubjects();
+    this.loadTeachers();
   }
 
-  toggleClass(cls: string) {
-    this.selectedClasses.update(list => list.includes(cls) ? list.filter(c => c !== cls) : [...list, cls]);
+  loadSubjects() {
+    this.subjectService.getAll().subscribe({
+      next: (data) => this.allSubjects.set(data),
+      error: () => this.showError('تعذر تحميل المواد الدراسية')
+    });
+  }
+
+  loadTeachers() {
+    this.teacherService.getAll(1000).subscribe({
+      next: (res) => this.teachers.set(res.items || []),
+      error: () => this.showError('تعذر تحميل قائمة المعلمين')
+    });
+  }
+
+  toggleSubject(id: number) {
+    this.selectedSubjectIds.update(list =>
+      list.includes(id) ? list.filter(s => s !== id) : [...list, id]
+    );
+  }
+
+  clearSelectedSubjects() {
+    this.selectedSubjectIds.set([]);
+  }
+
+  resetFilters() {
+    this.searchQuery.set('');
+    this.statusFilter.set('all');
+    this.subjectFilter.set('all');
   }
 
   resetForm() {
-    this.newName.set(''); this.newEmail.set(''); this.newPassword.set(''); this.newPhone.set('');
-    this.selectedSubjects.set([]); this.selectedClasses.set([]);
+    this.newName.set('');
+    this.newEmail.set('');
+    this.newPassword.set('');
+    this.newPhone.set('');
+    this.selectedSubjectIds.set([]);
     this.editingTeacherId.set(null);
   }
 
   saveTeacher() {
-    this.teachers.update(list => [...list, {
-      id: Date.now(),
-      name: this.newName(),
+    if (!this.newName() || !this.newEmail() || !this.newPassword()) {
+      this.showError('يرجى تعبئة الاسم والبريد الإلكتروني وكلمة المرور');
+      return;
+    }
+
+    if (this.selectedSubjectIds().length === 0) {
+      this.showError('يرجى اختيار مادة واحدة على الأقل للمعلم');
+      return;
+    }
+
+    this.isLoading.set(true);
+
+    const payload: CreateTeacherRequest = {
+      fullName: this.newName(),
       email: this.newEmail(),
-      password: this.newPassword() || undefined,
+      password: this.newPassword(),
       phone: this.newPhone() || undefined,
-      subjects: this.selectedSubjects(),
-      classes: this.selectedClasses()
-    }]);
-    this.resetForm();
+      subjectIds: this.selectedSubjectIds()
+    };
+
+    this.teacherService.createTeacher(payload).subscribe({
+      next: () => {
+        this.showSuccess('تم إضافة المعلم بنجاح');
+        this.resetForm();
+        this.loadTeachers();
+        this.isLoading.set(false);
+      },
+      error: (err) => {
+        const msg = err?.error?.message || err?.error?.errors?.[0] || 'حدث خطأ أثناء الإضافة، تحقق من البيانات';
+        this.showError(msg);
+        this.isLoading.set(false);
+      }
+    });
   }
 
   editTeacher(t: Teacher) {
     this.editingTeacherId.set(t.id);
-    this.newName.set(t.name); this.newEmail.set(t.email); this.newPassword.set(''); this.newPhone.set(t.phone || '');
-    this.selectedSubjects.set([...t.subjects]); this.selectedClasses.set([...t.classes]);
+    this.newName.set(t.fullName);
+    this.newEmail.set(t.email);
+    this.newPassword.set('');
+    this.newPhone.set(t.phone || '');
+    this.selectedSubjectIds.set(t.subjectIds || []);
     this.showEditModal.set(true);
   }
 
   updateTeacher() {
     const id = this.editingTeacherId();
-    if (id) {
-      this.teachers.update(list => list.map(t => t.id === id ? {
-        ...t,
-        name: this.newName(),
-        email: this.newEmail(),
-        phone: this.newPhone() || undefined,
-        subjects: this.selectedSubjects(),
-        classes: this.selectedClasses()
-      } : t));
+    if (!id) return;
+
+    if (!this.newName()) {
+      this.showError('يرجى إدخال الاسم');
+      return;
     }
-    this.closeEditModal();
+
+    if (this.selectedSubjectIds().length === 0) {
+      this.showError('يجب أن يكون للمعلم مادة واحدة على الأقل');
+      return;
+    }
+
+    this.isLoading.set(true);
+
+    const payload: UpdateTeacherRequest = {
+      fullName: this.newName(),
+      phone: this.newPhone() || undefined,
+      subjectIds: this.selectedSubjectIds()
+    };
+
+    this.teacherService.updateTeacher(id, payload).subscribe({
+      next: () => {
+        this.showSuccess('تم تحديث بيانات المعلم بنجاح');
+        this.closeEditModal();
+        this.loadTeachers();
+        this.isLoading.set(false);
+      },
+      error: (err) => {
+        const msg = err?.error?.message || 'حدث خطأ أثناء التحديث';
+        this.showError(msg);
+        this.isLoading.set(false);
+      }
+    });
   }
 
   closeEditModal() {
@@ -96,6 +197,85 @@ export class AddTeacher {
   }
 
   deleteTeacher(id: number) {
-    this.teachers.update(list => list.filter(t => t.id !== id));
+    if (!confirm('هل أنت متأكد من حذف هذا المعلم؟ إذا كان لديه تعيينات فعالة فسيتم تعطيله بدلا من حذفه.')) return;
+
+    this.teacherService.deleteTeacher(id).subscribe({
+      next: () => {
+        this.showSuccess('تم تنفيذ حذف أو تعطيل المعلم بنجاح');
+        this.loadTeachers();
+      },
+      error: () => this.showError('تعذر حذف أو تعطيل المعلم، حاول مرة أخرى')
+    });
+  }
+
+  toggleTeacherStatus(teacher: Teacher) {
+    const nextStatus = !teacher.isActive;
+    const actionLabel = nextStatus ? 'تفعيل' : 'تعطيل';
+
+    if (!confirm(`هل تريد ${actionLabel} المعلم ${teacher.fullName}؟`)) {
+      return;
+    }
+
+    this.isLoading.set(true);
+    this.userService.setActiveStatus(teacher.id, nextStatus).subscribe({
+      next: () => {
+        this.showSuccess(nextStatus ? 'تم تفعيل المعلم بنجاح' : 'تم تعطيل المعلم بنجاح');
+        this.loadTeachers();
+      },
+      error: err => {
+        const msg = err?.error?.message || `تعذر ${actionLabel} المعلم`;
+        this.showError(msg);
+        this.isLoading.set(false);
+      }
+    });
+  }
+
+  getTeacherSubjectsText(teacher: Teacher): string {
+    const subjectNames = teacher.subjectNames || [];
+    return subjectNames.length > 0 ? subjectNames.join('، ') : 'غير محدد';
+  }
+
+  getSelectedSubjectsText(): string {
+    const names = this.allSubjects()
+      .filter(subject => this.selectedSubjectIds().includes(subject.id))
+      .map(subject => subject.name);
+
+    return names.length > 0 ? names.join('، ') : 'لم يتم اختيار مواد بعد';
+  }
+
+  getTeachersCount(): number {
+    return this.teachers().length;
+  }
+
+  getActiveTeachersCount(): number {
+    return this.teachers().filter(teacher => teacher.isActive).length;
+  }
+
+  getInactiveTeachersCount(): number {
+    return this.teachers().filter(teacher => !teacher.isActive).length;
+  }
+
+  getFilteredTeachersCount(): number {
+    return this.filteredTeachers().length;
+  }
+
+  canSaveTeacher(): boolean {
+    return !!this.newName() && !!this.newEmail() && !!this.newPassword() && this.selectedSubjectIds().length > 0 && !this.isLoading();
+  }
+
+  canUpdateTeacher(): boolean {
+    return !!this.newName() && this.selectedSubjectIds().length > 0 && !this.isLoading();
+  }
+
+  private showError(msg: string) {
+    this.errorMessage.set(msg);
+    this.successMessage.set(null);
+    setTimeout(() => this.errorMessage.set(null), 5000);
+  }
+
+  private showSuccess(msg: string) {
+    this.successMessage.set(msg);
+    this.errorMessage.set(null);
+    setTimeout(() => this.successMessage.set(null), 3000);
   }
 }

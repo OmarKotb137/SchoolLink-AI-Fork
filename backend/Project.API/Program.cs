@@ -24,7 +24,11 @@ try
                   rollingInterval: RollingInterval.Day,
                   retainedFileCountLimit: 30));
 
-    builder.Services.AddControllers();
+    builder.Services.AddControllers()
+        .AddJsonOptions(options =>
+        {
+            options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+        });
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen();
     builder.Services.AddApplicationServices(builder.Configuration);
@@ -62,7 +66,6 @@ try
     });
 
     var app = builder.Build();
-
     await SeedData.Initialize(app.Services);
 
     if (app.Environment.IsDevelopment())
@@ -76,6 +79,7 @@ try
     app.UseCors("AllowAngular");
     app.UseHttpsRedirection();
     app.UseAuthentication();
+
     app.UseAuthorization();
     app.MapControllers();
 

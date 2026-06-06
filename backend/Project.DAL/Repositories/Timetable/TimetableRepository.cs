@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Project.DAL.Interfaces.Repositories.Timetable;
 using Project.Domain.Entities;
 using Project.DAL.Context;
@@ -52,15 +52,16 @@ public class TimetableRepository : Repository<Project.Domain.Entities.Timetable>
                 t.AcademicYearId == academicYearId)
             .Include(t => t.Class)
             .Include(t => t.Slots
-                .Where(s => !s.IsDeleted)
-                .OrderBy(s => s.DayOfWeek)
-                .ThenBy(s => s.PeriodNumber))
+                .Where(s => !s.IsDeleted))
                 .ThenInclude(s => s.ClassSubjectTeacher)
                     .ThenInclude(cst => cst!.Subject)
             .Include(t => t.Slots
                 .Where(s => !s.IsDeleted))
                 .ThenInclude(s => s.ClassSubjectTeacher)
                     .ThenInclude(cst => cst!.Teacher)
+            .Include(t => t.Slots
+                .Where(s => !s.IsDeleted))
+                .ThenInclude(s => s.Room)
             .OrderByDescending(t => t.CreatedAt)
             .ToListAsync(ct);
 
@@ -70,9 +71,7 @@ public class TimetableRepository : Repository<Project.Domain.Entities.Timetable>
         CancellationToken ct = default)
         => await _context.Timetables
             .Include(t => t.Slots
-                .Where(s => !s.IsBreak)
-                .OrderBy(s => s.DayOfWeek)
-                .ThenBy(s => s.PeriodNumber))
+                .Where(s => !s.IsBreak))
                 .ThenInclude(s => s.ClassSubjectTeacher)
                     .ThenInclude(cst => cst!.Subject)
             .Include(t => t.Slots
@@ -102,15 +101,16 @@ public class TimetableRepository : Repository<Project.Domain.Entities.Timetable>
         => await _context.Timetables
             .Include(t => t.Class)
             .Include(t => t.Slots
-                .Where(s => !s.IsDeleted)
-                .OrderBy(s => s.DayOfWeek)
-                .ThenBy(s => s.PeriodNumber))
+                .Where(s => !s.IsDeleted))
                 .ThenInclude(s => s.ClassSubjectTeacher)
                     .ThenInclude(cst => cst!.Subject)
             .Include(t => t.Slots
                 .Where(s => !s.IsDeleted))
                 .ThenInclude(s => s.ClassSubjectTeacher)
                     .ThenInclude(cst => cst!.Teacher)
+            .Include(t => t.Slots
+                .Where(s => !s.IsDeleted))
+                .ThenInclude(s => s.Room)
             .FirstOrDefaultAsync(t => t.Id == timetableId, ct);
 }
 
