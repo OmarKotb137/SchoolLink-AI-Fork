@@ -6,7 +6,7 @@
       <div class="max-w-7xl mx-auto space-y-6 pb-10">
 
         <!-- Header -->
-        <div class="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+        <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50">
           <span class="text-sm font-medium text-blue-600 mb-1 block">إدارة المعلمين</span>
           <h1 class="text-2xl font-bold text-gray-900 mb-2">بيانات المعلم وتخصصاته</h1>
           <p class="text-sm text-gray-500 max-w-2xl">
@@ -16,22 +16,22 @@
 
         <!-- Summary Grid -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div class="bg-white border border-gray-200 p-4 rounded-lg text-center flex flex-col justify-center">
+          <div class="bg-white border border-gray-100 p-4 rounded-2xl text-center flex flex-col justify-center">
             <span class="block text-xs text-gray-500 font-medium mb-1">إجمالي المعلمين</span>
             <strong class="block text-2xl font-bold text-gray-900">{{ getTeachersCount() }}</strong>
             <span class="block text-[10px] text-gray-400 mt-1">المسجلون في النظام</span>
           </div>
-          <div class="bg-green-50 border border-green-100 p-4 rounded-lg text-center flex flex-col justify-center">
-            <span class="block text-xs text-green-600 font-medium mb-1">المعلمين النشطين</span>
-            <strong class="block text-2xl font-bold text-green-900">{{ getActiveTeachersCount() }}</strong>
-            <span class="block text-[10px] text-green-500 mt-1">المتاحون للعمل حاليا</span>
+          <div class="bg-emerald-50 border border-emerald-100 p-4 rounded-2xl text-center flex flex-col justify-center">
+            <span class="block text-xs text-emerald-600 font-medium mb-1">المعلمين النشطين</span>
+            <strong class="block text-2xl font-bold text-emerald-900">{{ getActiveTeachersCount() }}</strong>
+            <span class="block text-[10px] text-emerald-500 mt-1">المتاحون للعمل حاليا</span>
           </div>
-          <div class="bg-orange-50 border border-orange-100 p-4 rounded-lg text-center flex flex-col justify-center">
+          <div class="bg-orange-50 border border-orange-100 p-4 rounded-2xl text-center flex flex-col justify-center">
             <span class="block text-xs text-orange-600 font-medium mb-1">غير النشطين</span>
             <strong class="block text-2xl font-bold text-orange-900">{{ getInactiveTeachersCount() }}</strong>
             <span class="block text-[10px] text-orange-500 mt-1">حسابات موقوفة أو معطلة</span>
           </div>
-          <div class="bg-blue-50 border border-blue-100 p-4 rounded-lg text-center flex flex-col justify-center">
+          <div class="bg-blue-50 border border-blue-100 p-4 rounded-2xl text-center flex flex-col justify-center">
             <span class="block text-xs text-blue-600 font-medium mb-1">نتائج الفلترة الحالية</span>
             <strong class="block text-2xl font-bold text-blue-900">{{ getFilteredTeachersCount() }}</strong>
             <span class="block text-[10px] text-blue-500 mt-1">حسب البحث والفلاتر</span>
@@ -40,26 +40,26 @@
 
         <!-- Feedback Banners -->
         @if (errorMessage()) {
-          <div class="flex items-center gap-3 p-4 text-sm text-red-800 rounded-lg bg-red-50 border border-red-200">
+          <div class="flex items-center gap-3 p-4 text-sm text-red-800 rounded-2xl bg-red-50 border border-red-200">
             <span class="material-symbols-outlined text-lg">error</span>
             <span class="font-medium">{{ errorMessage() }}</span>
           </div>
         }
         @if (successMessage()) {
-          <div class="flex items-center gap-3 p-4 text-sm text-green-800 rounded-lg bg-green-50 border border-green-200">
+          <div class="flex items-center gap-3 p-4 text-sm text-green-800 rounded-2xl bg-emerald-50 border border-green-200">
             <span class="material-symbols-outlined text-lg">check_circle</span>
             <span class="font-medium">{{ successMessage() }}</span>
           </div>
         }
 
         <!-- Add Teacher Form Card -->
-        <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50 p-6">
           <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pb-4 border-b border-gray-100">
             <div>
               <h2 class="text-lg font-bold text-gray-900 mb-1">إضافة معلم جديد</h2>
               <p class="text-sm text-gray-500">هذه الصفحة خاصة ببيانات المعلم العامة وتخصصاته فقط.</p>
             </div>
-            <div class="flex items-center gap-2 bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg border border-blue-100 text-xs font-medium whitespace-nowrap">
+            <div class="flex items-center gap-2 bg-blue-50 text-blue-700 px-3 py-1.5 rounded-2xl border border-blue-100 text-xs font-medium whitespace-nowrap">
               <span class="material-symbols-outlined text-sm">school</span>
               <span>الخطوة التالية بعد الحفظ: صفحة التعيينات</span>
             </div>
@@ -75,32 +75,32 @@
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div class="flex flex-col gap-2">
                 <label class="text-sm font-medium text-gray-900">الاسم <span class="text-red-500">*</span></label>
-                <input class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" placeholder="مثال: أ. أحمد علي" [value]="newName()" (input)="newName.set($any($event.target).value)" />
+                <input class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" placeholder="مثال: أ. أحمد علي" [value]="newName()" (input)="newName.set($any($event.target).value)" />
               </div>
               <div class="flex flex-col gap-2">
                 <label class="text-sm font-medium text-gray-900">البريد الإلكتروني <span class="text-red-500">*</span></label>
-                <input class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" type="email" placeholder="teacher@school.com" [value]="newEmail()" (input)="newEmail.set($any($event.target).value)" />
+                <input class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" type="email" placeholder="teacher@school.com" [value]="newEmail()" (input)="newEmail.set($any($event.target).value)" />
               </div>
               <div class="flex flex-col gap-2">
                 <label class="text-sm font-medium text-gray-900">كلمة المرور <span class="text-red-500">*</span></label>
-                <input class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" type="password" placeholder="6 أحرف على الأقل" [value]="newPassword()" (input)="newPassword.set($any($event.target).value)" />
+                <input class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" type="password" placeholder="6 أحرف على الأقل" [value]="newPassword()" (input)="newPassword.set($any($event.target).value)" />
               </div>
               <div class="flex flex-col gap-2">
                 <label class="text-sm font-medium text-gray-900">رقم الهاتف</label>
-                <input class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" type="tel" placeholder="01012345678" [value]="newPhone()" (input)="newPhone.set($any($event.target).value)" />
+                <input class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" type="tel" placeholder="01012345678" [value]="newPhone()" (input)="newPhone.set($any($event.target).value)" />
               </div>
             </div>
           </div>
 
           <!-- Section 2: Specializations -->
-          <div class="mb-6 bg-gray-50 border border-gray-200 rounded-lg p-5">
+          <div class="mb-6 bg-gray-50 border border-gray-100 rounded-2xl p-5">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
               <div>
                 <h3 class="text-base font-bold text-gray-900">2. المواد التي يمكنه تدريسها</h3>
                 <p class="text-xs text-gray-500">هذه المواد تحفظ كتخصصات للمعلم، وليست تعيينا على فصل.</p>
               </div>
               @if (selectedSubjectIds().length > 0) {
-                <button class="text-xs font-medium text-gray-600 bg-white border border-gray-300 rounded-lg px-3 py-1.5 hover:bg-gray-100 transition-colors" type="button" (click)="clearSelectedSubjects()">
+                <button class="text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-2xl px-3 py-1.5 hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 transition-colors" type="button" (click)="clearSelectedSubjects()">
                   مسح التحديد
                 </button>
               }
@@ -119,29 +119,29 @@
             } @else {
               <div class="flex flex-wrap gap-2">
                 @for (s of allSubjects(); track s.id) {
-                  <button class="px-3 py-1.5 rounded-lg text-sm font-medium transition-all border"
+                  <button class="px-3 py-1.5 rounded-2xl text-sm font-medium transition-all border"
                     type="button"
                     [class.bg-blue-600]="selectedSubjectIds().includes(s.id)"
                     [class.text-white]="selectedSubjectIds().includes(s.id)"
                     [class.border-blue-600]="selectedSubjectIds().includes(s.id)"
                     [class.bg-white]="!selectedSubjectIds().includes(s.id)"
                     [class.text-gray-700]="!selectedSubjectIds().includes(s.id)"
-                    [class.border-gray-300]="!selectedSubjectIds().includes(s.id)"
-                    [class.hover:bg-gray-100]="!selectedSubjectIds().includes(s.id)"
+                    [class.border-gray-200]="!selectedSubjectIds().includes(s.id)"
+                    [class.hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5]="!selectedSubjectIds().includes(s.id)"
                     (click)="toggleSubject(s.id)">{{ s.name }}</button>
                 }
               </div>
             }
 
-            <div class="mt-4 flex items-start gap-2 p-3 text-xs text-blue-800 rounded-lg bg-blue-100/50">
+            <div class="mt-4 flex items-start gap-2 p-3 text-xs text-blue-800 rounded-2xl bg-blue-100/50">
               <span class="material-symbols-outlined shrink-0 text-base">info</span>
               <p class="font-medium">الفصول والسنة الدراسية لا يتم تحديدها هنا، لأن الإسناد الفعلي يدار من صفحة التعيينات بحسب كل سنة دراسية.</p>
             </div>
           </div>
 
           <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
-            <button class="px-5 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors" (click)="resetForm()">تفريغ الحقول</button>
-            <button class="px-5 py-2.5 text-sm font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" (click)="saveTeacher()" [disabled]="!canSaveTeacher()">
+            <button class="px-5 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 transition-colors" (click)="resetForm()">تفريغ الحقول</button>
+            <button class="px-5 py-2.5 text-sm font-medium text-white bg-blue-700 rounded-2xl hover:bg-blue-800 focus:ring-4 focus:ring-indigo-300 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" (click)="saveTeacher()" [disabled]="!canSaveTeacher()">
               @if (isLoading()) {
                 <span class="material-symbols-outlined animate-spin text-sm">refresh</span>
                 جار الحفظ...
@@ -154,14 +154,14 @@
         </div>
 
         <!-- Teachers Table Card -->
-        <div class="bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col overflow-hidden">
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50 flex flex-col overflow-hidden">
           
-          <div class="p-5 border-b border-gray-200">
+          <div class="p-5 border-b border-gray-100">
             <h2 class="text-lg font-bold text-gray-900">قائمة المعلمين</h2>
             <p class="text-sm text-gray-500 mt-1">تستطيع مراجعة حالة كل معلم وتعديل تخصصاته أو تفعيله أو تعطيله أو حذفه عند الحاجة.</p>
           </div>
 
-          <div class="p-4 bg-gray-50 border-b border-gray-200 flex flex-wrap md:flex-nowrap items-end gap-4">
+          <div class="p-4 bg-gray-50 border-b border-gray-100 flex flex-wrap md:flex-nowrap items-end gap-4">
             
             <div class="flex-1 w-full min-w-[200px]">
               <label class="block mb-2 text-xs font-medium text-gray-700">البحث</label>
@@ -169,13 +169,13 @@
                 <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                   <span class="material-symbols-outlined text-gray-400 text-sm">search</span>
                 </div>
-                <input type="text" class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pr-10 p-2.5" placeholder="ابحث بالاسم أو البريد أو الهاتف..." [value]="searchQuery()" (input)="searchQuery.set($any($event.target).value); currentPage.set(1)">
+                <input type="text" class="bg-white border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full pr-10 p-2.5" placeholder="ابحث بالاسم أو البريد أو الهاتف..." [value]="searchQuery()" (input)="searchQuery.set($any($event.target).value); currentPage.set(1)">
               </div>
             </div>
 
             <div class="w-full md:w-48">
               <label class="block mb-2 text-xs font-medium text-gray-700">الحالة</label>
-              <select class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" [value]="statusFilter()" (change)="statusFilter.set($any($event.target).value); currentPage.set(1)">
+              <select class="bg-white border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" [value]="statusFilter()" (change)="statusFilter.set($any($event.target).value); currentPage.set(1)">
                 <option value="all">الكل</option>
                 <option value="active">نشط</option>
                 <option value="inactive">غير نشط</option>
@@ -184,7 +184,7 @@
 
             <div class="w-full md:w-64">
               <label class="block mb-2 text-xs font-medium text-gray-700">المادة</label>
-              <select class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" [value]="subjectFilter()" (change)="subjectFilter.set($any($event.target).value === 'all' ? 'all' : +$any($event.target).value); currentPage.set(1)">
+              <select class="bg-white border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" [value]="subjectFilter()" (change)="subjectFilter.set($any($event.target).value === 'all' ? 'all' : +$any($event.target).value); currentPage.set(1)">
                 <option value="all">كل المواد</option>
                 @for (subject of allSubjects(); track subject.id) {
                   <option [value]="subject.id">{{ subject.name }}</option>
@@ -193,7 +193,7 @@
             </div>
 
             <div>
-              <button class="px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors whitespace-nowrap" type="button" (click)="resetFilters()">
+              <button class="px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 transition-colors whitespace-nowrap" type="button" (click)="resetFilters()">
                 إعادة ضبط
               </button>
             </div>
@@ -201,7 +201,7 @@
 
           <div class="overflow-x-auto">
             <table class="w-full text-sm text-right text-gray-500">
-              <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200">
+              <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-100">
                 <tr>
                   <th scope="col" class="px-6 py-4">الاسم</th>
                   <th scope="col" class="px-6 py-4">البريد الإلكتروني</th>
@@ -239,24 +239,24 @@
                     <td class="px-6 py-4 text-gray-600 max-w-xs truncate" [title]="getTeacherSubjectsText(t)">{{ getTeacherSubjectsText(t) }}</td>
                     <td class="px-6 py-4 text-center">
                       <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border"
-                            [class.bg-green-50]="t.isActive"
+                            [class.bg-emerald-50]="t.isActive"
                             [class.text-green-700]="t.isActive"
                             [class.border-green-200]="t.isActive"
                             [class.bg-gray-100]="!t.isActive"
                             [class.text-gray-700]="!t.isActive"
-                            [class.border-gray-300]="!t.isActive">
+                            [class.border-gray-200]="!t.isActive">
                         {{ t.isActive ? 'نشط' : 'غير نشط' }}
                       </span>
                     </td>
                     <td class="px-6 py-4 text-center">
                       <div class="flex items-center justify-center gap-2">
-                        <button class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" (click)="editTeacher(t)" title="تعديل بيانات المعلم">
+                        <button class="p-2 text-blue-600 hover:bg-blue-50 rounded-2xl transition-colors" (click)="editTeacher(t)" title="تعديل بيانات المعلم">
                           <span class="material-symbols-outlined text-sm">edit</span>
                         </button>
-                        <button class="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" (click)="toggleTeacherStatus(t)" [title]="t.isActive ? 'تعطيل المعلم' : 'تفعيل المعلم'">
+                        <button class="p-2 text-gray-600 hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 rounded-2xl transition-colors" (click)="toggleTeacherStatus(t)" [title]="t.isActive ? 'تعطيل المعلم' : 'تفعيل المعلم'">
                           <span class="material-symbols-outlined text-sm">{{ t.isActive ? 'toggle_off' : 'toggle_on' }}</span>
                         </button>
-                        <button class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors" (click)="deleteTeacher(t.id)" title="حذف المعلم أو تعطيله نهائيًا حسب التعيينات">
+                        <button class="p-2 text-red-600 hover:bg-red-50 rounded-2xl transition-colors" (click)="deleteTeacher(t.id)" title="حذف المعلم أو تعطيله نهائيًا حسب التعيينات">
                           <span class="material-symbols-outlined text-sm">delete</span>
                         </button>
                       </div>
@@ -269,13 +269,13 @@
 
           <!-- Pagination -->
           @if (totalPages() > 1) {
-            <div class="flex items-center justify-between p-4 bg-gray-50 border-t border-gray-200 flex-wrap gap-4">
+            <div class="flex items-center justify-between p-4 bg-gray-50 border-t border-gray-100 flex-wrap gap-4">
               <span class="text-sm text-gray-700">
                 إظهار <span class="font-semibold text-gray-900">{{ (currentPage() - 1) * itemsPerPage() + 1 }}</span> إلى <span class="font-semibold text-gray-900">{{ (currentPage() * itemsPerPage()) > filteredTeachers().length ? filteredTeachers().length : (currentPage() * itemsPerPage()) }}</span> من أصل <span class="font-semibold text-gray-900">{{ filteredTeachers().length }}</span> معلم
               </span>
               
               <div class="flex items-center gap-2">
-                <button class="flex items-center justify-center px-3 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors" [disabled]="currentPage() === 1" (click)="prevPage()">
+                <button class="flex items-center justify-center px-3 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors" [disabled]="currentPage() === 1" (click)="prevPage()">
                   <span class="material-symbols-outlined text-sm mr-1">chevron_right</span>
                   السابق
                 </button>
@@ -287,14 +287,14 @@
                       $index + 1 === totalPages() ||
                       ($index + 1 >= currentPage() - 1 && $index + 1 <= currentPage() + 1)
                     ) {
-                      <button class="flex items-center justify-center w-8 h-8 text-sm font-medium rounded-lg transition-colors border" 
+                      <button class="flex items-center justify-center w-8 h-8 text-sm font-medium rounded-2xl transition-colors border" 
                               [class.bg-blue-600]="( $index + 1 ) === currentPage()"
                               [class.text-white]="( $index + 1 ) === currentPage()"
                               [class.border-blue-600]="( $index + 1 ) === currentPage()"
                               [class.bg-white]="( $index + 1 ) !== currentPage()"
                               [class.text-gray-900]="( $index + 1 ) !== currentPage()"
-                              [class.border-gray-300]="( $index + 1 ) !== currentPage()"
-                              [class.hover:bg-gray-100]="( $index + 1 ) !== currentPage()"
+                              [class.border-gray-200]="( $index + 1 ) !== currentPage()"
+                              [class.hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5]="( $index + 1 ) !== currentPage()"
                               (click)="goToPage($index + 1)">
                         {{ $index + 1 }}
                       </button>
@@ -307,7 +307,7 @@
                   }
                 </div>
 
-                <button class="flex items-center justify-center px-3 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors" [disabled]="currentPage() === totalPages()" (click)="nextPage()">
+                <button class="flex items-center justify-center px-3 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors" [disabled]="currentPage() === totalPages()" (click)="nextPage()">
                   التالي
                   <span class="material-symbols-outlined text-sm ml-1">chevron_left</span>
                 </button>
@@ -325,13 +325,13 @@
 
 @if (showEditModal()) {
   <div class="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/50 backdrop-blur-sm p-4" (click)="closeEditModal()">
-    <div class="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden" (click)="$event.stopPropagation()">
-      <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+    <div class="bg-white rounded-3xl shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden" (click)="$event.stopPropagation()">
+      <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
         <div>
           <h2 class="text-xl font-bold text-gray-900">تعديل بيانات المعلم</h2>
           <p class="text-sm text-gray-500 mt-1">يمكنك تعديل البيانات الأساسية والتخصصات فقط من هنا.</p>
         </div>
-        <button class="text-gray-400 hover:text-gray-900 hover:bg-gray-200 p-2 rounded-lg transition-colors" (click)="closeEditModal()">
+        <button class="text-gray-400 hover:text-gray-900 hover:bg-gray-200 p-2 rounded-2xl transition-colors" (click)="closeEditModal()">
           <span class="material-symbols-outlined">close</span>
         </button>
       </div>
@@ -340,22 +340,22 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
           <div class="flex flex-col gap-2">
             <label class="text-sm font-medium text-gray-900">الاسم <span class="text-red-500">*</span></label>
-            <input class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" [value]="newName()" (input)="newName.set($any($event.target).value)" />
+            <input class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" [value]="newName()" (input)="newName.set($any($event.target).value)" />
           </div>
           <div class="flex flex-col gap-2">
             <label class="text-sm font-medium text-gray-900">رقم الهاتف</label>
-            <input class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" type="tel" [value]="newPhone()" (input)="newPhone.set($any($event.target).value)" />
+            <input class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" type="tel" [value]="newPhone()" (input)="newPhone.set($any($event.target).value)" />
           </div>
         </div>
 
-        <div class="bg-gray-50 border border-gray-200 rounded-lg p-5 mb-6">
+        <div class="bg-gray-50 border border-gray-100 rounded-2xl p-5 mb-6">
           <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
             <div>
               <h3 class="text-base font-bold text-gray-900">تخصصات المعلم</h3>
               <p class="text-xs text-gray-500">يجب أن تظل هناك مادة واحدة على الأقل مربوطة بالمعلم.</p>
             </div>
             @if (selectedSubjectIds().length > 0) {
-              <button class="text-xs font-medium text-gray-600 bg-white border border-gray-300 rounded-lg px-3 py-1.5 hover:bg-gray-100 transition-colors" type="button" (click)="clearSelectedSubjects()">
+              <button class="text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-2xl px-3 py-1.5 hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 transition-colors" type="button" (click)="clearSelectedSubjects()">
                 مسح التحديد
               </button>
             }
@@ -365,29 +365,29 @@
 
           <div class="flex flex-wrap gap-2">
             @for (s of allSubjects(); track s.id) {
-              <button class="px-3 py-1.5 rounded-lg text-sm font-medium transition-all border"
+              <button class="px-3 py-1.5 rounded-2xl text-sm font-medium transition-all border"
                 type="button"
                 [class.bg-blue-600]="selectedSubjectIds().includes(s.id)"
                 [class.text-white]="selectedSubjectIds().includes(s.id)"
                 [class.border-blue-600]="selectedSubjectIds().includes(s.id)"
                 [class.bg-white]="!selectedSubjectIds().includes(s.id)"
                 [class.text-gray-700]="!selectedSubjectIds().includes(s.id)"
-                [class.border-gray-300]="!selectedSubjectIds().includes(s.id)"
-                [class.hover:bg-gray-100]="!selectedSubjectIds().includes(s.id)"
+                [class.border-gray-200]="!selectedSubjectIds().includes(s.id)"
+                [class.hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5]="!selectedSubjectIds().includes(s.id)"
                 (click)="toggleSubject(s.id)">{{ s.name }}</button>
             }
           </div>
         </div>
 
-        <div class="flex items-start gap-3 p-4 text-sm text-yellow-800 rounded-lg bg-yellow-50 border border-yellow-200">
+        <div class="flex items-start gap-3 p-4 text-sm text-yellow-800 rounded-2xl bg-yellow-50 border border-yellow-200">
           <span class="material-symbols-outlined shrink-0 text-lg">tips_and_updates</span>
           <p class="font-medium">لتغيير البريد الإلكتروني أو كلمة المرور استخدم إدارة الحسابات، أما إسناد المعلم للفصول فيتم من صفحة التعيينات.</p>
         </div>
       </div>
 
-      <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3 bg-gray-50">
-        <button class="px-5 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors" (click)="closeEditModal()">إلغاء</button>
-        <button class="px-5 py-2.5 text-sm font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" (click)="updateTeacher()" [disabled]="!canUpdateTeacher()">
+      <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 bg-gray-50">
+        <button class="px-5 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 transition-colors" (click)="closeEditModal()">إلغاء</button>
+        <button class="px-5 py-2.5 text-sm font-medium text-white bg-blue-700 rounded-2xl hover:bg-blue-800 focus:ring-4 focus:ring-indigo-300 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" (click)="updateTeacher()" [disabled]="!canUpdateTeacher()">
           @if (isLoading()) {
             <span class="material-symbols-outlined animate-spin text-sm">refresh</span>
             جار الحفظ...

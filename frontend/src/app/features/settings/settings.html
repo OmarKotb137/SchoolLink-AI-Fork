@@ -4,15 +4,15 @@
   <main class="pt-16 min-h-screen bg-gray-50 flex flex-col md:flex-row">
     
     <!-- Right Sidebar Navigation (Settings Tabs) -->
-    <div class="w-full md:w-72 bg-white border-l border-gray-200 py-6 shrink-0 md:h-[calc(100vh-64px)] md:sticky md:top-16 overflow-y-auto border-b md:border-b-0">
+    <div class="w-full md:w-72 bg-white border-l border-gray-100 py-6 shrink-0 md:h-[calc(100vh-64px)] md:sticky md:top-16 overflow-y-auto border-b md:border-b-0">
       <div class="px-6 mb-6">
         <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">أقسام الإعدادات</h3>
       </div>
       <div class="space-y-2 px-3">
 
         <button (click)="activeTab.set('academic')"
-                [ngClass]="activeTab() === 'academic' ? 'bg-blue-50 text-blue-700 border-blue-200 shadow-sm' : 'bg-white text-gray-700 border-transparent hover:bg-gray-50'"
-                class="w-full flex items-center gap-3 px-4 py-3 rounded-lg border transition-all text-right group">
+                [ngClass]="activeTab() === 'academic' ? 'bg-blue-50 text-blue-700 border-blue-200 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50' : 'bg-white text-gray-700 border-transparent hover:bg-gray-50'"
+                class="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border transition-all text-right group">
           <span class="material-symbols-outlined"
                 [style.font-variation-settings]="activeTab() === 'academic' ? '\'FILL\' 1' : ''">school</span>
           <div class="flex flex-col">
@@ -22,8 +22,8 @@
         </button>
 
         <button (click)="activeTab.set('permissions')"
-                [ngClass]="activeTab() === 'permissions' ? 'bg-blue-50 text-blue-700 border-blue-200 shadow-sm' : 'bg-white text-gray-700 border-transparent hover:bg-gray-50'"
-                class="w-full flex items-center gap-3 px-4 py-3 rounded-lg border transition-all text-right group">
+                [ngClass]="activeTab() === 'permissions' ? 'bg-blue-50 text-blue-700 border-blue-200 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50' : 'bg-white text-gray-700 border-transparent hover:bg-gray-50'"
+                class="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border transition-all text-right group">
           <span class="material-symbols-outlined"
                 [style.font-variation-settings]="activeTab() === 'permissions' ? '\'FILL\' 1' : ''">verified_user</span>
           <div class="flex flex-col">
@@ -40,7 +40,7 @@
       <div class="max-w-5xl mx-auto space-y-6 pb-10">
 
         <!-- Hero Section -->
-        <section class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+        <section class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50">
           <div>
             <span class="text-sm font-medium text-blue-600 mb-1 block">System Settings</span>
             <h1 class="text-2xl font-bold text-gray-900 mb-2">إعدادات المنظومة الأكاديمية</h1>
@@ -50,11 +50,11 @@
           </div>
 
           <div class="flex items-center gap-4 w-full md:w-auto">
-            <div class="bg-blue-50 border border-blue-100 p-4 rounded-lg flex-1 md:w-36 text-center">
+            <div class="bg-blue-50 border border-blue-100 p-4 rounded-2xl flex-1 md:w-36 text-center">
               <span class="block text-xs text-blue-600 font-medium mb-1">السنوات الدراسية</span>
               <strong class="block text-2xl font-bold text-blue-900">{{ academicYears().length }}</strong>
             </div>
-            <div class="bg-gray-50 border border-gray-200 p-4 rounded-lg flex-1 md:w-36 text-center">
+            <div class="bg-gray-50 border border-gray-100 p-4 rounded-2xl flex-1 md:w-36 text-center">
               <span class="block text-xs text-gray-500 font-medium mb-1">المراحل والصفوف</span>
               <strong class="block text-2xl font-bold text-gray-900">{{ gradeLevels().length }}</strong>
             </div>
@@ -63,7 +63,7 @@
 
         <!-- Global Success Toast -->
         <div *ngIf="successMessage()"
-             class="fixed top-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-5 py-3 rounded-lg bg-green-50 border border-green-200 text-green-800 shadow-md text-sm font-medium">
+             class="fixed top-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-5 py-3 rounded-2xl bg-emerald-50 border border-green-200 text-green-800 shadow-md text-sm font-medium">
           <span class="material-symbols-outlined text-lg">check_circle</span>
           {{ successMessage() }}
         </div>
@@ -76,15 +76,15 @@
               <p class="text-sm text-gray-500">قم بإدارة مستويات الوصول والتحكم في الميزات لكل فئة من مستخدمي النظام.</p>
             </div>
             <div class="flex gap-2 w-full sm:w-auto">
-              <button class="flex-1 sm:flex-none px-5 py-2.5 text-sm font-medium text-gray-900 bg-white rounded-lg border border-gray-300 hover:bg-gray-100 transition-colors">إلغاء</button>
-              <button class="flex-1 sm:flex-none px-5 py-2.5 text-sm font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800 transition-all shadow-sm">حفظ التغييرات</button>
+              <button class="flex-1 sm:flex-none px-5 py-2.5 text-sm font-medium text-gray-900 bg-white rounded-2xl border border-gray-200 hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 transition-colors">إلغاء</button>
+              <button class="flex-1 sm:flex-none px-5 py-2.5 text-sm font-medium text-white bg-blue-700 rounded-2xl hover:bg-blue-800 transition-all shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50">حفظ التغييرات</button>
             </div>
           </div>
 
-          <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden mb-6">
+          <div class="bg-white rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50 overflow-hidden mb-6">
             <div class="overflow-x-auto">
               <table class="w-full text-sm text-right text-gray-500">
-                <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200">
+                <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-100">
                   <tr>
                     <th class="px-6 py-4">الوحدة / القسم</th>
                     <th class="px-6 py-4 text-center">مدير النظام (Admin)</th>
@@ -98,9 +98,9 @@
                     <td class="px-6 py-4 font-bold text-blue-700 flex items-center gap-2 whitespace-nowrap">
                       <span class="material-symbols-outlined text-base">dashboard</span> لوحة القيادة الرئيسية
                     </td>
-                    <td class="px-6 py-4 text-center"><span class="material-symbols-outlined text-green-500" style="font-variation-settings: 'FILL' 1;">check_circle</span></td>
-                    <td class="px-6 py-4 text-center"><span class="material-symbols-outlined text-green-500" style="font-variation-settings: 'FILL' 1;">check_circle</span></td>
-                    <td class="px-6 py-4 text-center"><span class="material-symbols-outlined text-green-500" style="font-variation-settings: 'FILL' 1;">check_circle</span></td>
+                    <td class="px-6 py-4 text-center"><span class="material-symbols-outlined text-emerald-500" style="font-variation-settings: 'FILL' 1;">check_circle</span></td>
+                    <td class="px-6 py-4 text-center"><span class="material-symbols-outlined text-emerald-500" style="font-variation-settings: 'FILL' 1;">check_circle</span></td>
+                    <td class="px-6 py-4 text-center"><span class="material-symbols-outlined text-emerald-500" style="font-variation-settings: 'FILL' 1;">check_circle</span></td>
                     <td class="px-6 py-4 text-center"><span class="material-symbols-outlined text-gray-300">circle</span></td>
                   </tr>
                 </tbody>
@@ -109,7 +109,7 @@
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="bg-white p-6 rounded-lg border border-gray-200 shadow-sm relative overflow-hidden">
+            <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50 relative overflow-hidden">
               <div class="flex justify-between items-start relative z-10">
                 <div class="space-y-1">
                   <div class="flex items-center gap-2">
@@ -120,7 +120,7 @@
                 </div>
                 <label class="relative inline-flex items-center cursor-pointer">
                   <input checked class="sr-only peer" type="checkbox"/>
-                  <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-200 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                 </label>
               </div>
             </div>
@@ -135,7 +135,7 @@
           </div>
 
           <!-- Academic Years Section -->
-          <div class="bg-white rounded-lg p-5 md:p-6 border border-gray-200 shadow-sm mb-6">
+          <div class="bg-white rounded-2xl p-5 md:p-6 border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50 mb-6">
             <div class="flex justify-between items-center mb-5">
               <h3 class="text-lg font-bold text-blue-700 flex items-center gap-2">
                 <span class="material-symbols-outlined">calendar_today</span> السنوات الدراسية
@@ -143,31 +143,31 @@
             </div>
 
             <!-- Error Alert -->
-            <div *ngIf="yearError()" class="flex items-center gap-3 p-4 mb-4 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm">
+            <div *ngIf="yearError()" class="flex items-center gap-3 p-4 mb-4 rounded-2xl bg-red-50 border border-red-200 text-red-800 text-sm">
               <span class="material-symbols-outlined text-lg flex-shrink-0">error</span>
               <span>{{ yearError() }}</span>
-              <button (click)="yearError.set(null)" class="mr-auto text-red-500 hover:text-red-700 rounded-lg transition-colors">
+              <button (click)="yearError.set(null)" class="mr-auto text-red-500 hover:text-red-700 rounded-2xl transition-colors">
                 <span class="material-symbols-outlined text-lg">close</span>
               </button>
             </div>
 
             <!-- Add / Edit Year Form -->
-            <div class="flex flex-col md:flex-row gap-4 mb-6 bg-gray-50 p-4 rounded-lg border border-gray-200 items-end">
+            <div class="flex flex-col md:flex-row gap-4 mb-6 bg-gray-50 p-4 rounded-2xl border border-gray-100 items-end">
               <div class="flex-1 w-full">
                 <label class="block mb-2 text-sm font-medium text-gray-900">اسم السنة (مثال: 2025/2026)</label>
-                <input type="text" [(ngModel)]="newYear.name" class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                <input type="text" [(ngModel)]="newYear.name" class="bg-white border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5">
               </div>
               <div class="flex-1 w-full">
                 <label class="block mb-2 text-sm font-medium text-gray-900">تاريخ البداية</label>
-                <input type="date" [(ngModel)]="newYear.startDate" class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                <input type="date" [(ngModel)]="newYear.startDate" class="bg-white border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5">
               </div>
               <div class="flex-1 w-full">
                 <label class="block mb-2 text-sm font-medium text-gray-900">تاريخ النهاية</label>
-                <input type="date" [(ngModel)]="newYear.endDate" class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                <input type="date" [(ngModel)]="newYear.endDate" class="bg-white border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5">
               </div>
               <div class="flex gap-2 w-full md:w-auto mt-2 md:mt-0">
-                <button *ngIf="editingYearId()" (click)="cancelYearEdit()" class="flex-1 md:flex-none text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 font-medium rounded-lg text-sm px-4 py-2.5 transition-colors">إلغاء</button>
-                <button (click)="addAcademicYear()" class="flex-1 md:flex-none text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 transition-colors flex items-center justify-center gap-2">
+                <button *ngIf="editingYearId()" (click)="cancelYearEdit()" class="flex-1 md:flex-none text-gray-900 bg-white border border-gray-200 hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 font-medium rounded-2xl text-sm px-4 py-2.5 transition-colors">إلغاء</button>
+                <button (click)="addAcademicYear()" class="flex-1 md:flex-none text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-lg transform transition-all hover:-translate-y-0.5 font-medium rounded-2xl text-sm px-5 py-2.5 transition-colors flex items-center justify-center gap-2">
                   <span class="material-symbols-outlined text-lg">save</span>
                   {{ editingYearId() ? 'تحديث' : 'إضافة' }}
                 </button>
@@ -177,8 +177,8 @@
             <!-- Years List -->
             <div class="space-y-3">
               <div *ngFor="let year of academicYears()"
-                   class="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg transition-colors gap-4"
-                   [ngClass]="year.isCurrent ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-200 hover:bg-gray-50'">
+                   class="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-2xl transition-colors gap-4"
+                   [ngClass]="year.isCurrent ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-100 hover:bg-gray-50'">
                 <div>
                   <div class="font-bold text-gray-900 flex items-center gap-2">
                     {{ year.name }}
@@ -189,13 +189,13 @@
                   </div>
                 </div>
                 <div class="flex flex-wrap gap-2">
-                  <button *ngIf="!year.isCurrent" (click)="setYearActive(year.id)" class="text-sm font-medium text-blue-700 bg-white border border-blue-300 hover:bg-blue-50 rounded-lg px-3 py-1.5 transition-colors">
+                  <button *ngIf="!year.isCurrent" (click)="setYearActive(year.id)" class="text-sm font-medium text-blue-700 bg-white border border-blue-300 hover:bg-blue-50 rounded-2xl px-3 py-1.5 transition-colors">
                     تعيين كحالية
                   </button>
-                  <button (click)="editYear(year)" class="text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-100 rounded-lg px-3 py-1.5 transition-colors">
+                  <button (click)="editYear(year)" class="text-sm font-medium text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 rounded-2xl px-3 py-1.5 transition-colors">
                     تعديل
                   </button>
-                  <button *ngIf="!year.isCurrent" (click)="deleteYear(year.id)" class="text-sm font-medium text-red-600 bg-white border border-red-200 hover:bg-red-50 rounded-lg px-3 py-1.5 transition-colors flex items-center">
+                  <button *ngIf="!year.isCurrent" (click)="deleteYear(year.id)" class="text-sm font-medium text-red-600 bg-white border border-red-200 hover:bg-red-50 rounded-2xl px-3 py-1.5 transition-colors flex items-center">
                     <span class="material-symbols-outlined text-sm">delete</span>
                   </button>
                 </div>
@@ -204,7 +204,7 @@
           </div>
 
           <!-- Grade Levels Section -->
-          <div class="bg-white rounded-lg p-5 md:p-6 border border-gray-200 shadow-sm">
+          <div class="bg-white rounded-2xl p-5 md:p-6 border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50">
             <div class="flex justify-between items-center mb-5">
               <h3 class="text-lg font-bold text-blue-700 flex items-center gap-2">
                 <span class="material-symbols-outlined">layers</span> المراحل والصفوف الدراسية
@@ -212,34 +212,34 @@
             </div>
 
             <!-- Error Alert -->
-            <div *ngIf="gradeError()" class="flex items-center gap-3 p-4 mb-4 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm">
+            <div *ngIf="gradeError()" class="flex items-center gap-3 p-4 mb-4 rounded-2xl bg-red-50 border border-red-200 text-red-800 text-sm">
               <span class="material-symbols-outlined text-lg flex-shrink-0">error</span>
               <span>{{ gradeError() }}</span>
-              <button (click)="gradeError.set(null)" class="mr-auto text-red-500 hover:text-red-700 rounded-lg transition-colors">
+              <button (click)="gradeError.set(null)" class="mr-auto text-red-500 hover:text-red-700 rounded-2xl transition-colors">
                 <span class="material-symbols-outlined text-lg">close</span>
               </button>
             </div>
 
             <!-- Add / Edit Grade Form -->
-            <div class="flex flex-col md:flex-row gap-4 mb-6 bg-gray-50 p-4 rounded-lg border border-gray-200 items-end">
+            <div class="flex flex-col md:flex-row gap-4 mb-6 bg-gray-50 p-4 rounded-2xl border border-gray-100 items-end">
               <div class="flex-1 w-full">
                 <label class="block mb-2 text-sm font-medium text-gray-900">اسم الصف</label>
-                <input type="text" [(ngModel)]="newGrade.name" placeholder="مثال: الصف الأول الإعدادي" class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                <input type="text" [(ngModel)]="newGrade.name" placeholder="مثال: الصف الأول الإعدادي" class="bg-white border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5">
               </div>
               <div class="flex-1 w-full">
                 <label class="block mb-2 text-sm font-medium text-gray-900">المرحلة التعليمية</label>
-                <select [(ngModel)]="newGrade.stage" class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                <select [(ngModel)]="newGrade.stage" class="bg-white border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5">
                   <option [ngValue]="null">-- اختياري --</option>
                   <option *ngFor="let s of stageOptions" [value]="s">{{ s }}</option>
                 </select>
               </div>
               <div class="w-full md:w-28">
                 <label class="block mb-2 text-sm font-medium text-gray-900">الترتيب</label>
-                <input type="number" [(ngModel)]="newGrade.levelOrder" min="1" class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                <input type="number" [(ngModel)]="newGrade.levelOrder" min="1" class="bg-white border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5">
               </div>
               <div class="flex gap-2 w-full md:w-auto mt-2 md:mt-0">
-                <button *ngIf="editingGradeId()" (click)="cancelGradeEdit()" class="flex-1 md:flex-none text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 font-medium rounded-lg text-sm px-4 py-2.5 transition-colors">إلغاء</button>
-                <button (click)="addGradeLevel()" class="flex-1 md:flex-none text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 transition-colors flex items-center justify-center gap-2">
+                <button *ngIf="editingGradeId()" (click)="cancelGradeEdit()" class="flex-1 md:flex-none text-gray-900 bg-white border border-gray-200 hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 font-medium rounded-2xl text-sm px-4 py-2.5 transition-colors">إلغاء</button>
+                <button (click)="addGradeLevel()" class="flex-1 md:flex-none text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-lg transform transition-all hover:-translate-y-0.5 font-medium rounded-2xl text-sm px-5 py-2.5 transition-colors flex items-center justify-center gap-2">
                   <span class="material-symbols-outlined text-lg">{{ editingGradeId() ? 'save' : 'add' }}</span>
                   {{ editingGradeId() ? 'تحديث' : 'إضافة' }}
                 </button>
@@ -248,7 +248,7 @@
 
             <!-- Grades List -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div *ngFor="let grade of gradeLevels()" class="flex justify-between items-center p-4 border border-gray-200 rounded-lg bg-white hover:border-blue-300 hover:shadow-sm transition-all">
+              <div *ngFor="let grade of gradeLevels()" class="flex justify-between items-center p-4 border border-gray-100 rounded-2xl bg-white hover:border-blue-300 hover:shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50 transition-all">
                 <div class="flex items-center gap-3">
                   <div class="w-10 h-10 rounded-full bg-blue-50 border border-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm">
                     {{ grade.levelOrder }}
@@ -259,10 +259,10 @@
                   </div>
                 </div>
                 <div class="flex items-center gap-1">
-                  <button (click)="editGradeLevel(grade)" class="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="تعديل">
+                  <button (click)="editGradeLevel(grade)" class="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-2xl transition-colors" title="تعديل">
                     <span class="material-symbols-outlined text-sm">edit</span>
                   </button>
-                  <button (click)="deleteGradeLevel(grade.id)" class="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors" title="حذف">
+                  <button (click)="deleteGradeLevel(grade.id)" class="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-2xl transition-colors" title="حذف">
                     <span class="material-symbols-outlined text-sm">delete</span>
                   </button>
                 </div>

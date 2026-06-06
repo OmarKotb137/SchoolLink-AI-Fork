@@ -6,11 +6,11 @@
       <div class="max-w-7xl mx-auto space-y-6 pb-10">
 
         <!-- ══════════════════════ HEADER ══════════════════════ -->
-        <div class="bg-white p-6 rounded-lg border border-gray-200 shadow-sm flex flex-col gap-6">
+        <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50 flex flex-col gap-6">
 
           <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div class="flex items-center gap-4">
-              <div class="w-12 h-12 bg-purple-50 border border-purple-100 text-purple-600 rounded-xl flex items-center justify-center shrink-0">
+              <div class="w-12 h-12 bg-purple-50 border border-purple-100 text-purple-600 rounded-3xl flex items-center justify-center shrink-0">
                 <span class="material-symbols-outlined text-2xl" style="font-variation-settings:'FILL' 1;">family_home</span>
               </div>
               <div>
@@ -40,7 +40,7 @@
                     [class.border-blue-600]="selectedScheduleIndex() === i"
                     [class.shadow-md]="selectedScheduleIndex() === i"
                     [class.bg-white]="selectedScheduleIndex() !== i"
-                    [class.border-gray-200]="selectedScheduleIndex() !== i"
+                    [class.border-gray-100]="selectedScheduleIndex() !== i"
                     [class.hover:bg-gray-50]="selectedScheduleIndex() !== i">
               
               <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0"
@@ -69,19 +69,19 @@
         </div>
 
         <!-- ══════════════════════ ERROR BANNER ══════════════════════ -->
-        <div *ngIf="errorMessage()" class="flex items-center justify-between gap-3 p-4 rounded-lg bg-red-50 text-sm text-red-800 border border-red-200 shadow-sm">
+        <div *ngIf="errorMessage()" class="flex items-center justify-between gap-3 p-4 rounded-2xl bg-red-50 text-sm text-red-800 border border-red-200 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50">
           <div class="flex items-center gap-3">
             <span class="material-symbols-outlined text-lg" style="font-variation-settings:'FILL' 1;">error</span>
             <span class="font-medium">{{ errorMessage() }}</span>
           </div>
-          <button (click)="loadSchedules()" class="text-xs font-bold underline hover:no-underline px-3 py-1.5 rounded-md hover:bg-red-100 transition-colors flex items-center gap-1">
+          <button (click)="loadSchedules()" class="text-xs font-bold underline hover:no-underline px-3 py-1.5 rounded-xl hover:bg-red-100 transition-colors flex items-center gap-1">
             <span class="material-symbols-outlined text-sm">refresh</span>
             إعادة المحاولة
           </button>
         </div>
 
         <!-- ══════════════════════ TIMETABLE CARD ══════════════════════ -->
-        <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden flex flex-col relative min-h-[500px]">
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50 overflow-hidden flex flex-col relative min-h-[500px]">
 
           <!-- Loading overlay -->
           <div *ngIf="isLoading()" class="absolute inset-0 bg-white/80 z-10 flex flex-col items-center justify-center">
@@ -93,47 +93,47 @@
           <div class="overflow-x-auto w-full h-full">
             <table *ngIf="currentSchedule()" class="w-full border-collapse min-w-[800px] text-center text-sm">
               <thead>
-                <tr class="bg-gray-50 border-b border-gray-200">
+                <tr class="bg-gray-50 border-b border-gray-100">
                   <!-- Corner cell -->
-                  <th class="p-4 border-l border-gray-200 w-32 font-bold text-gray-900 align-middle">
+                  <th class="p-4 border-l border-gray-100 w-32 font-bold text-gray-900 align-middle">
                     <div class="flex flex-col items-center gap-1">
                       <span class="material-symbols-outlined text-blue-600 text-lg">calendar_view_week</span>
                       <span class="text-xs text-gray-500 font-bold uppercase">اليوم / الحصة</span>
                     </div>
                   </th>
                   <!-- Period headers -->
-                  <th *ngFor="let p of periods()" class="p-4 border-l border-gray-200 font-bold text-gray-900">
+                  <th *ngFor="let p of periods()" class="p-4 border-l border-gray-100 font-bold text-gray-900">
                     <div class="text-sm mb-1">{{ p.label }}</div>
-                    <div class="text-xs font-medium bg-white border border-gray-200 text-gray-500 rounded px-2 py-0.5 inline-block">
+                    <div class="text-xs font-medium bg-white border border-gray-100 text-gray-500 rounded px-2 py-0.5 inline-block">
                       {{ p.start }} – {{ p.end }}
                     </div>
                   </th>
                 </tr>
               </thead>
               <tbody>
-                <tr *ngFor="let day of days" class="border-b border-gray-200 hover:bg-gray-50/50 transition-colors">
+                <tr *ngFor="let day of days" class="border-b border-gray-100 hover:bg-gray-50/50 transition-colors">
 
                   <!-- Day label -->
-                  <td class="p-4 border-l border-gray-200 font-bold text-gray-900 align-middle bg-gray-50/50 shadow-[inset_-4px_0_0_0_#3b82f6]">
+                  <td class="p-4 border-l border-gray-100 font-bold text-gray-900 align-middle bg-gray-50/50 shadow-[inset_-4px_0_0_0_#3b82f6]">
                     {{ day.label }}
                   </td>
 
                   <!-- Slot cells -->
-                  <td *ngFor="let p of periods()" class="border-l border-gray-200 h-28 p-2 relative align-middle">
+                  <td *ngFor="let p of periods()" class="border-l border-gray-100 h-28 p-2 relative align-middle">
                     <ng-container *ngIf="getSlot(day.value, p.num) as slot">
 
                       <!-- استراحة -->
-                      <div *ngIf="slot.isBreak; else lessonTpl" class="w-full h-full min-h-[90px] flex flex-col justify-center items-center p-2 rounded-lg bg-orange-50 border border-orange-100 transition-transform hover:scale-[1.02] cursor-default">
+                      <div *ngIf="slot.isBreak; else lessonTpl" class="w-full h-full min-h-[90px] flex flex-col justify-center items-center p-2 rounded-2xl bg-orange-50 border border-orange-100 transition-transform hover:scale-[1.02] cursor-default">
                         <span class="material-symbols-outlined text-orange-500 mb-1 text-2xl" style="font-variation-settings:'FILL' 1">local_cafe</span>
                         <span class="font-bold text-orange-700 text-sm">استراحة</span>
                       </div>
 
                       <!-- حصة دراسية -->
                       <ng-template #lessonTpl>
-                        <div class="w-full h-full min-h-[90px] flex flex-col justify-center items-center p-2 rounded-lg border border-blue-100 bg-blue-50 shadow-sm transition-transform hover:scale-[1.02] cursor-default">
+                        <div class="w-full h-full min-h-[90px] flex flex-col justify-center items-center p-2 rounded-2xl border border-blue-100 bg-blue-50 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50 transition-transform hover:scale-[1.02] cursor-default">
                           <span class="font-bold text-blue-900 mb-1.5 text-sm">{{ slot.subjectName }}</span>
                           <div class="flex flex-col items-center w-full px-1 gap-1">
-                            <span class="flex items-center justify-center gap-1 w-full bg-white text-gray-700 text-[11px] px-1.5 py-0.5 rounded border border-gray-200">
+                            <span class="flex items-center justify-center gap-1 w-full bg-white text-gray-700 text-[11px] px-1.5 py-0.5 rounded border border-gray-100">
                               <span class="material-symbols-outlined text-[13px] text-gray-400">person</span>
                               <span class="truncate w-full">{{ slot.teacherName }}</span>
                             </span>

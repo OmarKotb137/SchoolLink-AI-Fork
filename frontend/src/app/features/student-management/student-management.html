@@ -7,7 +7,7 @@
       <div class="max-w-7xl mx-auto space-y-6 pb-10">
 
         <!-- Page Header -->
-        <section class="bg-white p-6 rounded-lg border border-gray-200 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <section class="bg-white p-6 rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <span class="text-sm font-medium text-blue-600 mb-1 block">إدارة الطلاب</span>
             <h1 class="text-2xl font-bold text-gray-900 mb-2">ملفات الطلاب وربط الحسابات وأولياء الأمور</h1>
@@ -18,15 +18,15 @@
           </div>
 
           <div class="flex flex-wrap items-center gap-2">
-            <button class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors flex items-center gap-2" type="button" (click)="navigateTo('/import-students')">
+            <button class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 transition-colors flex items-center gap-2" type="button" (click)="navigateTo('/import-students')">
               <span class="material-symbols-outlined text-sm">file_upload</span>
               استيراد
             </button>
-            <button class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors flex items-center gap-2" type="button" (click)="navigateTo('/transfer-student')">
+            <button class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 transition-colors flex items-center gap-2" type="button" (click)="navigateTo('/transfer-student')">
               <span class="material-symbols-outlined text-sm">transfer_within_a_station</span>
               نقل طالب
             </button>
-            <button class="px-4 py-2 text-sm font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800 transition-colors flex items-center gap-2" type="button" (click)="openCreateModal()">
+            <button class="px-4 py-2 text-sm font-medium text-white bg-blue-700 rounded-2xl hover:bg-blue-800 transition-colors flex items-center gap-2" type="button" (click)="openCreateModal()">
               <span class="material-symbols-outlined text-sm">person_add</span>
               إضافة طالب
             </button>
@@ -35,19 +35,19 @@
 
         <!-- Summary Grid -->
         <section class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <article class="bg-white border border-gray-200 p-4 rounded-lg text-center flex flex-col justify-center">
+          <article class="bg-white border border-gray-100 p-4 rounded-2xl text-center flex flex-col justify-center">
             <span class="block text-xs text-gray-500 font-medium mb-1">إجمالي الطلاب</span>
             <strong class="block text-2xl font-bold text-gray-900">{{ students().length }}</strong>
             <span class="block text-[10px] text-gray-400 mt-1">عدد ملفات الطلاب داخل النظام</span>
           </article>
 
-          <article class="bg-green-50 border border-green-100 p-4 rounded-lg text-center flex flex-col justify-center">
-            <span class="block text-xs text-green-600 font-medium mb-1">بحسابات دخول</span>
-            <strong class="block text-2xl font-bold text-green-900">{{ linkedStudentUserIds().size }}</strong>
-            <span class="block text-[10px] text-green-500 mt-1">طلاب مرتبطون بحسابات Student</span>
+          <article class="bg-emerald-50 border border-emerald-100 p-4 rounded-2xl text-center flex flex-col justify-center">
+            <span class="block text-xs text-emerald-600 font-medium mb-1">بحسابات دخول</span>
+            <strong class="block text-2xl font-bold text-emerald-900">{{ linkedStudentUserIds().size }}</strong>
+            <span class="block text-[10px] text-emerald-500 mt-1">طلاب مرتبطون بحسابات Student</span>
           </article>
 
-          <article class="bg-orange-50 border border-orange-100 p-4 rounded-lg text-center flex flex-col justify-center">
+          <article class="bg-orange-50 border border-orange-100 p-4 rounded-2xl text-center flex flex-col justify-center">
             <span class="block text-xs text-orange-600 font-medium mb-1">أولياء الأمور المتاحون</span>
             <strong class="block text-2xl font-bold text-orange-900">{{ parentAccounts().length }}</strong>
             <span class="block text-[10px] text-orange-500 mt-1">حسابات Parent الجاهزة للربط</span>
@@ -56,14 +56,14 @@
 
         <!-- Feedback Banners -->
         @if (errorMessage()) {
-          <div class="flex items-center gap-3 p-4 text-sm text-red-800 rounded-lg bg-red-50 border border-red-200">
+          <div class="flex items-center gap-3 p-4 text-sm text-red-800 rounded-2xl bg-red-50 border border-red-200">
             <span class="material-symbols-outlined text-lg">error</span>
             <span class="font-medium">{{ errorMessage() }}</span>
           </div>
         }
 
         @if (successMessage()) {
-          <div class="flex items-center gap-3 p-4 text-sm text-green-800 rounded-lg bg-green-50 border border-green-200">
+          <div class="flex items-center gap-3 p-4 text-sm text-green-800 rounded-2xl bg-emerald-50 border border-green-200">
             <span class="material-symbols-outlined text-lg">check_circle</span>
             <span class="font-medium">{{ successMessage() }}</span>
           </div>
@@ -73,8 +73,8 @@
         <section class="grid grid-cols-1 lg:grid-cols-12 gap-6">
           
           <!-- Students Table (Main content) -->
-          <div class="lg:col-span-8 bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col overflow-hidden">
-            <div class="p-5 border-b border-gray-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div class="lg:col-span-8 bg-white rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50 flex flex-col overflow-hidden">
+            <div class="p-5 border-b border-gray-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
                 <h2 class="text-lg font-bold text-gray-900">قائمة الطلاب</h2>
                 <p class="text-sm text-gray-500 mt-1">ابحث ثم اختر الطالب لعرض الربط والحسابات في اللوحة الجانبية.</p>
@@ -86,7 +86,7 @@
                 </div>
                 <input
                   type="text"
-                  class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pr-10 p-2.5"
+                  class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full pr-10 p-2.5"
                   placeholder="ابحث بالاسم أو الرقم القومي أو البريد"
                   [value]="searchQuery()"
                   (input)="searchQuery.set($any($event.target).value); currentPage.set(1)"
@@ -96,7 +96,7 @@
 
             <div class="overflow-x-auto flex-1">
               <table class="w-full text-sm text-right text-gray-500">
-                <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200">
+                <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-100">
                   <tr>
                     <th scope="col" class="px-6 py-4">الاسم</th>
                     <th scope="col" class="px-6 py-4">الرقم القومي</th>
@@ -143,32 +143,32 @@
                         <td class="px-6 py-4 text-gray-600">{{ getGenderLabel(student.gender) }}</td>
                         <td class="px-6 py-4 text-center">
                           <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border"
-                                [class.bg-green-50]="student.userId"
+                                [class.bg-emerald-50]="student.userId"
                                 [class.text-green-700]="student.userId"
                                 [class.border-green-200]="student.userId"
                                 [class.bg-gray-100]="!student.userId"
                                 [class.text-gray-700]="!student.userId"
-                                [class.border-gray-300]="!student.userId">
+                                [class.border-gray-200]="!student.userId">
                             {{ student.userId ? 'مرتبط' : 'غير مرتبط' }}
                           </span>
                         </td>
                         <td class="px-6 py-4 text-center">
                           <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border"
-                                [class.bg-green-50]="student.isActive"
+                                [class.bg-emerald-50]="student.isActive"
                                 [class.text-green-700]="student.isActive"
                                 [class.border-green-200]="student.isActive"
                                 [class.bg-gray-100]="!student.isActive"
                                 [class.text-gray-700]="!student.isActive"
-                                [class.border-gray-300]="!student.isActive">
+                                [class.border-gray-200]="!student.isActive">
                             {{ student.isActive ? 'نشط' : 'غير نشط' }}
                           </span>
                         </td>
                         <td class="px-6 py-4 text-center">
                           <div class="flex items-center justify-center gap-2" (click)="$event.stopPropagation()">
-                            <button class="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors" type="button" (click)="openEditModal(student)" title="تعديل">
+                            <button class="p-2 text-blue-600 hover:bg-blue-100 rounded-2xl transition-colors" type="button" (click)="openEditModal(student)" title="تعديل">
                               <span class="material-symbols-outlined text-sm">edit</span>
                             </button>
-                            <button class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors" type="button" (click)="deleteStudent(student)" title="حذف">
+                            <button class="p-2 text-red-600 hover:bg-red-50 rounded-2xl transition-colors" type="button" (click)="deleteStudent(student)" title="حذف">
                               <span class="material-symbols-outlined text-sm">delete</span>
                             </button>
                           </div>
@@ -182,13 +182,13 @@
 
             <!-- Pagination -->
             @if (totalPages() > 1) {
-              <div class="flex items-center justify-between p-4 bg-gray-50 border-t border-gray-200 flex-wrap gap-4 mt-auto">
+              <div class="flex items-center justify-between p-4 bg-gray-50 border-t border-gray-100 flex-wrap gap-4 mt-auto">
                 <span class="text-sm text-gray-700">
                   إظهار <span class="font-semibold text-gray-900">{{ (currentPage() - 1) * itemsPerPage() + 1 }}</span> إلى <span class="font-semibold text-gray-900">{{ (currentPage() * itemsPerPage()) > filteredStudents().length ? filteredStudents().length : (currentPage() * itemsPerPage()) }}</span> من أصل <span class="font-semibold text-gray-900">{{ filteredStudents().length }}</span> طالب
                 </span>
                 
                 <div class="flex items-center gap-2">
-                  <button class="flex items-center justify-center px-3 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors" [disabled]="currentPage() === 1" (click)="prevPage()">
+                  <button class="flex items-center justify-center px-3 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors" [disabled]="currentPage() === 1" (click)="prevPage()">
                     <span class="material-symbols-outlined text-sm mr-1">chevron_right</span>
                     السابق
                   </button>
@@ -200,14 +200,14 @@
                         $index + 1 === totalPages() ||
                         ($index + 1 >= currentPage() - 1 && $index + 1 <= currentPage() + 1)
                       ) {
-                        <button class="flex items-center justify-center w-8 h-8 text-sm font-medium rounded-lg transition-colors border" 
+                        <button class="flex items-center justify-center w-8 h-8 text-sm font-medium rounded-2xl transition-colors border" 
                                 [class.bg-blue-600]="( $index + 1 ) === currentPage()"
                                 [class.text-white]="( $index + 1 ) === currentPage()"
                                 [class.border-blue-600]="( $index + 1 ) === currentPage()"
                                 [class.bg-white]="( $index + 1 ) !== currentPage()"
                                 [class.text-gray-900]="( $index + 1 ) !== currentPage()"
-                                [class.border-gray-300]="( $index + 1 ) !== currentPage()"
-                                [class.hover:bg-gray-100]="( $index + 1 ) !== currentPage()"
+                                [class.border-gray-200]="( $index + 1 ) !== currentPage()"
+                                [class.hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5]="( $index + 1 ) !== currentPage()"
                                 (click)="goToPage($index + 1)">
                           {{ $index + 1 }}
                         </button>
@@ -220,7 +220,7 @@
                     }
                   </div>
 
-                  <button class="flex items-center justify-center px-3 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors" [disabled]="currentPage() === totalPages()" (click)="nextPage()">
+                  <button class="flex items-center justify-center px-3 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors" [disabled]="currentPage() === totalPages()" (click)="nextPage()">
                     التالي
                     <span class="material-symbols-outlined text-sm ml-1">chevron_left</span>
                   </button>
@@ -231,8 +231,8 @@
 
           <!-- Student Details Sidebar -->
           <aside class="lg:col-span-4 flex flex-col gap-4">
-            <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-5 sticky top-24">
-              <div class="mb-5 border-b border-gray-200 pb-4">
+            <div class="bg-white rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50 p-5 sticky top-24">
+              <div class="mb-5 border-b border-gray-100 pb-4">
                 <h2 class="text-lg font-bold text-gray-900">تفاصيل الطالب</h2>
                 <p class="text-sm text-gray-500 mt-1">اختر طالبًا من الجدول لبدء الربط أو مراجعة علاقاته الحالية.</p>
               </div>
@@ -265,7 +265,7 @@
                   </div>
 
                   <!-- Link Account -->
-                  <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                  <div class="bg-gray-50 border border-gray-100 rounded-2xl p-4">
                     <div class="mb-3">
                       <h3 class="text-sm font-bold text-gray-900">ربط حساب طالب</h3>
                       <p class="text-[11px] text-gray-500 mt-0.5">يتم الربط من حسابات الدور Student فقط.</p>
@@ -273,7 +273,7 @@
 
                     <div class="flex flex-col gap-3">
                       <select
-                        class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                        class="bg-white border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5"
                         [value]="selectedStudentUserId() ?? ''"
                         (change)="selectedStudentUserId.set($any($event.target).value ? +$any($event.target).value : null)"
                       >
@@ -283,7 +283,7 @@
                         }
                       </select>
 
-                      <button class="w-full text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-4 py-2 transition-colors flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" type="button" (click)="linkStudentAccount()" [disabled]="isLoading()">
+                      <button class="w-full text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-lg transform transition-all hover:-translate-y-0.5 focus:ring-4 focus:ring-indigo-300 font-medium rounded-2xl text-sm px-4 py-2 transition-colors flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" type="button" (click)="linkStudentAccount()" [disabled]="isLoading()">
                         <span class="material-symbols-outlined text-sm">link</span>
                         ربط حساب الطالب
                       </button>
@@ -291,7 +291,7 @@
                   </div>
 
                   <!-- Link Parent -->
-                  <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                  <div class="bg-gray-50 border border-gray-100 rounded-2xl p-4">
                     <div class="mb-3">
                       <h3 class="text-sm font-bold text-gray-900">ربط ولي أمر</h3>
                       <p class="text-[11px] text-gray-500 mt-0.5">اختر حساب Parent وحدد صلة القرابة.</p>
@@ -299,7 +299,7 @@
 
                     <div class="flex flex-col gap-3">
                       <select
-                        class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                        class="bg-white border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5"
                         [value]="selectedParentId() ?? ''"
                         (change)="selectedParentId.set($any($event.target).value ? +$any($event.target).value : null)"
                       >
@@ -310,7 +310,7 @@
                       </select>
 
                       <select
-                        class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                        class="bg-white border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5"
                         [value]="selectedRelationship()"
                         (change)="setRelationshipFromValue($any($event.target).value)"
                       >
@@ -321,7 +321,7 @@
                         <option value="5">أخرى</option>
                       </select>
 
-                      <button class="w-full text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-4 py-2 transition-colors flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" type="button" (click)="linkParentToStudent()" [disabled]="isLoading()">
+                      <button class="w-full text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-lg transform transition-all hover:-translate-y-0.5 focus:ring-4 focus:ring-indigo-300 font-medium rounded-2xl text-sm px-4 py-2 transition-colors flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" type="button" (click)="linkParentToStudent()" [disabled]="isLoading()">
                         <span class="material-symbols-outlined text-sm">family_restroom</span>
                         ربط ولي الأمر
                       </button>
@@ -334,19 +334,19 @@
                     <p class="text-xs text-gray-500 mb-3">أولياء الأمور المرتبطين بهذا الطالب.</p>
 
                     @if (parentLinks().length === 0) {
-                      <div class="bg-gray-50 rounded-lg p-4 text-center text-sm text-gray-500 border border-dashed border-gray-300">
+                      <div class="bg-gray-50 rounded-2xl p-4 text-center text-sm text-gray-500 border border-dashed border-gray-200">
                         لا توجد روابط أولياء أمور لهذا الطالب حتى الآن.
                       </div>
                     } @else {
                       <div class="flex flex-col gap-2">
                         @for (link of parentLinks(); track link.id) {
-                          <div class="bg-white border border-gray-200 rounded-lg p-3 flex justify-between items-start gap-3 shadow-sm">
+                          <div class="bg-white border border-gray-100 rounded-2xl p-3 flex justify-between items-start gap-3 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50">
                             <div class="flex-1 min-w-0">
                               <strong class="block text-sm text-gray-900 truncate">{{ link.parentName }}</strong>
                               <p class="text-xs text-gray-500 truncate mb-1">{{ link.parentEmail }}</p>
                               <span class="inline-block bg-blue-50 text-blue-700 text-[10px] px-2 py-0.5 rounded border border-blue-100 font-medium">{{ getRelationshipLabel(link.relationship) }}</span>
                             </div>
-                            <button class="p-1.5 text-red-600 hover:bg-red-50 rounded-md transition-colors shrink-0" type="button" (click)="unlinkParent(link)" title="إلغاء الربط">
+                            <button class="p-1.5 text-red-600 hover:bg-red-50 rounded-xl transition-colors shrink-0" type="button" (click)="unlinkParent(link)" title="إلغاء الربط">
                               <span class="material-symbols-outlined text-sm">link_off</span>
                             </button>
                           </div>
@@ -357,7 +357,7 @@
 
                 </div>
               } @else {
-                <div class="flex flex-col items-center justify-center p-8 text-center text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                <div class="flex flex-col items-center justify-center p-8 text-center text-gray-500 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
                   <span class="material-symbols-outlined text-5xl text-gray-300 mb-3">school</span>
                   <p class="text-sm">اختر طالبًا من الجدول لعرض بياناته وربط الحسابات وأولياء الأمور.</p>
                 </div>
@@ -374,13 +374,13 @@
 
 @if (showCreateModal()) {
   <div class="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/50 backdrop-blur-sm p-4" (click)="closeModals()">
-    <div class="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden" (click)="$event.stopPropagation()">
-      <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+    <div class="bg-white rounded-3xl shadow-xl max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden" (click)="$event.stopPropagation()">
+      <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
         <div>
           <h2 class="text-xl font-bold text-gray-900">إضافة طالب جديد</h2>
           <p class="text-sm text-gray-500 mt-1">أنشئ ملف الطالب الأكاديمي أولًا، ثم اربطه لاحقًا.</p>
         </div>
-        <button class="text-gray-400 hover:text-gray-900 hover:bg-gray-200 p-2 rounded-lg transition-colors" type="button" (click)="closeModals()">
+        <button class="text-gray-400 hover:text-gray-900 hover:bg-gray-200 p-2 rounded-2xl transition-colors" type="button" (click)="closeModals()">
           <span class="material-symbols-outlined">close</span>
         </button>
       </div>
@@ -389,17 +389,17 @@
         <div class="flex flex-col gap-4">
           <div class="flex flex-col gap-2">
             <label class="text-sm font-medium text-gray-900">الاسم الكامل</label>
-            <input class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" [value]="formName()" (input)="formName.set($any($event.target).value)" />
+            <input class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" [value]="formName()" (input)="formName.set($any($event.target).value)" />
           </div>
 
           <div class="flex flex-col gap-2">
             <label class="text-sm font-medium text-gray-900">الرقم القومي</label>
-            <input class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" [value]="formNationalId()" (input)="formNationalId.set($any($event.target).value)" />
+            <input class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" [value]="formNationalId()" (input)="formNationalId.set($any($event.target).value)" />
           </div>
 
           <div class="flex flex-col gap-2">
             <label class="text-sm font-medium text-gray-900">النوع</label>
-            <select class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" [value]="formGender() ?? ''" (change)="formGender.set($any($event.target).value ? +$any($event.target).value : null)">
+            <select class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" [value]="formGender() ?? ''" (change)="formGender.set($any($event.target).value ? +$any($event.target).value : null)">
               <option value="">اختر النوع</option>
               <option value="1">ذكر</option>
               <option value="2">أنثى</option>
@@ -408,14 +408,14 @@
 
           <div class="flex flex-col gap-2">
             <label class="text-sm font-medium text-gray-900">تاريخ الميلاد</label>
-            <input class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" type="date" [value]="formBirthDate()" (input)="formBirthDate.set($any($event.target).value)" />
+            <input class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" type="date" [value]="formBirthDate()" (input)="formBirthDate.set($any($event.target).value)" />
           </div>
         </div>
       </div>
 
-      <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3 bg-gray-50">
-        <button class="px-5 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors" type="button" (click)="closeModals()">إلغاء</button>
-        <button class="px-5 py-2.5 text-sm font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" type="button" (click)="saveStudent()" [disabled]="!canSaveStudent()">
+      <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 bg-gray-50">
+        <button class="px-5 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 transition-colors" type="button" (click)="closeModals()">إلغاء</button>
+        <button class="px-5 py-2.5 text-sm font-medium text-white bg-blue-700 rounded-2xl hover:bg-blue-800 focus:ring-4 focus:ring-indigo-300 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" type="button" (click)="saveStudent()" [disabled]="!canSaveStudent()">
           حفظ الطالب
         </button>
       </div>
@@ -425,13 +425,13 @@
 
 @if (showEditModal()) {
   <div class="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/50 backdrop-blur-sm p-4" (click)="closeModals()">
-    <div class="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden" (click)="$event.stopPropagation()">
-      <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+    <div class="bg-white rounded-3xl shadow-xl max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden" (click)="$event.stopPropagation()">
+      <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
         <div>
           <h2 class="text-xl font-bold text-gray-900">تعديل بيانات الطالب</h2>
           <p class="text-sm text-gray-500 mt-1">يمكن تعديل البيانات الأساسية للطالب من هنا.</p>
         </div>
-        <button class="text-gray-400 hover:text-gray-900 hover:bg-gray-200 p-2 rounded-lg transition-colors" type="button" (click)="closeModals()">
+        <button class="text-gray-400 hover:text-gray-900 hover:bg-gray-200 p-2 rounded-2xl transition-colors" type="button" (click)="closeModals()">
           <span class="material-symbols-outlined">close</span>
         </button>
       </div>
@@ -440,17 +440,17 @@
         <div class="flex flex-col gap-4">
           <div class="flex flex-col gap-2">
             <label class="text-sm font-medium text-gray-900">الاسم الكامل</label>
-            <input class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" [value]="formName()" (input)="formName.set($any($event.target).value)" />
+            <input class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" [value]="formName()" (input)="formName.set($any($event.target).value)" />
           </div>
 
           <div class="flex flex-col gap-2">
             <label class="text-sm font-medium text-gray-900">الرقم القومي</label>
-            <input class="bg-gray-100 border border-gray-300 text-gray-500 text-sm rounded-lg block w-full p-2.5 cursor-not-allowed" [value]="formNationalId()" disabled />
+            <input class="bg-gray-100 border border-gray-200 text-gray-500 text-sm rounded-2xl block w-full p-2.5 cursor-not-allowed" [value]="formNationalId()" disabled />
           </div>
 
           <div class="flex flex-col gap-2">
             <label class="text-sm font-medium text-gray-900">النوع</label>
-            <select class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" [value]="formGender() ?? ''" (change)="formGender.set($any($event.target).value ? +$any($event.target).value : null)">
+            <select class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" [value]="formGender() ?? ''" (change)="formGender.set($any($event.target).value ? +$any($event.target).value : null)">
               <option value="">اختر النوع</option>
               <option value="1">ذكر</option>
               <option value="2">أنثى</option>
@@ -459,14 +459,14 @@
 
           <div class="flex flex-col gap-2">
             <label class="text-sm font-medium text-gray-900">تاريخ الميلاد</label>
-            <input class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" type="date" [value]="formBirthDate()" (input)="formBirthDate.set($any($event.target).value)" />
+            <input class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" type="date" [value]="formBirthDate()" (input)="formBirthDate.set($any($event.target).value)" />
           </div>
         </div>
       </div>
 
-      <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3 bg-gray-50">
-        <button class="px-5 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors" type="button" (click)="closeModals()">إلغاء</button>
-        <button class="px-5 py-2.5 text-sm font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" type="button" (click)="updateStudent()" [disabled]="!canUpdateStudent()">
+      <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 bg-gray-50">
+        <button class="px-5 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 transition-colors" type="button" (click)="closeModals()">إلغاء</button>
+        <button class="px-5 py-2.5 text-sm font-medium text-white bg-blue-700 rounded-2xl hover:bg-blue-800 focus:ring-4 focus:ring-indigo-300 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" type="button" (click)="updateStudent()" [disabled]="!canUpdateStudent()">
           حفظ التعديلات
         </button>
       </div>

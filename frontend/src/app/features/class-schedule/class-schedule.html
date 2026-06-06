@@ -8,12 +8,12 @@
       <div class="max-w-7xl mx-auto space-y-6 pb-10">
 
         <!-- ═══════════════════ HEADER ═══════════════════ -->
-        <div class="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+        <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50">
           <div class="flex flex-col md:flex-row items-start justify-between gap-4">
 
             <!-- Title + icon -->
             <div class="flex items-center gap-4">
-              <div class="w-12 h-12 bg-blue-50 border border-blue-100 text-blue-600 rounded-xl flex items-center justify-center shrink-0">
+              <div class="w-12 h-12 bg-blue-50 border border-blue-100 text-blue-600 rounded-3xl flex items-center justify-center shrink-0">
                 <span class="material-symbols-outlined text-2xl">view_timeline</span>
               </div>
               <div>
@@ -21,7 +21,7 @@
                   جدولي الدراسي
                   <ng-container *ngIf="timetable()?.className">
                     <span class="text-gray-300 font-normal">—</span>
-                    <span class="text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-lg text-lg border border-blue-100">{{ timetable()!.className }}</span>
+                    <span class="text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-2xl text-lg border border-blue-100">{{ timetable()!.className }}</span>
                   </ng-container>
                 </h1>
                 <p class="text-sm text-gray-500 mt-1">الجدول الأسبوعي · مواعيد الحصص والمعلمين</p>
@@ -30,11 +30,11 @@
 
             <!-- Stats chips (بعد التحميل) -->
             <div *ngIf="!isLoading() && timetable()" class="flex items-center gap-2 flex-wrap w-full md:w-auto mt-2 md:mt-0">
-              <div class="flex items-center gap-1.5 bg-gray-50 border border-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-medium">
+              <div class="flex items-center gap-1.5 bg-gray-50 border border-gray-100 text-gray-700 px-3 py-1.5 rounded-2xl text-sm font-medium">
                 <span class="material-symbols-outlined text-sm">school</span>
                 {{ lessonCount }} حصة أسبوعياً
               </div>
-              <div class="flex items-center gap-1.5 bg-gray-50 border border-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-medium">
+              <div class="flex items-center gap-1.5 bg-gray-50 border border-gray-100 text-gray-700 px-3 py-1.5 rounded-2xl text-sm font-medium">
                 <span class="material-symbols-outlined text-sm">menu_book</span>
                 {{ uniqueSubjects.length }} مادة
               </div>
@@ -53,19 +53,19 @@
         </div>
 
         <!-- ═══════════════════ ERROR BANNER ═══════════════════ -->
-        <div *ngIf="errorMessage()" class="flex items-center justify-between gap-3 p-4 rounded-lg bg-red-50 text-sm text-red-800 border border-red-200 shadow-sm">
+        <div *ngIf="errorMessage()" class="flex items-center justify-between gap-3 p-4 rounded-2xl bg-red-50 text-sm text-red-800 border border-red-200 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50">
           <div class="flex items-center gap-3">
             <span class="material-symbols-outlined text-lg">error</span>
             <span class="font-medium">{{ errorMessage() }}</span>
           </div>
-          <button (click)="loadSchedule()" class="text-xs font-bold underline hover:no-underline px-3 py-1.5 rounded-md hover:bg-red-100 transition-colors flex items-center gap-1">
+          <button (click)="loadSchedule()" class="text-xs font-bold underline hover:no-underline px-3 py-1.5 rounded-xl hover:bg-red-100 transition-colors flex items-center gap-1">
             <span class="material-symbols-outlined text-sm">refresh</span>
             إعادة المحاولة
           </button>
         </div>
 
         <!-- ═══════════════════ TABLE CARD ═══════════════════ -->
-        <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden flex flex-col relative min-h-[420px]">
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50 overflow-hidden flex flex-col relative min-h-[420px]">
 
           <!-- ── Loading overlay ── -->
           <div *ngIf="isLoading()" class="absolute inset-0 bg-white/80 z-10 flex flex-col items-center justify-center">
@@ -80,9 +80,9 @@
 
               <!-- HEADER ROW -->
               <thead>
-                <tr class="bg-gray-50 border-b border-gray-200">
+                <tr class="bg-gray-50 border-b border-gray-100">
                   <!-- Corner -->
-                  <th class="p-4 border-l border-gray-200 w-32 font-bold text-gray-900 align-middle">
+                  <th class="p-4 border-l border-gray-100 w-32 font-bold text-gray-900 align-middle">
                     <div class="flex flex-col items-center gap-1">
                       <span class="material-symbols-outlined text-blue-600 text-lg">date_range</span>
                       <span class="text-xs text-gray-500 font-bold uppercase">اليوم</span>
@@ -91,13 +91,13 @@
 
                   <!-- Period headers -->
                   <th *ngFor="let p of periods()"
-                      class="p-4 border-l border-gray-200 font-bold text-gray-900 relative"
+                      class="p-4 border-l border-gray-100 font-bold text-gray-900 relative"
                       [class.bg-blue-50]="getCurrentPeriodNum() === p.num">
                     <div class="text-sm mb-1" [class.text-blue-700]="getCurrentPeriodNum() === p.num">{{ p.label }}</div>
                     <div class="text-xs font-medium bg-white border rounded px-2 py-0.5 inline-block"
                          [class.border-blue-200]="getCurrentPeriodNum() === p.num"
                          [class.text-blue-600]="getCurrentPeriodNum() === p.num"
-                         [class.border-gray-200]="getCurrentPeriodNum() !== p.num"
+                         [class.border-gray-100]="getCurrentPeriodNum() !== p.num"
                          [class.text-gray-500]="getCurrentPeriodNum() !== p.num">
                       {{ p.start }}<br/>{{ p.end }}
                     </div>
@@ -109,23 +109,23 @@
               <!-- BODY -->
               <tbody>
                 <tr *ngFor="let day of days"
-                    class="border-b border-gray-200 hover:bg-gray-50/50 transition-colors"
+                    class="border-b border-gray-100 hover:bg-gray-50/50 transition-colors"
                     [class.bg-blue-50]="isToday(day.value)">
 
                   <!-- Day label -->
-                  <td class="p-4 border-l border-gray-200 font-bold align-middle relative"
+                  <td class="p-4 border-l border-gray-100 font-bold align-middle relative"
                       [class.text-blue-700]="isToday(day.value)"
                       [class.bg-blue-100]="isToday(day.value)"
                       [class.text-gray-900]="!isToday(day.value)"
                       [class.bg-gray-50]="!isToday(day.value)">
                     <span class="block mb-1">{{ day.label }}</span>
-                    <span *ngIf="isToday(day.value)" class="inline-block bg-blue-600 text-white text-[10px] px-1.5 py-0.5 rounded-full shadow-sm">اليوم</span>
+                    <span *ngIf="isToday(day.value)" class="inline-block bg-blue-600 text-white text-[10px] px-1.5 py-0.5 rounded-full shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50">اليوم</span>
                     <div *ngIf="isToday(day.value)" class="absolute right-0 top-0 bottom-0 w-1 bg-blue-600"></div>
                   </td>
 
                   <!-- Slot cells -->
                   <td *ngFor="let p of periods()"
-                      class="border-l border-gray-200 h-28 p-2 relative align-middle"
+                      class="border-l border-gray-100 h-28 p-2 relative align-middle"
                       [class.bg-blue-50]="isToday(day.value) && getCurrentPeriodNum() === p.num"
                       [class.shadow-[inset_0_0_0_2px_#3b82f6]]="isToday(day.value) && getCurrentPeriodNum() === p.num">
 
@@ -134,7 +134,7 @@
 
                       <!-- Break -->
                       <ng-container *ngIf="slot.isBreak; else lessonTpl">
-                        <div class="w-full h-full min-h-[90px] flex flex-col justify-center items-center p-2 rounded-lg bg-orange-50 border border-orange-100 transition-transform hover:scale-[1.02] cursor-default">
+                        <div class="w-full h-full min-h-[90px] flex flex-col justify-center items-center p-2 rounded-2xl bg-orange-50 border border-orange-100 transition-transform hover:scale-[1.02] cursor-default">
                           <span class="material-symbols-outlined text-orange-500 mb-1 text-2xl">local_cafe</span>
                           <span class="font-bold text-orange-700 text-sm">استراحة</span>
                           <span class="text-[10px] text-orange-600 font-medium mt-1 bg-white px-1.5 rounded border border-orange-100">
@@ -145,11 +145,11 @@
 
                       <!-- Lesson -->
                       <ng-template #lessonTpl>
-                        <div class="w-full h-full min-h-[90px] flex flex-col justify-center items-center p-2 rounded-lg border shadow-sm transition-transform hover:scale-[1.02] cursor-default"
+                        <div class="w-full h-full min-h-[90px] flex flex-col justify-center items-center p-2 rounded-2xl border shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50 transition-transform hover:scale-[1.02] cursor-default"
                              [ngClass]="getSubjectColor(slot.subjectName) || 'bg-blue-50 border-blue-100'">
                           <div class="font-bold text-gray-900 mb-1.5 text-sm">{{ slot.subjectName }}</div>
                           <div class="flex flex-col items-center w-full px-1 gap-1">
-                            <div *ngIf="slot.teacherName" class="flex items-center justify-center gap-1 w-full bg-white text-gray-700 text-[11px] px-1.5 py-0.5 rounded border border-gray-200">
+                            <div *ngIf="slot.teacherName" class="flex items-center justify-center gap-1 w-full bg-white text-gray-700 text-[11px] px-1.5 py-0.5 rounded border border-gray-100">
                               <span class="material-symbols-outlined text-[13px] text-gray-400">person</span>
                               <span class="truncate w-full">{{ slot.teacherName }}</span>
                             </div>
@@ -188,15 +188,15 @@
         </div>
 
         <!-- ═══════════════════ LEGEND ═══════════════════ -->
-        <div *ngIf="!isLoading() && uniqueSubjects.length > 0" class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+        <div *ngIf="!isLoading() && uniqueSubjects.length > 0" class="bg-white p-4 rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50">
           <div class="flex flex-wrap items-center gap-x-4 gap-y-3">
-            <div class="flex items-center gap-2 border-l border-gray-200 pl-4">
+            <div class="flex items-center gap-2 border-l border-gray-100 pl-4">
               <span class="material-symbols-outlined text-gray-400 text-sm">palette</span>
               <span class="text-xs font-bold text-gray-700 uppercase">المواد الدراسية:</span>
             </div>
             <div *ngFor="let s of uniqueSubjects"
-                 class="flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium shadow-sm transition-transform hover:-translate-y-0.5"
-                 [ngClass]="s.color || 'bg-gray-50 border-gray-200 text-gray-700'">
+                 class="flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50 transition-transform hover:-translate-y-0.5"
+                 [ngClass]="s.color || 'bg-gray-50 border-gray-100 text-gray-700'">
               <span class="w-2 h-2 rounded-full bg-current opacity-70"></span>
               <span>{{ s.name }}</span>
             </div>

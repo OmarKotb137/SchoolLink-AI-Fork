@@ -6,7 +6,7 @@
       <div class="max-w-7xl mx-auto space-y-6 pb-10">
 
         <!-- Header -->
-        <section class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+        <section class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50">
           <div>
             <span class="text-sm font-medium text-blue-600 mb-1 block">Teacher Timetable</span>
             <h2 class="text-2xl font-bold text-gray-900 mb-2 flex items-center gap-2">
@@ -16,13 +16,13 @@
           </div>
 
           <div class="flex items-center gap-4 w-full md:w-auto">
-            <div class="bg-gray-50 border border-gray-200 p-4 rounded-lg flex-1 md:w-40 text-center">
+            <div class="bg-gray-50 border border-gray-100 p-4 rounded-2xl flex-1 md:w-40 text-center">
               <span class="block text-xs text-gray-500 font-medium mb-1">إجمالي الحصص</span>
               <strong class="block text-2xl font-bold text-gray-900">{{ slots().length }}</strong>
               <span class="block text-[10px] text-gray-400 mt-1">الحصص المسندة لك هذا العام</span>
             </div>
 
-            <div class="bg-blue-50 border border-blue-100 p-4 rounded-lg flex-1 md:w-40 text-center">
+            <div class="bg-blue-50 border border-blue-100 p-4 rounded-2xl flex-1 md:w-40 text-center">
               <span class="block text-xs text-blue-600 font-medium mb-1">عدد الفترات اليومية</span>
               <strong class="block text-2xl font-bold text-blue-900">{{ periods().length }}</strong>
               <span class="block text-[10px] text-blue-500 mt-1">مستخرجة من الجدول</span>
@@ -31,18 +31,18 @@
         </section>
 
         <!-- Error banner: بيظهر لما يحصل خطأ في الـ API -->
-        <div *ngIf="errorMessage()" class="flex items-center justify-between gap-3 p-4 rounded-lg bg-red-50 text-sm text-red-800 border border-red-200 shadow-sm">
+        <div *ngIf="errorMessage()" class="flex items-center justify-between gap-3 p-4 rounded-2xl bg-red-50 text-sm text-red-800 border border-red-200 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50">
           <div class="flex items-center gap-3">
             <span class="material-symbols-outlined text-lg">error</span>
             <span class="font-medium">{{ errorMessage() }}</span>
           </div>
-          <button (click)="loadSchedule()" class="text-xs font-bold underline hover:no-underline px-3 py-1.5 rounded-md hover:bg-red-100 transition-colors">
+          <button (click)="loadSchedule()" class="text-xs font-bold underline hover:no-underline px-3 py-1.5 rounded-xl hover:bg-red-100 transition-colors">
             إعادة المحاولة
           </button>
         </div>
 
         <!-- Schedule grid card -->
-        <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden flex flex-col relative min-h-[500px]">
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50 overflow-hidden flex flex-col relative min-h-[500px]">
 
           <!-- Loading spinner -->
           <div *ngIf="isLoading()" class="absolute inset-0 bg-white/80 z-10 flex flex-col items-center justify-center">
@@ -58,29 +58,29 @@
           <div class="overflow-x-auto w-full h-full">
             <table *ngIf="!isLoading() && slots().length > 0" class="w-full border-collapse min-w-[800px] text-center text-sm">
               <thead>
-                <tr class="bg-gray-50 border-b border-gray-200">
-                  <th class="p-4 border-l border-gray-200 w-32 font-bold text-gray-900 uppercase">اليوم / الحصة</th>
-                  <th *ngFor="let p of periods()" class="p-4 border-l border-gray-200 font-bold text-gray-900">
+                <tr class="bg-gray-50 border-b border-gray-100">
+                  <th class="p-4 border-l border-gray-100 w-32 font-bold text-gray-900 uppercase">اليوم / الحصة</th>
+                  <th *ngFor="let p of periods()" class="p-4 border-l border-gray-100 font-bold text-gray-900">
                     <div class="text-sm mb-1">{{ p.label }}</div>
-                    <div class="text-xs text-gray-500 font-medium bg-white border border-gray-200 rounded px-2 py-0.5 inline-block">{{ p.start }} - {{ p.end }}</div>
+                    <div class="text-xs text-gray-500 font-medium bg-white border border-gray-100 rounded px-2 py-0.5 inline-block">{{ p.start }} - {{ p.end }}</div>
                   </th>
                 </tr>
               </thead>
               <tbody>
-                <tr *ngFor="let day of days" class="border-b border-gray-200 hover:bg-gray-50/50 transition-colors">
+                <tr *ngFor="let day of days" class="border-b border-gray-100 hover:bg-gray-50/50 transition-colors">
 
-                  <td class="p-4 border-l border-gray-200 font-bold text-gray-900 bg-gray-50/50 shadow-[inset_-4px_0_0_0_#3b82f6]">
+                  <td class="p-4 border-l border-gray-100 font-bold text-gray-900 bg-gray-50/50 shadow-[inset_-4px_0_0_0_#3b82f6]">
                     {{ day.label }}
                   </td>
 
-                  <td *ngFor="let p of periods()" class="border-l border-gray-200 h-28 p-2 relative align-middle">
+                  <td *ngFor="let p of periods()" class="border-l border-gray-100 h-28 p-2 relative align-middle">
                     <!--
                       getSlot() بتتنادى مرة واحدة بس للخلية بفضل "as slot"
                       بدل ما كانت بتتنادى 4-5 مرات لكل خلية (مرة للـ ngIf + مرة لكل property)
                     -->
                     <ng-container *ngIf="getSlot(day.value, p.num) as slot">
-                      <div class="w-full h-full min-h-[90px] flex flex-col justify-center items-center p-2 rounded-lg transition-transform hover:scale-[1.02] cursor-default"
-                           [ngClass]="slot.isBreak ? 'bg-orange-50 border border-orange-100' : 'bg-blue-50 border border-blue-100 shadow-sm'">
+                      <div class="w-full h-full min-h-[90px] flex flex-col justify-center items-center p-2 rounded-2xl transition-transform hover:scale-[1.02] cursor-default"
+                           [ngClass]="slot.isBreak ? 'bg-orange-50 border border-orange-100' : 'bg-blue-50 border border-blue-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50'">
 
                         <!-- Break -->
                         <ng-container *ngIf="slot.isBreak; else lessonTpl">
@@ -92,7 +92,7 @@
                         <ng-template #lessonTpl>
                           <span class="font-bold text-blue-900 mb-1.5 text-sm">{{ slot.subjectName }}</span>
                           <div class="flex flex-col items-center gap-1 w-full px-2">
-                            <span class="bg-white text-gray-700 text-xs px-2 py-0.5 rounded border border-gray-200 w-full truncate" [title]="slot.className">{{ slot.className }}</span>
+                            <span class="bg-white text-gray-700 text-xs px-2 py-0.5 rounded border border-gray-100 w-full truncate" [title]="slot.className">{{ slot.className }}</span>
                             <span *ngIf="slot.roomName" class="text-purple-700 font-medium text-[11px] truncate w-full" [title]="slot.roomName">
                               📍 {{ slot.roomName }}
                             </span>
