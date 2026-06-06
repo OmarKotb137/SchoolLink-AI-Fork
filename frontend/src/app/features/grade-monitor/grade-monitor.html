@@ -694,14 +694,28 @@
               <span>اختر فصلاً موجوداً من النظام وحدّد له القالب المناسب. لن يتم إنشاء فصل جديد.</span>
             </div>
 
+            <!-- Grade picker -->
+            <div>
+              <label class="grade-label">اختر الصف الدراسي</label>
+              <select class="grade-inp"
+                [ngModel]="linkedApiGradeId()"
+                (ngModelChange)="onLinkedApiGradeChange(+$event)">
+                <option [ngValue]="null">-- اختر صفاً --</option>
+                @for (g of grades(); track g.id) {
+                  <option [ngValue]="g.id">{{ g.name }}</option>
+                }
+              </select>
+            </div>
+
             <!-- Class picker -->
             <div>
               <label class="grade-label">اختر الفصل</label>
               <select class="grade-inp"
                 [ngModel]="linkedApiClsId()"
-                (ngModelChange)="onLinkedApiClsChange(+$event)">
-                <option [ngValue]="null">-- اختر فصلاً --</option>
-                @for (c of apiClasses(); track c.id) {
+                (ngModelChange)="onLinkedApiClsChange(+$event)"
+                [disabled]="!linkedApiGradeId()">
+                <option [ngValue]="null">{{ !linkedApiGradeId() ? 'اختر الصف أولاً' : '-- اختر فصلاً --' }}</option>
+                @for (c of filteredApiClasses(); track c.id) {
                   <option [ngValue]="c.id">{{ c.name }} — {{ c.subject }} ({{ c.teacher }})</option>
                 }
               </select>

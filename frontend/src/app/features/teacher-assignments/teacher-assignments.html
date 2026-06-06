@@ -62,21 +62,30 @@
           <div class="form-card-header">
             <div>
               <h3 class="font-headline-md text-headline-md text-primary mb-1">إنشاء إسناد جديد</h3>
-              <p class="font-body-sm text-on-surface-variant">اختر الفصل ثم المادة ثم المعلم المناسب لها، وحدد النصاب الأسبوعي.</p>
+              <p class="font-body-sm text-on-surface-variant">اختر الصف ثم الفصل ثم المادة ثم المعلم المناسب لها، وحدد النصاب الأسبوعي.</p>
             </div>
             <div class="form-helper-chip">
               <span class="material-symbols-outlined">hub</span>
-              <span>فصل ← مادة ← معلم</span>
+              <span>صف ← فصل ← مادة ← معلم</span>
             </div>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+          <div class="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
+            <div>
+              <label class="block font-label-sm text-on-surface-variant mb-1">الصف المستهدف</label>
+              <select [(ngModel)]="selectedNewGradeId" (ngModelChange)="onNewGradeChange()"
+                      class="w-full px-4 py-2 rounded-lg border border-outline-variant bg-white focus:outline-primary">
+                <option [ngValue]="null" disabled>-- اختر الصف --</option>
+                <option *ngFor="let g of grades()" [ngValue]="g.id">{{ g.name }}</option>
+              </select>
+            </div>
             <div>
               <label class="block font-label-sm text-on-surface-variant mb-1">الفصل المستهدف</label>
               <select [(ngModel)]="newAssignment.classId" (ngModelChange)="onNewClassChange()"
-                      class="w-full px-4 py-2 rounded-lg border border-outline-variant bg-white focus:outline-primary">
-                <option [ngValue]="0" disabled>-- اختر الفصل --</option>
-                <option *ngFor="let c of classes()" [ngValue]="c.id">{{ c.name }}</option>
+                      [disabled]="!selectedNewGradeId"
+                      class="w-full px-4 py-2 rounded-lg border border-outline-variant bg-white focus:outline-primary disabled:opacity-50 disabled:cursor-not-allowed">
+                <option [ngValue]="0" disabled>{{ !selectedNewGradeId ? 'اختر الصف أولاً' : '-- اختر الفصل --' }}</option>
+                <option *ngFor="let c of formClasses()" [ngValue]="c.id">{{ c.name }}</option>
               </select>
             </div>
             <div>
@@ -127,12 +136,22 @@
             <span class="material-symbols-outlined">filter_alt</span>
             <span>عرض تعيينات فصل محدد</span>
           </div>
-          <div class="w-72">
-            <select [(ngModel)]="selectedClassFilter" (ngModelChange)="onClassFilterChange()"
-                    class="w-full px-4 py-2 rounded-full border border-outline-variant bg-white focus:outline-primary">
-              <option [ngValue]="null">اختر الفصل أولا</option>
-              <option *ngFor="let c of classes()" [ngValue]="c.id">{{ c.name }}</option>
-            </select>
+          <div class="flex gap-4 flex-1">
+            <div class="w-64">
+              <select [(ngModel)]="selectedFilterGradeId" (ngModelChange)="onFilterGradeChange()"
+                      class="w-full px-4 py-2 rounded-full border border-outline-variant bg-white focus:outline-primary">
+                <option [ngValue]="null">-- اختر الصف الدراسي --</option>
+                <option *ngFor="let g of grades()" [ngValue]="g.id">{{ g.name }}</option>
+              </select>
+            </div>
+            <div class="w-64">
+              <select [(ngModel)]="selectedClassFilter" (ngModelChange)="onClassFilterChange()"
+                      [disabled]="!selectedFilterGradeId"
+                      class="w-full px-4 py-2 rounded-full border border-outline-variant bg-white focus:outline-primary disabled:opacity-50 disabled:cursor-not-allowed">
+                <option [ngValue]="null">{{ !selectedFilterGradeId ? 'اختر الصف أولاً' : '-- اختر الفصل --' }}</option>
+                <option *ngFor="let c of filterClasses()" [ngValue]="c.id">{{ c.name }}</option>
+              </select>
+            </div>
           </div>
           <div class="filter-summary">الفصل الحالي: {{ getSelectedClassName() }}</div>
         </div>

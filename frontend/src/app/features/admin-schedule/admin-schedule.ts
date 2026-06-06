@@ -16,6 +16,7 @@ import { ClassSubjectTeacherService, ClassSubjectTeacher } from '../../core/serv
 import { RoomService, Room } from '../../core/services/room.service';
 import { SubjectService, Subject } from '../../core/services/subject.service';
 import { UserService, User } from '../../core/services/user.service';
+import { GradeLevelService, GradeLevel } from '../../core/services/grade-level.service';
 
 @Component({
   selector: 'app-admin-schedule',
@@ -37,16 +38,21 @@ export class AdminSchedule implements OnInit, OnDestroy {
   private roomService = inject(RoomService);
   private subjectService = inject(SubjectService);
   private userService = inject(UserService);
+  private gradeLevelService = inject(GradeLevelService);
 
   academicYears = signal<AcademicYear[]>([]);
   classes = signal<ClassEntity[]>([]);
+  grades = signal<GradeLevel[]>([]);
   subjects = signal<Subject[]>([]);
   teachers = signal<User[]>([]);
   allTimetables = signal<Timetable[]>([]);
   selectedTimetableId = signal<number | null>(null);
 
   selectedYearId: number | null = null;
+  selectedGradeId: number | null = null;
   selectedClassId: number | null = null;
+  filterClasses = signal<ClassEntity[]>([]);
+
   assignmentSubjectFilter = '';
   assignmentTeacherFilter = '';
   displayUserName = localStorage.getItem('fullName') || localStorage.getItem('username') || 'المشرف';
@@ -193,6 +199,13 @@ export class AdminSchedule implements OnInit, OnDestroy {
       next: (res) => this.teachers.set(res.items || []),
       error: () => this.showError('تعذر تحميل بيانات المعلمين')
     });
+    this.gradeLevelService.getAll().subscribe({
+      next: (data) => {
+        const sortedGrades = data.sort((a, b) => a.levelOrder - b.levelOrder);
+        this.grades.set(sortedGrades);
+      },
+      error: () => this.showError('تعذر تحميل بيانات الصفوف الدراسية')
+    });
     this.classService.getAll().subscribe({
       next: (data) => this.classes.set(data),
       error: () => this.showError('تعذر تحميل بيانات الفصول')
@@ -205,6 +218,16 @@ export class AdminSchedule implements OnInit, OnDestroy {
       },
       error: () => this.showError('تعذر تحميل السنوات الدراسية')
     });
+  }
+
+  onGradeFilterChange() {
+    this.selectedClassId = null;
+    if (this.selectedGradeId) {
+      this.filterClasses.set(this.classes().filter(c => c.gradeLevelId === this.selectedGradeId));
+    } else {
+      this.filterClasses.set([]);
+    }
+    this.onFilterChange();
   }
 
   onFilterChange() {

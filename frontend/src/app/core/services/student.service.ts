@@ -3,7 +3,6 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { buildApiUrl } from '../utils/api-url';
-import { OperationResult } from '../models/api.model';
 
 export interface Student {
   id: number;
@@ -52,9 +51,7 @@ export class StudentService {
   private apiUrl = buildApiUrl('students');
 
   getAll(): Observable<Student[]> {
-    return this.http
-      .get<OperationResult<Student[]>>(this.apiUrl)
-      .pipe(map(res => res.data));
+    return this.http.get<Student[]>(this.apiUrl);
   }
 
   search(filter: StudentSearchFilter): Observable<Student[]> {
@@ -64,32 +61,26 @@ export class StudentService {
     if (filter.academicYearId) params = params.set('academicYearId', filter.academicYearId);
     if (filter.isActive !== undefined) params = params.set('isActive', filter.isActive);
 
-    return this.http
-      .get<OperationResult<Student[]>>(`${this.apiUrl}/search`, { params })
-      .pipe(map(res => res.data));
+    return this.http.get<Student[]>(`${this.apiUrl}/search`, { params });
   }
 
   create(data: CreateStudentRequest): Observable<Student> {
-    return this.http
-      .post<OperationResult<Student>>(this.apiUrl, data)
-      .pipe(map(res => res.data));
+    return this.http.post<Student>(this.apiUrl, data);
   }
 
   update(id: number, data: UpdateStudentRequest): Observable<Student> {
-    return this.http
-      .put<OperationResult<Student>>(`${this.apiUrl}/${id}`, data)
-      .pipe(map(res => res.data));
+    return this.http.put<Student>(`${this.apiUrl}/${id}`, data);
   }
 
   delete(id: number): Observable<void> {
     return this.http
-      .delete<OperationResult<unknown>>(`${this.apiUrl}/${id}`)
+      .delete<unknown>(`${this.apiUrl}/${id}`)
       .pipe(map(() => void 0));
   }
 
   linkUser(data: LinkStudentUserRequest): Observable<void> {
     return this.http
-      .post<OperationResult<unknown>>(`${this.apiUrl}/link-user`, data)
+      .post<unknown>(`${this.apiUrl}/link-user`, data)
       .pipe(map(() => void 0));
   }
 }

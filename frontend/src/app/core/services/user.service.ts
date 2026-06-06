@@ -1,9 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
 import { buildApiUrl } from '../utils/api-url';
-import { OperationResult, PagedResult } from '../models/api.model';
+import { PagedResult } from '../models/api.model';
 
 export interface User {
   id: number;
@@ -55,40 +54,28 @@ export class UserService {
     if (filter?.page) params = params.set('page', filter.page);
     if (filter?.pageSize) params = params.set('pageSize', filter.pageSize);
 
-    return this.http
-      .get<OperationResult<PagedResult<User>>>(this.apiUrl, { params })
-      .pipe(map(res => res.data));
+    return this.http.get<PagedResult<User>>(this.apiUrl, { params });
   }
 
   getById(id: number): Observable<User> {
-    return this.http
-      .get<OperationResult<User>>(`${this.apiUrl}/${id}`)
-      .pipe(map(res => res.data));
+    return this.http.get<User>(`${this.apiUrl}/${id}`);
   }
 
   getByRole(role: string, pageSize: number = 1000): Observable<PagedResult<User>> {
     const params = new HttpParams().set('pageSize', pageSize.toString());
-    return this.http
-      .get<OperationResult<PagedResult<User>>>(`${this.apiUrl}/role/${role}`, { params })
-      .pipe(map(res => res.data));
+    return this.http.get<PagedResult<User>>(`${this.apiUrl}/role/${role}`, { params });
   }
 
   createUser(data: CreateUserRequest): Observable<User> {
-    return this.http
-      .post<OperationResult<User>>(this.apiUrl, data)
-      .pipe(map(res => res.data));
+    return this.http.post<User>(this.apiUrl, data);
   }
 
   updateUser(id: number, data: UpdateUserRequest): Observable<User> {
-    return this.http
-      .put<OperationResult<User>>(`${this.apiUrl}/${id}`, data)
-      .pipe(map(res => res.data));
+    return this.http.put<User>(`${this.apiUrl}/${id}`, data);
   }
 
   setActiveStatus(id: number, isActive: boolean): Observable<void> {
-    return this.http
-      .patch<OperationResult<unknown>>(`${this.apiUrl}/${id}/active-status`, isActive)
-      .pipe(map(() => void 0));
+    return this.http.patch<void>(`${this.apiUrl}/${id}/active-status`, isActive);
   }
 
   deleteUser(id: number): Observable<void> {

@@ -1,9 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
 import { buildApiUrl } from '../utils/api-url';
-import { OperationResult, PagedResult } from '../models/api.model';
+import { PagedResult } from '../models/api.model';
 
 export interface Teacher {
   id: number;
@@ -41,27 +40,19 @@ export class TeacherService {
 
   getAll(pageSize: number = 1000): Observable<PagedResult<Teacher>> {
     const params = new HttpParams().set('pageSize', pageSize.toString());
-    return this.http
-      .get<OperationResult<PagedResult<Teacher>>>(this.apiUrl, { params })
-      .pipe(map(res => res.data));
+    return this.http.get<PagedResult<Teacher>>(this.apiUrl, { params });
   }
 
   getById(id: number): Observable<Teacher> {
-    return this.http
-      .get<OperationResult<Teacher>>(`${this.apiUrl}/${id}`)
-      .pipe(map(res => res.data));
+    return this.http.get<Teacher>(`${this.apiUrl}/${id}`);
   }
 
   createTeacher(data: CreateTeacherRequest): Observable<Teacher> {
-    return this.http
-      .post<OperationResult<Teacher>>(this.apiUrl, data)
-      .pipe(map(res => res.data));
+    return this.http.post<Teacher>(this.apiUrl, data);
   }
 
   updateTeacher(id: number, data: UpdateTeacherRequest): Observable<Teacher> {
-    return this.http
-      .put<OperationResult<Teacher>>(`${this.apiUrl}/${id}`, data)
-      .pipe(map(res => res.data));
+    return this.http.put<Teacher>(`${this.apiUrl}/${id}`, data);
   }
 
   deleteTeacher(id: number): Observable<void> {

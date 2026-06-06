@@ -8,6 +8,7 @@ import { ClassService, ClassEntity } from '../../core/services/class.service';
 import { SubjectService, Subject } from '../../core/services/subject.service';
 import { TeacherService, Teacher } from '../../core/services/teacher.service';
 import { AcademicYearService } from '../../core/services/academic-year.service';
+import { GradeLevelService, GradeLevel } from '../../core/services/grade-level.service';
 
 @Component({
   selector: 'app-teacher-assignments',
@@ -25,9 +26,11 @@ export class TeacherAssignments implements OnInit {
   private subjectService = inject(SubjectService);
   private teacherService = inject(TeacherService);
   private academicYearService = inject(AcademicYearService);
+  private gradeLevelService = inject(GradeLevelService);
 
   assignments = signal<ClassSubjectTeacher[]>([]);
   classes = signal<ClassEntity[]>([]);
+  grades = signal<GradeLevel[]>([]);
   subjects = signal<Subject[]>([]);
   teachers = signal<Teacher[]>([]);
 
@@ -36,6 +39,12 @@ export class TeacherAssignments implements OnInit {
   noTeachersAvailable = signal(false);
   editFormTeachers = signal<Teacher[]>([]);
   editNoTeachersAvailable = signal(false);
+
+  selectedNewGradeId: number | null = null;
+  selectedFilterGradeId: number | null = null;
+
+  formClasses = signal<ClassEntity[]>([]);
+  filterClasses = signal<ClassEntity[]>([]);
 
   selectedClassFilter: number | null = null;
 
@@ -55,8 +64,19 @@ export class TeacherAssignments implements OnInit {
 
   ngOnInit() {
     this.loadAcademicYear();
+    this.loadGrades();
     this.loadSubjects();
     this.loadTeachers();
+  }
+
+  loadGrades() {
+    this.gradeLevelService.getAll().subscribe({
+      next: (data) => {
+        const sortedGrades = data.sort((a, b) => a.levelOrder - b.levelOrder);
+        this.grades.set(sortedGrades);
+      },
+      error: () => this.showError('تعذر تحميل بيانات الصفوف الدراسية')
+    });
   }
 
   loadAcademicYear() {
@@ -102,6 +122,16 @@ export class TeacherAssignments implements OnInit {
       },
       error: () => this.showError('تعذر تحميل بيانات المعلمين')
     });
+  }
+
+  onNewGradeChange() {
+    this.newAssignment.classId = 0;
+    if (this.selectedNewGradeId) {
+      this.formClasses.set(this.classes().filter(c => c.gradeLevelId === this.selectedNewGradeId));
+    } else {
+      this.formClasses.set([]);
+    }
+    this.onNewClassChange();
   }
 
   onNewClassChange() {
@@ -173,6 +203,16 @@ export class TeacherAssignments implements OnInit {
     });
   }
 
+  onFilterGradeChange() {
+    this.selectedClassFilter = null;
+    if (this.selectedFilterGradeId) {
+      this.filterClasses.set(this.classes().filter(c => c.gradeLevelId === this.selectedFilterGradeId));
+    } else {
+      this.filterClasses.set([]);
+    }
+    this.onClassFilterChange();
+  }
+
   onClassFilterChange() {
     this.loadAssignments();
   }
@@ -186,7 +226,9 @@ export class TeacherAssignments implements OnInit {
   }
 
   getClassName(classId: number): string {
-    return this.classes().find(c => c.id == classId)?.name || 'غير محدد';
+    const c = this.classes().find(c => c.id == classId);
+    if (!c) return 'غير محدد';
+    return c.gradeLevelName ? `${c.gradeLevelName} - ${c.name}` : c.name;
   }
 
   getSelectedClassName(): string {

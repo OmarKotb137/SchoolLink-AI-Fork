@@ -3,7 +3,6 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { buildApiUrl } from '../utils/api-url';
-import { OperationResult } from '../models/api.model';
 import { Student } from './student.service';
 
 export type RelationshipType = 1 | 2 | 3 | 4 | 5;
@@ -32,32 +31,24 @@ export class ParentStudentService {
   private apiUrl = buildApiUrl('parent-students');
 
   link(data: LinkParentStudentRequest): Observable<ParentStudentLink> {
-    return this.http
-      .post<OperationResult<ParentStudentLink>>(this.apiUrl, data)
-      .pipe(map(res => res.data));
+    return this.http.post<ParentStudentLink>(this.apiUrl, data);
   }
 
   unlink(id: number): Observable<void> {
     return this.http
-      .delete<OperationResult<unknown>>(`${this.apiUrl}/${id}`)
+      .delete<unknown>(`${this.apiUrl}/${id}`)
       .pipe(map(() => void 0));
   }
 
   getStudentsByParent(parentId: number): Observable<Student[]> {
-    return this.http
-      .get<OperationResult<Student[]>>(`${this.apiUrl}/by-parent/${parentId}`)
-      .pipe(map(res => res.data));
+    return this.http.get<Student[]>(`${this.apiUrl}/by-parent/${parentId}`);
   }
 
   getParentsByStudent(studentId: number): Observable<ParentStudentLink[]> {
-    return this.http
-      .get<OperationResult<ParentStudentLink[]>>(`${this.apiUrl}/by-student/${studentId}`)
-      .pipe(map(res => res.data));
+    return this.http.get<ParentStudentLink[]>(`${this.apiUrl}/by-student/${studentId}`);
   }
 
   updateRelationship(id: number, relationship: RelationshipType): Observable<ParentStudentLink> {
-    return this.http
-      .put<OperationResult<ParentStudentLink>>(`${this.apiUrl}/${id}/relationship`, relationship)
-      .pipe(map(res => res.data));
+    return this.http.put<ParentStudentLink>(`${this.apiUrl}/${id}/relationship`, relationship);
   }
 }

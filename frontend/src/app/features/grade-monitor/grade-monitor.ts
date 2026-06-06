@@ -5,6 +5,7 @@ import { map, takeUntil } from 'rxjs/operators';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
 import { Topbar } from '../../layouts/topbar/topbar';
 import { GradeMonitorService, Template, ClassItem, Student, SchoolProfile, EvaluationPeriod, Criteria } from './grade-monitor.service';
+import { GradeLevelService, GradeLevel } from '../../core/services/grade-level.service';
 import { WordGeneratorService } from './word-generator.service';
 
 @Component({
@@ -15,6 +16,7 @@ import { WordGeneratorService } from './word-generator.service';
 })
 export class GradeMonitor implements OnInit {
   private api = inject(GradeMonitorService);
+  private gradeLevelService = inject(GradeLevelService);
   private wg = inject(WordGeneratorService);
   private cdr = inject(ChangeDetectorRef);
 
@@ -27,6 +29,7 @@ export class GradeMonitor implements OnInit {
   templates = signal<Template[]>([]);
   classes = signal<ClassItem[]>([]);          // linked classes (from ClassTemplateLinks)
   apiClasses = signal<any[]>([]);             // real classes from API (for dropdown)
+  grades = signal<GradeLevel[]>([]);          // grade levels for filtering
   schoolProfile = signal<SchoolProfile | null>(null);
   periods = signal<EvaluationPeriod[]>([]);
   subjects = signal<{ id: number; name: string }[]>([]);
@@ -73,6 +76,7 @@ export class GradeMonitor implements OnInit {
   // ══════════════════════════════════════
   ngOnInit() {
     this.loadFromLocalStorage();
+    this.loadGrades();
     this.loadApiClasses();
 
     Promise.all([
@@ -550,6 +554,15 @@ export class GradeMonitor implements OnInit {
   // ══════════════════════════════════════
   //  REAL CLASSES (for dropdown)
   // ══════════════════════════════════════
+  private loadGrades() {
+    this.gradeLevelService.getAll().subscribe({
+      next: (data) => {
+        const sortedGrades = data.sort((a, b) => a.levelOrder - b.levelOrder);
+        this.grades.set(sortedGrades);
+      }
+    });
+  }
+
   private loadApiClasses() {
     this.api.getClasses().subscribe({
       next: (res) => {
@@ -617,6 +630,7 @@ export class GradeMonitor implements OnInit {
   // ══════════════════════════════════════
   // ══ Class modal signals ══
   clsModalOpen  = signal(false);
+  linkedApiGradeId = signal<number | null>(null);      // selected Grade
   linkedApiClsId = signal<number | null>(null);        // id of selected API class
   cName     = signal('');
   cTeacher  = signal('');
@@ -628,12 +642,21 @@ export class GradeMonitor implements OnInit {
   // Computed: classes NOT yet linked (have no template chosen or came fresh from API)
   unlinkedApiClasses = computed(() => this.classes());
 
+  filteredApiClasses = computed(() => {
+    const gradeId = this.linkedApiGradeId();
+    if (!gradeId) return [];
+    return this.apiClasses().filter(c => c.gradeLevelId === gradeId);
+  });
+
   openClsForm(c?: ClassItem) {
     this.editClsId.set(c ? c.id : null);
     if (c) {
       this.linkedApiClsId.set(c.id);
       this.cTmplId.set(c.template_id || null);
+      const found = this.apiClasses().find((ac: any) => ac.id === c.id);
+      if (found) this.linkedApiGradeId.set(found.gradeLevelId);
     } else {
+      this.linkedApiGradeId.set(null);
       this.linkedApiClsId.set(null);
       this.cTmplId.set(null);
     }
@@ -648,6 +671,17 @@ export class GradeMonitor implements OnInit {
       (found?.students ?? c?.students ?? []).map((s: any) => s.name).join('\n')
     );
     this.clsModalOpen.set(true);
+  }
+
+  onLinkedApiGradeChange(id: number | null) {
+    this.linkedApiGradeId.set(id);
+    this.linkedApiClsId.set(null);
+    this.cName.set('');
+    this.cTeacher.set('');
+    this.cSubj.set('');
+    this.cYear.set('');
+    this.cStudents.set('');
+    this.cTmplId.set(null);
   }
 
   onLinkedApiClsChange(id: number | null) {
