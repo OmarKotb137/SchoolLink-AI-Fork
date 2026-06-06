@@ -5,8 +5,9 @@ import { AuthService } from '../services/auth.service';
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const authService = inject(AuthService);
   const token = authService.getToken();
+  const isAuthRequest = req.url.includes('/login') || req.url.includes('/register') || req.url.includes('/refresh-token');
 
-  if (token && !req.url.includes('/login') && !req.url.includes('/register')) {
+  if (token && !isAuthRequest) {
     const clonedReq = req.clone({
       setHeaders: {
         Authorization: `Bearer ${token}`

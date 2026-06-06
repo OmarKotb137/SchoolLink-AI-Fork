@@ -1,30 +1,29 @@
 import { Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, tap, catchError, throwError } from 'rxjs';
-import { environment } from '../../../environments/environment';
+import { Observable, tap, catchError, throwError, map } from 'rxjs';
+import { buildApiUrl } from '../utils/api-url';
+import { AppRole, RoleService } from '../../shared/role.service';
 
 export interface UserInfo {
   userId: number;
   fullName: string;
-  role: string;
+  role: AppRole;
 }
 
-export interface AuthResponse {
-  isSuccess: boolean;
-  data?: {
-    accessToken: string;
-    refreshToken: string;
-    expiry: string;
-    userId: number;
-    fullName: string;
-    role: string;
-  };
-  message?: string;
+export interface AuthSession {
+  accessToken: string;
+  refreshToken: string;
+  expiry: string;
+  userId: number;
+  fullName: string;
+  role: AppRole;
 }
+
+type RawAuthSession = Omit<AuthSession, 'role'> & { role: string };
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private base = `${environment.apiUrl}/Auth`;
+  private base = buildApiUrl('Auth');
   private readonly TOKEN_KEY = 'access_token';
   private readonly REFRESH_KEY = 'refresh_token';
   private readonly USER_KEY = 'user_info';
@@ -32,55 +31,94 @@ export class AuthService {
   token = signal<string | null>(localStorage.getItem(this.TOKEN_KEY));
   user = signal<UserInfo | null>(this.loadUser());
 
-  constructor(private http: HttpClient) {}
+  constructor(
+    private http: HttpClient,
+    private roleService: RoleService,
+  ) {}
 
   private loadUser(): UserInfo | null {
     const raw = localStorage.getItem(this.USER_KEY);
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) {
+      return null;
+    }
+
+    try {
+      const parsed = JSON.parse(raw) as UserInfo;
+      return {
+        userId: parsed.userId,
+        fullName: parsed.fullName,
+        role: this.normalizeRole(parsed.role),
+      };
+    } catch {
+      localStorage.removeItem(this.USER_KEY);
+      return null;
+    }
   }
 
-  private persist(token: string, refreshToken: string, user: UserInfo) {
-    localStorage.setItem(this.TOKEN_KEY, token);
-    localStorage.setItem(this.REFRESH_KEY, refreshToken);
+  private persist(session: AuthSession) {
+    const user: UserInfo = {
+      userId: session.userId,
+      fullName: session.fullName,
+      role: this.normalizeRole(session.role),
+    };
+
+    localStorage.setItem(this.TOKEN_KEY, session.accessToken);
+    localStorage.setItem(this.REFRESH_KEY, session.refreshToken);
     localStorage.setItem(this.USER_KEY, JSON.stringify(user));
-    this.token.set(token);
+    this.token.set(session.accessToken);
     this.user.set(user);
+    this.roleService.setRole(user.role);
+  }
+
+  private normalizeRole(role: string): AppRole {
+    const normalized = role.trim().toLowerCase();
+
+    if (normalized === 'admin' || normalized === 'teacher' || normalized === 'student' || normalized === 'parent') {
+      return normalized;
+    }
+
+    throw new Error('تم استلام دور مستخدم غير مدعوم');
   }
 
   getToken(): string | null {
     return localStorage.getItem(this.TOKEN_KEY);
   }
 
-  login(role: string, email: string, password: string): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${this.base}/login/${role}`, { email, password }).pipe(
-      tap(res => {
-        if (res.isSuccess && res.data) {
-          this.persist(res.data.accessToken, res.data.refreshToken, {
-            userId: res.data.userId,
-            fullName: res.data.fullName,
-            role: res.data.role,
-          });
-        }
+  login(role: AppRole, email: string, password: string): Observable<AuthSession> {
+    return this.http.post<RawAuthSession>(`${this.base}/login/${role}`, { email, password }).pipe(
+      map(res => ({
+        ...res,
+        role: this.normalizeRole(res.role),
+      })),
+      tap(session => {
+        this.persist(session);
       }),
       catchError(err => {
-        const msg = err.error?.message || err.error?.title || 'فشل تسجيل الدخول';
+        const msg = err.error?.message || err.error?.title || err.message || 'فشل تسجيل الدخول';
         return throwError(() => new Error(msg));
       })
     );
   }
 
-  refreshToken(): Observable<AuthResponse> {
-    const expiredAccessToken = this.getToken()!;
-    const refreshToken = localStorage.getItem(this.REFRESH_KEY)!;
-    return this.http.post<AuthResponse>(`${this.base}/refresh-token`, { expiredAccessToken, refreshToken }).pipe(
-      tap(res => {
-        if (res.isSuccess && res.data) {
-          this.persist(res.data.accessToken, res.data.refreshToken, {
-            userId: res.data.userId,
-            fullName: res.data.fullName,
-            role: res.data.role,
-          });
-        }
+  refreshToken(): Observable<AuthSession> {
+    const expiredAccessToken = this.getToken();
+    const refreshToken = localStorage.getItem(this.REFRESH_KEY);
+
+    if (!expiredAccessToken || !refreshToken) {
+      return throwError(() => new Error('لا توجد جلسة صالحة لتحديثها'));
+    }
+
+    return this.http.post<RawAuthSession>(`${this.base}/refresh-token`, { expiredAccessToken, refreshToken }).pipe(
+      map(res => ({
+        ...res,
+        role: this.normalizeRole(res.role),
+      })),
+      tap(session => {
+        this.persist(session);
+      }),
+      catchError(err => {
+        const msg = err.error?.message || err.error?.title || err.message || 'تعذر تحديث الجلسة';
+        return throwError(() => new Error(msg));
       })
     );
   }
@@ -89,6 +127,7 @@ export class AuthService {
     localStorage.removeItem(this.TOKEN_KEY);
     localStorage.removeItem(this.REFRESH_KEY);
     localStorage.removeItem(this.USER_KEY);
+    this.roleService.clearRole();
     this.token.set(null);
     this.user.set(null);
   }

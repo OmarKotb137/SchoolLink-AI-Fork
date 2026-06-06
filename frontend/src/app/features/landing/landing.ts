@@ -15,6 +15,6 @@ export class Landing {
   }
 
   navigateToAdmin() {
-    this.router.navigate(['/login-admin']);
+    this.router.navigate(['/login-staff']);
   }
 }

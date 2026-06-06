@@ -1,16 +1,15 @@
 import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
-import { AuthService } from '../services/auth.service';
 import { catchError, throwError } from 'rxjs';
 import { Router } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 import { RoleService } from '../../shared/role.service';
 
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
-  const notificationService = inject(NotificationService);
-  const router              = inject(Router);
-  const auth         = inject(AuthService);
-  const roleService         = inject(RoleService);
+  const router = inject(Router);
+  const authService = inject(AuthService);
+  const roleService = inject(RoleService);
+  const isAuthRequest = req.url.includes('/Auth/login/') || req.url.includes('/Auth/refresh-token');
 
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
@@ -26,9 +25,11 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
       if (error.status === 0) {
         message = 'لا يوجد اتصال بالإنترنت';
       } else if (error.status === 401) {
-        message = 'انتهت الجلسة، يرجى تسجيل الدخول مجدداً';
-        authService.logout();
-        router.navigate([roleService.getLoginRoute()]);
+        message = backendMessage || (isAuthRequest ? 'بيانات الدخول غير صحيحة' : 'انتهت الجلسة، يرجى تسجيل الدخول مجدداً');
+        if (!isAuthRequest) {
+          authService.logout();
+          router.navigate([roleService.getLoginRoute()]);
+        }
       } else if (error.status === 403) {
         message = 'ليس لديك صلاحية للوصول لهذا المحتوى';
       } else if (error.status === 404) {
@@ -40,7 +41,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
       } else {
         message = backendMessage || 'حدث خطأ غير متوقع';
       }
-      return throwError(() => error);
+      return throwError(() => new Error(message));
     })
   );
 };

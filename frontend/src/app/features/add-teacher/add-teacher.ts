@@ -1,9 +1,10 @@
-﻿import { Component, OnInit, signal, inject } from '@angular/core';
+﻿import { Component, OnInit, signal, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
 import { Topbar } from '../../layouts/topbar/topbar';
 import { SubjectService, Subject } from '../../core/services/subject.service';
 import { TeacherService, Teacher, CreateTeacherRequest, UpdateTeacherRequest } from '../../core/services/teacher.service';
+import { UserService } from '../../core/services/user.service';
 
 @Component({
   selector: 'app-add-teacher',
@@ -15,10 +16,14 @@ import { TeacherService, Teacher, CreateTeacherRequest, UpdateTeacherRequest } f
 export class AddTeacher implements OnInit {
   private subjectService = inject(SubjectService);
   private teacherService = inject(TeacherService);
+  private userService = inject(UserService);
 
   sidebarOpen = signal(false);
   showEditModal = signal(false);
   editingTeacherId = signal<number | null>(null);
+  searchQuery = signal('');
+  statusFilter = signal<'all' | 'active' | 'inactive'>('all');
+  subjectFilter = signal<number | 'all'>('all');
 
   newName = signal('');
   newEmail = signal('');
@@ -32,6 +37,31 @@ export class AddTeacher implements OnInit {
   isLoading = signal(false);
   errorMessage = signal<string | null>(null);
   successMessage = signal<string | null>(null);
+
+  filteredTeachers = computed(() => {
+    const query = this.searchQuery().trim().toLowerCase();
+    const status = this.statusFilter();
+    const subjectId = this.subjectFilter();
+
+    return this.teachers().filter(teacher => {
+      const matchesQuery =
+        !query ||
+        teacher.fullName.toLowerCase().includes(query) ||
+        teacher.email.toLowerCase().includes(query) ||
+        (teacher.phone ?? '').toLowerCase().includes(query);
+
+      const matchesStatus =
+        status === 'all' ||
+        (status === 'active' && teacher.isActive) ||
+        (status === 'inactive' && !teacher.isActive);
+
+      const matchesSubject =
+        subjectId === 'all' ||
+        (teacher.subjectIds ?? []).includes(subjectId);
+
+      return matchesQuery && matchesStatus && matchesSubject;
+    });
+  });
 
   ngOnInit() {
     this.loadSubjects();
@@ -60,6 +90,12 @@ export class AddTeacher implements OnInit {
 
   clearSelectedSubjects() {
     this.selectedSubjectIds.set([]);
+  }
+
+  resetFilters() {
+    this.searchQuery.set('');
+    this.statusFilter.set('all');
+    this.subjectFilter.set('all');
   }
 
   resetForm() {
@@ -172,6 +208,28 @@ export class AddTeacher implements OnInit {
     });
   }
 
+  toggleTeacherStatus(teacher: Teacher) {
+    const nextStatus = !teacher.isActive;
+    const actionLabel = nextStatus ? 'تفعيل' : 'تعطيل';
+
+    if (!confirm(`هل تريد ${actionLabel} المعلم ${teacher.fullName}؟`)) {
+      return;
+    }
+
+    this.isLoading.set(true);
+    this.userService.setActiveStatus(teacher.id, nextStatus).subscribe({
+      next: () => {
+        this.showSuccess(nextStatus ? 'تم تفعيل المعلم بنجاح' : 'تم تعطيل المعلم بنجاح');
+        this.loadTeachers();
+      },
+      error: err => {
+        const msg = err?.error?.message || `تعذر ${actionLabel} المعلم`;
+        this.showError(msg);
+        this.isLoading.set(false);
+      }
+    });
+  }
+
   getTeacherSubjectsText(teacher: Teacher): string {
     const subjectNames = teacher.subjectNames || [];
     return subjectNames.length > 0 ? subjectNames.join('، ') : 'غير محدد';
@@ -195,6 +253,10 @@ export class AddTeacher implements OnInit {
 
   getInactiveTeachersCount(): number {
     return this.teachers().filter(teacher => !teacher.isActive).length;
+  }
+
+  getFilteredTeachersCount(): number {
+    return this.filteredTeachers().length;
   }
 
   canSaveTeacher(): boolean {

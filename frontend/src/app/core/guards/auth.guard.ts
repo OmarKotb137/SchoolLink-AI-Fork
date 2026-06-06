@@ -8,9 +8,13 @@ export const authGuard: CanActivateFn = (route) => {
   const roleService = inject(RoleService);
   const router = inject(Router);
   const allowedRoles = (route.data?.['roles'] as AppRole[] | undefined) ?? undefined;
-  const hasClientSession = authService.isAuthenticated() || roleService.hasRole();
 
-  if (!hasClientSession) {
+  if (!authService.isAuthenticated()) {
+    return router.createUrlTree([roleService.getLoginRouteForAllowedRoles(allowedRoles)]);
+  }
+
+  if (!roleService.hasRole()) {
+    authService.logout();
     return router.createUrlTree([roleService.getLoginRouteForAllowedRoles(allowedRoles)]);
   }
 
@@ -18,9 +22,5 @@ export const authGuard: CanActivateFn = (route) => {
     return router.createUrlTree([roleService.getHomeRoute()]);
   }
 
-  if (roleService.hasRole()) {
-    return true;
-  }
-
-  return router.createUrlTree([roleService.getLoginRouteForAllowedRoles(allowedRoles)]);
+  return true;
 };

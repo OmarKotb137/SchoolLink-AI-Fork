@@ -1,7 +1,7 @@
-﻿import { Injectable, inject } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { environment } from '../../../environments/environment';
+import { buildApiUrl } from '../utils/api-url';
 import { Teacher } from './teacher.service';
 
 export interface ClassSubjectTeacher {
@@ -22,7 +22,7 @@ export interface ClassSubjectTeacher {
 })
 export class ClassSubjectTeacherService {
   private http = inject(HttpClient);
-  private apiUrl = `${environment.apiUrl}/api/class-subject-teachers`;
+  private apiUrl = buildApiUrl('class-subject-teachers');
 
   getAll(): Observable<ClassSubjectTeacher[]> {
     return this.http.get<ClassSubjectTeacher[]>(this.apiUrl);

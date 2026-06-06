@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { environment } from '../../../environments/environment';
+import { buildApiUrl } from '../utils/api-url';
 
 export interface GradeLevel {
   id: number;
@@ -15,7 +15,7 @@ export interface GradeLevel {
 })
 export class GradeLevelService {
   private http = inject(HttpClient);
-  private apiUrl = `${environment.apiUrl}/api/grade-levels`;
+  private apiUrl = buildApiUrl('grade-levels');
 
   getAll(): Observable<GradeLevel[]> {
     return this.http.get<GradeLevel[]>(this.apiUrl);

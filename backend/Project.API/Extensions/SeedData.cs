@@ -215,6 +215,32 @@ public static class SeedData
             }
         }
         await ctx.SaveChangesAsync();
+
+        // ── 7.1 Student user accounts ──
+        var studentUsers = new List<User>();
+        foreach (var st in students)
+        {
+            var studentUser = new User
+            {
+                FullName = st.FullName,
+                Email = $"student{st.Id}@school.com",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Student@123"),
+                Role = UserRole.Student,
+                IsActive = true,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            ctx.Users.Add(studentUser);
+            studentUsers.Add(studentUser);
+        }
+        await ctx.SaveChangesAsync();
+
+        for (int i = 0; i < students.Count; i++)
+        {
+            students[i].UserId = studentUsers[i].Id;
+        }
+        await ctx.SaveChangesAsync();
+
         seq = 0;
         foreach (var cls in new[] { class1, class2 })
         {

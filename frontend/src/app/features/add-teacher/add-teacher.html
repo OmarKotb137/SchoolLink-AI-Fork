@@ -1,4 +1,4 @@
-﻿<app-sidebar [(isOpen)]="sidebarOpen" />
+<app-sidebar [(isOpen)]="sidebarOpen" />
 <div class="main-content">
   <app-topbar userName="أحمد" />
   <main class="p-gutter-desktop">
@@ -29,6 +29,11 @@
           <span class="summary-label">غير النشطين</span>
           <strong class="summary-value">{{ getInactiveTeachersCount() }}</strong>
           <span class="summary-hint">حسابات موقوفة أو معطلة</span>
+        </div>
+        <div class="summary-card">
+          <span class="summary-label">نتائج الفلترة الحالية</span>
+          <strong class="summary-value">{{ getFilteredTeachersCount() }}</strong>
+          <span class="summary-hint">عدد المعلمين الظاهرين حسب البحث والفلاتر</span>
         </div>
       </div>
 
@@ -142,7 +147,44 @@
         <div class="table-header-row">
           <div>
             <h2 class="font-headline-md text-headline-md">قائمة المعلمين</h2>
-            <p class="font-body-sm text-outline">تستطيع مراجعة حالة كل معلم وتعديل تخصصاته أو تعطيله عند الحاجة.</p>
+            <p class="font-body-sm text-outline">تستطيع مراجعة حالة كل معلم وتعديل تخصصاته أو تفعيله أو تعطيله أو حذفه عند الحاجة.</p>
+          </div>
+        </div>
+
+        <div class="teacher-filters-card">
+          <div class="search-box teacher-search-box">
+            <span class="material-symbols-outlined">search</span>
+            <input
+              class="glass-input"
+              placeholder="ابحث بالاسم أو البريد أو الهاتف..."
+              [value]="searchQuery()"
+              (input)="searchQuery.set($any($event.target).value)"
+            />
+          </div>
+
+          <div class="filter-group">
+            <label class="field-label">الحالة</label>
+            <select class="glass-select compact-select" [value]="statusFilter()" (change)="statusFilter.set($any($event.target).value)">
+              <option value="all">الكل</option>
+              <option value="active">نشط</option>
+              <option value="inactive">غير نشط</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label class="field-label">المادة</label>
+            <select class="glass-select compact-select" [value]="subjectFilter()" (change)="subjectFilter.set($any($event.target).value === 'all' ? 'all' : +$any($event.target).value)">
+              <option value="all">كل المواد</option>
+              @for (subject of allSubjects(); track subject.id) {
+                <option [value]="subject.id">{{ subject.name }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="filter-actions">
+            <button class="secondary-btn-glass small-btn" type="button" (click)="resetFilters()">
+              إعادة ضبط
+            </button>
           </div>
         </div>
 
@@ -168,8 +210,17 @@
                     </div>
                   </td>
                 </tr>
+              } @else if (filteredTeachers().length === 0) {
+                <tr>
+                  <td colspan="6" class="p-10 text-center text-outline font-body-md">
+                    <div class="empty-state-block">
+                      <span class="material-symbols-outlined">filter_alt_off</span>
+                      <p>لا توجد نتائج مطابقة للفلاتر الحالية.</p>
+                    </div>
+                  </td>
+                </tr>
               }
-              @for (t of teachers(); track t.id) {
+              @for (t of filteredTeachers(); track t.id) {
                 <tr>
                   <td class="p-4 font-body-md teacher-name-cell">{{ t.fullName }}</td>
                   <td class="p-4 font-body-md text-outline">{{ t.email }}</td>
@@ -187,7 +238,10 @@
                       <button class="icon-action-btn" (click)="editTeacher(t)" title="تعديل بيانات المعلم">
                         <span class="material-symbols-outlined">edit</span>
                       </button>
-                      <button class="icon-action-btn danger" (click)="deleteTeacher(t.id)" title="حذف أو تعطيل المعلم">
+                      <button class="icon-action-btn" (click)="toggleTeacherStatus(t)" [title]="t.isActive ? 'تعطيل المعلم' : 'تفعيل المعلم'">
+                        <span class="material-symbols-outlined">{{ t.isActive ? 'toggle_off' : 'toggle_on' }}</span>
+                      </button>
+                      <button class="icon-action-btn danger" (click)="deleteTeacher(t.id)" title="حذف المعلم أو تعطيله نهائيًا حسب التعيينات">
                         <span class="material-symbols-outlined">delete</span>
                       </button>
                     </div>

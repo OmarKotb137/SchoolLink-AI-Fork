@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { environment } from '../../../environments/environment';
+import { buildApiUrl } from '../utils/api-url';
 
 export interface ClassEntity {
   id: number;
@@ -17,7 +17,7 @@ export interface ClassEntity {
 })
 export class ClassService {
   private http = inject(HttpClient);
-  private apiUrl = `${environment.apiUrl}/api/class-management`;
+  private apiUrl = buildApiUrl('class-management');
 
   getAll(filter?: any): Observable<ClassEntity[]> {
     let params = new HttpParams();

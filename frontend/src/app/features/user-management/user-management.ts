@@ -1,142 +1,443 @@
-import { Component, signal, computed } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { Router } from '@angular/router';
+import { forkJoin, of } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
 import { Topbar } from '../../layouts/topbar/topbar';
+import { ParentStudentLink, ParentStudentService, RelationshipType } from '../../core/services/parent-student.service';
+import { Student, StudentService } from '../../core/services/student.service';
+import { User, UserService } from '../../core/services/user.service';
 
-interface Teacher {
-  id: number;
-  name: string;
-  email: string;
-  subjects: string[];
-  classes: string[];
-}
-
-interface Student {
-  id: number;
-  name: string;
-  class: string;
-  guardianName: string;
-  guardianPhone: string;
-}
+type AccountTab = 'all' | 'admins' | 'parents' | 'students';
+type ManagedRole = 'Admin' | 'Parent' | 'Student';
 
 @Component({
   selector: 'app-user-management',
-  imports: [Sidebar, Topbar],
+  standalone: true,
+  imports: [CommonModule, Sidebar, Topbar],
   templateUrl: './user-management.html',
   styleUrl: './user-management.css'
 })
-export class UserManagement {
+export class UserManagement implements OnInit {
+  private userService = inject(UserService);
+  private studentService = inject(StudentService);
+  private parentStudentService = inject(ParentStudentService);
+  private router = inject(Router);
+
   sidebarOpen = signal(false);
-  activeTab = signal<'teachers' | 'students'>('teachers');
-  showAddModal = signal(false);
-  editingTeacherId = signal<number | null>(null);
-  editingStudentId = signal<number | null>(null);
-  classFilter = signal<string>('all');
+  activeTab = signal<AccountTab>('all');
+  searchQuery = signal('');
+  users = signal<User[]>([]);
+  isLoading = signal(false);
+  errorMessage = signal<string | null>(null);
+  successMessage = signal<string | null>(null);
 
-  newTeacherName = signal('');
-  newTeacherEmail = signal('');
-  newTeacherPassword = signal('');
-  newTeacherSubjects = signal<string[]>([]);
-  newTeacherClasses = signal<string[]>([]);
+  showCreateModal = signal(false);
+  showEditModal = signal(false);
+  showParentLinksModal = signal(false);
+  editingUserId = signal<number | null>(null);
+  managingParent = signal<User | null>(null);
+  students = signal<Student[]>([]);
+  parentLinkedStudents = signal<Array<{ student: Student; link: ParentStudentLink | null }>>([]);
+  selectedStudentToLink = signal<number | null>(null);
+  selectedRelationship = signal<RelationshipType>(1);
 
-  newStudentName = signal('');
-  newStudentClass = signal('');
-  newGuardianName = signal('');
-  newGuardianPhone = signal('');
+  formName = signal('');
+  formEmail = signal('');
+  formPassword = signal('');
+  formPhone = signal('');
+  formRole = signal<ManagedRole>('Parent');
 
-  allSubjects = ['الرياضيات', 'اللغة العربية', 'اللغة الإنجليزية', 'العلوم', 'الدراسات الاجتماعية', 'التربية الدينية'];
-  allClasses = ['الصف الأول - أ', 'الصف الأول - ب', 'الصف الثاني - أ', 'الصف الثاني - ب', 'الصف الثالث - أ', 'الصف الثالث - ب'];
+  filteredUsers = computed(() => {
+    const query = this.searchQuery().trim().toLowerCase();
+    const tab = this.activeTab();
 
-  teachers = signal<Teacher[]>([
-    { id: 1, name: 'أ. سارة أحمد', email: 'sara.ahmed@school.com', subjects: ['الرياضيات', 'العلوم'], classes: ['الصف الثالث - أ', 'الصف الثالث - ب'] },
-    { id: 2, name: 'أ. محمد علي', email: 'mohamed.ali@school.com', subjects: ['اللغة العربية'], classes: ['الصف الثالث - أ', 'الصف الثاني - أ'] },
-    { id: 3, name: 'أ. فاطمة حسن', email: 'fatma.hassan@school.com', subjects: ['اللغة الإنجليزية'], classes: ['الصف الثالث - ب', 'الصف الثاني - ب'] },
-    { id: 4, name: 'م. عمر الحسيني', email: 'omar.husseini@school.com', subjects: ['الرياضيات', 'الدراسات الاجتماعية'], classes: ['الصف الثاني - أ', 'الصف الثاني - ب'] },
-  ]);
+    return this.users().filter(user => {
+      const role = user.role.toLowerCase();
+      const matchesTab =
+        tab === 'all' ||
+        (tab === 'admins' && role === 'admin') ||
+        (tab === 'parents' && role === 'parent') ||
+        (tab === 'students' && role === 'student');
 
-  students = signal<Student[]>([
-    { id: 1, name: 'أحمد محمود', class: 'الصف الثالث - أ', guardianName: 'محمود أحمد', guardianPhone: '01001234567' },
-    { id: 2, name: 'سارة علي', class: 'الصف الثالث - أ', guardianName: 'علي حسن', guardianPhone: '01002345678' },
-    { id: 3, name: 'محمود حسن', class: 'الصف الثالث - ب', guardianName: 'حسن محمود', guardianPhone: '01003456789' },
-    { id: 4, name: 'فاطمة أحمد', class: 'الصف الثالث - أ', guardianName: 'أحمد عمر', guardianPhone: '01004567890' },
-    { id: 5, name: 'عمر سعيد', class: 'الصف الثاني - أ', guardianName: 'سعيد علي', guardianPhone: '01005678901' },
-    { id: 6, name: 'ليلى خالد', class: 'الصف الثالث - ب', guardianName: 'خالد محمد', guardianPhone: '01006789012' },
-    { id: 7, name: 'خالد محمود', class: 'الصف الثاني - ب', guardianName: 'محمود سامي', guardianPhone: '01007890123' },
-  ]);
+      const matchesQuery =
+        !query ||
+        user.fullName.toLowerCase().includes(query) ||
+        user.email.toLowerCase().includes(query) ||
+        (user.phone ?? '').toLowerCase().includes(query);
 
-  filteredStudents = computed(() => {
-    const f = this.classFilter();
-    if (f === 'all') return this.students();
-    return this.students().filter(s => s.class === f);
+      return matchesTab && matchesQuery;
+    });
   });
 
-  studentClasses = computed(() => [...new Set(this.students().map(s => s.class))]);
+  totalCount = computed(() => this.users().length);
+  adminCount = computed(() => this.users().filter(user => user.role.toLowerCase() === 'admin').length);
+  parentCount = computed(() => this.users().filter(user => user.role.toLowerCase() === 'parent').length);
+  studentCount = computed(() => this.users().filter(user => user.role.toLowerCase() === 'student').length);
+  activeCount = computed(() => this.users().filter(user => user.isActive).length);
+  linkedStudentIdsForManagingParent = computed(() =>
+    new Set(this.parentLinkedStudents().map(item => item.student.id))
+  );
+  availableStudentsForParent = computed(() =>
+    this.students().filter(student => !this.linkedStudentIdsForManagingParent().has(student.id))
+  );
+  managedParentChildrenCount = computed(() => this.parentLinkedStudents().length);
 
-  toggleSubject(subj: string) {
-    this.newTeacherSubjects.update(list => list.includes(subj) ? list.filter(s => s !== subj) : [...list, subj]);
+  ngOnInit() {
+    this.loadUsers();
+    this.loadStudents();
   }
 
-  toggleClass(cls: string) {
-    this.newTeacherClasses.update(list => list.includes(cls) ? list.filter(c => c !== cls) : [...list, cls]);
+  loadUsers() {
+    this.isLoading.set(true);
+
+    this.userService.getAll({ pageSize: 1000 }).subscribe({
+      next: result => {
+        this.users.set(result.items ?? []);
+        this.isLoading.set(false);
+      },
+      error: err => {
+        const msg = err?.error?.message || 'تعذر تحميل الحسابات';
+        this.showError(msg);
+        this.isLoading.set(false);
+      }
+    });
   }
 
-  openAddTeacher() {
-    this.editingTeacherId.set(null);
-    this.newTeacherName.set(''); this.newTeacherEmail.set(''); this.newTeacherPassword.set('');
-    this.newTeacherSubjects.set([]); this.newTeacherClasses.set([]);
-    this.showAddModal.set(true);
+  loadStudents() {
+    this.studentService.getAll().subscribe({
+      next: students => this.students.set(students),
+      error: err => {
+        const msg = err?.error?.message || 'تعذر تحميل قائمة الطلاب';
+        this.showError(msg);
+      }
+    });
   }
 
-  openEditTeacher(t: Teacher) {
-    this.editingTeacherId.set(t.id);
-    this.newTeacherName.set(t.name); this.newTeacherEmail.set(t.email);
-    this.newTeacherSubjects.set([...t.subjects]); this.newTeacherClasses.set([...t.classes]);
-    this.showAddModal.set(true);
-  }
-
-  openAddStudent() {
-    this.editingStudentId.set(null);
-    this.newStudentName.set(''); this.newStudentClass.set(''); this.newGuardianName.set(''); this.newGuardianPhone.set('');
-    this.showAddModal.set(true);
-  }
-
-  openEditStudent(s: Student) {
-    this.editingStudentId.set(s.id);
-    this.newStudentName.set(s.name); this.newStudentClass.set(s.class);
-    this.newGuardianName.set(s.guardianName); this.newGuardianPhone.set(s.guardianPhone);
-    this.showAddModal.set(true);
-  }
-
-  closeModal() {
-    this.showAddModal.set(false);
-    this.editingTeacherId.set(null);
-    this.editingStudentId.set(null);
-  }
-
-  saveTeacher() {
-    const editId = this.editingTeacherId();
-    if (editId) {
-      this.teachers.update(list => list.map(t => t.id === editId ? { ...t, name: this.newTeacherName(), email: this.newTeacherEmail(), subjects: this.newTeacherSubjects(), classes: this.newTeacherClasses() } : t));
-    } else {
-      this.teachers.update(list => [...list, { id: Date.now(), name: this.newTeacherName(), email: this.newTeacherEmail(), password: this.newTeacherPassword(), subjects: this.newTeacherSubjects(), classes: this.newTeacherClasses() }]);
+  openCreateModal(role?: ManagedRole) {
+    this.resetForm();
+    if (role) {
+      this.formRole.set(role);
     }
-    this.closeModal();
+    this.showCreateModal.set(true);
   }
 
-  saveStudent() {
-    const editId = this.editingStudentId();
-    if (editId) {
-      this.students.update(list => list.map(s => s.id === editId ? { ...s, name: this.newStudentName(), class: this.newStudentClass(), guardianName: this.newGuardianName(), guardianPhone: this.newGuardianPhone() } : s));
-    } else {
-      this.students.update(list => [...list, { id: Date.now(), name: this.newStudentName(), class: this.newStudentClass(), guardianName: this.newGuardianName(), guardianPhone: this.newGuardianPhone() }]);
+  openEditModal(user: User) {
+    this.editingUserId.set(user.id);
+    this.formName.set(user.fullName);
+    this.formEmail.set(user.email);
+    this.formPhone.set(user.phone ?? '');
+    this.formRole.set(this.toManagedRole(user.role));
+    this.formPassword.set('');
+    this.showEditModal.set(true);
+  }
+
+  closeModals() {
+    this.showCreateModal.set(false);
+    this.showEditModal.set(false);
+    this.editingUserId.set(null);
+    this.resetForm();
+  }
+
+  openParentLinksModal(user: User) {
+    if (user.role.toLowerCase() !== 'parent') {
+      return;
     }
-    this.closeModal();
+
+    this.managingParent.set(user);
+    this.selectedStudentToLink.set(null);
+    this.selectedRelationship.set(1);
+    this.showParentLinksModal.set(true);
+    this.loadParentChildren(user.id);
   }
 
-  deleteTeacher(id: number) {
-    this.teachers.update(list => list.filter(t => t.id !== id));
+  closeParentLinksModal() {
+    this.showParentLinksModal.set(false);
+    this.managingParent.set(null);
+    this.parentLinkedStudents.set([]);
+    this.selectedStudentToLink.set(null);
+    this.selectedRelationship.set(1);
   }
 
-  deleteStudent(id: number) {
-    this.students.update(list => list.filter(s => s.id !== id));
+  loadParentChildren(parentId: number) {
+    this.isLoading.set(true);
+
+    this.parentStudentService.getStudentsByParent(parentId).subscribe({
+      next: students => {
+        if (students.length === 0) {
+          this.parentLinkedStudents.set([]);
+          this.isLoading.set(false);
+          return;
+        }
+
+        forkJoin(
+          students.map(student =>
+            this.parentStudentService.getParentsByStudent(student.id).pipe(
+              map(links => ({
+                student,
+                link: links.find(link => link.parentId === parentId) ?? null
+              })),
+              catchError(() => of({ student, link: null }))
+            )
+          )
+        ).subscribe({
+          next: rows => {
+            this.parentLinkedStudents.set(rows);
+            this.isLoading.set(false);
+          },
+          error: err => {
+            const msg = err?.error?.message || 'تعذر تحميل أبناء ولي الأمر';
+            this.showError(msg);
+            this.isLoading.set(false);
+          }
+        });
+      },
+      error: err => {
+        const msg = err?.error?.message || 'تعذر تحميل أبناء ولي الأمر';
+        this.showError(msg);
+        this.isLoading.set(false);
+      }
+    });
+  }
+
+  saveAccount() {
+    if (!this.formName() || !this.formEmail() || !this.formPassword()) {
+      this.showError('يرجى إدخال الاسم والبريد الإلكتروني وكلمة المرور');
+      return;
+    }
+
+    this.isLoading.set(true);
+    this.userService.createUser({
+      fullName: this.formName(),
+      email: this.formEmail(),
+      password: this.formPassword(),
+      phone: this.formPhone() || undefined,
+      role: this.formRole()
+    }).subscribe({
+      next: () => {
+        this.showSuccess('تم إنشاء الحساب بنجاح');
+        this.closeModals();
+        this.loadUsers();
+      },
+      error: err => {
+        const msg = err?.error?.message || 'تعذر إنشاء الحساب';
+        this.showError(msg);
+        this.isLoading.set(false);
+      }
+    });
+  }
+
+  updateAccount() {
+    const userId = this.editingUserId();
+    if (!userId || !this.formName()) {
+      this.showError('يرجى إدخال الاسم الكامل');
+      return;
+    }
+
+    this.isLoading.set(true);
+    this.userService.updateUser(userId, {
+      fullName: this.formName(),
+      phone: this.formPhone() || undefined
+    }).subscribe({
+      next: () => {
+        this.showSuccess('تم تحديث الحساب بنجاح');
+        this.closeModals();
+        this.loadUsers();
+      },
+      error: err => {
+        const msg = err?.error?.message || 'تعذر تحديث الحساب';
+        this.showError(msg);
+        this.isLoading.set(false);
+      }
+    });
+  }
+
+  toggleAccountStatus(user: User) {
+    const nextStatus = !user.isActive;
+    this.isLoading.set(true);
+
+    this.userService.setActiveStatus(user.id, nextStatus).subscribe({
+      next: () => {
+        this.showSuccess(nextStatus ? 'تم تفعيل الحساب بنجاح' : 'تم تعطيل الحساب بنجاح');
+        this.loadUsers();
+      },
+      error: err => {
+        const msg = err?.error?.message || 'تعذر تغيير حالة الحساب';
+        this.showError(msg);
+        this.isLoading.set(false);
+      }
+    });
+  }
+
+  deleteAccount(user: User) {
+    if (!confirm(`هل أنت متأكد من حذف حساب ${user.fullName}؟`)) {
+      return;
+    }
+
+    this.isLoading.set(true);
+    this.userService.deleteUser(user.id).subscribe({
+      next: () => {
+        this.showSuccess('تم حذف الحساب بنجاح');
+        this.loadUsers();
+      },
+      error: err => {
+        const msg = err?.error?.message || 'تعذر حذف الحساب';
+        this.showError(msg);
+        this.isLoading.set(false);
+      }
+    });
+  }
+
+  navigateTo(route: string) {
+    this.router.navigate([route]);
+  }
+
+  linkStudentToParent() {
+    const parent = this.managingParent();
+    const studentId = this.selectedStudentToLink();
+
+    if (!parent || !studentId) {
+      this.showError('اختر الطالب المراد ربطه أولًا');
+      return;
+    }
+
+    this.isLoading.set(true);
+    this.parentStudentService.link({
+      parentId: parent.id,
+      studentId,
+      relationship: this.selectedRelationship()
+    }).subscribe({
+      next: () => {
+        this.showSuccess('تم ربط الطالب بولي الأمر بنجاح');
+        this.selectedStudentToLink.set(null);
+        this.loadParentChildren(parent.id);
+      },
+      error: err => {
+        const msg = err?.error?.message || 'تعذر ربط الطالب بولي الأمر';
+        this.showError(msg);
+        this.isLoading.set(false);
+      }
+    });
+  }
+
+  unlinkStudentFromParent(link: ParentStudentLink) {
+    const parent = this.managingParent();
+    if (!parent) {
+      return;
+    }
+
+    if (!confirm(`هل تريد فك ربط الطالب ${link.studentName} من ولي الأمر ${link.parentName}؟`)) {
+      return;
+    }
+
+    this.isLoading.set(true);
+    this.parentStudentService.unlink(link.id).subscribe({
+      next: () => {
+        this.showSuccess('تم فك الربط بنجاح');
+        this.loadParentChildren(parent.id);
+      },
+      error: err => {
+        const msg = err?.error?.message || 'تعذر فك الربط';
+        this.showError(msg);
+        this.isLoading.set(false);
+      }
+    });
+  }
+
+  updateParentRelationship(link: ParentStudentLink, value: string) {
+    const parent = this.managingParent();
+    if (!parent) {
+      return;
+    }
+
+    const relationship = Number(value) as RelationshipType;
+    this.isLoading.set(true);
+    this.parentStudentService.updateRelationship(link.id, relationship).subscribe({
+      next: () => {
+        this.showSuccess('تم تحديث صلة القرابة بنجاح');
+        this.loadParentChildren(parent.id);
+      },
+      error: err => {
+        const msg = err?.error?.message || 'تعذر تحديث صلة القرابة';
+        this.showError(msg);
+        this.isLoading.set(false);
+      }
+    });
+  }
+
+  setSelectedRelationshipFromValue(value: string) {
+    this.selectedRelationship.set(Number(value) as RelationshipType);
+  }
+
+  getRoleLabel(role: string): string {
+    switch (role.toLowerCase()) {
+      case 'admin':
+        return 'أدمن';
+      case 'parent':
+        return 'ولي أمر';
+      case 'student':
+        return 'حساب طالب';
+      case 'teacher':
+        return 'معلم';
+      default:
+        return role;
+    }
+  }
+
+  getRelationshipLabel(relationship?: RelationshipType | null): string {
+    switch (relationship) {
+      case 1:
+        return 'الأب';
+      case 2:
+        return 'الأم';
+      case 3:
+        return 'الوصي';
+      case 4:
+        return 'أخ / أخت';
+      case 5:
+        return 'أخرى';
+      default:
+        return 'غير محدد';
+    }
+  }
+
+  canSaveAccount(): boolean {
+    return !!this.formName() && !!this.formEmail() && !!this.formPassword() && !this.isLoading();
+  }
+
+  canUpdateAccount(): boolean {
+    return !!this.formName() && !this.isLoading();
+  }
+
+  private resetForm() {
+    this.formName.set('');
+    this.formEmail.set('');
+    this.formPassword.set('');
+    this.formPhone.set('');
+    this.formRole.set('Parent');
+  }
+
+  private toManagedRole(role: string): ManagedRole {
+    switch (role.toLowerCase()) {
+      case 'admin':
+        return 'Admin';
+      case 'student':
+        return 'Student';
+      default:
+        return 'Parent';
+    }
+  }
+
+  private showError(message: string) {
+    this.errorMessage.set(message);
+    this.successMessage.set(null);
+    setTimeout(() => this.errorMessage.set(null), 5000);
+  }
+
+  private showSuccess(message: string) {
+    this.successMessage.set(message);
+    this.errorMessage.set(null);
+    setTimeout(() => this.successMessage.set(null), 3000);
   }
 }

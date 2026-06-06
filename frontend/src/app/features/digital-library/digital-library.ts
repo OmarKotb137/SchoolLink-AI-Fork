@@ -76,7 +76,7 @@ export class DigitalLibrary implements OnInit {
   loadLatest() {
     this.libraryService.getLatest(1).subscribe({
       next: (res) => {
-        this.latestItems.set(Array.isArray(res) ? res : []);
+        this.latestItems.set(Array.isArray(res.data) ? res.data : []);
       },
       error: (err) => console.error('Error fetching latest items', err)
     });
@@ -92,8 +92,9 @@ export class DigitalLibrary implements OnInit {
       searchTerm: this.searchTerm() || null
     }).subscribe({
       next: (res) => {
-        this.items.set(res.items ?? []);
-        this.hasMore.set((res.items?.length ?? 0) >= this.pageSize);
+        const items = res.data?.items ?? [];
+        this.items.set(items);
+        this.hasMore.set(items.length >= this.pageSize);
         this.loading.set(false);
       },
       error: (err) => {
@@ -114,9 +115,10 @@ export class DigitalLibrary implements OnInit {
       searchTerm: this.searchTerm() || null
     }).subscribe({
       next: (res) => {
-        this.items.update(prev => [...prev, ...(res.items ?? [])]);
+        const items = res.data?.items ?? [];
+        this.items.update(prev => [...prev, ...items]);
         this.currentPage.set(nextPage);
-        this.hasMore.set((res.items?.length ?? 0) >= this.pageSize);
+        this.hasMore.set(items.length >= this.pageSize);
         this.loadingMore.set(false);
       },
       error: () => {

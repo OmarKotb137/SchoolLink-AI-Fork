@@ -1,0 +1,377 @@
+<app-sidebar [(isOpen)]="sidebarOpen" />
+<div class="main-content">
+  <app-topbar userName="أحمد" />
+
+  <main class="page-shell">
+    <section class="page-header-card">
+      <div>
+        <span class="section-eyebrow">إدارة الطلاب</span>
+        <h1 class="page-title">ملفات الطلاب وربط الحسابات وأولياء الأمور</h1>
+        <p class="page-description">
+          هذه الصفحة هي المركز الأساسي لملف الطالب الأكاديمي. منها تنشئ الطالب، تعدل بياناته،
+          وتربطه بحساب دخول أو بولي أمر، بينما يظل الاستيراد والنقل أدوات مساندة.
+        </p>
+      </div>
+
+      <div class="header-actions">
+        <button class="secondary-btn-glass" type="button" (click)="navigateTo('/import-students')">
+          <span class="material-symbols-outlined">file_upload</span>
+          استيراد الطلاب
+        </button>
+        <button class="secondary-btn-glass" type="button" (click)="navigateTo('/transfer-student')">
+          <span class="material-symbols-outlined">transfer_within_a_station</span>
+          نقل طالب
+        </button>
+        <button class="gradient-btn" type="button" (click)="openCreateModal()">
+          <span class="material-symbols-outlined">person_add</span>
+          إضافة طالب
+        </button>
+      </div>
+    </section>
+
+    <section class="summary-grid">
+      <article class="summary-card">
+        <span class="summary-label">إجمالي الطلاب</span>
+        <strong class="summary-value">{{ students().length }}</strong>
+        <span class="summary-hint">عدد ملفات الطلاب داخل النظام</span>
+      </article>
+
+      <article class="summary-card success">
+        <span class="summary-label">بحسابات دخول</span>
+        <strong class="summary-value">{{ linkedStudentUserIds().size }}</strong>
+        <span class="summary-hint">طلاب مرتبطون بحسابات Student</span>
+      </article>
+
+      <article class="summary-card warning">
+        <span class="summary-label">أولياء الأمور المتاحون</span>
+        <strong class="summary-value">{{ parentAccounts().length }}</strong>
+        <span class="summary-hint">حسابات Parent الجاهزة للربط</span>
+      </article>
+    </section>
+
+    @if (errorMessage()) {
+      <div class="banner error-banner">
+        <span class="material-symbols-outlined">error</span>
+        <span>{{ errorMessage() }}</span>
+      </div>
+    }
+
+    @if (successMessage()) {
+      <div class="banner success-banner">
+        <span class="material-symbols-outlined">check_circle</span>
+        <span>{{ successMessage() }}</span>
+      </div>
+    }
+
+    <section class="workspace-grid">
+      <div class="glass-card students-panel">
+        <div class="panel-header">
+          <div>
+            <h2>قائمة الطلاب</h2>
+            <p>ابحث ثم اختر الطالب لعرض الربط والحسابات في اللوحة الجانبية.</p>
+          </div>
+
+          <div class="search-box">
+            <span class="material-symbols-outlined">search</span>
+            <input
+              type="text"
+              placeholder="ابحث بالاسم أو الرقم القومي أو البريد"
+              [value]="searchQuery()"
+              (input)="searchQuery.set($any($event.target).value)"
+            />
+          </div>
+        </div>
+
+        <div class="students-table-wrap">
+          <table class="students-table">
+            <thead>
+              <tr>
+                <th>الاسم</th>
+                <th>الرقم القومي</th>
+                <th>النوع</th>
+                <th>الحساب</th>
+                <th>الحالة</th>
+                <th>إجراءات</th>
+              </tr>
+            </thead>
+            <tbody>
+              @if (isLoading() && students().length === 0) {
+                <tr>
+                  <td colspan="6" class="empty-cell">جار تحميل ملفات الطلاب...</td>
+                </tr>
+              } @else if (filteredStudents().length === 0) {
+                <tr>
+                  <td colspan="6" class="empty-cell">لا توجد نتائج مطابقة أو لم يتم إنشاء طلاب بعد.</td>
+                </tr>
+              } @else {
+                @for (student of filteredStudents(); track student.id) {
+                  <tr
+                    class="student-row"
+                    [class.selected-row]="selectedStudentId() === student.id"
+                    (click)="selectStudent(student)"
+                  >
+                    <td>
+                      <div class="student-name-cell">
+                        <strong>{{ student.fullName }}</strong>
+                        <span>#{{ student.id }}</span>
+                      </div>
+                    </td>
+                    <td>{{ student.nationalId || '—' }}</td>
+                    <td>{{ getGenderLabel(student.gender) }}</td>
+                    <td>
+                      <span class="status-chip" [class.active-chip]="student.userId" [class.inactive-chip]="!student.userId">
+                        {{ student.userId ? 'مرتبط' : 'غير مرتبط' }}
+                      </span>
+                    </td>
+                    <td>
+                      <span class="status-chip" [class.active-chip]="student.isActive" [class.inactive-chip]="!student.isActive">
+                        {{ student.isActive ? 'نشط' : 'غير نشط' }}
+                      </span>
+                    </td>
+                    <td>
+                      <div class="table-actions" (click)="$event.stopPropagation()">
+                        <button class="icon-action-btn" type="button" (click)="openEditModal(student)" title="تعديل">
+                          <span class="material-symbols-outlined">edit</span>
+                        </button>
+                        <button class="icon-action-btn danger" type="button" (click)="deleteStudent(student)" title="حذف">
+                          <span class="material-symbols-outlined">delete</span>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                }
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <aside class="details-column">
+        <div class="glass-card details-card">
+          <div class="panel-header">
+            <div>
+              <h2>تفاصيل الطالب</h2>
+              <p>اختر طالبًا من الجدول لبدء الربط أو مراجعة علاقاته الحالية.</p>
+            </div>
+          </div>
+
+          @if (selectedStudent(); as student) {
+            <div class="student-profile">
+              <div class="profile-line">
+                <span>الاسم</span>
+                <strong>{{ student.fullName }}</strong>
+              </div>
+              <div class="profile-line">
+                <span>الرقم القومي</span>
+                <strong>{{ student.nationalId || 'غير مسجل' }}</strong>
+              </div>
+              <div class="profile-line">
+                <span>النوع</span>
+                <strong>{{ getGenderLabel(student.gender) }}</strong>
+              </div>
+              <div class="profile-line">
+                <span>تاريخ الميلاد</span>
+                <strong>{{ student.birthDate || 'غير محدد' }}</strong>
+              </div>
+              <div class="profile-line">
+                <span>الحساب الحالي</span>
+                <strong>{{ student.userEmail || 'لا يوجد حساب مرتبط' }}</strong>
+              </div>
+            </div>
+
+            <div class="link-block">
+              <div class="block-heading">
+                <h3>ربط حساب طالب</h3>
+                <p>يتم الربط من حسابات الدور Student فقط.</p>
+              </div>
+
+              <select
+                class="glass-input"
+                [value]="selectedStudentUserId() ?? ''"
+                (change)="selectedStudentUserId.set($any($event.target).value ? +$any($event.target).value : null)"
+              >
+                <option value="">اختر حساب طالب</option>
+                @for (account of availableStudentAccounts(); track account.id) {
+                  <option [value]="account.id">{{ account.fullName }} - {{ account.email }}</option>
+                }
+              </select>
+
+              <button class="gradient-btn full-width" type="button" (click)="linkStudentAccount()" [disabled]="isLoading()">
+                <span class="material-symbols-outlined">link</span>
+                ربط حساب الطالب
+              </button>
+            </div>
+
+            <div class="link-block">
+              <div class="block-heading">
+                <h3>ربط ولي أمر</h3>
+                <p>اختر حساب Parent وحدد صلة القرابة.</p>
+              </div>
+
+              <select
+                class="glass-input"
+                [value]="selectedParentId() ?? ''"
+                (change)="selectedParentId.set($any($event.target).value ? +$any($event.target).value : null)"
+              >
+                <option value="">اختر ولي الأمر</option>
+                @for (parent of parentAccounts(); track parent.id) {
+                  <option [value]="parent.id">{{ parent.fullName }} - {{ parent.email }}</option>
+                }
+              </select>
+
+              <select
+                class="glass-input"
+                [value]="selectedRelationship()"
+                (change)="setRelationshipFromValue($any($event.target).value)"
+              >
+                <option value="1">الأب</option>
+                <option value="2">الأم</option>
+                <option value="3">الوصي</option>
+                <option value="4">أخ / أخت</option>
+                <option value="5">أخرى</option>
+              </select>
+
+              <button class="gradient-btn full-width" type="button" (click)="linkParentToStudent()" [disabled]="isLoading()">
+                <span class="material-symbols-outlined">family_restroom</span>
+                ربط ولي الأمر
+              </button>
+            </div>
+
+            <div class="link-block">
+              <div class="block-heading">
+                <h3>العلاقات الحالية</h3>
+                <p>كل أولياء الأمور المرتبطين بالطالب المختار حاليًا.</p>
+              </div>
+
+              @if (parentLinks().length === 0) {
+                <div class="empty-links">لا توجد روابط أولياء أمور لهذا الطالب حتى الآن.</div>
+              } @else {
+                <div class="links-list">
+                  @for (link of parentLinks(); track link.id) {
+                    <div class="link-item">
+                      <div>
+                        <strong>{{ link.parentName }}</strong>
+                        <p>{{ link.parentEmail }}</p>
+                        <span>{{ getRelationshipLabel(link.relationship) }}</span>
+                      </div>
+                      <button class="icon-action-btn danger" type="button" (click)="unlinkParent(link)" title="إلغاء الربط">
+                        <span class="material-symbols-outlined">link_off</span>
+                      </button>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          } @else {
+            <div class="empty-selection">
+              <span class="material-symbols-outlined">school</span>
+              <p>اختر طالبًا من الجدول لعرض بياناته وربط الحسابات وأولياء الأمور.</p>
+            </div>
+          }
+        </div>
+      </aside>
+    </section>
+  </main>
+</div>
+
+@if (showCreateModal()) {
+  <div class="modal-overlay" (click)="closeModals()">
+    <div class="glass-modal" (click)="$event.stopPropagation()">
+      <div class="glass-modal-header">
+        <div>
+          <h2>إضافة طالب جديد</h2>
+          <p>أنشئ ملف الطالب الأكاديمي أولًا، ثم اربطه بالحساب أو بولي الأمر لاحقًا.</p>
+        </div>
+        <button class="icon-close-btn" type="button" (click)="closeModals()">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field-group">
+            <label>الاسم الكامل</label>
+            <input class="glass-input" [value]="formName()" (input)="formName.set($any($event.target).value)" />
+          </div>
+
+          <div class="field-group">
+            <label>الرقم القومي</label>
+            <input class="glass-input" [value]="formNationalId()" (input)="formNationalId.set($any($event.target).value)" />
+          </div>
+
+          <div class="field-group">
+            <label>النوع</label>
+            <select class="glass-input" [value]="formGender() ?? ''" (change)="formGender.set($any($event.target).value ? +$any($event.target).value : null)">
+              <option value="">اختر النوع</option>
+              <option value="1">ذكر</option>
+              <option value="2">أنثى</option>
+            </select>
+          </div>
+
+          <div class="field-group">
+            <label>تاريخ الميلاد</label>
+            <input class="glass-input" type="date" [value]="formBirthDate()" (input)="formBirthDate.set($any($event.target).value)" />
+          </div>
+        </div>
+      </div>
+
+      <div class="glass-modal-footer">
+        <button class="secondary-btn-glass" type="button" (click)="closeModals()">إلغاء</button>
+        <button class="gradient-btn" type="button" (click)="saveStudent()" [disabled]="!canSaveStudent()">
+          حفظ الطالب
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (showEditModal()) {
+  <div class="modal-overlay" (click)="closeModals()">
+    <div class="glass-modal" (click)="$event.stopPropagation()">
+      <div class="glass-modal-header">
+        <div>
+          <h2>تعديل بيانات الطالب</h2>
+          <p>يمكن تعديل البيانات الأساسية للطالب من هنا.</p>
+        </div>
+        <button class="icon-close-btn" type="button" (click)="closeModals()">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field-group">
+            <label>الاسم الكامل</label>
+            <input class="glass-input" [value]="formName()" (input)="formName.set($any($event.target).value)" />
+          </div>
+
+          <div class="field-group">
+            <label>الرقم القومي</label>
+            <input class="glass-input" [value]="formNationalId()" disabled />
+          </div>
+
+          <div class="field-group">
+            <label>النوع</label>
+            <select class="glass-input" [value]="formGender() ?? ''" (change)="formGender.set($any($event.target).value ? +$any($event.target).value : null)">
+              <option value="">اختر النوع</option>
+              <option value="1">ذكر</option>
+              <option value="2">أنثى</option>
+            </select>
+          </div>
+
+          <div class="field-group">
+            <label>تاريخ الميلاد</label>
+            <input class="glass-input" type="date" [value]="formBirthDate()" (input)="formBirthDate.set($any($event.target).value)" />
+          </div>
+        </div>
+      </div>
+
+      <div class="glass-modal-footer">
+        <button class="secondary-btn-glass" type="button" (click)="closeModals()">إلغاء</button>
+        <button class="gradient-btn" type="button" (click)="updateStudent()" [disabled]="!canUpdateStudent()">
+          حفظ التعديلات
+        </button>
+      </div>
+    </div>
+  </div>
+}

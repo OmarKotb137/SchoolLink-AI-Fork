@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { environment } from '../../../environments/environment';
+import { buildApiUrl } from '../../core/utils/api-url';
 
 export interface Criteria {
   id: string;
@@ -115,7 +115,7 @@ export interface ClassEvaluation {
 @Injectable({ providedIn: 'root' })
 export class GradeMonitorService {
   private http = inject(HttpClient);
-  private base = environment.apiUrl;
+  private base = buildApiUrl();
 
   // ─── School Profile ─────────────────────────────────────
   getSchoolProfile() {

@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { environment } from '../../../environments/environment';
+import { buildApiUrl } from '../utils/api-url';
 
 export interface AcademicYear {
   id: number;
@@ -16,7 +16,7 @@ export interface AcademicYear {
 })
 export class AcademicYearService {
   private http = inject(HttpClient);
-  private apiUrl = `${environment.apiUrl}/api/academic-years`;
+  private apiUrl = buildApiUrl('academic-years');
 
   getAll(): Observable<AcademicYear[]> {
     return this.http.get<AcademicYear[]>(this.apiUrl);

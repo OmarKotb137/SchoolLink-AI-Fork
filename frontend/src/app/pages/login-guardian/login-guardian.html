@@ -46,10 +46,10 @@
 
       <form #f="ngForm" (ngSubmit)="handleLogin(f)" class="space-y-4">
         <div>
-          <label class="block text-sm font-semibold text-on-surface-variant mb-1.5">{{ roleTab() === 'student' ? 'اسم المستخدم أو البريد الإلكتروني' : 'رقم الهاتف أو البريد الإلكتروني' }}</label>
+          <label class="block text-sm font-semibold text-on-surface-variant mb-1.5">البريد الإلكتروني</label>
           <div class="relative">
             <span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-outline text-lg">badge</span>
-            <input ngModel name="email" type="text" placeholder="{{ roleTab() === 'student' ? 'أدخل اسم المستخدم' : 'أدخل رقم الهاتف أو البريد' }}"
+            <input ngModel name="email" type="email" required placeholder="أدخل البريد الإلكتروني"
                    class="w-full py-3.5 pr-12 pl-4 bg-surface-container-low border border-outline/30 rounded-xl text-sm text-on-surface outline-none transition-all focus:border-primary/50 focus:bg-white placeholder:text-outline/60" />
           </div>
         </div>
@@ -57,7 +57,7 @@
           <label class="block text-sm font-semibold text-on-surface-variant mb-1.5">كلمة المرور</label>
           <div class="relative">
             <span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-outline text-lg">lock</span>
-            <input ngModel name="password" #pwd type="password" placeholder="أدخل كلمة المرور"
+            <input ngModel name="password" #pwd type="password" required placeholder="أدخل كلمة المرور"
                    class="w-full py-3.5 pr-12 pl-12 bg-surface-container-low border border-outline/30 rounded-xl text-sm text-on-surface outline-none transition-all focus:border-primary/50 focus:bg-white placeholder:text-outline/60" />
             <button type="button" (click)="pwd.type = pwd.type === 'password' ? 'text' : 'password'"
                     class="absolute left-3 top-1/2 -translate-y-1/2 bg-none border-none text-outline hover:text-on-surface-variant p-0 cursor-pointer">
