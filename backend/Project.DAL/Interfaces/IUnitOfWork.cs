@@ -27,6 +27,8 @@ public interface IUnitOfWork : IDisposable, IAsyncDisposable
     IStudentEnrollmentRepository           StudentEnrollments           { get; }
     IParentStudentRepository               ParentStudents               { get; }
     IClassSubjectTeacherRepository         ClassSubjectTeachers         { get; }
+    IRepository<Unit>                      Units                        { get; }
+    IRepository<Lesson>                    Lessons                      { get; }
     ITeacherSubjectRepository              TeacherSubjects              { get; }
 
     // Section B: Evaluation (Academic)

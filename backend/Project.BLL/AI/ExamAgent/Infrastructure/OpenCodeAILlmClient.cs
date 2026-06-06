@@ -68,30 +68,33 @@ public class OpenCodeAILlmClient : ILlmClient
             msgsArray.Add(node);
         }
 
-        var toolsArray = new JsonArray();
-        foreach (var t in tools)
-        {
-            toolsArray.Add(new JsonObject
-            {
-                ["type"] = "function",
-                ["function"] = new JsonObject
-                {
-                    ["name"] = t.Name,
-                    ["description"] = t.Description,
-                    ["parameters"] = JsonNode.Parse(JsonSerializer.Serialize(t.InputSchema))
-                }
-            });
-        }
-
         var body = new JsonObject
         {
             ["model"] = _model,
             ["messages"] = msgsArray,
-            ["tools"] = toolsArray,
             ["stream"] = false,
-            ["tool_choice"] = "auto",
             ["max_tokens"] = 4096
         };
+
+        if (tools.Any())
+        {
+            var toolsArray = new JsonArray();
+            foreach (var t in tools)
+            {
+                toolsArray.Add(new JsonObject
+                {
+                    ["type"] = "function",
+                    ["function"] = new JsonObject
+                    {
+                        ["name"] = t.Name,
+                        ["description"] = t.Description,
+                        ["parameters"] = JsonNode.Parse(JsonSerializer.Serialize(t.InputSchema))
+                    }
+                });
+            }
+            body["tools"] = toolsArray;
+            body["tool_choice"] = "auto";
+        }
 
         var url = $"{_baseUrl.TrimEnd('/')}/chat/completions";
 

@@ -82,6 +82,8 @@ public static class ServiceExtensions
         services.AddScoped<IParentStudentService, ParentStudentService>();
         services.AddScoped<IStudyPlanService, StudyPlanService>();
         services.AddScoped<ILessonFeedbackService, LessonFeedbackService>();
+        services.AddScoped<IUnitService, UnitService>();
+        services.AddScoped<IBookParserService, BookParserService>();
 
         // AI Services
         RegisterAiServices(services, config);

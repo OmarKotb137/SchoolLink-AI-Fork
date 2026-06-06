@@ -73,6 +73,7 @@ public static class SeedData
         if (await ctx.AcademicYears.AnyAsync())
         {
             await SeedUnitsAndLessons(ctx);
+            await SeedStudentUsers(ctx);
             return;
         }
 
@@ -736,6 +737,44 @@ public static class SeedData
             });
         }
 
+        await ctx.SaveChangesAsync();
+    }
+
+    private static async Task SeedStudentUsers(AppDbContext ctx)
+    {
+        var now = DateTime.UtcNow;
+        var allStudents = await ctx.Students.ToListAsync();
+        var existingEmails = await ctx.Users
+            .Where(u => u.Role == UserRole.Student && u.Email != null)
+            .Select(u => u.Email)
+            .ToListAsync();
+        var emailSet = new HashSet<string>(existingEmails!);
+
+        foreach (var st in allStudents)
+        {
+            if (st.UserId != null) continue;
+
+            var email = $"student{st.Id}@school.com";
+            var existingUser = await ctx.Users.FirstOrDefaultAsync(u => u.Email == email);
+            if (existingUser != null)
+            {
+                st.UserId = existingUser.Id;
+            }
+            else
+            {
+                var su = new User
+                {
+                    FullName = st.FullName,
+                    Email = email,
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("Student@123"),
+                    Role = UserRole.Student, IsActive = true,
+                    CreatedAt = now, UpdatedAt = now
+                };
+                ctx.Users.Add(su);
+                await ctx.SaveChangesAsync();
+                st.UserId = su.Id;
+            }
+        }
         await ctx.SaveChangesAsync();
     }
 }
