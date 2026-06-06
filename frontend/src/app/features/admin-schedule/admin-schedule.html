@@ -1,8 +1,8 @@
 <app-sidebar [(isOpen)]="sidebarOpen" />
 <div class="main-content relative">
   <app-topbar [userName]="displayUserName" />
-  <main class="pt-16 h-screen flex flex-col bg-background">
-    <div class="flex-1 flex min-h-0 overflow-hidden">
+  <main class="pt-16 min-h-screen flex flex-col bg-background">
+    <div class="flex flex-col lg:flex-row w-full">
 
       <!-- Mobile backdrop for assignment bank -->
       <div *ngIf="isAssignmentBankVisible() && !scheduleEditorOpen()"
@@ -13,7 +13,7 @@
       <!-- ══ Right Sidebar — Assignment Bank (responsive, toggleable) ══════════════════════════════════ -->
       <div *ngIf="isAssignmentBankVisible() && !scheduleEditorOpen()"
            class="fixed inset-y-0 right-0 z-40 w-72 max-w-[85vw] bg-surface-container-lowest border-l border-outline-variant/30 flex flex-col shadow-xl
-                  lg:static lg:z-auto lg:w-80 lg:max-w-none lg:shadow-none lg:shrink-0">
+                  lg:static lg:z-auto lg:w-80 lg:max-w-none lg:shadow-none lg:shrink-0 lg:min-h-[calc(100vh-64px)]">
         <div class="p-6 border-b border-outline-variant/30 flex items-start justify-between gap-3">
           <div>
             <h2 class="font-headline-md text-headline-md text-on-surface mb-2">بنك الحصص</h2>
@@ -28,7 +28,7 @@
       </div>
 
       <!-- ══ Main Schedule Area ═══════════════════════════════════════════════ -->
-      <div class="flex-1 flex flex-col min-h-0 min-w-0 p-4 md:p-6 overflow-hidden">
+      <div class="flex-1 flex flex-col p-4 md:p-6 w-full">
 
         <section class="schedule-dashboard-hero">
           <div class="schedule-dashboard-copy">
@@ -65,8 +65,8 @@
         </section>
 
         <!-- Filters & Actions -->
-        <div class="shrink-0 flex flex-col lg:flex-row lg:justify-between lg:items-end gap-4 mb-4 bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/30">
-          <div class="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
+        <div class="shrink-0 flex flex-wrap gap-4 mb-4 bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/30">
+          <div class="flex flex-wrap gap-4 items-center flex-1">
             <div class="w-48">
               <label class="block font-label-sm text-on-surface-variant mb-1">السنة الدراسية</label>
               <select [(ngModel)]="selectedYearId" (ngModelChange)="onFilterChange()"
@@ -94,12 +94,12 @@
             </div>
           </div>
 
-          <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+          <div class="flex flex-wrap items-center gap-2 sm:gap-3 justify-start lg:justify-end">
             <button *ngIf="allTimetables().length"
                     (click)="toggleTimetablesPicker()"
                     class="px-3 py-2 rounded-lg border border-outline-variant bg-white text-on-surface font-label-sm hover:bg-surface-container flex items-center gap-2">
               <span class="material-symbols-outlined">layers</span>
-              <span class="hidden sm:inline">كل الجداول</span>
+              <span>كل الجداول</span>
               <span class="inline-flex min-w-5 h-5 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold px-1.5">
                 {{ allTimetables().length }}
               </span>
@@ -111,7 +111,7 @@
                     [class.bg-primary/10]="isAssignmentBankVisible()"
                     [class.border-primary/30]="isAssignmentBankVisible()">
               <span class="material-symbols-outlined">view_list</span>
-              <span class="hidden sm:inline">بنك الحصص</span>
+              <span>بنك الحصص</span>
             </button>
 
             <!-- تحرير الجدول -->
@@ -263,7 +263,7 @@
         </div>
 
         <!-- منطقة عرض الجدول -->
-        <div class="flex-1 min-h-0 overflow-auto admin-schedule-scroll bg-surface-container-lowest rounded-xl border border-outline-variant/30">
+        <div class="w-full overflow-x-auto bg-surface-container-lowest rounded-xl border border-outline-variant/30 mb-8">
 
           <div *ngIf="isLoading()" class="min-h-[280px] flex items-center justify-center gap-3 text-on-surface-variant">
             <span class="material-symbols-outlined animate-spin">progress_activity</span>
@@ -311,8 +311,8 @@
      class="schedule-editor-overlay fixed inset-0 z-[110] bg-background flex flex-col">
 
   <!-- Editor Header -->
-  <div class="shrink-0 flex items-center justify-between gap-4 px-4 py-3 md:px-6 border-b border-outline-variant/30 bg-surface-container-lowest">
-    <div class="min-w-0">
+  <div class="shrink-0 flex flex-col lg:flex-row lg:items-center justify-between gap-4 px-4 py-3 md:px-6 border-b border-outline-variant/30 bg-surface-container-lowest">
+    <div class="min-w-0 w-full lg:w-auto">
       <h2 class="font-headline-md text-primary flex items-center gap-2">
         <span class="material-symbols-outlined">edit_calendar</span>
         محرر الجدول — {{ getSelectedClassName() || 'الفصل المختار' }}
@@ -322,12 +322,12 @@
       </p>
     </div>
 
-    <div class="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+    <div class="flex items-center gap-2 shrink-0 flex-wrap justify-start lg:justify-end w-full lg:w-auto">
       <button *ngIf="allTimetables().length"
               (click)="toggleTimetablesPicker()"
               class="px-3 py-2 rounded-lg border border-outline-variant bg-white text-on-surface font-label-sm hover:bg-surface-container flex items-center gap-2">
         <span class="material-symbols-outlined">layers</span>
-        <span class="hidden sm:inline">النسخ</span>
+        <span>النسخ</span>
       </button>
 
       <!-- بنك الحصص -->
@@ -336,7 +336,7 @@
               [class.bg-primary/10]="isAssignmentBankVisible()"
               [class.border-primary/30]="isAssignmentBankVisible()">
         <span class="material-symbols-outlined">view_list</span>
-        <span class="hidden sm:inline">بنك الحصص</span>
+        <span>بنك الحصص</span>
       </button>
 
       <!-- تفعيل (مسودة فقط) -->
@@ -345,7 +345,7 @@
               [disabled]="isPublishing() || hasBlockingValidationErrors()"
               class="relative px-4 py-2 rounded-lg bg-secondary text-white font-label-sm hover:bg-secondary/90 disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2">
         <span class="material-symbols-outlined text-sm">{{ isPublishing() ? 'progress_activity' : 'publish' }}</span>
-        <span class="hidden md:inline">{{ isPublishing() ? 'جارٍ التفعيل...' : 'تفعيل' }}</span>
+        <span>{{ isPublishing() ? 'جارٍ التفعيل...' : 'تفعيل' }}</span>
         <!-- FIX: بادج تحذير في الـ editor كمان -->
         <span *ngIf="!validationResult() && !isPublishing()"
               class="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-amber-400 text-[9px] font-black text-white shadow"
@@ -358,7 +358,7 @@
               [disabled]="isDeactivating()"
               class="px-4 py-2 rounded-lg border border-amber-300 bg-white text-amber-800 font-label-sm hover:bg-amber-50 disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2">
         <span class="material-symbols-outlined text-sm">lock_open</span>
-        <span class="hidden md:inline">إلغاء التفعيل</span>
+        <span>إلغاء التفعيل</span>
       </button>
 
       <!-- ✅ FIX: حذف المسودة في الـ editor -->
@@ -367,7 +367,7 @@
               [disabled]="isDeletingTimetable()"
               class="px-4 py-2 rounded-lg border border-error/30 bg-white text-error font-label-sm hover:bg-red-50 disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2">
         <span class="material-symbols-outlined text-sm">delete</span>
-        <span class="hidden md:inline">حذف المسودة</span>
+        <span>حذف المسودة</span>
       </button>
 
       <!-- إغلاق -->
@@ -375,7 +375,7 @@
               class="px-3 py-2 rounded-lg border border-outline-variant bg-white text-on-surface hover:bg-surface-container flex items-center gap-2"
               aria-label="إغلاق محرر الجدول">
         <span class="material-symbols-outlined">close_fullscreen</span>
-        <span class="hidden sm:inline">إغلاق</span>
+        <span>إغلاق</span>
       </button>
     </div>
   </div>
