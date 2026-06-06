@@ -33,6 +33,7 @@ export const routes: Routes = [
   { path: 'reports-academic', loadComponent: () => import('./features/reports-academic/reports-academic').then(c => c.ReportsAcademic) },
   { path: 'reports-training', loadComponent: () => import('./features/reports-training/reports-training').then(c => c.ReportsTraining) },
   { path: 'analysis-ai', loadComponent: () => import('./features/analysis-ai/analysis-ai').then(c => c.AnalysisAi) },
+  { path: 'book-parser', loadComponent: () => import('./features/book-parser/book-parser').then(c => c.BookParser) },
   { path: 'import-students', loadComponent: () => import('./features/import-students/import-students').then(c => c.ImportStudents) },
   { path: 'user-management', loadComponent: () => import('./features/user-management/user-management').then(c => c.UserManagement) },
   { path: 'add-teacher', loadComponent: () => import('./features/add-teacher/add-teacher').then(c => c.AddTeacher) },

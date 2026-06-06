@@ -1,0 +1,230 @@
+<app-sidebar [(isOpen)]="sidebarOpen" />
+<div class="main-content">
+  <app-topbar userName="أحمد" [showSearch]="false" />
+  <main class="flex-1 flex flex-col min-w-0">
+    <div class="flex-1 p-gutter-mobile md:p-gutter-desktop overflow-y-auto">
+      <div class="max-w-5xl mx-auto flex flex-col gap-stack-lg">
+
+        <!-- Title -->
+        <div>
+          <h2 class="text-headline-lg-mobile md:text-headline-lg font-headline-lg font-bold text-on-surface mb-1">تحليل هيكل الكتاب</h2>
+          <p class="text-body-lg font-body-lg text-on-surface-variant">ارفع ملف PDF لاستخراج هيكل الوحدات والدروس تلقائياً</p>
+        </div>
+
+        <!-- Step indicator -->
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-2">
+            <span class="w-8 h-8 rounded-full flex items-center justify-center text-label-md font-bold"
+                  [class.bg-primary]="step() !== 'saved'"
+                  [class.bg-green-500]="step() === 'saved'"
+                  [class.text-on-primary]="step() !== 'saved'"
+                  [class.text-white]="step() === 'saved'">1</span>
+            <span class="text-label-md font-label-md" [class.text-on-surface]="step() !== 'saved'" [class.text-green-600]="step() === 'saved'">رفع ومعاينة</span>
+          </div>
+          <span class="text-outline h-px flex-1 border-t border-dashed border-outline-variant"></span>
+          <div class="flex items-center gap-2">
+            <span class="w-8 h-8 rounded-full flex items-center justify-center text-label-md font-bold"
+                  [class.bg-primary]="step() === 'preview' || step() === 'saved'"
+                  [class.bg-surface-container]="step() === 'upload'"
+                  [class.text-on-primary]="step() === 'preview' || step() === 'saved'"
+                  [class.text-on-surface]="step() === 'upload'">2</span>
+            <span class="text-label-md font-label-md">حفظ في النظام</span>
+          </div>
+        </div>
+
+        <!-- Step 1: Upload -->
+        @if (step() === 'upload') {
+          <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-6 md:p-8 shadow-sm">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div>
+                <label class="block text-label-md font-label-md text-on-surface mb-2">الصف الدراسي <span class="text-red-500">*</span></label>
+                <select [ngModel]="selectedGradeLevelId()" (ngModelChange)="selectedGradeLevelId.set($event); onGradeLevelChange()"
+                        class="w-full bg-surface-container border border-outline-variant rounded-xl px-4 py-3 text-body-md font-body-md focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all">
+                  <option [ngValue]="null">-- اختر الصف --</option>
+                  @for (gl of gradeLevels(); track gl.id) {
+                    <option [ngValue]="gl.id">{{gl.name}}</option>
+                  }
+                </select>
+              </div>
+              <div>
+                <label class="block text-label-md font-label-md text-on-surface mb-2">المادة الدراسية <span class="text-red-500">*</span></label>
+                <select [ngModel]="selectedSubjectId()" (ngModelChange)="selectedSubjectId.set($event)"
+                        [disabled]="!selectedGradeLevelId()"
+                        class="w-full bg-surface-container border border-outline-variant rounded-xl px-4 py-3 text-body-md font-body-md focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all disabled:opacity-50">
+                  <option [ngValue]="null">-- اختر المادة --</option>
+                  @for (subject of subjects(); track subject.id) {
+                    <option [ngValue]="subject.id">{{subject.name}}</option>
+                  }
+                </select>
+              </div>
+              <div>
+                <label class="block text-label-md font-label-md text-on-surface mb-2">ملف PDF <span class="text-red-500">*</span></label>
+                <div class="border-2 border-dashed border-outline-variant rounded-xl p-6 text-center hover:bg-surface-container/50 transition-colors cursor-pointer relative">
+                  <input type="file" (change)="onFileSelected($event)" accept=".pdf"
+                         class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                  <div class="flex flex-col items-center gap-2 pointer-events-none">
+                    <span class="material-symbols-outlined text-4xl text-primary">picture_as_pdf</span>
+                    @if (fileName()) {
+                      <p class="text-body-md font-body-md text-on-surface font-medium">{{fileName()}}</p>
+                      <span class="text-label-sm text-green-600 bg-green-50 px-3 py-1 rounded-full">تم اختيار الملف</span>
+                    } @else {
+                      <p class="text-body-md font-body-md text-on-surface">اضغط لاختيار ملف PDF</p>
+                      <p class="text-label-sm text-on-surface-variant">الحد الأقصى 100 ميجابايت</p>
+                    }
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="mt-6 flex justify-end">
+              <button (click)="preview()" [disabled]="!selectedFile() || !selectedSubjectId() || !selectedGradeLevelId() || loadingPreview()"
+                      class="px-8 py-3 bg-primary text-on-primary rounded-full font-label-md text-label-md hover:bg-primary/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 shadow-sm">
+                @if (loadingPreview()) {
+                  <span class="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
+                  جاري التحليل...
+                } @else {
+                  <span class="material-symbols-outlined text-[20px]">auto_awesome</span>
+                  تحليل الكتاب
+                }
+              </button>
+            </div>
+          </div>
+        }
+
+        <!-- Step 2: Preview -->
+        @if (step() === 'preview' || step() === 'saved') {
+          <!-- Summary bar -->
+          <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5 shadow-sm flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-6 flex-wrap">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">folder</span>
+                <span class="text-label-md font-label-md text-on-surface font-semibold">{{parsedUnits().length}} وحدة</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-secondary">menu_book</span>
+                <span class="text-label-md font-label-md text-on-surface font-semibold">{{totalLessons()}} درس</span>
+              </div>
+            </div>
+            <div class="flex items-center gap-3">
+              @if (step() === 'preview') {
+                <button (click)="reset()" class="px-4 py-2 rounded-full border border-outline-variant text-on-surface font-label-md text-label-md hover:bg-surface-container transition-colors">
+                  <span class="material-symbols-outlined text-[18px]">close</span>
+                  إلغاء
+                </button>
+                <button (click)="save()" [disabled]="saving()"
+                        class="px-6 py-2 rounded-full bg-primary text-on-primary font-label-md text-label-md hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2 shadow-sm">
+                  @if (saving()) {
+                    <span class="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
+                    جاري الحفظ...
+                  } @else {
+                    <span class="material-symbols-outlined text-[18px]">save</span>
+                    حفظ الهيكل
+                  }
+                </button>
+              } @else {
+                <span class="text-label-md font-label-md text-green-600 bg-green-50 px-4 py-2 rounded-full flex items-center gap-2">
+                  <span class="material-symbols-outlined text-[18px]">check_circle</span>
+                  تم الحفظ بنجاح
+                </span>
+                <button (click)="reset()" class="px-4 py-2 rounded-full bg-primary text-on-primary font-label-md text-label-md hover:bg-primary/90 transition-colors">
+                  رفع كتاب آخر
+                </button>
+              }
+            </div>
+          </div>
+
+          <!-- Units list -->
+          <div class="flex flex-col gap-4">
+            @for (unit of parsedUnits(); track $index; let idx = $index) {
+              <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                <!-- Unit header -->
+                <button (click)="toggleUnit(idx)"
+                        class="w-full flex items-center justify-between p-5 hover:bg-surface-container/50 transition-colors text-right">
+                  <div class="flex items-center gap-4">
+                    <div class="w-10 h-10 rounded-xl bg-primary-fixed flex items-center justify-center shrink-0">
+                      <span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">folder</span>
+                    </div>
+                    <div class="text-right">
+                      <h3 class="text-body-md font-body-md font-semibold text-on-surface">{{unit.name}}</h3>
+                      <p class="text-label-sm font-label-sm text-on-surface-variant">
+                        @if (unit.pageStart) {
+                          <span>ص {{unit.pageStart}}{{unit.pageEnd ? ' - ص ' + unit.pageEnd : ''}} • </span>
+                        }
+                        <span>{{unit.lessons.length}} درس • </span>
+                        <span>{{unit.content ? (unit.content.length > 50 ? (unit.content.slice(0, 50) + '...') : unit.content.length + ' حرف') : 'بدون محتوى'}}</span>
+                      </p>
+                    </div>
+                  </div>
+                  <span class="material-symbols-outlined text-on-surface-variant transition-transform duration-300"
+                        [class.rotate-180]="expandedUnit() === idx">expand_more</span>
+                </button>
+
+                <!-- Expanded content -->
+                @if (expandedUnit() === idx) {
+                  <div class="border-t border-outline-variant">
+                    @if (unit.lessons.length > 0) {
+                      <!-- Lessons table -->
+                      <div class="overflow-x-auto">
+                        <table class="w-full text-right">
+                          <thead>
+                            <tr class="bg-surface-container text-label-md font-label-md text-on-surface-variant">
+                              <th class="py-3 px-5 font-semibold">#</th>
+                              <th class="py-3 px-5 font-semibold">اسم الدرس</th>
+                              <th class="py-3 px-5 font-semibold">صفحة البداية</th>
+                              <th class="py-3 px-5 font-semibold">صفحة النهاية</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            @for (lesson of unit.lessons; track $index) {
+                              <tr class="border-t border-outline-variant hover:bg-surface-container/50 transition-colors text-body-md font-body-md">
+                                <td class="py-3 px-5 text-on-surface-variant">{{$index + 1}}</td>
+                                <td class="py-3 px-5 font-medium text-on-surface">{{lesson.title}}</td>
+                                <td class="py-3 px-5 text-on-surface-variant">{{lesson.pageStart ?? '—'}}</td>
+                                <td class="py-3 px-5 text-on-surface-variant">{{lesson.pageEnd ?? '—'}}</td>
+                              </tr>
+                            }
+                          </tbody>
+                        </table>
+                      </div>
+                    } @else if (unit.content) {
+                      <!-- Content preview for lesson-less units -->
+                      <div class="p-5">
+                        <h4 class="text-label-md font-label-md font-semibold text-on-surface mb-3 flex items-center gap-2">
+                          <span class="material-symbols-outlined text-[18px] text-secondary">article</span>
+                          محتوى الوحدة
+                        </h4>
+                        <div class="bg-surface-container rounded-xl p-4 text-body-sm font-body-sm text-on-surface leading-relaxed whitespace-pre-line max-h-80 overflow-y-auto">
+                          {{unit.content}}
+                        </div>
+                      </div>
+                    } @else {
+                      <div class="p-5 text-center text-on-surface-variant text-label-md">
+                        لا توجد دروس أو محتوى لهذه الوحدة
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Toast -->
+@if (toastMessage()) {
+  <div class="fixed bottom-6 right-6 lg:right-[304px] z-[100] px-6 py-4 rounded-xl shadow-2xl border text-label-md font-label-md font-bold flex items-center gap-3 transition-all transform duration-300"
+       [class.bg-[#f0fdf4]]="toastType() === 'success'"
+       [class.text-[#166534]]="toastType() === 'success'"
+       [class.border-[#bbf7d0]]="toastType() === 'success'"
+       [class.bg-[#fef2f2]]="toastType() === 'error'"
+       [class.text-[#991b1b]]="toastType() === 'error'"
+       [class.border-[#fecaca]]="toastType() === 'error'"
+       style="direction: rtl;">
+    <span class="material-symbols-outlined text-[24px]">
+      {{ toastType() === 'success' ? 'check_circle' : 'error' }}
+    </span>
+    <span>{{ toastMessage() }}</span>
+  </div>
+}

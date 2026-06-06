@@ -1,7 +1,8 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, signal, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, tap, catchError, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { RoleService } from '../../shared/role.service';
 
 export interface UserInfo {
   userId: number;
@@ -32,19 +33,28 @@ export class AuthService {
   token = signal<string | null>(localStorage.getItem(this.TOKEN_KEY));
   user = signal<UserInfo | null>(this.loadUser());
 
+  private roleService = inject(RoleService);
+
   constructor(private http: HttpClient) {}
 
   private loadUser(): UserInfo | null {
     const raw = localStorage.getItem(this.USER_KEY);
-    return raw ? JSON.parse(raw) : null;
+    if (raw) {
+      const u = JSON.parse(raw) as UserInfo;
+      u.role = u.role.toLowerCase();
+      return u;
+    }
+    return null;
   }
 
   private persist(token: string, refreshToken: string, user: UserInfo) {
+    user.role = user.role.toLowerCase();
     localStorage.setItem(this.TOKEN_KEY, token);
     localStorage.setItem(this.REFRESH_KEY, refreshToken);
     localStorage.setItem(this.USER_KEY, JSON.stringify(user));
     this.token.set(token);
     this.user.set(user);
+    this.roleService.setRole(user.role);
   }
 
   getToken(): string | null {
@@ -91,6 +101,7 @@ export class AuthService {
     localStorage.removeItem(this.USER_KEY);
     this.token.set(null);
     this.user.set(null);
+    this.roleService.setRole('');
   }
 
   isAuthenticated(): boolean {

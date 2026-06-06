@@ -24,7 +24,11 @@ public class UnitOfWork : IUnitOfWork
     public UnitOfWork(
         AppDbContext context,
 
+        IRepository<Unit>                      units,
+        IRepository<Lesson>                    lessons,
+
         IUserRepository                        users,
+
         IRefreshTokenRepository                refreshTokens,
         IAcademicYearRepository                academicYears,
         IGradeLevelRepository                  gradeLevels,
@@ -91,6 +95,8 @@ public class UnitOfWork : IUnitOfWork
         StudentEnrollments           = studentEnrollments;
         ParentStudents               = parentStudents;
         ClassSubjectTeachers         = classSubjectTeachers;
+        Units                        = units;
+        Lessons                      = lessons;
 
         // Section B
         EvaluationTemplates          = evaluationTemplates;
@@ -157,6 +163,8 @@ public class UnitOfWork : IUnitOfWork
     public IStudentEnrollmentRepository           StudentEnrollments           { get; }
     public IParentStudentRepository               ParentStudents               { get; }
     public IClassSubjectTeacherRepository         ClassSubjectTeachers         { get; }
+    public IRepository<Unit>                      Units                        { get; }
+    public IRepository<Lesson>                    Lessons                      { get; }
 
     // Section B: Evaluation (Academic)
     public IEvaluationTemplateRepository          EvaluationTemplates          { get; }
