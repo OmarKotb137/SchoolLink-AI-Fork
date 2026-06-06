@@ -22,3 +22,4 @@ Thumbs.db
 /backend/Project.API/logs
 /backend/Project.DAL/Migrations
 docs/platform.md
+/chat.txt
