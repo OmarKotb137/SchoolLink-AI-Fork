@@ -77,7 +77,7 @@ export class AuthService {
       return normalized;
     }
 
-    throw new Error('ÃƒËœÃ‚ÂªÃƒâ„¢Ã¢â‚¬Â¦ ÃƒËœÃ‚Â§ÃƒËœÃ‚Â³ÃƒËœÃ‚ÂªÃƒâ„¢Ã¢â‚¬Å¾ÃƒËœÃ‚Â§Ãƒâ„¢Ã¢â‚¬Â¦ ÃƒËœÃ‚Â¯Ãƒâ„¢Ã‹â€ ÃƒËœÃ‚Â± Ãƒâ„¢Ã¢â‚¬Â¦ÃƒËœÃ‚Â³ÃƒËœÃ‚ÂªÃƒËœÃ‚Â®ÃƒËœÃ‚Â¯Ãƒâ„¢Ã¢â‚¬Â¦ ÃƒËœÃ‚ÂºÃƒâ„¢Ã…Â ÃƒËœÃ‚Â± Ãƒâ„¢Ã¢â‚¬Â¦ÃƒËœÃ‚Â¯ÃƒËœÃ‚Â¹Ãƒâ„¢Ã‹â€ Ãƒâ„¢Ã¢â‚¬Â¦');
+    throw new Error('لم يتم العثور على مستخدم بهذا الدور');
   }
 
   getToken(): string | null {
@@ -101,7 +101,7 @@ export class AuthService {
         this.persist(session);
       }),
       catchError(err => {
-        const msg = err.error?.message || err.error?.title || err.message || 'Ãƒâ„¢Ã‚ÂÃƒËœÃ‚Â´Ãƒâ„¢Ã¢â‚¬Å¾ ÃƒËœÃ‚ÂªÃƒËœÃ‚Â³ÃƒËœÃ‚Â¬Ãƒâ„¢Ã…Â Ãƒâ„¢Ã¢â‚¬Å¾ ÃƒËœÃ‚Â§Ãƒâ„¢Ã¢â‚¬Å¾ÃƒËœÃ‚Â¯ÃƒËœÃ‚Â®Ãƒâ„¢Ã‹â€ Ãƒâ„¢Ã¢â‚¬Å¾';
+        const msg = err.error?.message || err.error?.title || err.message || 'حدث خطأ في تسجيل الدخول';
         return throwError(() => new Error(msg));
       })
     );
@@ -112,7 +112,7 @@ export class AuthService {
     const refreshToken = localStorage.getItem(this.REFRESH_KEY);
 
     if (!expiredAccessToken || !refreshToken) {
-      return throwError(() => new Error('Ãƒâ„¢Ã¢â‚¬Å¾ÃƒËœÃ‚Â§ ÃƒËœÃ‚ÂªÃƒâ„¢Ã‹â€ ÃƒËœÃ‚Â¬ÃƒËœÃ‚Â¯ ÃƒËœÃ‚Â¬Ãƒâ„¢Ã¢â‚¬Å¾ÃƒËœÃ‚Â³ÃƒËœÃ‚Â© ÃƒËœÃ‚ÂµÃƒËœÃ‚Â§Ãƒâ„¢Ã¢â‚¬Å¾ÃƒËœÃ‚Â­ÃƒËœÃ‚Â© Ãƒâ„¢Ã¢â‚¬Å¾ÃƒËœÃ‚ÂªÃƒËœÃ‚Â­ÃƒËœÃ‚Â¯Ãƒâ„¢Ã…Â ÃƒËœÃ‚Â«Ãƒâ„¢Ã¢â‚¬Â¡ÃƒËœÃ‚Â§'));
+      return throwError(() => new Error('لا توجد جلسة صالحة للتحديث'));
     }
 
     return this.http.post<any>(`${this.base}/refresh-token`, { expiredAccessToken, refreshToken }).pipe(
@@ -127,7 +127,7 @@ export class AuthService {
         this.persist(session);
       }),
       catchError(err => {
-        const msg = err.error?.message || err.error?.title || err.message || 'ÃƒËœÃ‚ÂªÃƒËœÃ‚Â¹ÃƒËœÃ‚Â°ÃƒËœÃ‚Â± ÃƒËœÃ‚ÂªÃƒËœÃ‚Â­ÃƒËœÃ‚Â¯Ãƒâ„¢Ã…Â ÃƒËœÃ‚Â« ÃƒËœÃ‚Â§Ãƒâ„¢Ã¢â‚¬Å¾ÃƒËœÃ‚Â¬Ãƒâ„¢Ã¢â‚¬Å¾ÃƒËœÃ‚Â³ÃƒËœÃ‚Â©';
+        const msg = err.error?.message || err.error?.title || err.message || 'تعذر تحديث الجلسة';
         return throwError(() => new Error(msg));
       })
     );

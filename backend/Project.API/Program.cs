@@ -62,11 +62,14 @@ try
         options.AddPolicy("AllowAngular", policy =>
             policy.WithOrigins("http://localhost:4200")
                   .AllowAnyHeader()
-                  .AllowAnyMethod());
+                  .AllowAnyMethod()
+                  .AllowCredentials());
     });
 
     var app = builder.Build();
     await SeedData.Initialize(app.Services);
+
+    app.UseCors("AllowAngular");
 
     if (app.Environment.IsDevelopment())
     {
@@ -76,8 +79,7 @@ try
 
     app.UseStaticFiles();
     app.UseMiddleware<ExceptionMiddleware>();
-    app.UseCors("AllowAngular");
-    app.UseHttpsRedirection();
+    // app.UseHttpsRedirection(); // معطل أثناء التطوير — الفرونت بيستخدم HTTPS مباشرة
     app.UseAuthentication();
 
     app.UseAuthorization();
