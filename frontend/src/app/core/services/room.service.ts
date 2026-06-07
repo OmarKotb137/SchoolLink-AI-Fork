@@ -1,11 +1,11 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-
+import { buildApiUrl } from '../utils/api-url';
 export interface Room {
   id: number;
   name: string;
-  // FIX: Backend RoomDto.Capacity is int? (nullable) — typed correctly to avoid
+  // FIX: Backend RoomDto.Capacity is int? (nullable) ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â typed correctly to avoid
   //      "null" being displayed in the UI or Number(null)=0 failing validation.
   capacity: number | null;
   type: string; // e.g., 'Classroom', 'ScienceLab', 'ComputerLab' ...
@@ -18,20 +18,20 @@ export class RoomService {
   private http = inject(HttpClient);
   private apiUrl = buildApiUrl('rooms');
 
-  getAll(): Observable<Room[]> {
-    return this.http.get<Room[]>(this.apiUrl);
+  getAll(): Observable<any> {
+    return this.http.get<any>(this.apiUrl);
   }
 
-  getById(id: number): Observable<Room> {
-    return this.http.get<Room>(`${this.apiUrl}/${id}`);
+  getById(id: number): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/${id}`);
   }
 
-  getByType(type: string): Observable<Room[]> {
+  getByType(type: string): Observable<any> {
     const params = new HttpParams().set('type', type);
-    return this.http.get<Room[]>(`${this.apiUrl}/by-type`, { params });
+    return this.http.get<any>(`${this.apiUrl}/by-type`, { params });
   }
 
-  getAvailable(day: string, periodNumber: number, type?: string): Observable<Room[]> {
+  getAvailable(day: string, periodNumber: number, type?: string): Observable<any> {
     let params = new HttpParams()
       .set('day', day)
       .set('periodNumber', periodNumber.toString());
@@ -40,7 +40,7 @@ export class RoomService {
       params = params.set('type', type);
     }
 
-    return this.http.get<Room[]>(`${this.apiUrl}/available`, { params });
+    return this.http.get<any>(`${this.apiUrl}/available`, { params });
   }
 
   getSchedule(id: number, day?: string): Observable<any> {
@@ -51,19 +51,19 @@ export class RoomService {
     return this.http.get<any>(`${this.apiUrl}/${id}/schedule`, { params });
   }
 
-  create(data: Partial<Room>): Observable<Room> {
-    return this.http.post<Room>(this.apiUrl, data);
+  create(data: Partial<Room>): Observable<any> {
+    return this.http.post<any>(this.apiUrl, data);
   }
 
-  // FIX: RoomsController.Update checks  `if (id != request.Id) → BadRequest`.
+  // FIX: RoomsController.Update checks  `if (id != request.Id) ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ BadRequest`.
   //      Previously the body was sent without `id`, so request.Id defaulted to 0
   //      and the check ALWAYS failed.  Now we spread `id` into the body so both
   //      the URL segment and the JSON body carry the same value.
-  update(id: number, data: Partial<Room>): Observable<Room> {
-    return this.http.put<Room>(`${this.apiUrl}/${id}`, { ...data, id });
+  update(id: number, data: Partial<Room>): Observable<any> {
+    return this.http.put<any>(`${this.apiUrl}/${id}`, { ...data, id });
   }
 
-  delete(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/${id}`);
+  delete(id: number): Observable<any> {
+    return this.http.delete<any>(`${this.apiUrl}/${id}`);
   }
 }

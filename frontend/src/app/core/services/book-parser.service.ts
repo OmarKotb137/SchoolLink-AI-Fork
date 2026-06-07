@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-
+import { buildApiUrl } from '../utils/api-url';
 export interface ParsedLessonDto {
   title: string;
   content?: string;
@@ -57,19 +57,19 @@ export class BookParserService {
   private http = inject(HttpClient);
   private parserBase = buildApiUrl('book-parser');
 
-  preview(file: File): Observable<ParsedUnitDto[]> {
+  preview(file: File): Observable<any> {
     const formData = new FormData();
     formData.append('file', file);
-    return this.http.post<ParsedUnitDto[]>(`${this.parserBase}/preview`, formData);
+    return this.http.post<any>(`${this.parserBase}/preview`, formData);
   }
 
-  save(subjectId: number, units: CreateUnitDto[]): Observable<UnitDto[]> {
-    return this.http.post<UnitDto[]>(
+  save(subjectId: number, units: CreateUnitDto[]): Observable<any> {
+    return this.http.post<any>(
       `${this.parserBase}/save?subjectId=${subjectId}`, units);
   }
 
-  generateLessonContent(rawContent: string, title: string): Observable<string> {
-    return this.http.post<string>(`${this.parserBase}/lesson/generate-content`, {
+  generateLessonContent(rawContent: string, title: string): Observable<any> {
+    return this.http.post<any>(`${this.parserBase}/lesson/generate-content`, {
       title,
       rawContent
     });

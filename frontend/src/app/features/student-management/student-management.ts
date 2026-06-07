@@ -121,7 +121,7 @@ export class StudentManagement implements OnInit {
         this.currentPage.set(1);
 
         const selectedId = this.selectedStudentId();
-        if (selectedId && s.some(student => student.id === selectedId)) {
+        if (selectedId && s.some((student: any) => student.id === selectedId)) {
           this.loadParentLinks(selectedId);
         } else {
           this.selectedStudentId.set(null);

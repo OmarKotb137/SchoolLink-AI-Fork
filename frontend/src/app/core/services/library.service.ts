@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { GetLibraryFilter, LibraryItemDto, PagedResult } from '../models/library.model';
-
+import { buildApiUrl } from '../utils/api-url';
 @Injectable({ providedIn: 'root' })
 export class LibraryService {
   private http = inject(HttpClient);
@@ -20,19 +20,19 @@ export class LibraryService {
     if (filter.itemType) params = params.set('itemType', filter.itemType.toString());
     if (filter.searchTerm) params = params.set('searchTerm', filter.searchTerm);
 
-    return this.http.get<PagedResult<LibraryItemDto>>(`${this.base}/Library`, { params });
+    return this.http.get<any>(`${this.base}/Library`, { params });
   }
 
   getLatest(count: number = 5) {
-    return this.http.get<LibraryItemDto[]>(`${this.base}/Library/latest?count=${count}`);
+    return this.http.get<any>(`${this.base}/Library/latest?count=${count}`);
   }
 
   getById(id: number) {
-    return this.http.get<LibraryItemDto>(`${this.base}/Library/${id}`);
+    return this.http.get<any>(`${this.base}/Library/${id}`);
   }
 
   search(term: string, gradeLevelId: number) {
-    return this.http.get<LibraryItemDto[]>(`${this.base}/Library/search?term=${encodeURIComponent(term)}&gradeLevelId=${gradeLevelId}`);
+    return this.http.get<any>(`${this.base}/Library/search?term=${encodeURIComponent(term)}&gradeLevelId=${gradeLevelId}`);
   }
 
   // --- Subjects (for filters) ---
@@ -66,10 +66,10 @@ export class LibraryService {
     if (academicYearId) formData.append('academicYearId', academicYearId.toString());
     if (description) formData.append('description', description);
 
-    return this.http.post<LibraryItemDto>(`${this.base}/Library/upload`, formData);
+    return this.http.post<any>(`${this.base}/Library/upload`, formData);
   }
 
   delete(id: number) {
-    return this.http.delete<void>(`${this.base}/Library/${id}`);
+    return this.http.delete<any>(`${this.base}/Library/${id}`);
   }
 }

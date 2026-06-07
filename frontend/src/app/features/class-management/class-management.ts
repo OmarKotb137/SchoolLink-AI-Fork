@@ -79,7 +79,7 @@ export class ClassManagement implements OnInit {
       next: (data) => {
         const d = data.data ?? data;
         this.academicYears.set(d);
-        const activeYear = d.find(y => y.isCurrent);
+        const activeYear = d.find((y: any) => y.isCurrent);
         if (activeYear) {
           this.newClass.academicYearId = activeYear.id;
           // FIX #2: هنا بس نستدعي loadClasses بعد ما السنة اتضبطت

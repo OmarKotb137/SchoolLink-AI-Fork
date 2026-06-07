@@ -100,7 +100,7 @@ export class TeacherAssignments implements OnInit {
   loadGrades() {
     this.gradeLevelService.getAll().subscribe({
       next: (data) => {
-        const sortedGrades = (data.data ?? data).sort((a, b) => a.levelOrder - b.levelOrder);
+        const sortedGrades = (data.data ?? data).sort((a: any, b: any) => a.levelOrder - b.levelOrder);
         this.grades.set(sortedGrades);
       },
       error: () => this.showError('تعذر تحميل بيانات الصفوف الدراسية')
@@ -110,7 +110,7 @@ export class TeacherAssignments implements OnInit {
   loadAcademicYear() {
     this.academicYearService.getAll().subscribe({
       next: (years) => {
-        const current = (years.data ?? years).find(y => y.isCurrent);
+        const current = (years.data ?? years).find((y: any) => y.isCurrent);
         if (!current) {
           this.showError('تعذر تحديد السنة الدراسية الحالية');
           return;
@@ -343,7 +343,7 @@ export class TeacherAssignments implements OnInit {
             if (requestVersion !== this.editTeachersRequestVersion) return;
 
             const current = this.teachers().find(t => t.id === assignment.teacherId);
-            const others = list.filter(t => t.id !== assignment.teacherId);
+            const others = list.filter((t: any) => t.id !== assignment.teacherId);
             const merged = current ? [current, ...others] : others;
 
             if (merged.length > 0) {

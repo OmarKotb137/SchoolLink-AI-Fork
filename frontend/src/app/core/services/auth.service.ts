@@ -77,7 +77,7 @@ export class AuthService {
       return normalized;
     }
 
-    throw new Error('تم استلام دور مستخدم غير مدعوم');
+    throw new Error('ÃƒËœÃ‚ÂªÃƒâ„¢Ã¢â‚¬Â¦ ÃƒËœÃ‚Â§ÃƒËœÃ‚Â³ÃƒËœÃ‚ÂªÃƒâ„¢Ã¢â‚¬Å¾ÃƒËœÃ‚Â§Ãƒâ„¢Ã¢â‚¬Â¦ ÃƒËœÃ‚Â¯Ãƒâ„¢Ã‹â€ ÃƒËœÃ‚Â± Ãƒâ„¢Ã¢â‚¬Â¦ÃƒËœÃ‚Â³ÃƒËœÃ‚ÂªÃƒËœÃ‚Â®ÃƒËœÃ‚Â¯Ãƒâ„¢Ã¢â‚¬Â¦ ÃƒËœÃ‚ÂºÃƒâ„¢Ã…Â ÃƒËœÃ‚Â± Ãƒâ„¢Ã¢â‚¬Â¦ÃƒËœÃ‚Â¯ÃƒËœÃ‚Â¹Ãƒâ„¢Ã‹â€ Ãƒâ„¢Ã¢â‚¬Â¦');
   }
 
   getToken(): string | null {
@@ -88,7 +88,7 @@ export class AuthService {
     return localStorage.getItem(this.REFRESH_KEY);
   }
 
-  login(role: AppRole, email: string, password: string): Observable<AuthSession> {
+  login(role: AppRole, email: string, password: string): Observable<any> {
     return this.http.post<any>(`${this.base}/login/${role}`, { email, password }).pipe(
       map(res => {
         const data = res.data ?? res;
@@ -101,18 +101,18 @@ export class AuthService {
         this.persist(session);
       }),
       catchError(err => {
-        const msg = err.error?.message || err.error?.title || err.message || 'فشل تسجيل الدخول';
+        const msg = err.error?.message || err.error?.title || err.message || 'Ãƒâ„¢Ã‚ÂÃƒËœÃ‚Â´Ãƒâ„¢Ã¢â‚¬Å¾ ÃƒËœÃ‚ÂªÃƒËœÃ‚Â³ÃƒËœÃ‚Â¬Ãƒâ„¢Ã…Â Ãƒâ„¢Ã¢â‚¬Å¾ ÃƒËœÃ‚Â§Ãƒâ„¢Ã¢â‚¬Å¾ÃƒËœÃ‚Â¯ÃƒËœÃ‚Â®Ãƒâ„¢Ã‹â€ Ãƒâ„¢Ã¢â‚¬Å¾';
         return throwError(() => new Error(msg));
       })
     );
   }
 
-  refreshToken(): Observable<AuthSession> {
+  refreshToken(): Observable<any> {
     const expiredAccessToken = this.getToken();
     const refreshToken = localStorage.getItem(this.REFRESH_KEY);
 
     if (!expiredAccessToken || !refreshToken) {
-      return throwError(() => new Error('لا توجد جلسة صالحة لتحديثها'));
+      return throwError(() => new Error('Ãƒâ„¢Ã¢â‚¬Å¾ÃƒËœÃ‚Â§ ÃƒËœÃ‚ÂªÃƒâ„¢Ã‹â€ ÃƒËœÃ‚Â¬ÃƒËœÃ‚Â¯ ÃƒËœÃ‚Â¬Ãƒâ„¢Ã¢â‚¬Å¾ÃƒËœÃ‚Â³ÃƒËœÃ‚Â© ÃƒËœÃ‚ÂµÃƒËœÃ‚Â§Ãƒâ„¢Ã¢â‚¬Å¾ÃƒËœÃ‚Â­ÃƒËœÃ‚Â© Ãƒâ„¢Ã¢â‚¬Å¾ÃƒËœÃ‚ÂªÃƒËœÃ‚Â­ÃƒËœÃ‚Â¯Ãƒâ„¢Ã…Â ÃƒËœÃ‚Â«Ãƒâ„¢Ã¢â‚¬Â¡ÃƒËœÃ‚Â§'));
     }
 
     return this.http.post<any>(`${this.base}/refresh-token`, { expiredAccessToken, refreshToken }).pipe(
@@ -127,7 +127,7 @@ export class AuthService {
         this.persist(session);
       }),
       catchError(err => {
-        const msg = err.error?.message || err.error?.title || err.message || 'تعذر تحديث الجلسة';
+        const msg = err.error?.message || err.error?.title || err.message || 'ÃƒËœÃ‚ÂªÃƒËœÃ‚Â¹ÃƒËœÃ‚Â°ÃƒËœÃ‚Â± ÃƒËœÃ‚ÂªÃƒËœÃ‚Â­ÃƒËœÃ‚Â¯Ãƒâ„¢Ã…Â ÃƒËœÃ‚Â« ÃƒËœÃ‚Â§Ãƒâ„¢Ã¢â‚¬Å¾ÃƒËœÃ‚Â¬Ãƒâ„¢Ã¢â‚¬Å¾ÃƒËœÃ‚Â³ÃƒËœÃ‚Â©';
         return throwError(() => new Error(msg));
       })
     );
@@ -142,7 +142,7 @@ export class AuthService {
     this.user.set(null);
   }
 
-  logout(): Observable<void> {
+  logout(): Observable<any> {
     const refreshToken = this.getRefreshToken();
 
     if (!refreshToken) {
@@ -150,7 +150,7 @@ export class AuthService {
       return of(void 0);
     }
 
-    return this.http.post<void>(`${this.base}/logout`, { refreshToken }).pipe(
+    return this.http.post<any>(`${this.base}/logout`, { refreshToken }).pipe(
       map(() => void 0),
       catchError(() => of(void 0)),
       finalize(() => {
