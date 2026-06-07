@@ -12,13 +12,13 @@ public class RoomRepository : Repository<Room>, IRoomRepository
 
     public async Task<Room?> GetByNameAndTypeAsync(
         string name,
-        RoomType type,
+        string type,
         CancellationToken ct = default)
         => await _context.Rooms
             .FirstOrDefaultAsync(r => r.Name == name && r.Type == type, ct);
 
     public async Task<IReadOnlyList<Room>> GetByTypeAsync(
-        RoomType type,
+        string type,
         CancellationToken ct = default)
         => await _context.Rooms
             .Where(r => r.Type == type)
@@ -35,12 +35,12 @@ public class RoomRepository : Repository<Room>, IRoomRepository
     public async Task<IReadOnlyList<Room>> GetAvailableAsync(
         SchoolDay day,
         int periodNumber,
-        RoomType? type = null,
+        string? type = null,
         CancellationToken ct = default)
         => await _context.Rooms
             // FIX: exclude soft-deleted rooms (كانت الغرف المحذوفة بتظهر في القائمة)
             .Where(r => !r.IsDeleted)
-            .Where(r => !type.HasValue || r.Type == type.Value)
+            .Where(r => type == null || r.Type == type)
             // FIX: exclude soft-deleted slots & soft-deleted timetables from the conflict check
             .Where(r => !_context.TimetableSlots.Any(s =>
                 !s.IsDeleted          &&

@@ -68,7 +68,7 @@ public class MappingProfile : Profile
         // Room
         CreateMap<Room, RoomDto>()
             .ForMember(d => d.Type,
-                opt => opt.MapFrom(s => s.Type.ToString()));
+                opt => opt.MapFrom(s => s.Type));
         CreateMap<CreateRoomRequest, Room>();
         CreateMap<UpdateRoomRequest, Room>();
 

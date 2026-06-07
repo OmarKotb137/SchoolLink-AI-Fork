@@ -21,6 +21,24 @@ public class GradeLevelService : IGradeLevelService
         _mapper     = mapper;
     }
 
+    private async Task<string?> ValidateUniqueLevelOrderForCreateAsync(int levelOrder)
+    {
+        var existing = await _unitOfWork.GradeLevels.GetByLevelOrderAsync(levelOrder);
+        if (existing is not null && !existing.IsDeleted)
+            return "ترتيب الصف الدراسي مستخدم بالفعل";
+
+        return null;
+    }
+
+    private async Task<string?> ValidateUniqueLevelOrderForUpdateAsync(int levelOrder, int id)
+    {
+        var existing = await _unitOfWork.GradeLevels.GetByLevelOrderExcludingIdAsync(levelOrder, id);
+        if (existing is not null && !existing.IsDeleted)
+            return "ترتيب الصف الدراسي مستخدم بالفعل";
+
+        return null;
+    }
+
     public async Task<OperationResult<GradeLevelDto>> CreateGradeLevelAsync(
         CreateGradeLevelRequest request)
     {
@@ -41,6 +59,16 @@ public class GradeLevelService : IGradeLevelService
         return OperationResult<GradeLevelDto>.Success(
             _mapper.Map<GradeLevelDto>(entity),
             "تم إنشاء الصف الدراسي بنجاح");
+    }
+
+    public async Task<OperationResult<GradeLevelDto>> CreateGradeLevelValidatedAsync(
+        CreateGradeLevelRequest request)
+    {
+        var duplicateLevelOrderMessage = await ValidateUniqueLevelOrderForCreateAsync(request.LevelOrder);
+        if (duplicateLevelOrderMessage is not null)
+            return OperationResult<GradeLevelDto>.Failure(duplicateLevelOrderMessage);
+
+        return await CreateGradeLevelAsync(request);
     }
 
     public async Task<OperationResult<GradeLevelDto>> UpdateGradeLevelAsync(
@@ -72,6 +100,16 @@ public class GradeLevelService : IGradeLevelService
         return OperationResult<GradeLevelDto>.Success(
             _mapper.Map<GradeLevelDto>(entity),
             "تم تحديث الصف الدراسي بنجاح");
+    }
+
+    public async Task<OperationResult<GradeLevelDto>> UpdateGradeLevelValidatedAsync(
+        UpdateGradeLevelRequest request)
+    {
+        var duplicateLevelOrderMessage = await ValidateUniqueLevelOrderForUpdateAsync(request.LevelOrder, request.Id);
+        if (duplicateLevelOrderMessage is not null)
+            return OperationResult<GradeLevelDto>.Failure(duplicateLevelOrderMessage);
+
+        return await UpdateGradeLevelAsync(request);
     }
 
     public async Task<OperationResult> DeleteGradeLevelAsync(int id)

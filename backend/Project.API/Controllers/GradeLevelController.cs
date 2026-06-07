@@ -54,6 +54,16 @@ public class GradeLevelController : ControllerBase
     }
 
     [Authorize(Roles = "Admin")]
+    [HttpPost("validated")]
+    public async Task<IActionResult> CreateValidated([FromBody] CreateGradeLevelRequest request)
+    {
+        var result = await _gradeLevelService.CreateGradeLevelValidatedAsync(request);
+        if (!result.IsSuccess)
+            return BadRequest(result);
+        return CreatedAtAction(nameof(GetById), new { id = result.Data!.Id }, result);
+    }
+
+    [Authorize(Roles = "Admin")]
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateGradeLevelRequest request)
     {
@@ -61,6 +71,19 @@ public class GradeLevelController : ControllerBase
             return BadRequest("معرّف الرابط لا يطابق معرّف الطلب.");
 
         var result = await _gradeLevelService.UpdateGradeLevelAsync(request);
+        if (!result.IsSuccess)
+            return BadRequest(result);
+        return Ok(result);
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPut("{id:int}/validated")]
+    public async Task<IActionResult> UpdateValidated(int id, [FromBody] UpdateGradeLevelRequest request)
+    {
+        if (id != request.Id)
+            return BadRequest("معرّف الرابط لا يطابق معرّف الطلب.");
+
+        var result = await _gradeLevelService.UpdateGradeLevelValidatedAsync(request);
         if (!result.IsSuccess)
             return BadRequest(result);
         return Ok(result);

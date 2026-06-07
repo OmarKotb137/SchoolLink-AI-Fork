@@ -86,9 +86,9 @@ public class RoomsController : ControllerBase
     public async Task<IActionResult> GetAvailable(
         [FromQuery] SchoolDay day,
         [FromQuery] int periodNumber,
-        [FromQuery] RoomType? type = null)
+        [FromQuery] string? type = null)
     {
-        var result = await _roomService.GetAvailableRoomsAsync(day, periodNumber, type);
+        var result = await _roomService.GetAvailableRoomsAsync(day, periodNumber, string.IsNullOrWhiteSpace(type) ? null : type.Trim());
         if (!result.IsSuccess)
             return BadRequest(result);
         return Ok(result);
@@ -98,9 +98,12 @@ public class RoomsController : ControllerBase
     /// جلب الغرف حسب النوع.
     /// </summary>
     [HttpGet("by-type")]
-    public async Task<IActionResult> GetByType([FromQuery] RoomType type)
+    public async Task<IActionResult> GetByType([FromQuery] string type)
     {
-        var result = await _roomService.GetRoomsByTypeAsync(type);
+        if (string.IsNullOrWhiteSpace(type))
+            return BadRequest("نوع الغرفة مطلوب");
+
+        var result = await _roomService.GetRoomsByTypeAsync(type.Trim());
         if (!result.IsSuccess)
             return BadRequest(result);
         return Ok(result);

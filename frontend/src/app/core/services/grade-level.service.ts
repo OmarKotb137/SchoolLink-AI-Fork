@@ -28,8 +28,16 @@ export class GradeLevelService {
     return this.http.post<any>(this.apiUrl, data);
   }
 
+  createValidated(data: Partial<GradeLevel>): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/validated`, data);
+  }
+
   update(id: number, data: Partial<GradeLevel>): Observable<any> {
     return this.http.put<any>(`${this.apiUrl}/${id}`, data);
+  }
+
+  updateValidated(id: number, data: Partial<GradeLevel>): Observable<any> {
+    return this.http.put<any>(`${this.apiUrl}/${id}/validated`, data);
   }
 
   delete(id: number): Observable<any> {

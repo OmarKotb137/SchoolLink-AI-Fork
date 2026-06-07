@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using Project.Domain.Enums;
 
 namespace Project.BLL.DTOs;
 
@@ -13,7 +12,8 @@ public class UpdateRoomRequest
     public string   Name     { get; set; } = string.Empty;
 
     [Required]
-    public RoomType Type     { get; set; }
+    [MaxLength(100)]
+    public string   Type     { get; set; } = string.Empty;
 
     [Range(1, 1000)]
     public int?     Capacity { get; set; }

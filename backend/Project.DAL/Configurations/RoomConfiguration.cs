@@ -15,7 +15,8 @@ namespace Project.DAL.Configurations
                 .HasMaxLength(100);
 
             builder.Property(x => x.Type)
-                .IsRequired();
+                .IsRequired()
+                .HasMaxLength(100);
 
             builder.Property(x => x.Capacity)
                 .IsRequired(false);

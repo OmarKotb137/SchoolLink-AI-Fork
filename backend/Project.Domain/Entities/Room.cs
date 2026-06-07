@@ -1,11 +1,9 @@
-using Project.Domain.Enums;
-
 namespace Project.Domain.Entities
 {
     public class Room : BaseEntity
     {
         public string   Name     { get; set; } = string.Empty;
-        public RoomType Type     { get; set; }
+        public string   Type     { get; set; } = string.Empty;
         public int?     Capacity { get; set; }
 
         // Navigation

@@ -297,7 +297,7 @@ public static class SeedData
         {
             var rm = new Room
             {
-                Name = $"فصل {r}", Type = RoomType.Classroom, Capacity = 35,
+                Name = $"فصل {r}", Type = "Classroom", Capacity = 35,
                 CreatedAt = now, UpdatedAt = now
             };
             ctx.Rooms.Add(rm);

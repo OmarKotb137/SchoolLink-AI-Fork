@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Project.DAL.Interfaces.Repositories.Core;
 using Project.Domain.Entities;
 using Project.DAL.Context;
@@ -14,6 +14,19 @@ public class GradeLevelRepository : Repository<GradeLevel>, IGradeLevelRepositor
         CancellationToken ct = default)
         => await _context.GradeLevels
             .FirstOrDefaultAsync(g => g.Name == name, ct);
+
+    public async Task<GradeLevel?> GetByLevelOrderAsync(
+        int levelOrder,
+        CancellationToken ct = default)
+        => await _context.GradeLevels
+            .FirstOrDefaultAsync(g => g.LevelOrder == levelOrder, ct);
+
+    public async Task<GradeLevel?> GetByLevelOrderExcludingIdAsync(
+        int levelOrder,
+        int excludedId,
+        CancellationToken ct = default)
+        => await _context.GradeLevels
+            .FirstOrDefaultAsync(g => g.LevelOrder == levelOrder && g.Id != excludedId, ct);
 
     public async Task<IReadOnlyList<GradeLevel>> GetByStageAsync(
         string stage,

@@ -161,11 +161,11 @@ export class Settings implements OnInit {
     };
 
     const action$ = this.editingGradeId()
-      ? this.gradeLevelService.update(this.editingGradeId()!, {
+      ? this.gradeLevelService.updateValidated(this.editingGradeId()!, {
           id: this.editingGradeId()!,
           ...request,
         })
-      : this.gradeLevelService.create(request);
+      : this.gradeLevelService.createValidated(request);
 
     action$.subscribe({
       next: () => {

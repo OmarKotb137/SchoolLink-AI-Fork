@@ -22,7 +22,7 @@
             </div>
             <div class="bg-gray-50 border border-gray-100 p-4 rounded-2xl flex-1 md:w-40 text-center">
               <span class="block text-xs text-gray-500 font-medium mb-1">أنواع القاعات</span>
-              <strong class="block text-2xl font-bold text-gray-900">{{ roomTypes.length }}</strong>
+              <strong class="block text-2xl font-bold text-gray-900">{{ availableRoomTypes().length }}</strong>
             </div>
           </div>
         </section>
@@ -75,9 +75,18 @@
 
               <div>
                 <label class="block mb-2 text-sm font-medium text-gray-900">نوع القاعة</label>
-                <select [(ngModel)]="newRoom.type" class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5">
-                  <option *ngFor="let t of roomTypes" [value]="t.value">{{ t.label }}</option>
+                <select [(ngModel)]="selectedRoomType" (ngModelChange)="onRoomTypeChange()" class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5">
+                  <option *ngFor="let t of roomTypeOptions()" [value]="t.value">{{ t.label }}</option>
                 </select>
+              </div>
+
+              <div *ngIf="selectedRoomType === otherRoomTypeValue">
+                <label class="block mb-2 text-sm font-medium text-gray-900">اكتب نوع القاعة الجديد</label>
+                <input
+                  type="text"
+                  [(ngModel)]="customRoomType"
+                  placeholder="مثال: معمل روبوتات"
+                  class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5">
               </div>
 
               <div class="flex items-center gap-3 pt-2">
@@ -114,7 +123,7 @@
               <label class="block mb-2 text-sm font-medium text-gray-900">فلترة حسب النوع</label>
               <select [(ngModel)]="selectedTypeFilter" (change)="onFilterChange()" class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5">
                 <option value="">كل الأنواع</option>
-                <option *ngFor="let t of roomTypes" [value]="t.value">{{ t.label }}</option>
+                <option *ngFor="let t of availableRoomTypes()" [value]="t.value">{{ t.label }}</option>
               </select>
             </div>
 

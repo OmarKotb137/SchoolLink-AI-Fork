@@ -22,13 +22,21 @@ public class RoomService : IRoomService
     public async Task<OperationResult<RoomDto>> CreateRoomAsync(
         CreateRoomRequest request)
     {
+        var name = request.Name.Trim();
+        var type = request.Type.Trim();
+
+        if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(type))
+            return OperationResult<RoomDto>.Failure("اسم الغرفة ونوعها مطلوبان");
+
         // 1. Name + Type uniqueness
-        var existing = await _unitOfWork.Rooms.GetByNameAndTypeAsync(request.Name, request.Type);
+        var existing = await _unitOfWork.Rooms.GetByNameAndTypeAsync(name, type);
         if (existing is not null && !existing.IsDeleted)
             return OperationResult<RoomDto>.Failure("غرفة بنفس الاسم والنوع موجودة بالفعل");
 
         // 2. Create
         var entity = _mapper.Map<Room>(request);
+        entity.Name = name;
+        entity.Type = type;
         await _unitOfWork.Rooms.AddAsync(entity);
         await _unitOfWork.SaveChangesAsync();
 
@@ -40,19 +48,25 @@ public class RoomService : IRoomService
     public async Task<OperationResult<RoomDto>> UpdateRoomAsync(
         UpdateRoomRequest request)
     {
+        var name = request.Name.Trim();
+        var type = request.Type.Trim();
+
+        if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(type))
+            return OperationResult<RoomDto>.Failure("اسم الغرفة ونوعها مطلوبان");
+
         // 1. Find entity
         var entity = await _unitOfWork.Rooms.GetByIdAsync(request.Id);
         if (entity is null || entity.IsDeleted)
             return OperationResult<RoomDto>.Failure("الغرفة غير موجودة");
 
         // 2. Name + Type uniqueness (excluding self)
-        var duplicate = await _unitOfWork.Rooms.GetByNameAndTypeAsync(request.Name, request.Type);
+        var duplicate = await _unitOfWork.Rooms.GetByNameAndTypeAsync(name, type);
         if (duplicate is not null && !duplicate.IsDeleted && duplicate.Id != request.Id)
             return OperationResult<RoomDto>.Failure("غرفة بنفس الاسم والنوع موجودة بالفعل");
 
         // 3. Apply updates
-        entity.Name      = request.Name;
-        entity.Type      = request.Type;
+        entity.Name      = name;
+        entity.Type      = type;
         entity.Capacity  = request.Capacity;
         entity.UpdatedAt = DateTime.UtcNow;
 
@@ -101,7 +115,7 @@ public class RoomService : IRoomService
             "تم جلب الغرف بنجاح");
     }
 
-    public async Task<OperationResult<IEnumerable<RoomDto>>> GetRoomsByTypeAsync(RoomType type)
+    public async Task<OperationResult<IEnumerable<RoomDto>>> GetRoomsByTypeAsync(string type)
     {
         var rooms = await _unitOfWork.Rooms.GetByTypeAsync(type);
         var list = rooms.Where(r => !r.IsDeleted);
@@ -133,12 +147,12 @@ public class RoomService : IRoomService
     public async Task<OperationResult<IEnumerable<RoomDto>>> GetAvailableRoomsAsync(
         SchoolDay day,
         int periodNumber,
-        RoomType? type = null)
+        string? type = null)
     {
         if (periodNumber < 1)
             return OperationResult<IEnumerable<RoomDto>>.Failure("رقم الحصة غير صالح");
 
-        var rooms = await _unitOfWork.Rooms.GetAvailableAsync(day, periodNumber, type);
+        var rooms = await _unitOfWork.Rooms.GetAvailableAsync(day, periodNumber, string.IsNullOrWhiteSpace(type) ? null : type.Trim());
 
         return OperationResult<IEnumerable<RoomDto>>.Success(
             _mapper.Map<IEnumerable<RoomDto>>(rooms),

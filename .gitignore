@@ -23,3 +23,4 @@ Thumbs.db
 /backend/Project.DAL/Migrations
 docs/platform.md
 /chat.txt
+obj/Project.DAL.EntityFrameworkCore.targets
