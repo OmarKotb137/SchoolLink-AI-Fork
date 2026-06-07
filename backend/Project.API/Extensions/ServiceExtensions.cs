@@ -1,4 +1,4 @@
-﻿using FluentValidation;
+using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Project.BLL.AI.Agents;
 using Project.BLL.AI.Infrastructure;
@@ -48,6 +48,7 @@ public static class ServiceExtensions
         services.AddScoped<IGradeLevelService, GradeLevelService>();
         services.AddScoped<ISubjectService, SubjectService>();
         services.AddScoped<IClassService, ClassService>();
+        services.AddScoped<IClassStudentsBrowserService, ClassStudentsBrowserService>();
         services.AddScoped<IClassSubjectTeacherService, ClassSubjectTeacherService>();
         services.AddScoped<ITimetableService, TimetableService>();
         services.AddScoped<IRoomService, RoomService>();

@@ -1,11 +1,16 @@
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { AcademicYear, AcademicYearService } from '../../core/services/academic-year.service';
+import {
+  ClassStudentBrowserItem,
+  ClassStudentsBrowserResult,
+  ClassStudentsBrowserService
+} from '../../core/services/class-students-browser.service';
+import { ClassEntity, ClassService } from '../../core/services/class.service';
+import { GradeLevel, GradeLevelService } from '../../core/services/grade-level.service';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
 import { Topbar } from '../../layouts/topbar/topbar';
-import { ClassService, ClassEntity } from '../../core/services/class.service';
-import { GradeLevelService, GradeLevel } from '../../core/services/grade-level.service';
-import { AcademicYearService, AcademicYear } from '../../core/services/academic-year.service';
 
 @Component({
   selector: 'app-class-management',
@@ -19,6 +24,7 @@ export class ClassManagement implements OnInit {
   displayUserName = localStorage.getItem('fullName') || localStorage.getItem('username') || 'المشرف';
 
   private classService = inject(ClassService);
+  private classStudentsBrowserService = inject(ClassStudentsBrowserService);
   private gradeLevelService = inject(GradeLevelService);
   private academicYearService = inject(AcademicYearService);
 
@@ -54,22 +60,34 @@ export class ClassManagement implements OnInit {
     this.currentPage.set(page);
   }
 
-  // FIX #1: كانوا signals — [(ngModel)] بتبطل تشتغل مع signals
-  // الحل: plain properties عادية
   selectedGradeFilter: number | null = null;
   selectedYearFilter: number | null = null;
 
   editingClassId = signal<number | null>(null);
+
+  showStudentsModal = signal(false);
+  studentsModalLoading = signal(false);
+  studentsModalError = signal('');
+  selectedClassForStudents = signal<ClassEntity | null>(null);
+  studentsBrowserResult = signal<ClassStudentsBrowserResult | null>(null);
+  studentsCurrentPage = signal(1);
+  studentsItemsPerPage = signal(10);
+  studentSearchTerm = '';
 
   errorMessage = signal('');
   successMessage = signal('');
 
   newClass: Partial<ClassEntity> = { name: '', gradeLevelId: 0, academicYearId: 0 };
 
+  classStudents = computed<ClassStudentBrowserItem[]>(() => {
+    return this.studentsBrowserResult()?.students.items ?? [];
+  });
+
+  totalStudentPages = computed(() => {
+    return Math.max(1, this.studentsBrowserResult()?.students.totalPages ?? 1);
+  });
+
   ngOnInit() {
-    // FIX #2: loadClasses كانت بتتنادى مرتين — مرة هنا ومرة جوا loadAcademicYears
-    // الحل: شيل الاستدعاء المباشر، خلي loadAcademicYears هي اللي تبدأ loadClasses
-    // بعد ما تضبط السنة الحالية
     this.loadAcademicYears();
     this.loadGradeLevels();
   }
@@ -82,7 +100,6 @@ export class ClassManagement implements OnInit {
         const activeYear = d.find((y: any) => y.isCurrent);
         if (activeYear) {
           this.newClass.academicYearId = activeYear.id;
-          // FIX #2: هنا بس نستدعي loadClasses بعد ما السنة اتضبطت
           this.selectedYearFilter = activeYear.id;
         }
         this.loadClasses();
@@ -90,7 +107,6 @@ export class ClassManagement implements OnInit {
       error: (err) => {
         console.error('Failed to load academic years', err);
         this.showError('فشل في تحميل السنوات الدراسية.');
-        // حتى لو فشل، حمّل الفصول من غير فلتر
         this.loadClasses();
       }
     });
@@ -108,7 +124,6 @@ export class ClassManagement implements OnInit {
 
   loadClasses() {
     const filter: any = {};
-    // FIX #1: دلوقتي plain properties، مش signals
     if (this.selectedGradeFilter) filter.gradeLevelId = this.selectedGradeFilter;
     if (this.selectedYearFilter) filter.academicYearId = this.selectedYearFilter;
 
@@ -130,8 +145,6 @@ export class ClassManagement implements OnInit {
 
   editClass(cls: ClassEntity) {
     this.editingClassId.set(cls.id);
-    // نجهز فقط الحقول القابلة للتعديل بدل نسخ خصائص العرض الإضافية،
-    // والخدمة تضيف `id` تلقائيا عند تنفيذ التحديث.
     this.newClass = {
       name: cls.name,
       gradeLevelId: cls.gradeLevelId,
@@ -141,8 +154,6 @@ export class ClassManagement implements OnInit {
 
   cancelEdit() {
     this.editingClassId.set(null);
-    // FIX: بدل ما نرجع للسنة الحالية دايماً، نرجع للسنة المفلترة حالياً
-    // لو مفيش فلتر، نرجع للسنة الحالية
     const yearId = this.selectedYearFilter
       ?? this.academicYears().find(y => y.isCurrent)?.id
       ?? 0;
@@ -153,7 +164,6 @@ export class ClassManagement implements OnInit {
     if (!this.newClass.name?.trim() || !this.newClass.gradeLevelId || !this.newClass.academicYearId) return;
 
     if (this.editingClassId()) {
-      // نمرر الحقول القابلة للتعديل فقط، والخدمة تضيف `id` تلقائيا.
       const { name, gradeLevelId, academicYearId } = this.newClass;
       this.classService.update(this.editingClassId()!, { name, gradeLevelId, academicYearId }).subscribe({
         next: () => {
@@ -161,7 +171,6 @@ export class ClassManagement implements OnInit {
           this.cancelEdit();
           this.showSuccess('تم تحديث الفصل بنجاح!');
         },
-        // FIX #4: error handler
         error: (err) => {
           console.error('Update failed', err);
           this.showError('فشل في تحديث الفصل. حاول مرة أخرى.');
@@ -174,7 +183,6 @@ export class ClassManagement implements OnInit {
           this.cancelEdit();
           this.showSuccess('تم إضافة الفصل بنجاح!');
         },
-        // FIX #4: error handler
         error: (err) => {
           console.error('Create failed', err);
           this.showError('فشل في إضافة الفصل. حاول مرة أخرى.');
@@ -190,13 +198,143 @@ export class ClassManagement implements OnInit {
           this.loadClasses();
           this.showSuccess('تم حذف الفصل بنجاح!');
         },
-        // FIX #4: error handler
         error: (err) => {
           console.error('Delete failed', err);
           this.showError('فشل في حذف الفصل. حاول مرة أخرى.');
         }
       });
     }
+  }
+
+  openStudentsModal(cls: ClassEntity) {
+    this.selectedClassForStudents.set(cls);
+    this.showStudentsModal.set(true);
+    this.studentsModalError.set('');
+    this.studentsBrowserResult.set(null);
+    this.studentSearchTerm = '';
+    this.studentsCurrentPage.set(1);
+    this.studentsItemsPerPage.set(10);
+    this.loadClassStudents();
+  }
+
+  loadClassStudents() {
+    const selectedClass = this.selectedClassForStudents();
+    if (!selectedClass) return;
+
+    this.studentsModalLoading.set(true);
+    this.studentsModalError.set('');
+
+    this.classStudentsBrowserService.getClassStudents(selectedClass.id, {
+      academicYearId: selectedClass.academicYearId,
+      page: this.studentsCurrentPage(),
+      pageSize: this.studentsItemsPerPage(),
+      searchTerm: this.studentSearchTerm
+    }).subscribe({
+      next: (result) => {
+        this.studentsBrowserResult.set(result);
+        this.studentsCurrentPage.set(result.students.page);
+        this.studentsItemsPerPage.set(result.students.pageSize);
+        this.studentsModalLoading.set(false);
+      },
+      error: (err) => {
+        console.error('Failed to load class students', err);
+        this.studentsModalError.set('فشل في تحميل طلاب الفصل. حاول مرة أخرى.');
+        this.studentsModalLoading.set(false);
+      }
+    });
+  }
+
+  closeStudentsModal() {
+    this.showStudentsModal.set(false);
+    this.studentsModalLoading.set(false);
+    this.studentsModalError.set('');
+    this.selectedClassForStudents.set(null);
+    this.studentsBrowserResult.set(null);
+    this.studentSearchTerm = '';
+    this.studentsCurrentPage.set(1);
+    this.studentsItemsPerPage.set(10);
+  }
+
+  applyStudentSearch() {
+    this.studentsCurrentPage.set(1);
+    this.loadClassStudents();
+  }
+
+  clearStudentSearch() {
+    this.studentSearchTerm = '';
+    this.studentsCurrentPage.set(1);
+    this.loadClassStudents();
+  }
+
+  onStudentsPageSizeChange() {
+    this.studentsCurrentPage.set(1);
+    this.loadClassStudents();
+  }
+
+  nextStudentsPage() {
+    if (this.studentsCurrentPage() < this.totalStudentPages()) {
+      this.studentsCurrentPage.update(page => page + 1);
+      this.loadClassStudents();
+    }
+  }
+
+  prevStudentsPage() {
+    if (this.studentsCurrentPage() > 1) {
+      this.studentsCurrentPage.update(page => page - 1);
+      this.loadClassStudents();
+    }
+  }
+
+  goToStudentsPage(page: number) {
+    if (page < 1 || page > this.totalStudentPages() || page === this.studentsCurrentPage()) {
+      return;
+    }
+
+    this.studentsCurrentPage.set(page);
+    this.loadClassStudents();
+  }
+
+  getStudentsRangeStart(): number {
+    const totalCount = this.studentsBrowserResult()?.students.totalCount ?? 0;
+    if (totalCount === 0) return 0;
+
+    return (this.studentsCurrentPage() - 1) * this.studentsItemsPerPage() + 1;
+  }
+
+  getStudentsRangeEnd(): number {
+    const totalCount = this.studentsBrowserResult()?.students.totalCount ?? 0;
+    return Math.min(this.studentsCurrentPage() * this.studentsItemsPerPage(), totalCount);
+  }
+
+  getStudentsTotalCount(): number {
+    return this.studentsBrowserResult()?.totalStudents ?? 0;
+  }
+
+  getStudentsFilteredCount(): number {
+    return this.studentsBrowserResult()?.filteredStudentsCount ?? 0;
+  }
+
+  hasStudentSearch(): boolean {
+    return this.studentSearchTerm.trim().length > 0;
+  }
+
+  getGenderLabel(gender?: number | null): string {
+    if (gender === 1) return 'ذكر';
+    if (gender === 2) return 'أنثى';
+    return 'غير محدد';
+  }
+
+  formatDisplayDate(dateValue?: string | null): string {
+    if (!dateValue) return '—';
+
+    const date = new Date(dateValue);
+    if (isNaN(date.getTime())) return '—';
+
+    return new Intl.DateTimeFormat('ar-EG', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    }).format(date);
   }
 
   private showError(msg: string) {

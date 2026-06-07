@@ -24,3 +24,4 @@ Thumbs.db
 docs/platform.md
 /chat.txt
 obj/Project.DAL.EntityFrameworkCore.targets
+account-generation-plan.md
