@@ -29,7 +29,7 @@ export class StudentImportService {
     return this.http.post(`${this.apiUrl}/preview`, fd);
   }
 
-  import(students: ImportedStudent[], classId: number, academicYearId: number): Observable<any> {
-    return this.http.post(`${this.apiUrl}/import`, { students, classId, academicYearId });
+  import(body: any): Observable<any> {
+    return this.http.post(`${this.apiUrl}/import`, body);
   }
 }

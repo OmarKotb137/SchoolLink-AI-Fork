@@ -204,9 +204,9 @@
               @if (entryType() === 'grades' || entryType() === 'absence') {
                 <div class="min-w-[160px]">
                   <label class="text-label-sm text-on-surface-variant block mb-1">الأسبوع</label>
-                  <select class="grade-inp" [ngModel]="entryWeek()" (ngModelChange)="entryWeek.set(+$event); onClassOrWeekChange()">
+                  <select class="grade-inp" (change)="onWeekChange($event)">
                     @for (w of entryWeeks(); track w) {
-                      <option [ngValue]="w">{{ weekLabel(w) }}</option>
+                      <option [value]="w" [selected]="w === entryWeek()">{{ weekLabel(w) }}</option>
                     }
                   </select>
                 </div>
