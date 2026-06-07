@@ -49,8 +49,8 @@ export class TransferStudent implements OnInit {
   });
 
   ngOnInit() {
-    this.academicYearService.getAll().subscribe(years => {
-      const currentYear = years.find(y => y.isCurrent);
+    this.academicYearService.getAll().subscribe((years: any[]) => {
+      const currentYear = years.find((y: any) => y.isCurrent);
       if (currentYear) {
         this.currentAcademicYearId.set(currentYear.id);
         this.loadClasses();

@@ -282,6 +282,15 @@ export class TeacherAssignments implements OnInit {
       && !this.noTeachersAvailable();
   }
 
+  private normalizeWeeklyPeriods(value: number): number {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed < 1) {
+      return 1;
+    }
+
+    return Math.trunc(parsed);
+  }
+
   assignTeacher() {
     if (!this.newAssignment.classId || !this.newAssignment.subjectId || !this.newAssignment.teacherId) {
       this.showError('يرجى تعبئة جميع الحقول المطلوبة');
@@ -297,7 +306,7 @@ export class TeacherAssignments implements OnInit {
       classId: Number(this.newAssignment.classId),
       subjectId: Number(this.newAssignment.subjectId),
       teacherId: Number(this.newAssignment.teacherId),
-      weeklyPeriods: Number(this.newAssignment.weeklyPeriods),
+      weeklyPeriods: this.normalizeWeeklyPeriods(Number(this.newAssignment.weeklyPeriods)),
       academicYearId: this.currentAcademicYearId,
     };
 
@@ -330,7 +339,10 @@ export class TeacherAssignments implements OnInit {
 
   startEdit(assignment: ClassSubjectTeacher) {
     this.editingAssignmentId.set(assignment.id!);
-    this.editForm = { teacherId: assignment.teacherId, weeklyPeriods: assignment.weeklyPeriods };
+    this.editForm = {
+      teacherId: assignment.teacherId,
+      weeklyPeriods: this.normalizeWeeklyPeriods(assignment.weeklyPeriods)
+    };
     this.editNoTeachersAvailable.set(false);
     this.editTeachersRequestVersion++;
 
@@ -384,17 +396,40 @@ export class TeacherAssignments implements OnInit {
       this.showError('يرجى اختيار معلم');
       return;
     }
+
+    const weeklyPeriods = this.normalizeWeeklyPeriods(this.editForm.weeklyPeriods);
+    this.editForm.weeklyPeriods = weeklyPeriods;
+
     this.assignmentService.update(id, {
       teacherId: Number(this.editForm.teacherId),
-      weeklyPeriods: Number(this.editForm.weeklyPeriods)
+      weeklyPeriods
     }).subscribe({
-      next: () => {
-        this.editingAssignmentId.set(null);
-        this.editNoTeachersAvailable.set(false);
-        this.loadAssignments();
+      next: (response) => {
+        const updatedAssignment = response?.data ?? response ?? {};
+        const teacherId = Number(updatedAssignment.teacherId ?? this.editForm.teacherId);
+        const teacherName = updatedAssignment.teacherName || this.getTeacherName(teacherId);
+        const normalizedWeeklyPeriods = this.normalizeWeeklyPeriods(
+          Number(updatedAssignment.weeklyPeriods ?? weeklyPeriods)
+        );
+
+        this.assignments.update(assignments =>
+          assignments.map(assignment =>
+            assignment.id === id
+              ? {
+                  ...assignment,
+                  ...updatedAssignment,
+                  teacherId,
+                  teacherName,
+                  weeklyPeriods: normalizedWeeklyPeriods,
+                }
+              : assignment
+          )
+        );
+
+        this.cancelEdit();
         this.showSuccess('تم تحديث التعيين بنجاح');
       },
-      error: () => this.showError('تعذر تحديث التعيين')
+      error: (err) => this.showError(err?.message || 'تعذر تحديث التعيين')
     });
   }
 

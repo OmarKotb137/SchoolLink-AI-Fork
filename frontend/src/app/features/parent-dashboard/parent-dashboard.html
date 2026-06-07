@@ -1,56 +1,102 @@
-    <app-sidebar [(isOpen)]="sidebarOpen" />
-    <div class="main-content">
-      <app-topbar userName="أحمد" />
-      <main class="p-gutter-desktop">
-        <div class="flex flex-col gap-gutter-desktop">
-          <!-- Children Overview -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            @for (child of children; track child.name) {
-              <div class="bg-surface-container-lowest rounded-3xl p-widget-padding shadow-sm border border-outline-variant/20">
-                <div class="flex items-center gap-4 mb-4">
-                  <div class="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-primary text-2xl">person</span>
-                  </div>
-                  <div>
-                    <h3 class="font-headline-md font-bold">{{ child.name }}</h3>
-                    <p class="text-label-sm text-outline">{{ child.grade }} - {{ child.class }}</p>
-                  </div>
-                </div>
-                <div class="flex items-center gap-4 mb-4">
-                  <div class="flex-1 bg-surface-container-low rounded-full h-2">
-                    <div class="bg-primary h-2 rounded-full" [style.width.%]="child.performance"></div>
-                  </div>
-                  <span class="font-bold text-primary">{{ child.performance }}%</span>
-                </div>
-                <div class="grid grid-cols-3 gap-3 text-center">
-                  <div class="bg-surface-container-low rounded-xl p-3"><p class="font-bold text-primary">{{ child.grades.last }}</p><p class="text-[10px] text-outline">الدرجة الأخيرة</p></div>
-                  <div class="bg-surface-container-low rounded-xl p-3"><p class="font-bold text-green-600">{{ child.grades.total }}</p><p class="text-[10px] text-outline">المجموع</p></div>
-                  <div class="bg-surface-container-low rounded-xl p-3"><p class="font-bold text-amber-600">{{ child.absences }}</p><p class="text-[10px] text-outline">الغياب</p></div>
-                </div>
-              </div>
-            }
+<app-sidebar [(isOpen)]="sidebarOpen" />
+<div class="main-content">
+  <app-topbar [userName]="displayUserName()" />
+  <main class="p-gutter-desktop">
+    <div class="flex flex-col gap-gutter-desktop">
+      <section class="bg-surface-container-lowest rounded-3xl p-widget-padding shadow-sm border border-outline-variant/20">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <p class="text-label-sm text-primary font-bold mb-2">لوحة ولي الأمر</p>
+            <h1 class="font-headline-lg font-bold mb-2">بيانات الأبناء المرتبطين بحسابك</h1>
+            <p class="text-label-md text-outline">البيانات المعروضة هنا يتم جلبها مباشرة من قاعدة البيانات حسب الحساب الحالي.</p>
           </div>
 
-          <!-- AI Insights -->
-          <div class="bg-gradient-to-l from-primary to-[#432f9c] rounded-3xl p-widget-padding text-white">
-            <div class="flex items-center gap-3 mb-4">
-              <span class="material-symbols-outlined text-3xl">auto_awesome</span>
-              <h3 class="font-headline-md">تحليل الذكاء الاصطناعي</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 min-w-full md:min-w-[420px]">
+            <div class="bg-surface-container-low rounded-2xl p-4 text-center">
+              <p class="text-label-sm text-outline mb-1">إجمالي الأبناء</p>
+              <p class="text-2xl font-bold text-primary">{{ totalChildren() }}</p>
             </div>
-            <p class="text-white/80 mb-4">يظهر تحليل أداء أبنائك تحسناً ملحوظاً في المواد العلمية. ننصح بتعزيز مهارات اللغة العربية.</p>
-            <button class="px-6 py-2 bg-white text-primary rounded-xl font-bold text-label-sm">عرض التقرير الكامل</button>
-          </div>
-
-          <!-- Recent Activity -->
-          <div class="bg-surface-container-lowest rounded-3xl p-widget-padding shadow-sm border border-outline-variant/20">
-            <h3 class="font-headline-md mb-4">آخر الأنشطة</h3>
-            @for (activity of activities; track activity) {
-              <div class="flex items-center gap-3 p-3 border-b border-outline-variant/10">
-                <span class="material-symbols-outlined text-primary text-sm">circle</span>
-                <p class="text-label-sm">{{ activity }}</p>
-              </div>
-            }
+            <div class="bg-surface-container-low rounded-2xl p-4 text-center">
+              <p class="text-label-sm text-outline mb-1">النشطون</p>
+              <p class="text-2xl font-bold text-green-600">{{ activeChildren() }}</p>
+            </div>
+            <div class="bg-surface-container-low rounded-2xl p-4 text-center">
+              <p class="text-label-sm text-outline mb-1">غير النشطين</p>
+              <p class="text-2xl font-bold text-amber-600">{{ inactiveChildren() }}</p>
+            </div>
           </div>
         </div>
-      </main>
+      </section>
+
+      @if (isLoading()) {
+        <div class="bg-surface-container-lowest rounded-3xl p-widget-padding shadow-sm border border-outline-variant/20 text-center">
+          <span class="material-symbols-outlined text-4xl text-primary animate-spin mb-3">progress_activity</span>
+          <p class="font-bold">جار تحميل بيانات الأبناء...</p>
+        </div>
+      }
+
+      @if (errorMessage()) {
+        <div class="bg-red-50 text-red-700 rounded-3xl p-widget-padding border border-red-200 flex items-center justify-between gap-4">
+          <div class="flex items-center gap-3">
+            <span class="material-symbols-outlined">error</span>
+            <p class="font-medium">{{ errorMessage() }}</p>
+          </div>
+          <button type="button" (click)="loadChildren()" class="px-4 py-2 rounded-xl bg-red-600 text-white font-bold text-sm">
+            إعادة المحاولة
+          </button>
+        </div>
+      }
+
+      @if (!isLoading() && !errorMessage() && children().length === 0) {
+        <div class="bg-surface-container-lowest rounded-3xl p-widget-padding shadow-sm border border-outline-variant/20 text-center">
+          <span class="material-symbols-outlined text-5xl text-outline mb-3">family_restroom</span>
+          <h3 class="font-headline-md font-bold mb-2">لا يوجد أبناء مرتبطون بهذا الحساب</h3>
+          <p class="text-label-md text-outline">يرجى مراجعة الإدارة لربط حساب ولي الأمر بالطالب من النظام.</p>
+        </div>
+      }
+
+      @if (!isLoading() && !errorMessage() && children().length > 0) {
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          @for (child of children(); track child.studentId) {
+            <div class="bg-surface-container-lowest rounded-3xl p-widget-padding shadow-sm border border-outline-variant/20">
+              <div class="flex items-start justify-between gap-4 mb-5">
+                <div class="flex items-center gap-4">
+                  <div class="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-primary text-2xl">school</span>
+                  </div>
+                  <div>
+                    <h3 class="font-headline-md font-bold">{{ child.studentName }}</h3>
+                    <p class="text-label-sm text-outline">{{ getChildClassLine(child) }}</p>
+                  </div>
+                </div>
+
+                <span class="px-3 py-1 rounded-full text-xs font-bold"
+                      [class.bg-green-50]="child.isActive"
+                      [class.text-green-700]="child.isActive"
+                      [class.bg-amber-50]="!child.isActive"
+                      [class.text-amber-700]="!child.isActive">
+                  {{ child.isActive ? 'نشط' : 'غير نشط' }}
+                </span>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div class="bg-surface-container-low rounded-2xl p-4">
+                  <p class="text-[11px] text-outline mb-1">صلة القرابة</p>
+                  <p class="font-bold text-primary">{{ getRelationshipLabel(child.relationship) }}</p>
+                </div>
+                <div class="bg-surface-container-low rounded-2xl p-4">
+                  <p class="text-[11px] text-outline mb-1">الفصل الحالي</p>
+                  <p class="font-bold text-primary">{{ child.className || 'غير مسجل' }}</p>
+                </div>
+                <div class="bg-surface-container-low rounded-2xl p-4 col-span-2">
+                  <p class="text-[11px] text-outline mb-1">الصف الدراسي</p>
+                  <p class="font-bold text-primary">{{ child.gradeLevelName || 'غير محدد' }}</p>
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      }
     </div>
+  </main>
+</div>

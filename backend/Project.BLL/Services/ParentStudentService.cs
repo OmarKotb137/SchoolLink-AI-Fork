@@ -73,6 +73,35 @@ public class ParentStudentService : IParentStudentService
         return OperationResult<IEnumerable<StudentDto>>.Success(dtos);
     }
 
+    public async Task<OperationResult<IEnumerable<ParentDashboardChildDto>>> GetDashboardChildrenByParentAsync(int parentId)
+    {
+        var parent = await _unitOfWork.Users.GetByIdAsync(parentId);
+        if (parent == null || parent.IsDeleted)
+            return OperationResult<IEnumerable<ParentDashboardChildDto>>.Failure("ولي الأمر غير موجود");
+
+        var links = await _unitOfWork.ParentStudents.GetWithStudentDetailsByParentAsync(parentId);
+        var children = links
+            .Where(l => !l.IsDeleted && !l.Student.IsDeleted)
+            .Select(l =>
+            {
+                var activeEnrollment = l.Student.Enrollments
+                    .FirstOrDefault(e => e.LeftAt == null);
+
+                return new ParentDashboardChildDto
+                {
+                    StudentId = l.StudentId,
+                    StudentName = l.Student.FullName,
+                    ClassName = activeEnrollment?.Class?.Name,
+                    GradeLevelName = activeEnrollment?.Class?.GradeLevel?.Name,
+                    IsActive = l.Student.IsActive,
+                    Relationship = l.Relationship
+                };
+            })
+            .ToList();
+
+        return OperationResult<IEnumerable<ParentDashboardChildDto>>.Success(children);
+    }
+
     public async Task<OperationResult<IEnumerable<ParentStudentDto>>> GetParentsByStudentAsync(int studentId)
     {
         var student = await _unitOfWork.Students.GetByIdAsync(studentId);

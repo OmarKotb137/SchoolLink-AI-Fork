@@ -1,23 +1,71 @@
-import { Component, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
 import { Topbar } from '../../layouts/topbar/topbar';
+import { ParentDashboardChild, ParentDashboardService } from '../../core/services/parent-dashboard.service';
+import { AuthService } from '../../core/services/auth.service';
 
 @Component({
   selector: 'app-parent-dashboard',
-  imports: [Sidebar, Topbar],
+  standalone: true,
+  imports: [CommonModule, Sidebar, Topbar],
   templateUrl: './parent-dashboard.html',
   styleUrl: './parent-dashboard.css'
 })
-export class ParentDashboard {
+export class ParentDashboard implements OnInit {
+  private parentDashboardService = inject(ParentDashboardService);
+  private authService = inject(AuthService);
+
   sidebarOpen = signal(false);
-  children = [
-    { name: 'محمد أحمد', grade: 'الصف الثالث الثانوي', class: '3/1', performance: 88, grades: { last: '95', total: '88%' }, absences: 2 },
-    { name: 'فاطمة أحمد', grade: 'الصف الأول الثانوي', class: '1/2', performance: 92, grades: { last: '98', total: '92%' }, absences: 0 },
-  ];
-  activities = [
-    'حصل محمد على درجة 95 في اختبار الرياضيات',
-    'تم تسليم واجب الكيمياء لفاطمة',
-    'تحديث درجات السلوك لمحمد',
-    'تسجيل غياب يوم الأحد - محمد'
-  ];
+  displayUserName = computed(() => this.authService.user()?.fullName || 'ولي الأمر');
+
+  children = signal<ParentDashboardChild[]>([]);
+  isLoading = signal(true);
+  errorMessage = signal<string | null>(null);
+
+  totalChildren = computed(() => this.children().length);
+  activeChildren = computed(() => this.children().filter(child => child.isActive).length);
+  inactiveChildren = computed(() => this.children().filter(child => !child.isActive).length);
+
+  ngOnInit(): void {
+    this.loadChildren();
+  }
+
+  loadChildren(): void {
+    this.isLoading.set(true);
+    this.errorMessage.set(null);
+
+    this.parentDashboardService.getMyChildren().subscribe({
+      next: (response) => {
+        const data = response?.data ?? response ?? [];
+        this.children.set(Array.isArray(data) ? data : []);
+        this.isLoading.set(false);
+      },
+      error: (err) => {
+        this.children.set([]);
+        this.errorMessage.set(err?.message || 'تعذر تحميل بيانات الأبناء');
+        this.isLoading.set(false);
+      }
+    });
+  }
+
+  getRelationshipLabel(relationship: string): string {
+    const labels: Record<string, string> = {
+      Father: 'الأب',
+      Mother: 'الأم',
+      Guardian: 'ولي الأمر',
+      Brother: 'أخ',
+      Sister: 'أخت',
+    };
+
+    return labels[relationship] || relationship || 'غير محدد';
+  }
+
+  getChildClassLine(child: ParentDashboardChild): string {
+    if (child.gradeLevelName && child.className) {
+      return `${child.gradeLevelName} - ${child.className}`;
+    }
+
+    return child.gradeLevelName || child.className || 'غير مسجل بفصل حاليا';
+  }
 }
