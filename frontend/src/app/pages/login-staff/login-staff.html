@@ -1,43 +1,43 @@
-<div class="h-screen overflow-hidden flex items-center justify-center p-4" style="background:linear-gradient(135deg, #0b1120 0%, #162044 50%, #1a1f3a 100%);">
-  <div class="w-full max-w-5xl flex flex-col lg:flex-row rounded-3xl shadow-2xl overflow-hidden" style="background:rgba(15,23,52,0.9);backdrop-filter:blur(20px);border:1px solid rgba(99,130,255,0.15);">
+<div class="h-screen overflow-hidden flex items-center justify-center p-4" style="background:linear-gradient(135deg, #faf8ff 0%, #e8edff 50%, #f0e6ff 100%);">
+  <div class="w-full max-w-5xl flex flex-col lg:flex-row rounded-3xl shadow-2xl overflow-hidden" style="background:rgba(255,255,255,0.85);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.5);">
     <!-- Image Side -->
-    <div class="lg:w-5/12 relative overflow-hidden bg-[#070c1a] flex items-center justify-center">
-       <img src="/LoginStaff2.png"
-            alt="صورة تعليمية"
-            class="absolute inset-0 w-full h-full object-contain" />
-      <div class="absolute inset-0 bg-gradient-to-t from-[#070c1a]/90 via-[#070c1a]/30 to-transparent"></div>
+    <div class="lg:w-5/12 relative overflow-hidden bg-[#0a1628] flex items-center justify-center">
+      <img src="/LoginStaff2.png"
+           alt="صورة تعليمية"
+           class="absolute inset-0 w-full h-full object-contain" />
+      <div class="absolute inset-0 bg-gradient-to-t from-[#0a1628]/80 via-[#0a1628]/20 to-transparent"></div>
       <div class="absolute bottom-6 right-6 left-6 z-10 text-white">
         <div class="flex items-center gap-3 mb-3">
-          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-[#4f7dff] to-[#6c5ce7] backdrop-blur-sm flex items-center justify-center border border-white/20">
+          <div class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/20">
             <span class="material-symbols-outlined text-white text-2xl" style="font-variation-settings:'FILL'1;">school</span>
           </div>
           <div>
-            <h2 class="text-lg font-bold text-white">SchoolLink AI</h2>
-            <p class="text-xs text-blue-300/70">Staff Portal</p>
+            <h2 class="text-lg font-bold">SchoolLink AI</h2>
+            <p class="text-xs text-white/70">EduConnect Platform</p>
           </div>
         </div>
-        <p class="text-sm text-blue-200/70 leading-relaxed">منصة متكاملة لإدارة الكادر التعليمي والإداري.</p>
+        <p class="text-sm text-white/80 leading-relaxed">إدارة المؤسسات التعليمية بكفاءة وذكاء.</p>
       </div>
     </div>
 
     <!-- Login Form -->
     <div class="lg:w-7/12 p-8 lg:p-12 flex flex-col justify-center">
       <div class="mb-2">
-        <h3 class="text-2xl font-bold text-white">تسجيل الدخول</h3>
-        <p class="text-blue-200/50 text-sm mt-1">أدخل بيانات اعتماد {{ roleTab() === 'admin' ? 'المدير' : 'المعلم' }}</p>
+        <h3 class="text-2xl font-bold text-on-surface">تسجيل الدخول</h3>
+        <p class="text-on-surface-variant text-sm mt-1">أدخل بيانات اعتماد {{ roleTab() === 'admin' ? 'المدير' : 'المعلم' }}</p>
       </div>
 
       <!-- Role Tabs -->
-      <div class="flex bg-white/[0.05] rounded-2xl p-1 mt-6 mb-8 border border-white/[0.08]">
+      <div class="flex bg-surface-container-low rounded-2xl p-1 mt-6 mb-8 border border-outline/10">
         <button (click)="roleTab.set('admin')"
                 class="flex-1 py-3 rounded-xl text-sm font-bold transition-all"
-                [class]="roleTab() === 'admin' ? 'bg-gradient-to-r from-[#4f7dff] to-[#6c5ce7] text-white shadow-lg shadow-[#4f7dff]/20' : 'text-blue-300/50 hover:text-blue-200/80'">
+                [class]="roleTab() === 'admin' ? 'bg-white text-on-surface shadow-md' : 'text-on-surface-variant hover:text-on-surface'">
           <span class="material-symbols-outlined text-lg align-middle ml-1" style="font-variation-settings:'FILL'1;">admin_panel_settings</span>
           مدير النظام
         </button>
         <button (click)="roleTab.set('teacher')"
                 class="flex-1 py-3 rounded-xl text-sm font-bold transition-all"
-                [class]="roleTab() === 'teacher' ? 'bg-gradient-to-r from-[#4f7dff] to-[#6c5ce7] text-white shadow-lg shadow-[#4f7dff]/20' : 'text-blue-300/50 hover:text-blue-200/80'">
+                [class]="roleTab() === 'teacher' ? 'bg-white text-on-surface shadow-md' : 'text-on-surface-variant hover:text-on-surface'">
           <span class="material-symbols-outlined text-lg align-middle ml-1" style="font-variation-settings:'FILL'1;">school</span>
           معلم
         </button>
@@ -45,42 +45,42 @@
 
       <form #f="ngForm" (ngSubmit)="handleLogin(f)" class="space-y-4">
         <div>
-          <label class="block text-sm font-semibold text-blue-200/60 mb-1.5">البريد الإلكتروني</label>
+          <label class="block text-sm font-semibold text-on-surface-variant mb-1.5">البريد الإلكتروني</label>
           <div class="relative">
-            <span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-blue-300/30 text-lg">badge</span>
+            <span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-outline text-lg">badge</span>
             <input ngModel name="email" type="email" required placeholder="أدخل البريد الإلكتروني"
-                   class="w-full py-3.5 pr-12 pl-4 bg-white/[0.05] border border-white/[0.1] rounded-xl text-sm text-white outline-none transition-all focus:border-[#4f7dff]/50 focus:bg-white/[0.08] placeholder:text-blue-300/25" />
+                   class="w-full py-3.5 pr-12 pl-4 bg-surface-container-low border border-outline/30 rounded-xl text-sm text-on-surface outline-none transition-all focus:border-primary/50 focus:bg-white placeholder:text-outline/60" />
           </div>
         </div>
         <div>
-          <label class="block text-sm font-semibold text-blue-200/60 mb-1.5">كلمة المرور</label>
+          <label class="block text-sm font-semibold text-on-surface-variant mb-1.5">كلمة المرور</label>
           <div class="relative">
-            <span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-blue-300/30 text-lg">lock</span>
+            <span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-outline text-lg">lock</span>
             <input ngModel name="password" #pwd type="password" required placeholder="أدخل كلمة المرور"
-                   class="w-full py-3.5 pr-12 pl-12 bg-white/[0.05] border border-white/[0.1] rounded-xl text-sm text-white outline-none transition-all focus:border-[#4f7dff]/50 focus:bg-white/[0.08] placeholder:text-blue-300/25" />
+                   class="w-full py-3.5 pr-12 pl-12 bg-surface-container-low border border-outline/30 rounded-xl text-sm text-on-surface outline-none transition-all focus:border-primary/50 focus:bg-white placeholder:text-outline/60" />
             <button type="button" (click)="pwd.type = pwd.type === 'password' ? 'text' : 'password'"
-                    class="absolute left-3 top-1/2 -translate-y-1/2 bg-none border-none text-blue-300/30 hover:text-blue-200/60 p-0 cursor-pointer">
+                    class="absolute left-3 top-1/2 -translate-y-1/2 bg-none border-none text-outline hover:text-on-surface-variant p-0 cursor-pointer">
               <span class="material-symbols-outlined text-lg">visibility</span>
             </button>
           </div>
         </div>
 
         <div class="flex items-center justify-between">
-          <label class="flex items-center gap-2 text-sm text-blue-200/50 cursor-pointer">
-            <input type="checkbox" class="w-4 h-4 rounded accent-[#4f7dff]" /> تذكرني
+          <label class="flex items-center gap-2 text-sm text-on-surface-variant cursor-pointer">
+            <input type="checkbox" class="w-4 h-4 rounded border-outline/50 text-primary" /> تذكرني
           </label>
-          <a href="#" class="text-sm text-[#4f7dff]/80 hover:text-[#4f7dff] font-semibold no-underline">نسيت كلمة المرور؟</a>
+          <a href="#" class="text-sm text-primary hover:text-primary/80 font-semibold no-underline">نسيت كلمة المرور؟</a>
         </div>
 
         <button type="submit"
-                class="w-full py-3.5 border-none rounded-xl bg-gradient-to-l from-[#4f7dff] to-[#6c5ce7] text-white text-sm font-bold cursor-pointer flex items-center justify-center gap-2 transition-all hover:shadow-lg hover:shadow-[#4f7dff]/25 active:scale-[0.98]">
+                class="w-full py-3.5 border-none rounded-xl bg-gradient-to-l from-primary to-blue-600 text-white text-sm font-bold cursor-pointer flex items-center justify-center gap-2 transition-all hover:shadow-lg hover:shadow-primary/20 active:scale-[0.98]">
           <span class="material-symbols-outlined text-lg">login</span>
           دخول {{ roleTab() === 'admin' ? 'المدير' : 'المعلم' }}
         </button>
       </form>
 
-      <p class="text-center text-sm text-blue-300/30 mt-8 pt-6 border-t border-white/[0.06]">
-        ليس لديك حساب؟ <a href="#" class="text-[#4f7dff]/80 font-bold hover:text-[#4f7dff] hover:underline">تواصل مع المدرسة</a>
+      <p class="text-center text-sm text-on-surface-variant mt-8 pt-6 border-t border-outline/10">
+        ليس لديك حساب؟ <a href="#" class="text-primary font-bold hover:underline">تواصل مع المدرسة</a>
       </p>
     </div>
   </div>
