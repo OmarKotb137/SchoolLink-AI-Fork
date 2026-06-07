@@ -1,13 +1,13 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Project.BLL.AI.Interfaces;
 using Project.BLL.DTOs;
-using Project.BLL.Interfaces;
 
-namespace Project.API.Controllers;
+namespace Project.API.Controllers.AI;
 
 [Route("api/book-parser")]
 [ApiController]
-[Authorize(Roles = "Admin,Teacher")]
+// [Authorize(Roles = "Admin,Teacher")]
 public class BookParserController : ControllerBase
 {
     private readonly IBookParserService _bookParserService;
@@ -44,4 +44,20 @@ public class BookParserController : ControllerBase
         var result = await _bookParserService.SaveBookStructureAsync(subjectId, units);
         return result.IsSuccess ? Ok(result) : BadRequest(result);
     }
+
+    [HttpPost("lesson/generate-content")]
+    public async Task<IActionResult> GenerateLessonContent([FromBody] GenerateLessonContentRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.RawContent) || string.IsNullOrWhiteSpace(request.Title))
+            return BadRequest(new { message = "النص الخام وعنوان الدرس مطلوبان." });
+
+        var result = await _bookParserService.CleanLessonContentWithAiAsync(request.RawContent, request.Title);
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
+    }
+}
+
+public class GenerateLessonContentRequest
+{
+    public string Title { get; set; } = string.Empty;
+    public string RawContent { get; set; } = string.Empty;
 }

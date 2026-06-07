@@ -15,6 +15,7 @@ export class ParentDashboard implements OnInit {
   private authService = inject(AuthService);
 
   sidebarOpen = signal(false);
+  userName = this.authService.user()?.fullName ?? 'وليّ أمر';
   children: ParentChild[] = [
     { name: 'محمد أحمد', grade: 'الصف الثالث الثانوي', class: '3/1', performance: 88, grades: { last: '95', total: '88%' }, absences: 2 },
     { name: 'فاطمة أحمد', grade: 'الصف الأول الثانوي', class: '1/2', performance: 92, grades: { last: '98', total: '92%' }, absences: 0 },

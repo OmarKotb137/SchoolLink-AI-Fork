@@ -2,6 +2,7 @@ import { Component, inject, signal, OnInit } from '@angular/core';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
 import { Topbar } from '../../layouts/topbar/topbar';
 import { DashboardService, AdminDashboardData } from './dashboard.service';
+import { AuthService } from '../../core/services/auth.service';
 
 @Component({
   selector: 'app-admin-dashboard',
@@ -11,8 +12,10 @@ import { DashboardService, AdminDashboardData } from './dashboard.service';
 })
 export class AdminDashboard implements OnInit {
   private dashboardService = inject(DashboardService);
+  private authService = inject(AuthService);
 
   sidebarOpen = signal(false);
+  userName = this.authService.user()?.fullName ?? 'مدير النظام';
   data = signal<AdminDashboardData | null>(null);
   barHeights = signal<number[]>([]);
   maxBarHeight = 90;

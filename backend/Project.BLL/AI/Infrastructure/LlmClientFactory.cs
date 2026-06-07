@@ -1,20 +1,22 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Project.BLL.AI.ExamAgent.Interfaces;
-using Project.BLL.AI.ExamAgent.Models;
+using Project.BLL.AI.Interfaces;
+using Project.BLL.AI.Models;
 
-namespace Project.BLL.AI.ExamAgent.Infrastructure;
+namespace Project.BLL.AI.Infrastructure;
+
+public enum LlmProviderType { OpenRouter, HuggingFace, CloudflareAI, OpenCodeAI }
 
 public static class LlmClientFactory
 {
     public static void RegisterLlmClient(this IServiceCollection services, IConfiguration config)
     {
         var providerStr = config["LlmSettings:Provider"] ?? "OpenRouter";
-        var provider = Enum.Parse<LlmProvider>(providerStr, ignoreCase: true);
+        var provider = Enum.Parse<LlmProviderType>(providerStr, ignoreCase: true);
 
         switch (provider)
         {
-            case LlmProvider.OpenRouter:
+            case LlmProviderType.OpenRouter:
                 services.AddHttpClient<ILlmClient, OpenRouterLlmClient>(client =>
                 {
                     var apiKey = config["LlmSettings:OpenRouter:ApiKey"]
@@ -24,7 +26,7 @@ public static class LlmClientFactory
                 });
                 break;
 
-            case LlmProvider.HuggingFace:
+            case LlmProviderType.HuggingFace:
                 services.AddHttpClient<ILlmClient, HuggingFaceLlmClient>(client =>
                 {
                     var apiKey = config["LlmSettings:HuggingFace:ApiKey"]
@@ -33,7 +35,7 @@ public static class LlmClientFactory
                 });
                 break;
 
-            case LlmProvider.CloudflareAI:
+            case LlmProviderType.CloudflareAI:
                 services.AddHttpClient<ILlmClient, CloudflareAILlmClient>(client =>
                 {
                     var apiKey = config["LlmSettings:CloudflareAI:ApiKey"]
@@ -42,7 +44,7 @@ public static class LlmClientFactory
                 });
                 break;
 
-            case LlmProvider.OpenCodeAI:
+            case LlmProviderType.OpenCodeAI:
                 services.AddHttpClient<ILlmClient, OpenCodeAILlmClient>(client =>
                 {
                     var apiKey = config["LlmSettings:OpenCodeAI:ApiKey"]

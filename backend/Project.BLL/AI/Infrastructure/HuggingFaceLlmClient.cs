@@ -2,29 +2,23 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Configuration;
-using Project.BLL.AI.ExamAgent.Interfaces;
-using Project.BLL.AI.ExamAgent.Models;
+using Project.BLL.AI.Interfaces;
+using Project.BLL.AI.Models;
 
-namespace Project.BLL.AI.ExamAgent.Infrastructure;
+namespace Project.BLL.AI.Infrastructure;
 
-public class CloudflareAILlmClient : ILlmClient
+public class HuggingFaceLlmClient : ILlmClient
 {
     private readonly HttpClient _http;
     private readonly string _model;
-    private readonly string _accountId;
-    private readonly string _gateway;
     private readonly string _baseUrl;
 
-    public CloudflareAILlmClient(HttpClient http, IConfiguration config)
+    public HuggingFaceLlmClient(HttpClient http, IConfiguration config)
     {
         _http = http;
-        _model = config["LlmSettings:CloudflareAI:Model"]
-                 ?? "workers-ai/@cf/meta/llama-3.1-8b-instruct";
-        _accountId = config["LlmSettings:CloudflareAI:AccountId"]
-                     ?? throw new InvalidOperationException("CloudflareAI AccountId is missing");
-        _gateway = config["LlmSettings:CloudflareAI:Gateway"] ?? "default";
-        _baseUrl = config["LlmSettings:CloudflareAI:BaseUrl"]
-                   ?? "https://gateway.ai.cloudflare.com/v1";
+        _model = config["LlmSettings:HuggingFace:Model"] ?? "Qwen/Qwen3-32B:groq";
+        _baseUrl = config["LlmSettings:HuggingFace:BaseUrl"]
+                   ?? "https://router.huggingface.co/v1";
     }
 
     public async Task<LlmResponse> ChatAsync(
@@ -73,13 +67,10 @@ public class CloudflareAILlmClient : ILlmClient
         {
             ["model"] = _model,
             ["messages"] = msgsArray,
-            ["tools"] = toolsArray,
-            ["stream"] = false,
-            ["tool_choice"] = "auto"
+            ["stream"] = false
         };
 
-        var url = $"{_baseUrl.TrimEnd('/')}/{_accountId}/{_gateway}/compat/chat/completions";
-
+        var url = $"{_baseUrl.TrimEnd('/')}/chat/completions";
         var content = new StringContent(body.ToJsonString(), Encoding.UTF8, "application/json");
         var resp = await _http.PostAsync(url, content);
         resp.EnsureSuccessStatusCode();

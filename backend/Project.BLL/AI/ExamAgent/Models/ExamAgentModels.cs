@@ -63,5 +63,3 @@ public class Conversation
     public List<ConversationMessage> Messages { get; set; } = [];
     public string Title { get; set; } = "";
 }
-
-public enum LlmProvider { OpenRouter, HuggingFace, CloudflareAI, OpenCodeAI }

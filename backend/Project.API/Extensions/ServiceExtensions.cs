@@ -1,14 +1,15 @@
 ﻿using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Project.BLL.AI.Agents;
+using Project.BLL.AI.Infrastructure;
 using Project.BLL.AI.ExamAgent.Infrastructure;
 using Project.BLL.AI.ExamAgent.Interfaces;
 using Project.BLL.AI.ExamAgent.Services;
 using Project.BLL.AI.ExamAgent.Tools;
 using Project.BLL.AI.Infrastructure;
 using Project.BLL.AI.Interfaces;
-using Project.BLL.AI.Providers;
 using Project.BLL.AI.Services;
+using Project.BLL.AI.Providers;
 using Project.BLL.Interfaces;
 using Project.BLL.Mapping;
 using Project.BLL.Services;
@@ -85,13 +86,12 @@ public static class ServiceExtensions
         services.AddScoped<IParentDashboardService, ParentDashboardService>();
         services.AddScoped<ILessonFeedbackService, LessonFeedbackService>();
         services.AddScoped<IUnitService, UnitService>();
-        services.AddScoped<IBookParserService, BookParserService>();
 
         // AI Services
         RegisterAiServices(services, config);
         RegisterExamAgentServices(services, config);
 
-        services.AddAutoMapper(cfg => cfg.AddMaps(typeof(UserMappingProfile).Assembly));
+        services.AddAutoMapper(cfg => cfg.AddMaps(typeof(MappingProfile).Assembly));
 
         services.AddValidatorsFromAssemblyContaining<CreateUserValidator>();
 
@@ -122,29 +122,17 @@ public static class ServiceExtensions
     {
         services.AddHttpClient("Gemini", c => c.Timeout = TimeSpan.FromSeconds(60));
         services.AddHttpClient("DeepSeek", c => c.Timeout = TimeSpan.FromSeconds(60));
-
-        services.AddScoped<GeminiProvider>(sp =>
+        services.AddHttpClient("MistralOcr", c =>
         {
-            var factory = sp.GetRequiredService<IHttpClientFactory>();
-            var http = factory.CreateClient("Gemini");
-            var logger = sp.GetRequiredService<ILogger<GeminiProvider>>();
-            var apiKey = config["AI:Gemini:ApiKey"] ?? "";
-            var model = config["AI:Gemini:Model"] ?? "gemini-2.0-flash";
-            return new GeminiProvider(http, logger, apiKey, model);
+            c.Timeout = TimeSpan.FromMinutes(5);
         });
 
-        services.AddScoped<DeepSeekProvider>(sp =>
-        {
-            var factory = sp.GetRequiredService<IHttpClientFactory>();
-            var http = factory.CreateClient("DeepSeek");
-            var logger = sp.GetRequiredService<ILogger<DeepSeekProvider>>();
-            var apiKey = config["AI:DeepSeek:ApiKey"] ?? "";
-            var model = config["AI:DeepSeek:Model"] ?? "deepseek-chat";
-            return new DeepSeekProvider(http, logger, apiKey, model);
-        });
-
-        services.AddScoped<ILLMProvider>(sp => sp.GetRequiredService<GeminiProvider>());
-        services.AddScoped<ILLMProvider>(sp => sp.GetRequiredService<DeepSeekProvider>());
+        RegisterProvider<GeminiProvider>(services, "Gemini");
+        RegisterProvider<DeepSeekProvider>(services, "DeepSeek");
+        RegisterProvider<OpenRouterProvider>(services, null);
+        RegisterProvider<HuggingFaceProvider>(services, null);
+        RegisterProvider<CloudflareAIProvider>(services, null);
+        RegisterProvider<OpenCodeAIProvider>(services, null);
 
         services.AddScoped<IToolRegistry, ToolRegistry>();
         services.AddScoped<ILLMRouter, LLMRouter>();
@@ -157,6 +145,20 @@ public static class ServiceExtensions
         services.AddScoped<IEvaluationReportService, EvaluationReportService>();
         services.AddScoped<IStudyScheduleOptimizerService, StudyScheduleOptimizerService>();
         services.AddScoped<IStudentImportService, StudentImportService>();
+        services.AddScoped<IBookParserService, BookParserService>();
+    }
+
+    private static void RegisterProvider<T>(IServiceCollection services, string? httpClientName) where T : class, ILLMProvider
+    {
+        services.AddScoped<T>(sp =>
+        {
+            var factory = sp.GetRequiredService<IHttpClientFactory>();
+            var http = httpClientName != null ? factory.CreateClient(httpClientName) : factory.CreateClient();
+            var logger = sp.GetRequiredService<ILogger<T>>();
+            var config = sp.GetRequiredService<IConfiguration>();
+            return (T)ActivatorUtilities.CreateInstance(sp, typeof(T), http, logger, config);
+        });
+        services.AddScoped<ILLMProvider>(sp => sp.GetRequiredService<T>());
     }
 
     private static void RegisterExamAgentServices(IServiceCollection services, IConfiguration config)

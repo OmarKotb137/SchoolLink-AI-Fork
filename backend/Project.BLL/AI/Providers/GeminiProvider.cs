@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Project.BLL.AI.Interfaces;
 using Project.BLL.AI.Models;
@@ -15,12 +16,13 @@ public class GeminiProvider : ILLMProvider
 
     public string ProviderName => "Gemini";
 
-    public GeminiProvider(HttpClient http, ILogger<GeminiProvider> logger, string apiKey, string model = "gemini-2.0-flash")
+    public GeminiProvider(HttpClient http, ILogger<GeminiProvider> logger, IConfiguration config)
     {
         _http = http;
         _logger = logger;
-        _apiKey = apiKey;
-        _model = model;
+        var section = config.GetSection("LlmSettings:Gemini");
+        _apiKey = section["ApiKey"] ?? "";
+        _model = section["Model"] ?? "gemini-2.0-flash";
     }
 
     public async Task<string> GenerateAsync(string systemPrompt, string userMessage, CancellationToken ct = default)
