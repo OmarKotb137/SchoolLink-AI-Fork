@@ -88,7 +88,7 @@ export class SubjectManagement implements OnInit {
     // لأن الـ backend endpoint بيبحث بالاسم فقط
     this.subjectService.getAll().subscribe({
       next: (data) => {
-        const filtered = (data.data ?? data).filter(s =>
+        const filtered = (data.data ?? data).filter((s: any) =>
           s.name.toLowerCase().includes(term) ||
           s.code.toLowerCase().includes(term)
         );

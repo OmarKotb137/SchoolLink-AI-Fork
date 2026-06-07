@@ -199,17 +199,17 @@ export class UserManagement implements OnInit {
         }
 
         forkJoin(
-          students.map(student =>
+          students.map((student: any) =>
             this.parentStudentService.getParentsByStudent(student.id).pipe(
-              map(links => ({
+              map((links: any) => ({
                 student,
-                link: (links.data ?? links).find(link => link.parentId === parentId) ?? null
+                link: (links.data ?? links).find((link: any) => link.parentId === parentId) ?? null
               })),
               catchError(() => of({ student, link: null }))
             )
           )
         ).subscribe({
-          next: rows => {
+          next: (rows: any) => {
             this.parentLinkedStudents.set(rows);
             this.isLoading.set(false);
           },

@@ -564,7 +564,7 @@ export class GradeMonitor implements OnInit {
   private loadGrades() {
     this.gradeLevelService.getAll().subscribe({
       next: (data) => {
-        const sortedGrades = (data.data ?? data).sort((a, b) => a.levelOrder - b.levelOrder);
+        const sortedGrades = (data.data ?? data).sort((a: any, b: any) => a.levelOrder - b.levelOrder);
         this.grades.set(sortedGrades);
       }
     });

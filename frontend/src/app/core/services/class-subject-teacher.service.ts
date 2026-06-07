@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Teacher } from './teacher.service';
+import { buildApiUrl } from '../utils/api-url';import { Teacher } from './teacher.service';
 
 export interface ClassSubjectTeacher {
   id?: number;
@@ -23,45 +23,45 @@ export class ClassSubjectTeacherService {
   private http = inject(HttpClient);
   private apiUrl = buildApiUrl('class-subject-teachers');
 
-  getAll(): Observable<ClassSubjectTeacher[]> {
-    return this.http.get<ClassSubjectTeacher[]>(this.apiUrl);
+  getAll(): Observable<any> {
+    return this.http.get<any>(this.apiUrl);
   }
 
-  getById(id: number): Observable<ClassSubjectTeacher> {
-    return this.http.get<ClassSubjectTeacher>(`${this.apiUrl}/${id}`);
+  getById(id: number): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/${id}`);
   }
 
-  getByClass(classId: number, academicYearId?: number): Observable<ClassSubjectTeacher[]> {
+  getByClass(classId: number, academicYearId?: number): Observable<any> {
     let url = `${this.apiUrl}/by-class/${classId}`;
     if (academicYearId) url += `?academicYearId=${academicYearId}`;
-    return this.http.get<ClassSubjectTeacher[]>(url);
+    return this.http.get<any>(url);
   }
 
-  getByTeacher(teacherId: number, academicYearId?: number): Observable<ClassSubjectTeacher[]> {
+  getByTeacher(teacherId: number, academicYearId?: number): Observable<any> {
     let url = `${this.apiUrl}/by-teacher/${teacherId}`;
     if (academicYearId) url += `?academicYearId=${academicYearId}`;
-    return this.http.get<ClassSubjectTeacher[]>(url);
+    return this.http.get<any>(url);
   }
 
-  getAvailableTeachers(subjectId: number, classId: number, academicYearId: number): Observable<Teacher[]> {
-    return this.http.get<Teacher[]>(
+  getAvailableTeachers(subjectId: number, classId: number, academicYearId: number): Observable<any> {
+    return this.http.get<any>(
       `${this.apiUrl}/available-teachers?subjectId=${subjectId}&classId=${classId}&academicYearId=${academicYearId}`
     );
   }
 
-  assignTeacherToClass(data: Partial<ClassSubjectTeacher>): Observable<ClassSubjectTeacher> {
-    return this.http.post<ClassSubjectTeacher>(this.apiUrl, data);
+  assignTeacherToClass(data: Partial<ClassSubjectTeacher>): Observable<any> {
+    return this.http.post<any>(this.apiUrl, data);
   }
 
   assignBulk(data: Partial<ClassSubjectTeacher>[]): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/bulk`, data);
   }
 
-  update(id: number, data: { teacherId: number; weeklyPeriods: number }): Observable<ClassSubjectTeacher> {
-    return this.http.put<ClassSubjectTeacher>(`${this.apiUrl}/${id}`, { ...data, assignmentId: id });
+  update(id: number, data: { teacherId: number; weeklyPeriods: number }): Observable<any> {
+    return this.http.put<any>(`${this.apiUrl}/${id}`, { ...data, assignmentId: id });
   }
 
-  delete(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/${id}`);
+  delete(id: number): Observable<any> {
+    return this.http.delete<any>(`${this.apiUrl}/${id}`);
   }
 }

@@ -202,7 +202,7 @@ export class AdminSchedule implements OnInit, OnDestroy {
     this.gradeLevelService.getAll().subscribe({
       next: (data) => {
         const unwrapped = data.data ?? data;
-        const sortedGrades = unwrapped.sort((a, b) => a.levelOrder - b.levelOrder);
+        const sortedGrades = unwrapped.sort((a: any, b: any) => a.levelOrder - b.levelOrder);
         this.grades.set(sortedGrades);
       },
       error: () => this.showError('تعذر تحميل بيانات الصفوف الدراسية')
@@ -215,7 +215,7 @@ export class AdminSchedule implements OnInit, OnDestroy {
       next: (data) => {
         const unwrapped = data.data ?? data;
         this.academicYears.set(unwrapped);
-        const active = unwrapped.find(y => y.isCurrent);
+        const active = unwrapped.find((y: any) => y.isCurrent);
         if (active) this.selectedYearId = active.id;
       },
       error: () => this.showError('تعذر تحميل السنوات الدراسية')
@@ -253,7 +253,7 @@ export class AdminSchedule implements OnInit, OnDestroy {
         const unwrapped = data.data ?? data;
         this.assignments.set(unwrapped);
         // Rebuild Map for O(1) lookups (called 35× per render: 5 days × 7 periods)
-        this.assignmentMap = new Map(unwrapped.map(a => [a.id!, a]));
+        this.assignmentMap = new Map(unwrapped.map((a: any) => [a.id!, a]));
       },
       error: () => {
         this.assignments.set([]);
@@ -267,9 +267,9 @@ export class AdminSchedule implements OnInit, OnDestroy {
     this.isLoading.set(true);
     this.timetableService.getByClass(this.selectedClassId!, this.selectedYearId!).subscribe({
       next: (data) => {
-        const timetables = (Array.isArray(data.data ?? data) ? (data.data ?? data) : []).map(item => this.normalizeTimetable(item));
+        const timetables = (Array.isArray(data.data ?? data) ? (data.data ?? data) : []).map((item: any) => this.normalizeTimetable(item));
         const selectedTimetableId = this.selectedTimetableId();
-        const nextTimetable = timetables.find(item => item.id === selectedTimetableId)
+        const nextTimetable = timetables.find((item: any) => item.id === selectedTimetableId)
           || this.pickWorkingTimetable(timetables);
 
         this.allTimetables.set(timetables);
