@@ -67,7 +67,7 @@
           <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pb-4 border-b border-gray-100">
             <div>
               <h3 class="text-lg font-bold text-gray-900 mb-1">إنشاء إسناد جديد</h3>
-              <p class="text-sm text-gray-500">اختر الصف ثم الفصل ثم المادة ثم المعلم المناسب لها، وحدد النصاب الأسبوعي.</p>
+              <p class="text-sm text-gray-500">اختر الصف ثم الفصل ثم المادة ثم المعلم المناسب لها، وحدد عدد الحصص الأسبوعية.</p>
             </div>
             <div class="flex items-center gap-2 bg-gray-50 text-gray-600 px-3 py-1.5 rounded-2xl border border-gray-100 text-xs font-medium whitespace-nowrap">
               <span class="material-symbols-outlined text-sm">hub</span>
@@ -118,7 +118,7 @@
               </select>
             </div>
             <div>
-              <label class="block mb-2 text-sm font-medium text-gray-900">النصاب الأسبوعي</label>
+              <label class="block mb-2 text-sm font-medium text-gray-900">عدد الحصص الأسبوعية</label>
               <input type="number" min="1" [(ngModel)]="newAssignment.weeklyPeriods" 
                      class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5">
             </div>
@@ -185,7 +185,7 @@
                   <th scope="col" class="px-6 py-4">الفصل</th>
                   <th scope="col" class="px-6 py-4">المادة</th>
                   <th scope="col" class="px-6 py-4">المعلم المكلف</th>
-                  <th scope="col" class="px-6 py-4 text-center">النصاب</th>
+                  <th scope="col" class="px-6 py-4 text-center">عدد الحصص</th>
                   <th scope="col" class="px-6 py-4 text-center">إجراءات</th>
                 </tr>
               </thead>
@@ -215,7 +215,7 @@
                       <div class="flex items-center justify-center gap-2">
                         <button (click)="startEdit(assignment)"
                                 class="p-2 text-blue-600 hover:bg-blue-50 rounded-2xl transition-colors"
-                                title="تعديل المعلم أو النصاب">
+                                title="تعديل المعلم أو عدد الحصص">
                           <span class="material-symbols-outlined text-sm">edit</span>
                         </button>
                         <button (click)="removeAssignment(assignment.id!)"

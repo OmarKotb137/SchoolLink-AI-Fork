@@ -1,4 +1,4 @@
-﻿using Project.Domain.Entities;
+using Project.Domain.Entities;
 using Project.Domain.Enums;
 using System.Linq.Expressions;
 
@@ -10,6 +10,7 @@ public interface IStudentEnrollmentRepository : IRepository<StudentEnrollment>
     Task<IReadOnlyList<StudentEnrollment>> GetByClassAndYearAsync(int classId, int academicYearId, CancellationToken ct = default);
     Task<IReadOnlyList<StudentEnrollment>> GetActiveByClassAsync(int classId, int academicYearId, CancellationToken ct = default);
     Task<IReadOnlyList<StudentEnrollment>> GetHistoryByStudentAsync(int studentId, CancellationToken ct = default);
+    Task<IReadOnlyList<StudentEnrollment>> GetTransfersHistoryAsync(int academicYearId, CancellationToken ct = default);
 
     Task<bool> IsEnrolledAsync(int studentId, int classId, int academicYearId, CancellationToken ct = default);
     Task<bool> HasActiveEnrollmentAsync(int studentId, int academicYearId, CancellationToken ct = default);

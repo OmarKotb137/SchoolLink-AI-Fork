@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Project.DAL.Interfaces.Repositories.Core;
 using Project.Domain.Entities;
 using Project.DAL.Context;
@@ -52,6 +52,17 @@ public class StudentEnrollmentRepository : Repository<StudentEnrollment>, IStude
                 .ThenInclude(c => c.GradeLevel)
             .Include(e => e.AcademicYear)
             .OrderByDescending(e => e.EnrolledAt)
+            .ToListAsync(ct);
+
+    public async Task<IReadOnlyList<StudentEnrollment>> GetTransfersHistoryAsync(
+        int academicYearId,
+        CancellationToken ct = default)
+        => await _context.StudentEnrollments
+            .Where(e => e.AcademicYearId == academicYearId && e.LeftAt != null && e.TransferReason != null)
+            .Include(e => e.Student)
+            .Include(e => e.Class)
+            .OrderByDescending(e => e.LeftAt)
+            .Take(50) // Limit to 50 recent transfers
             .ToListAsync(ct);
 
 

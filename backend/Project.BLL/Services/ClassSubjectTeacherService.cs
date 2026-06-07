@@ -93,23 +93,20 @@ public class ClassSubjectTeacherService : IClassSubjectTeacherService
         if (assignment is null || assignment.IsDeleted)
             return OperationResult<ClassSubjectTeacherDto>.Failure("تعيين المعلم غير موجود");
 
-        var teacher = await _unitOfWork.Users.GetByIdAsync(request.TeacherId);
-        if (teacher is null || teacher.IsDeleted)
-            return OperationResult<ClassSubjectTeacherDto>.Failure("المعلم غير موجود");
-        if (teacher.Role != UserRole.Teacher)
-            return OperationResult<ClassSubjectTeacherDto>.Failure("المستخدم ليس معلما");
-
-        if (assignment.TeacherId == request.TeacherId)
+        // Validate the new teacher only if it actually changed
+        if (assignment.TeacherId != request.TeacherId)
         {
-            var current = await _unitOfWork.ClassSubjectTeachers.GetWithAllDetailsAsync(assignment.Id);
-            return OperationResult<ClassSubjectTeacherDto>.Success(
-                _mapper.Map<ClassSubjectTeacherDto>(current),
-                "المعلم مربوط بالفعل بهذا التعيين");
+            var teacher = await _unitOfWork.Users.GetByIdAsync(request.TeacherId);
+            if (teacher is null || teacher.IsDeleted)
+                return OperationResult<ClassSubjectTeacherDto>.Failure("المعلم غير موجود");
+            if (teacher.Role != UserRole.Teacher)
+                return OperationResult<ClassSubjectTeacherDto>.Failure("المستخدم ليس معلما");
         }
 
-        assignment.TeacherId = request.TeacherId;
+        // Always apply all changes (teacher + weeklyPeriods)
+        assignment.TeacherId     = request.TeacherId;
         assignment.WeeklyPeriods = request.WeeklyPeriods;
-        assignment.UpdatedAt = DateTime.UtcNow;
+        assignment.UpdatedAt     = DateTime.UtcNow;
 
         _unitOfWork.ClassSubjectTeachers.Update(assignment);
         await _unitOfWork.SaveChangesAsync();

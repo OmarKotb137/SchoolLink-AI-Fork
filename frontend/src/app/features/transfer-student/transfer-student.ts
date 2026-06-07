@@ -1,23 +1,10 @@
-import { Component, signal, computed } from '@angular/core';
+import { Component, signal, computed, inject, OnInit } from '@angular/core';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
 import { Topbar } from '../../layouts/topbar/topbar';
-
-interface Student {
-  id: number;
-  name: string;
-  class: string;
-  guardianName: string;
-  guardianPhone?: string;
-}
-
-interface TransferRecord {
-  id: number;
-  studentName: string;
-  fromClass: string;
-  toClass: string;
-  date: string;
-  reason?: string;
-}
+import { EnrollmentService, Enrollment, TransferHistory } from '../../core/services/enrollment.service';
+import { ClassService, ClassEntity } from '../../core/services/class.service';
+import { AcademicYearService } from '../../core/services/academic-year.service';
+import { finalize } from 'rxjs/operators';
 
 @Component({
   selector: 'app-transfer-student',
@@ -25,92 +12,147 @@ interface TransferRecord {
   templateUrl: './transfer-student.html',
   styleUrl: './transfer-student.css'
 })
-export class TransferStudent {
+export class TransferStudent implements OnInit {
   sidebarOpen = signal(false);
+  
+  private enrollmentService = inject(EnrollmentService);
+  private classService = inject(ClassService);
+  private academicYearService = inject(AcademicYearService);
+
   searchQuery = signal('');
-  selectedStudent = signal<Student | null>(null);
-  targetClass = signal('');
+  selectedSourceClassId = signal<number | null>(null);
+  selectedStudent = signal<Enrollment | null>(null);
+  targetClassId = signal<number | null>(null);
   transferReason = signal('');
+  
   showError = signal(false);
   showSuccess = signal(false);
+  isLoadingStudents = signal(false);
+  isTransferring = signal(false);
+
   lastTransfer = signal<{ fromClass: string; toClass: string } | null>(null);
 
-  allClasses = ['الصف الأول - أ', 'الصف الأول - ب', 'الصف الثاني - أ', 'الصف الثاني - ب', 'الصف الثالث - أ', 'الصف الثالث - ب'];
-
-  students = signal<Student[]>([
-    { id: 1, name: 'أحمد محمود', class: 'الصف الثالث - أ', guardianName: 'محمود أحمد', guardianPhone: '01001234567' },
-    { id: 2, name: 'سارة علي', class: 'الصف الثالث - أ', guardianName: 'علي حسن', guardianPhone: '01002345678' },
-    { id: 3, name: 'محمود حسن', class: 'الصف الثالث - ب', guardianName: 'حسن محمود', guardianPhone: '01003456789' },
-    { id: 4, name: 'فاطمة أحمد', class: 'الصف الثالث - أ', guardianName: 'أحمد عمر', guardianPhone: '01004567890' },
-    { id: 5, name: 'عمر سعيد', class: 'الصف الثاني - أ', guardianName: 'سعيد علي', guardianPhone: '01005678901' },
-    { id: 6, name: 'ليلى خالد', class: 'الصف الثالث - ب', guardianName: 'خالد محمد', guardianPhone: '01006789012' },
-    { id: 7, name: 'خالد محمود', class: 'الصف الثاني - ب', guardianName: 'محمود سامي', guardianPhone: '01007890123' },
-  ]);
+  allClasses = signal<ClassEntity[]>([]);
+  students = signal<Enrollment[]>([]);
+  transferHistory = signal<TransferHistory[]>([]);
+  currentAcademicYearId = signal<number | null>(null);
 
   filteredStudents = computed(() => {
     const q = this.searchQuery().trim().toLowerCase();
     if (!q) return this.students();
-    return this.students().filter(s => s.name.includes(q));
+    return this.students().filter(s => s.studentName?.toLowerCase().includes(q));
   });
 
-  availableClasses = computed(() => {
-    const current = this.selectedStudent()?.class;
-    return this.allClasses.filter(c => c !== current);
+  availableTargetClasses = computed(() => {
+    const sourceClassId = this.selectedSourceClassId();
+    return this.allClasses().filter(c => c.id !== sourceClassId);
   });
 
-  transferHistory = signal<TransferRecord[]>([
-    { id: 1, studentName: 'أحمد محمود', fromClass: 'الصف الثاني - أ', toClass: 'الصف الثالث - أ', date: '2026-02-15', reason: 'الانتقال للصف الأعلى' },
-    { id: 2, studentName: 'ليلى خالد', fromClass: 'الصف الثاني - ب', toClass: 'الصف الثالث - ب', date: '2026-02-15', reason: 'الانتقال للصف الأعلى' },
-  ]);
+  ngOnInit() {
+    this.academicYearService.getAll().subscribe((years: any[]) => {
+      const currentYear = years.find((y: any) => y.isCurrent);
+      if (currentYear) {
+        this.currentAcademicYearId.set(currentYear.id);
+        this.loadClasses();
+        this.loadTransferHistory(currentYear.id);
+      }
+    });
+  }
 
-  selectStudent(s: Student) {
+  loadClasses() {
+    this.classService.getAll().subscribe(classes => {
+      this.allClasses.set(classes);
+    });
+  }
+
+  loadTransferHistory(academicYearId: number) {
+    this.enrollmentService.getTransferHistory(academicYearId).subscribe(history => {
+      this.transferHistory.set(history);
+    });
+  }
+
+  onSourceClassChange(classIdStr: string) {
+    const classId = parseInt(classIdStr, 10);
+    if (isNaN(classId)) {
+      this.selectedSourceClassId.set(null);
+      this.students.set([]);
+      this.cancelTransfer();
+      return;
+    }
+
+    this.selectedSourceClassId.set(classId);
+    this.cancelTransfer();
+    
+    const yearId = this.currentAcademicYearId();
+    if (!yearId) return;
+
+    this.isLoadingStudents.set(true);
+    this.enrollmentService.getByClass(classId, yearId, true)
+      .pipe(finalize(() => this.isLoadingStudents.set(false)))
+      .subscribe(enrollments => {
+        this.students.set(enrollments);
+      });
+  }
+
+  selectStudent(s: Enrollment) {
     this.selectedStudent.set(s);
-    this.targetClass.set('');
+    this.targetClassId.set(null);
     this.transferReason.set('');
     this.showError.set(false);
   }
 
   cancelTransfer() {
     this.selectedStudent.set(null);
-    this.targetClass.set('');
+    this.targetClassId.set(null);
     this.transferReason.set('');
     this.showError.set(false);
   }
 
   confirmTransfer() {
     const student = this.selectedStudent();
-    const target = this.targetClass();
+    const targetId = this.targetClassId();
+    const yearId = this.currentAcademicYearId();
 
-    if (!student || !target) {
+    if (!student || !targetId || !yearId) {
       this.showError.set(true);
       return;
     }
 
     this.showError.set(false);
-    const fromClass = student.class;
+    this.isTransferring.set(true);
 
-    this.students.update(list => list.map(s =>
-      s.id === student.id ? { ...s, class: target } : s
-    ));
+    const fromClassName = this.allClasses().find(c => c.id === this.selectedSourceClassId())?.name || '';
+    const targetClassName = this.allClasses().find(c => c.id === targetId)?.name || '';
 
-    this.transferHistory.update(list => [{
-      id: Date.now(),
-      studentName: student.name,
-      fromClass,
-      toClass: target,
-      date: new Date().toISOString().split('T')[0],
-      reason: this.transferReason() || undefined
-    }, ...list]);
+    this.enrollmentService.transferStudent({
+      currentEnrollmentId: student.id,
+      newClassId: targetId,
+      transferDate: new Date().toISOString().split('T')[0],
+      transferReason: this.transferReason() || undefined
+    })
+    .pipe(finalize(() => this.isTransferring.set(false)))
+    .subscribe({
+      next: () => {
+        // Remove student from the current list
+        this.students.update(list => list.filter(s => s.id !== student.id));
+        
+        // Update history
+        this.loadTransferHistory(yearId);
 
-    this.lastTransfer.set({ fromClass, toClass: target });
-    this.showSuccess.set(true);
-    this.selectedStudent.set(null);
-    this.targetClass.set('');
-    this.transferReason.set('');
+        this.lastTransfer.set({ fromClass: fromClassName, toClass: targetClassName });
+        this.showSuccess.set(true);
+        this.selectedStudent.set(null);
+        this.targetClassId.set(null);
+        this.transferReason.set('');
 
-    setTimeout(() => {
-      this.showSuccess.set(false);
-      this.lastTransfer.set(null);
-    }, 3000);
+        setTimeout(() => {
+          this.showSuccess.set(false);
+          this.lastTransfer.set(null);
+        }, 3000);
+      },
+      error: () => {
+        // Handle error (e.g., show notification)
+      }
+    });
   }
 }
