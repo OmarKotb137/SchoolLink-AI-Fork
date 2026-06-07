@@ -5,7 +5,7 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
 import { Topbar } from '../../layouts/topbar/topbar';
 import { LibraryService } from '../../core/services/library.service';
-import { LibraryItemDto, LibraryItemType } from '../../core/models/library.model';
+import { LibraryItemDto } from '../../core/models/library.model';
 
 @Component({
   selector: 'app-digital-library',
@@ -48,13 +48,11 @@ export class DigitalLibrary implements OnInit {
   uploadForm = {
     title: '',
     description: '',
-    itemType: LibraryItemType.Book,
+    itemType: 'Book',
     subjectId: null as number | null,
     file: null as File | null,
     linkUrl: ''
   };
-
-  LibraryItemType = LibraryItemType;
 
   ngOnInit() {
     this.loadSubjects();
@@ -75,7 +73,7 @@ export class DigitalLibrary implements OnInit {
   loadLatest() {
     this.libraryService.getLatest(1).subscribe({
       next: (res) => {
-        this.latestItems.set(Array.isArray(res.data) ? res.data : []);
+        this.latestItems.set(res.data?.items ?? []);
       },
       error: (err) => console.error('Error fetching latest items', err)
     });
@@ -193,7 +191,7 @@ export class DigitalLibrary implements OnInit {
     this.viewerItem.set(item);
     if (this.isYouTubeLink(item.fileUrl)) {
       this.viewerSafeUrl.set(this.getSafeUrl(this.getYTEmbedUrl(item.fileUrl)));
-    } else if (item.itemType !== LibraryItemType.Video && !this.isImage(item.fileUrl)) {
+    } else if (item.itemType !== 'Video' && !this.isImage(item.fileUrl)) {
       this.viewerSafeUrl.set(this.getSafeUrl(this.getViewerIframeUrl(item.fileUrl)));
     } else {
       this.viewerSafeUrl.set(null);
@@ -224,7 +222,7 @@ export class DigitalLibrary implements OnInit {
     this.uploadForm = {
       title: '',
       description: '',
-      itemType: LibraryItemType.Book,
+      itemType: 'Book',
       subjectId: null,
       file: null,
       linkUrl: ''

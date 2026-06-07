@@ -91,17 +91,17 @@
                       <div class="absolute top-3 right-3 z-20">
                         <span class="bg-black/60 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-1 rounded border border-white/20">يوتيوب</span>
                       </div>
-                    } @else if (item.itemType === LibraryItemType.Book) {
+                    } @else if (item.itemType === 'Book') {
                       <span class="material-symbols-outlined text-6xl text-primary opacity-80 z-10 transition-transform group-hover:scale-110 duration-500">menu_book</span>
                       <div class="absolute top-3 right-3 z-10">
                         <span class="bg-surface-container-lowest/80 backdrop-blur-sm text-primary text-[10px] font-bold px-2 py-1 rounded border border-primary/20">كتاب منهجي</span>
                       </div>
-                    } @else if (item.itemType === LibraryItemType.File) {
+                    } @else if (item.itemType === 'File') {
                       <span class="material-symbols-outlined text-6xl text-secondary opacity-80 z-10 transition-transform group-hover:scale-110 duration-500">description</span>
                       <div class="absolute top-3 right-3 z-10">
                         <span class="bg-surface-container-lowest/80 backdrop-blur-sm text-secondary text-[10px] font-bold px-2 py-1 rounded border border-secondary/20">ملف</span>
                       </div>
-                    } @else if (item.itemType === LibraryItemType.Video) {
+                    } @else if (item.itemType === 'Video') {
                       <div class="w-12 h-12 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center z-10 shadow-lg text-primary group-hover:bg-primary group-hover:text-white transition-colors cursor-pointer">
                         <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
                       </div>
@@ -185,11 +185,11 @@
                   <div>
                     <label class="block text-label-md font-label-md text-on-surface mb-1">نوع الملف <span class="text-error text-red-500">*</span></label>
                     <select [(ngModel)]="uploadForm.itemType" class="w-full bg-surface-container border border-outline-variant rounded-lg px-4 py-2 text-body-md focus:outline-none focus:border-primary transition-colors">
-                      <option [ngValue]="LibraryItemType.Book">كتاب منهجي</option>
-                      <option [ngValue]="LibraryItemType.File">ملف / ورقة عمل</option>
-                      <option [ngValue]="LibraryItemType.Video">فيديو تعليمي</option>
-                      <option [ngValue]="LibraryItemType.Link">رابط خارجي</option>
-                      <option [ngValue]="LibraryItemType.Note">ملاحظات / ملخص</option>
+                      <option value="Book">كتاب منهجي</option>
+                      <option value="File">ملف / ورقة عمل</option>
+                      <option value="Video">فيديو تعليمي</option>
+                      <option value="Link">رابط خارجي</option>
+                      <option value="Note">ملاحظات / ملخص</option>
                     </select>
                   </div>
                   <div>
@@ -292,7 +292,7 @@
             <div class="flex-1 flex items-center justify-center p-4 min-h-0 relative">
               @if (isYouTubeLink(viewerItem()?.fileUrl)) {
                 <iframe [src]="viewerSafeUrl()" class="w-full h-full max-w-6xl rounded-lg shadow-2xl border border-white/10 bg-black" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-              } @else if (viewerItem()?.itemType === LibraryItemType.Video && !isYouTubeLink(viewerItem()?.fileUrl)) {
+              } @else if (viewerItem()?.itemType === 'Video' && !isYouTubeLink(viewerItem()?.fileUrl)) {
                 <video [src]="getDirectUrl(viewerItem()?.fileUrl)" controls autoplay class="w-full h-full max-w-6xl rounded-lg shadow-2xl bg-black outline-none"></video>
               } @else if (isImage(viewerItem()?.fileUrl)) {
                 <img [src]="getDirectUrl(viewerItem()?.fileUrl)" class="max-w-full max-h-full rounded-lg shadow-2xl object-contain">
