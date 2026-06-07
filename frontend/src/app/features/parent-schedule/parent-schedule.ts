@@ -57,9 +57,9 @@ export class ParentSchedule implements OnInit {
     this.selectedScheduleIndex.set(0);
 
     this.timetableService.getMyChildSchedulesCurrentYear().subscribe({
-      next: (response) => {
-        // apiInterceptor بيفك OperationResult تلقائياً، فـ response هنا هو الـ array نفسه.
-        const list: ChildScheduleDto[] = Array.isArray(response) ? response : [];
+      next: (response: any) => {
+        const data = response.isSuccess ? (response.data ?? []) : [];
+        const list: ChildScheduleDto[] = Array.isArray(data) ? data : [];
         this.schedulesData.set(list);
         this.hasLoaded.set(true);
         this.isLoading.set(false);

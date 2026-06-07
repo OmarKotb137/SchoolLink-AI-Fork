@@ -1,7 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { buildApiUrl } from '../utils/api-url';
 import {
   TimetableDto,
   TimetableSlotDto,

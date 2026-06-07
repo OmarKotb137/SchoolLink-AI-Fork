@@ -56,14 +56,8 @@ export class ClassSchedule implements OnInit {
     this.hasLoaded.set(false);
 
     this.timetableService.getMyStudentScheduleCurrentYear().subscribe({
-      next: (response) => {
-        /*
-         * FIX (CRITICAL):
-         *   apiInterceptor يعمل unwrap للـ OperationResult تلقائياً
-         *   فـ response هنا = TimetableDto مباشرة (مش الـ wrapper).
-         *   الكود القديم كان يعمل response?.data وكانت دايماً undefined.
-         */
-        this.timetable.set(response ?? null);
+      next: (response: any) => {
+        if (response.isSuccess) this.timetable.set(response.data ?? null);
         this.hasLoaded.set(true);
         this.isLoading.set(false);
       },

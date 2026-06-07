@@ -1,7 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { buildApiUrl } from '../utils/api-url';
 import { Teacher } from './teacher.service';
 
 export interface ClassSubjectTeacher {

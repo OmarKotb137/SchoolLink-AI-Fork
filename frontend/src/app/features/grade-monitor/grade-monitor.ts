@@ -33,6 +33,7 @@ export class GradeMonitor implements OnInit {
   schoolProfile = signal<SchoolProfile | null>(null);
   periods = signal<EvaluationPeriod[]>([]);
   subjects = signal<{ id: number; name: string }[]>([]);
+  studentCount = signal(0);
   editTmplId = signal<number | null>(null);
   editClsId = signal<number | null>(null);
   private STORAGE_KEY = 'grade_monitor_classes';
@@ -59,7 +60,7 @@ export class GradeMonitor implements OnInit {
 
   currentPeriodId = computed(() => {
     const weekNum = Number(this.entryWeek());
-    const p = this.periods().find(p => p.periodType === 1 && p.orderNum === weekNum);
+    const p = this.periods().find(p => p.periodType === 'Weekly' && p.orderNum === weekNum);
     return p?.id ?? null;
   });
 
@@ -82,7 +83,7 @@ export class GradeMonitor implements OnInit {
     Promise.all([
       new Promise<void>(resolve => {
         this.api.getSchoolProfile().subscribe({
-          next: (res) => { if (res.isSuccess) this.schoolProfile.set(res.data); resolve(); },
+          next: (res) => { if (res?.isSuccess) this.schoolProfile.set(res.data); else if (res) this.schoolProfile.set(res); resolve(); },
           error: () => resolve(),
         });
       }),
@@ -100,6 +101,12 @@ export class GradeMonitor implements OnInit {
       }),
       this.loadLinksFromApi(),
       this.loadTemplatesAsync(),
+      new Promise<void>(resolve => {
+        this.api.getStudents().subscribe({
+          next: (res) => { this.studentCount.set(Array.isArray(res) ? res.length : (res.data?.length || 0)); resolve(); },
+          error: () => resolve(),
+        });
+      }),
     ]).then(() => {
       this.dataReady.set(true);
       if (this.pendingReload()) {
@@ -240,7 +247,7 @@ export class GradeMonitor implements OnInit {
     const p = this.schoolProfile();
     const weekNames = ['الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس', 'السابع',
       'الثامن', 'التاسع', 'العاشر', 'الحادي عشر', 'الثاني عشر'];
-    const weeks = this.periods().filter((p: any) => p.periodType === 1);
+    const weeks = this.periods().filter((p: any) => p.periodType === 'Weekly');
     const wNames = weeks.map((w: any, i: number) => w.name || weekNames[i] || '');
     const wDates = weeks.map((w: any) => {
       if (!w.startDate) return '';
@@ -566,7 +573,7 @@ export class GradeMonitor implements OnInit {
   private loadApiClasses() {
     this.api.getClasses().subscribe({
       next: (res) => {
-        if (res.isSuccess) this.apiClasses.set(res.data || []);
+        this.apiClasses.set(Array.isArray(res) ? res : (res?.data ?? []));
       },
     });
   }
@@ -578,8 +585,9 @@ export class GradeMonitor implements OnInit {
     return new Promise(resolve => {
       this.api.getLinks().subscribe({
         next: (res) => {
-          if (res.isSuccess && res.data?.length) {
-            this.classes.set((res.data as any[]).map((link: any) => ({
+          const list = Array.isArray(res) ? res : (res?.data ?? []);
+          if (list.length) {
+            this.classes.set(list.map((link: any) => ({
               linkId: link.id,
               id: link.classId,
               name: link.className || '',
@@ -664,12 +672,10 @@ export class GradeMonitor implements OnInit {
     const apiId = c?.id;
     const found = apiId ? this.apiClasses().find((ac: any) => ac.id === apiId) : null;
     this.cName.set(found?.name ?? c?.name ?? '');
-    this.cTeacher.set(found?.teacher ?? '');
-    this.cSubj.set(found?.subject ?? '');
-    this.cYear.set(found?.year ?? c?.year ?? '2025/2026');
-    this.cStudents.set(
-      (found?.students ?? c?.students ?? []).map((s: any) => s.name).join('\n')
-    );
+    this.cTeacher.set(found?.gradeLevelName ?? '');
+    this.cSubj.set(found?.academicYearName ?? '');
+    this.cYear.set('');
+    this.cStudents.set('');
     this.clsModalOpen.set(true);
   }
 
@@ -690,10 +696,10 @@ export class GradeMonitor implements OnInit {
     const found = this.apiClasses().find((c: any) => c.id === Number(id));
     if (found) {
       this.cName.set(found.name || '');
-      this.cTeacher.set(found.teacher || '');
-      this.cSubj.set(found.subject || '');
-      this.cYear.set(found.year || '');
-      this.cStudents.set((found.students || []).map((s: any) => s.name).join('\n'));
+      this.cTeacher.set(found.gradeLevelName || '');
+      this.cSubj.set(found.academicYearName || '');
+      this.cYear.set('');
+      this.cStudents.set('');
       this.cTmplId.set(null);
     }
   }
@@ -750,8 +756,8 @@ export class GradeMonitor implements OnInit {
   });
 
   stats = computed(() => ({
-    classes: this.classes().length,
-    students: this.classes().reduce((a, c) => a + c.students.length, 0),
+    classes: this.apiClasses().length,
+    students: this.studentCount(),
     entries: 0,
     templates: this.templates().length,
   }));
@@ -803,7 +809,7 @@ export class GradeMonitor implements OnInit {
   entryWeeks = computed(() => {
     const tmpl = this.currentTmpl();
     if (!tmpl) return [];
-    const periods = this.periods().filter(p => p.periodType === 1);
+    const periods = this.periods().filter(p => p.periodType === 'Weekly');
     const maxWeeks = Math.min(tmpl.weeks, periods.length);
     return Array.from({ length: maxWeeks }, (_, i) => i + 1);
   });
@@ -819,7 +825,7 @@ export class GradeMonitor implements OnInit {
 
   private getPeriodId(weekNum: number): number | null {
     const num = Number(weekNum);
-    const period = this.periods().find(p => p.periodType === 1 && p.orderNum === num);
+    const period = this.periods().find(p => p.periodType === 'Weekly' && p.orderNum === num);
     return period?.id ?? null;
   }
 
@@ -1322,7 +1328,7 @@ export class GradeMonitor implements OnInit {
       school: tmpl.school || profile?.schoolName || '',
     };
 
-    const wkCount = Math.min(tmpl.weeks, this.periods().filter(p => p.periodType === 1).length);
+    const wkCount = Math.min(tmpl.weeks, this.periods().filter(p => p.periodType === 'Weekly').length);
     const weeks = tmpl.week_names.slice(0, wkCount).map((name, i) => ({
       name,
       date: tmpl.week_dates[i] || '',
@@ -1410,7 +1416,7 @@ export class GradeMonitor implements OnInit {
 
   private async loadAllWeeksGrades(cls: ClassItem, tmpl: Template): Promise<Record<string, Record<string, number>>> {
     const result: Record<string, Record<string, number>> = {};
-    const periods = this.periods().filter(p => p.periodType === 1);
+    const periods = this.periods().filter(p => p.periodType === 'Weekly');
     const weeksCount = Math.min(tmpl.weeks, periods.length);
     for (let wn = 1; wn <= weeksCount; wn++) {
       const period = periods.find(p => p.orderNum === wn);

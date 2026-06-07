@@ -2,7 +2,6 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { buildApiUrl } from '../utils/api-url';
 import { Student } from './student.service';
 
 export type RelationshipType = 1 | 2 | 3 | 4 | 5;

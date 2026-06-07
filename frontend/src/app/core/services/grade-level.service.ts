@@ -1,7 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { buildApiUrl } from '../utils/api-url';
 
 export interface GradeLevel {
   id: number;
