@@ -5,6 +5,7 @@ import { map, takeUntil } from 'rxjs/operators';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
 import { Topbar } from '../../layouts/topbar/topbar';
 import { GradeMonitorService, Template, ClassItem, Student, SchoolProfile, EvaluationPeriod, Criteria } from './grade-monitor.service';
+import { GradeLevelService, GradeLevel } from '../../core/services/grade-level.service';
 import { WordGeneratorService } from './word-generator.service';
 
 @Component({
@@ -15,6 +16,7 @@ import { WordGeneratorService } from './word-generator.service';
 })
 export class GradeMonitor implements OnInit {
   private api = inject(GradeMonitorService);
+  private gradeLevelService = inject(GradeLevelService);
   private wg = inject(WordGeneratorService);
   private cdr = inject(ChangeDetectorRef);
 
@@ -27,9 +29,11 @@ export class GradeMonitor implements OnInit {
   templates = signal<Template[]>([]);
   classes = signal<ClassItem[]>([]);          // linked classes (from ClassTemplateLinks)
   apiClasses = signal<any[]>([]);             // real classes from API (for dropdown)
+  grades = signal<GradeLevel[]>([]);          // grade levels for filtering
   schoolProfile = signal<SchoolProfile | null>(null);
   periods = signal<EvaluationPeriod[]>([]);
   subjects = signal<{ id: number; name: string }[]>([]);
+  studentCount = signal(0);
   editTmplId = signal<number | null>(null);
   editClsId = signal<number | null>(null);
   private STORAGE_KEY = 'grade_monitor_classes';
@@ -56,7 +60,7 @@ export class GradeMonitor implements OnInit {
 
   currentPeriodId = computed(() => {
     const weekNum = Number(this.entryWeek());
-    const p = this.periods().find(p => p.periodType === 1 && p.orderNum === weekNum);
+    const p = this.periods().find(p => p.periodType === 'Weekly' && p.orderNum === weekNum);
     return p?.id ?? null;
   });
 
@@ -73,12 +77,13 @@ export class GradeMonitor implements OnInit {
   // ══════════════════════════════════════
   ngOnInit() {
     this.loadFromLocalStorage();
+    this.loadGrades();
     this.loadApiClasses();
 
     Promise.all([
       new Promise<void>(resolve => {
         this.api.getSchoolProfile().subscribe({
-          next: (res) => { if (res.isSuccess) this.schoolProfile.set(res.data); resolve(); },
+          next: (res) => { if (res?.isSuccess) this.schoolProfile.set(res.data); else if (res) this.schoolProfile.set(res); resolve(); },
           error: () => resolve(),
         });
       }),
@@ -96,6 +101,12 @@ export class GradeMonitor implements OnInit {
       }),
       this.loadLinksFromApi(),
       this.loadTemplatesAsync(),
+      new Promise<void>(resolve => {
+        this.api.getStudents().subscribe({
+          next: (res) => { this.studentCount.set(Array.isArray(res) ? res.length : (res.data?.length || 0)); resolve(); },
+          error: () => resolve(),
+        });
+      }),
     ]).then(() => {
       this.dataReady.set(true);
       if (this.pendingReload()) {
@@ -236,7 +247,7 @@ export class GradeMonitor implements OnInit {
     const p = this.schoolProfile();
     const weekNames = ['الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس', 'السابع',
       'الثامن', 'التاسع', 'العاشر', 'الحادي عشر', 'الثاني عشر'];
-    const weeks = this.periods().filter((p: any) => p.periodType === 1);
+    const weeks = this.periods().filter((p: any) => p.periodType === 'Weekly');
     const wNames = weeks.map((w: any, i: number) => w.name || weekNames[i] || '');
     const wDates = weeks.map((w: any) => {
       if (!w.startDate) return '';
@@ -550,10 +561,19 @@ export class GradeMonitor implements OnInit {
   // ══════════════════════════════════════
   //  REAL CLASSES (for dropdown)
   // ══════════════════════════════════════
+  private loadGrades() {
+    this.gradeLevelService.getAll().subscribe({
+      next: (data) => {
+        const sortedGrades = (data.data ?? data).sort((a: any, b: any) => a.levelOrder - b.levelOrder);
+        this.grades.set(sortedGrades);
+      }
+    });
+  }
+
   private loadApiClasses() {
     this.api.getClasses().subscribe({
       next: (res) => {
-        if (res.isSuccess) this.apiClasses.set(res.data || []);
+        this.apiClasses.set(Array.isArray(res) ? res : (res?.data ?? []));
       },
     });
   }
@@ -565,8 +585,9 @@ export class GradeMonitor implements OnInit {
     return new Promise(resolve => {
       this.api.getLinks().subscribe({
         next: (res) => {
-          if (res.isSuccess && res.data?.length) {
-            this.classes.set((res.data as any[]).map((link: any) => ({
+          const list = Array.isArray(res) ? res : (res?.data ?? []);
+          if (list.length) {
+            this.classes.set(list.map((link: any) => ({
               linkId: link.id,
               id: link.classId,
               name: link.className || '',
@@ -617,6 +638,7 @@ export class GradeMonitor implements OnInit {
   // ══════════════════════════════════════
   // ══ Class modal signals ══
   clsModalOpen  = signal(false);
+  linkedApiGradeId = signal<number | null>(null);      // selected Grade
   linkedApiClsId = signal<number | null>(null);        // id of selected API class
   cName     = signal('');
   cTeacher  = signal('');
@@ -628,12 +650,21 @@ export class GradeMonitor implements OnInit {
   // Computed: classes NOT yet linked (have no template chosen or came fresh from API)
   unlinkedApiClasses = computed(() => this.classes());
 
+  filteredApiClasses = computed(() => {
+    const gradeId = this.linkedApiGradeId();
+    if (!gradeId) return [];
+    return this.apiClasses().filter(c => c.gradeLevelId === gradeId);
+  });
+
   openClsForm(c?: ClassItem) {
     this.editClsId.set(c ? c.id : null);
     if (c) {
       this.linkedApiClsId.set(c.id);
       this.cTmplId.set(c.template_id || null);
+      const found = this.apiClasses().find((ac: any) => ac.id === c.id);
+      if (found) this.linkedApiGradeId.set(found.gradeLevelId);
     } else {
+      this.linkedApiGradeId.set(null);
       this.linkedApiClsId.set(null);
       this.cTmplId.set(null);
     }
@@ -641,13 +672,22 @@ export class GradeMonitor implements OnInit {
     const apiId = c?.id;
     const found = apiId ? this.apiClasses().find((ac: any) => ac.id === apiId) : null;
     this.cName.set(found?.name ?? c?.name ?? '');
-    this.cTeacher.set(found?.teacher ?? '');
-    this.cSubj.set(found?.subject ?? '');
-    this.cYear.set(found?.year ?? c?.year ?? '2025/2026');
-    this.cStudents.set(
-      (found?.students ?? c?.students ?? []).map((s: any) => s.name).join('\n')
-    );
+    this.cTeacher.set(found?.gradeLevelName ?? '');
+    this.cSubj.set(found?.academicYearName ?? '');
+    this.cYear.set('');
+    this.cStudents.set('');
     this.clsModalOpen.set(true);
+  }
+
+  onLinkedApiGradeChange(id: number | null) {
+    this.linkedApiGradeId.set(id);
+    this.linkedApiClsId.set(null);
+    this.cName.set('');
+    this.cTeacher.set('');
+    this.cSubj.set('');
+    this.cYear.set('');
+    this.cStudents.set('');
+    this.cTmplId.set(null);
   }
 
   onLinkedApiClsChange(id: number | null) {
@@ -656,10 +696,10 @@ export class GradeMonitor implements OnInit {
     const found = this.apiClasses().find((c: any) => c.id === Number(id));
     if (found) {
       this.cName.set(found.name || '');
-      this.cTeacher.set(found.teacher || '');
-      this.cSubj.set(found.subject || '');
-      this.cYear.set(found.year || '');
-      this.cStudents.set((found.students || []).map((s: any) => s.name).join('\n'));
+      this.cTeacher.set(found.gradeLevelName || '');
+      this.cSubj.set(found.academicYearName || '');
+      this.cYear.set('');
+      this.cStudents.set('');
       this.cTmplId.set(null);
     }
   }
@@ -716,8 +756,8 @@ export class GradeMonitor implements OnInit {
   });
 
   stats = computed(() => ({
-    classes: this.classes().length,
-    students: this.classes().reduce((a, c) => a + c.students.length, 0),
+    classes: this.apiClasses().length,
+    students: this.studentCount(),
     entries: 0,
     templates: this.templates().length,
   }));
@@ -769,7 +809,7 @@ export class GradeMonitor implements OnInit {
   entryWeeks = computed(() => {
     const tmpl = this.currentTmpl();
     if (!tmpl) return [];
-    const periods = this.periods().filter(p => p.periodType === 1);
+    const periods = this.periods().filter(p => p.periodType === 'Weekly');
     const maxWeeks = Math.min(tmpl.weeks, periods.length);
     return Array.from({ length: maxWeeks }, (_, i) => i + 1);
   });
@@ -785,7 +825,7 @@ export class GradeMonitor implements OnInit {
 
   private getPeriodId(weekNum: number): number | null {
     const num = Number(weekNum);
-    const period = this.periods().find(p => p.periodType === 1 && p.orderNum === num);
+    const period = this.periods().find(p => p.periodType === 'Weekly' && p.orderNum === num);
     return period?.id ?? null;
   }
 
@@ -1288,7 +1328,7 @@ export class GradeMonitor implements OnInit {
       school: tmpl.school || profile?.schoolName || '',
     };
 
-    const wkCount = Math.min(tmpl.weeks, this.periods().filter(p => p.periodType === 1).length);
+    const wkCount = Math.min(tmpl.weeks, this.periods().filter(p => p.periodType === 'Weekly').length);
     const weeks = tmpl.week_names.slice(0, wkCount).map((name, i) => ({
       name,
       date: tmpl.week_dates[i] || '',
@@ -1376,7 +1416,7 @@ export class GradeMonitor implements OnInit {
 
   private async loadAllWeeksGrades(cls: ClassItem, tmpl: Template): Promise<Record<string, Record<string, number>>> {
     const result: Record<string, Record<string, number>> = {};
-    const periods = this.periods().filter(p => p.periodType === 1);
+    const periods = this.periods().filter(p => p.periodType === 'Weekly');
     const weeksCount = Math.min(tmpl.weeks, periods.length);
     for (let wn = 1; wn <= weeksCount; wn++) {
       const period = periods.find(p => p.orderNum === wn);

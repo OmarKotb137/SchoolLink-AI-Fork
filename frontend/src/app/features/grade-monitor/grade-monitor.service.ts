@@ -65,7 +65,7 @@ export interface EvaluationPeriod {
   id: number;
   academicYearId: number;
   name: string;
-  periodType: number;
+  periodType: string;
   orderNum: number;
   startDate: string;
   endDate: string;
@@ -251,7 +251,12 @@ export class GradeMonitorService {
 
   // ─── Real Classes (for dropdown picker) ──────────────
   getClasses() {
-    return this.http.get<any>(`${this.base}/Classes`);
+    return this.http.get<any>(`${this.base}/class-management`);
+  }
+
+  // ─── Student count ──────────────────────────────────
+  getStudents() {
+    return this.http.get<any>(`${this.base}/students`);
   }
 
   // ─── Bulk Save ─────────────────────────────────────────

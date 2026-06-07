@@ -31,6 +31,34 @@ export class StudentManagement implements OnInit {
   successMessage = signal<string | null>(null);
   searchQuery = signal('');
 
+  currentPage = signal(1);
+  itemsPerPage = signal(10);
+
+  paginatedStudents = computed(() => {
+    const start = (this.currentPage() - 1) * this.itemsPerPage();
+    return this.filteredStudents().slice(start, start + this.itemsPerPage());
+  });
+
+  totalPages = computed(() => {
+    return Math.max(1, Math.ceil(this.filteredStudents().length / this.itemsPerPage()));
+  });
+
+  nextPage() {
+    if (this.currentPage() < this.totalPages()) {
+      this.currentPage.update(p => p + 1);
+    }
+  }
+
+  prevPage() {
+    if (this.currentPage() > 1) {
+      this.currentPage.update(p => p - 1);
+    }
+  }
+
+  goToPage(page: number) {
+    this.currentPage.set(page);
+  }
+
   selectedStudentId = signal<number | null>(null);
   selectedStudentUserId = signal<number | null>(null);
   selectedParentId = signal<number | null>(null);
@@ -88,10 +116,12 @@ export class StudentManagement implements OnInit {
 
     this.studentService.getAll().subscribe({
       next: students => {
-        this.students.set(students);
+        const s = students.data ?? students;
+        this.students.set(s);
+        this.currentPage.set(1);
 
         const selectedId = this.selectedStudentId();
-        if (selectedId && students.some(student => student.id === selectedId)) {
+        if (selectedId && s.some((student: any) => student.id === selectedId)) {
           this.loadParentLinks(selectedId);
         } else {
           this.selectedStudentId.set(null);
@@ -110,14 +140,14 @@ export class StudentManagement implements OnInit {
 
   loadStudentAccounts() {
     this.userService.getByRole('Student', 1000).subscribe({
-      next: result => this.studentAccounts.set(result.items ?? []),
+      next: result => this.studentAccounts.set(result.data?.items ?? []),
       error: err => this.showError(err?.error?.message || 'تعذر تحميل حسابات الطلاب')
     });
   }
 
   loadParentAccounts() {
     this.userService.getByRole('Parent', 1000).subscribe({
-      next: result => this.parentAccounts.set(result.items ?? []),
+      next: result => this.parentAccounts.set(result.data?.items ?? []),
       error: err => this.showError(err?.error?.message || 'تعذر تحميل حسابات أولياء الأمور')
     });
   }
@@ -131,7 +161,7 @@ export class StudentManagement implements OnInit {
 
   loadParentLinks(studentId: number) {
     this.parentStudentService.getParentsByStudent(studentId).subscribe({
-      next: links => this.parentLinks.set(links),
+      next: links => this.parentLinks.set(links.data ?? links),
       error: err => {
         this.parentLinks.set([]);
         this.showError(err?.error?.message || 'تعذر تحميل روابط أولياء الأمور');
@@ -177,10 +207,11 @@ export class StudentManagement implements OnInit {
 
     this.studentService.create(payload).subscribe({
       next: student => {
+        const s = student.data ?? student;
         this.showSuccess('تم إنشاء ملف الطالب بنجاح');
         this.closeModals();
         this.loadStudents();
-        this.selectStudent(student);
+        this.selectStudent(s);
       },
       error: err => {
         const msg = err?.error?.message || 'تعذر إنشاء ملف الطالب';

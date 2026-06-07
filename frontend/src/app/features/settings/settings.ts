@@ -49,12 +49,12 @@ export class Settings implements OnInit {
 
   loadData() {
     this.academicYearService.getAll().subscribe({
-      next: (data) => this.academicYears.set(data),
+      next: (data) => this.academicYears.set(data.data ?? data),
       error: (err) => console.error('Failed to load academic years', err),
     });
 
     this.gradeLevelService.getAll().subscribe({
-      next: (data) => this.gradeLevels.set(data),
+      next: (data) => this.gradeLevels.set(data.data ?? data),
       error: (err) => console.error('Failed to load grade levels', err),
     });
   }

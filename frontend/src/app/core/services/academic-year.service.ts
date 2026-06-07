@@ -2,7 +2,6 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { buildApiUrl } from '../utils/api-url';
-
 export interface AcademicYear {
   id: number;
   name: string;
@@ -18,31 +17,31 @@ export class AcademicYearService {
   private http = inject(HttpClient);
   private apiUrl = buildApiUrl('academic-years');
 
-  getAll(): Observable<AcademicYear[]> {
-    return this.http.get<AcademicYear[]>(this.apiUrl);
+  getAll(): Observable<any> {
+    return this.http.get<any>(this.apiUrl);
   }
 
-  getById(id: number): Observable<AcademicYear> {
-    return this.http.get<AcademicYear>(`${this.apiUrl}/${id}`);
+  getById(id: number): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/${id}`);
   }
 
-  create(data: Partial<AcademicYear>): Observable<AcademicYear> {
-    return this.http.post<AcademicYear>(this.apiUrl, data);
+  create(data: Partial<AcademicYear>): Observable<any> {
+    return this.http.post<any>(this.apiUrl, data);
   }
 
-  update(id: number, data: Partial<AcademicYear>): Observable<AcademicYear> {
-    return this.http.put<AcademicYear>(`${this.apiUrl}/${id}`, data);
+  update(id: number, data: Partial<AcademicYear>): Observable<any> {
+    return this.http.put<any>(`${this.apiUrl}/${id}`, data);
   }
 
-  delete(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/${id}`);
+  delete(id: number): Observable<any> {
+    return this.http.delete<any>(`${this.apiUrl}/${id}`);
   }
 
-  setActive(id: number): Observable<void> {
-    return this.http.patch<void>(`${this.apiUrl}/${id}/set-current`, {});
+  setActive(id: number): Observable<any> {
+    return this.http.patch<any>(`${this.apiUrl}/${id}/set-current`, {});
   }
 
-  archive(id: string): Observable<void> {
-    return this.http.patch<void>(`${this.apiUrl}/${id}/archive`, {});
+  archive(id: string): Observable<any> {
+    return this.http.patch<any>(`${this.apiUrl}/${id}/archive`, {});
   }
 }

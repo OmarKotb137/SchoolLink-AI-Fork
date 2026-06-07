@@ -1,140 +1,170 @@
 <app-sidebar [(isOpen)]="sidebarOpen" />
 <div class="main-content">
   <app-topbar [userName]="displayUserName" />
-  <main class="pt-16 min-h-screen flex flex-col bg-background p-6 gap-5">
+  <main class="pt-16 min-h-screen flex flex-col bg-gray-50">
+    <div class="flex-1 p-4 md:p-6 lg:p-8">
+      <div class="max-w-7xl mx-auto space-y-6 pb-10">
 
-    <!-- ══════════════════════ HEADER ══════════════════════ -->
-    <div class="ps-header">
+        <!-- ══════════════════════ HEADER ══════════════════════ -->
+        <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50 flex flex-col gap-6">
 
-      <div class="ps-header-left">
-        <div class="ps-header-icon">
-          <span class="material-symbols-outlined"
-                style="font-variation-settings:'FILL' 1;font-size:26px">family_home</span>
-        </div>
-        <div>
-          <h1 class="ps-title">جداول الأبناء</h1>
-          <p class="ps-subtitle">متابعة الجداول الأسبوعية لأبنائك المسجلين بالمدرسة</p>
-        </div>
-      </div>
+          <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div class="flex items-center gap-4">
+              <div class="w-12 h-12 bg-purple-50 border border-purple-100 text-purple-600 rounded-3xl flex items-center justify-center shrink-0">
+                <span class="material-symbols-outlined text-2xl" style="font-variation-settings:'FILL' 1;">family_home</span>
+              </div>
+              <div>
+                <h1 class="text-2xl font-bold text-gray-900">جداول الأبناء</h1>
+                <p class="text-sm text-gray-500 mt-1">متابعة الجداول الأسبوعية لأبنائك المسجلين بالمدرسة</p>
+              </div>
+            </div>
 
-      <!-- Child selector — يظهر لما في أكتر من ابن -->
-      <div class="ps-child-tabs" *ngIf="schedulesData().length > 1">
-        <button *ngFor="let sched of schedulesData(); let i = index"
-                (click)="selectChild(i)"
-                class="ps-child-tab"
-                [class.ps-child-tab--active]="selectedScheduleIndex() === i">
-          <span class="ps-avatar">
-            {{ (sched.studentName || sched.className || '؟') | slice:0:1 }}
-          </span>
-          <div class="ps-tab-info">
-            <span class="ps-tab-name">{{ sched.studentName || 'ابن ' + (i + 1) }}</span>
-            <span class="ps-tab-class">{{ sched.className }}</span>
+            <!-- Single child badge — يظهر لما في ابن واحد بس -->
+            <div class="bg-blue-50 border border-blue-100 p-2 pr-3 rounded-full flex items-center gap-3" *ngIf="schedulesData().length === 1">
+              <div class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm shrink-0">
+                {{ (schedulesData()[0].studentName || '؟') | slice:0:1 }}
+              </div>
+              <div class="pl-2">
+                <p class="text-sm font-bold text-blue-900 leading-tight">{{ schedulesData()[0].studentName }}</p>
+                <p class="text-[10px] font-medium text-blue-600">{{ schedulesData()[0].className }}</p>
+              </div>
+            </div>
           </div>
-        </button>
-      </div>
 
-      <!-- Single child badge — يظهر لما في ابن واحد بس -->
-      <div class="ps-single-badge" *ngIf="schedulesData().length === 1">
-        <span class="ps-avatar ps-avatar--lg">
-          {{ (schedulesData()[0].studentName || '؟') | slice:0:1 }}
-        </span>
-        <div>
-          <p class="ps-single-name">{{ schedulesData()[0].studentName }}</p>
-          <p class="ps-single-class">{{ schedulesData()[0].className }}</p>
-        </div>
-      </div>
-
-    </div>
-
-    <!-- ══════════════════════ ERROR BANNER ══════════════════════ -->
-    <div *ngIf="errorMessage()" class="ps-error-banner">
-      <span class="material-symbols-outlined"
-            style="font-variation-settings:'FILL' 1;flex-shrink:0">error</span>
-      <span class="flex-1">{{ errorMessage() }}</span>
-      <button (click)="loadSchedules()" class="ps-retry-btn">
-        <span class="material-symbols-outlined" style="font-size:15px">refresh</span>
-        إعادة المحاولة
-      </button>
-    </div>
-
-    <!-- ══════════════════════ TIMETABLE CARD ══════════════════════ -->
-    <div class="ps-grid-card flex-1">
-
-      <!-- Loading overlay -->
-      <div *ngIf="isLoading()" class="ps-overlay">
-        <div class="ps-spinner-wrap">
-          <span class="material-symbols-outlined ps-spinner">progress_activity</span>
-          <p class="ps-loading-label">جاري تحميل الجدول…</p>
-        </div>
-      </div>
-
-      <!-- ─── Timetable Matrix ─── -->
-      <table *ngIf="currentSchedule()" class="ps-table">
-        <thead>
-          <tr>
-            <!-- Corner cell with diagonal divider -->
-            <th class="ps-corner">
-              <span class="ps-corner-top">اليوم</span>
-              <span class="ps-corner-btm">الحصة</span>
-            </th>
-            <th *ngFor="let p of periods()" class="ps-period-th">
-              <span class="ps-period-name">{{ p.label }}</span>
-              <span class="ps-period-time">{{ p.start }}–{{ p.end }}</span>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let day of days" class="ps-day-row">
-
-            <td class="ps-day-td">{{ day.label }}</td>
-
-            <td *ngFor="let p of periods()" class="ps-cell">
-              <ng-container *ngIf="getSlot(day.value, p.num) as slot">
-
-                <!-- استراحة -->
-                <div *ngIf="slot.isBreak; else lessonTpl" class="ps-break">
-                  <span class="material-symbols-outlined ps-break-icon"
-                        style="font-variation-settings:'FILL' 1">local_cafe</span>
-                  <span class="ps-break-label">استراحة</span>
+          <!-- Child selector — يظهر لما في أكتر من ابن -->
+          <div class="flex flex-wrap gap-2 pt-4 border-t border-gray-100" *ngIf="schedulesData().length > 1">
+            <button *ngFor="let sched of schedulesData(); let i = index"
+                    (click)="selectChild(i)"
+                    class="flex items-center gap-3 p-2 pr-3 rounded-full border transition-all text-right"
+                    [class.bg-blue-600]="selectedScheduleIndex() === i"
+                    [class.border-blue-600]="selectedScheduleIndex() === i"
+                    [class.shadow-md]="selectedScheduleIndex() === i"
+                    [class.bg-white]="selectedScheduleIndex() !== i"
+                    [class.border-gray-100]="selectedScheduleIndex() !== i"
+                    [class.hover:bg-gray-50]="selectedScheduleIndex() !== i">
+              
+              <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0"
+                   [class.bg-white]="selectedScheduleIndex() === i"
+                   [class.text-blue-600]="selectedScheduleIndex() === i"
+                   [class.bg-gray-100]="selectedScheduleIndex() !== i"
+                   [class.text-gray-600]="selectedScheduleIndex() !== i">
+                {{ (sched.studentName || sched.className || '؟') | slice:0:1 }}
+              </div>
+              
+              <div class="pl-2">
+                <div class="text-sm font-bold leading-tight"
+                     [class.text-white]="selectedScheduleIndex() === i"
+                     [class.text-gray-900]="selectedScheduleIndex() !== i">
+                  {{ sched.studentName || 'ابن ' + (i + 1) }}
                 </div>
+                <div class="text-[10px] font-medium"
+                     [class.text-blue-200]="selectedScheduleIndex() === i"
+                     [class.text-gray-500]="selectedScheduleIndex() !== i">
+                  {{ sched.className }}
+                </div>
+              </div>
+            </button>
+          </div>
 
-                <!-- حصة دراسية -->
-                <ng-template #lessonTpl>
-                  <div class="ps-lesson">
-                    <span class="ps-subject">{{ slot.subjectName }}</span>
-                    <div class="ps-meta">
-                      <span class="ps-meta-row">
-                        <span class="material-symbols-outlined ps-ico">person</span>
-                        {{ slot.teacherName }}
-                      </span>
-                      <span class="ps-meta-row ps-meta-room" *ngIf="slot.roomName">
-                        <span class="material-symbols-outlined ps-ico">door_open</span>
-                        {{ slot.roomName }}
-                      </span>
-                    </div>
-                  </div>
-                </ng-template>
-
-              </ng-container>
-            </td>
-
-          </tr>
-        </tbody>
-      </table>
-
-      <!-- ─── Empty state ─── -->
-      <div *ngIf="!isLoading() && !errorMessage() && schedulesData().length === 0"
-           class="ps-empty">
-        <div class="ps-empty-circle">
-          <span class="material-symbols-outlined"
-                style="font-size:2.75rem;font-variation-settings:'FILL' 1">event_busy</span>
         </div>
-        <h3 class="ps-empty-title">لا توجد جداول مسجلة</h3>
-        <p class="ps-empty-sub">
-          لم يتم العثور على جداول مفعّلة لأبنائك في السنة الدراسية الحالية
-        </p>
-      </div>
 
+        <!-- ══════════════════════ ERROR BANNER ══════════════════════ -->
+        <div *ngIf="errorMessage()" class="flex items-center justify-between gap-3 p-4 rounded-2xl bg-red-50 text-sm text-red-800 border border-red-200 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50">
+          <div class="flex items-center gap-3">
+            <span class="material-symbols-outlined text-lg" style="font-variation-settings:'FILL' 1;">error</span>
+            <span class="font-medium">{{ errorMessage() }}</span>
+          </div>
+          <button (click)="loadSchedules()" class="text-xs font-bold underline hover:no-underline px-3 py-1.5 rounded-xl hover:bg-red-100 transition-colors flex items-center gap-1">
+            <span class="material-symbols-outlined text-sm">refresh</span>
+            إعادة المحاولة
+          </button>
+        </div>
+
+        <!-- ══════════════════════ TIMETABLE CARD ══════════════════════ -->
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50 overflow-hidden flex flex-col relative min-h-[500px]">
+
+          <!-- Loading overlay -->
+          <div *ngIf="isLoading()" class="absolute inset-0 bg-white/80 z-10 flex flex-col items-center justify-center">
+            <span class="material-symbols-outlined animate-spin text-5xl text-blue-600 mb-3">progress_activity</span>
+            <span class="text-gray-500 font-medium">جاري تحميل الجدول...</span>
+          </div>
+
+          <!-- ─── Timetable Matrix ─── -->
+          <div class="overflow-x-auto w-full h-full">
+            <table *ngIf="currentSchedule()" class="w-full border-collapse min-w-[800px] text-center text-sm">
+              <thead>
+                <tr class="bg-gray-50 border-b border-gray-100">
+                  <!-- Corner cell -->
+                  <th class="p-4 border-l border-gray-100 w-32 font-bold text-gray-900 align-middle">
+                    <div class="flex flex-col items-center gap-1">
+                      <span class="material-symbols-outlined text-blue-600 text-lg">calendar_view_week</span>
+                      <span class="text-xs text-gray-500 font-bold uppercase">اليوم / الحصة</span>
+                    </div>
+                  </th>
+                  <!-- Period headers -->
+                  <th *ngFor="let p of periods()" class="p-4 border-l border-gray-100 font-bold text-gray-900">
+                    <div class="text-sm mb-1">{{ p.label }}</div>
+                    <div class="text-xs font-medium bg-white border border-gray-100 text-gray-500 rounded px-2 py-0.5 inline-block">
+                      {{ p.start }} – {{ p.end }}
+                    </div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let day of days" class="border-b border-gray-100 hover:bg-gray-50/50 transition-colors">
+
+                  <!-- Day label -->
+                  <td class="p-4 border-l border-gray-100 font-bold text-gray-900 align-middle bg-gray-50/50 shadow-[inset_-4px_0_0_0_#3b82f6]">
+                    {{ day.label }}
+                  </td>
+
+                  <!-- Slot cells -->
+                  <td *ngFor="let p of periods()" class="border-l border-gray-100 h-28 p-2 relative align-middle">
+                    <ng-container *ngIf="getSlot(day.value, p.num) as slot">
+
+                      <!-- استراحة -->
+                      <div *ngIf="slot.isBreak; else lessonTpl" class="w-full h-full min-h-[90px] flex flex-col justify-center items-center p-2 rounded-2xl bg-orange-50 border border-orange-100 transition-transform hover:scale-[1.02] cursor-default">
+                        <span class="material-symbols-outlined text-orange-500 mb-1 text-2xl" style="font-variation-settings:'FILL' 1">local_cafe</span>
+                        <span class="font-bold text-orange-700 text-sm">استراحة</span>
+                      </div>
+
+                      <!-- حصة دراسية -->
+                      <ng-template #lessonTpl>
+                        <div class="w-full h-full min-h-[90px] flex flex-col justify-center items-center p-2 rounded-2xl border border-blue-100 bg-blue-50 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50 transition-transform hover:scale-[1.02] cursor-default">
+                          <span class="font-bold text-blue-900 mb-1.5 text-sm">{{ slot.subjectName }}</span>
+                          <div class="flex flex-col items-center w-full px-1 gap-1">
+                            <span class="flex items-center justify-center gap-1 w-full bg-white text-gray-700 text-[11px] px-1.5 py-0.5 rounded border border-gray-100">
+                              <span class="material-symbols-outlined text-[13px] text-gray-400">person</span>
+                              <span class="truncate w-full">{{ slot.teacherName }}</span>
+                            </span>
+                            <span class="flex items-center justify-center gap-1 w-full text-purple-700 font-medium text-[11px]" *ngIf="slot.roomName">
+                              <span class="material-symbols-outlined text-[12px]">door_open</span>
+                              <span class="truncate">{{ slot.roomName }}</span>
+                            </span>
+                          </div>
+                        </div>
+                      </ng-template>
+
+                    </ng-container>
+                  </td>
+
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- ─── Empty state ─── -->
+          <div *ngIf="!isLoading() && !errorMessage() && schedulesData().length === 0"
+               class="flex-1 flex flex-col items-center justify-center text-gray-500 p-16">
+            <span class="material-symbols-outlined text-6xl mb-4 text-gray-300" style="font-variation-settings:'FILL' 1">event_busy</span>
+            <h3 class="text-lg font-bold text-gray-900 mb-2">لا توجد جداول مسجلة</h3>
+            <p class="text-sm text-center max-w-xs">
+              لم يتم العثور على جداول مفعّلة لأبنائك في السنة الدراسية الحالية
+            </p>
+          </div>
+
+        </div>
+      </div>
     </div>
   </main>
 </div>

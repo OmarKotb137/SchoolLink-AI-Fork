@@ -65,9 +65,8 @@ export class DigitalLibrary implements OnInit {
   loadSubjects() {
     this.libraryService.getSubjects().subscribe({
       next: (res) => {
-        if (Array.isArray(res)) {
-          this.subjects.set(res);
-        }
+        const data = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
+        this.subjects.set(data);
       },
       error: (err) => console.error('Error fetching subjects', err)
     });

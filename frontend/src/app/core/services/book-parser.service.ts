@@ -1,11 +1,10 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { environment } from '../../../environments/environment';
-import { OperationResult } from '../models/library.model';
-
+import { buildApiUrl } from '../utils/api-url';
 export interface ParsedLessonDto {
   title: string;
+  content?: string;
   pageStart: number | null;
   pageEnd: number | null;
   displayOrder: number;
@@ -28,6 +27,7 @@ export interface CreateUnitDto {
   displayOrder: number;
   lessons: {
     title: string;
+    content?: string;
     pageStart: number | null;
     pageEnd: number | null;
     displayOrder: number;
@@ -45,6 +45,7 @@ export interface UnitDto {
   lessons: {
     id: number;
     title: string;
+    content?: string;
     pageStart: number | null;
     pageEnd: number | null;
     displayOrder: number;
@@ -54,27 +55,34 @@ export interface UnitDto {
 @Injectable({ providedIn: 'root' })
 export class BookParserService {
   private http = inject(HttpClient);
-  private base = environment.apiUrl;
+  private parserBase = buildApiUrl('book-parser');
 
-  preview(file: File): Observable<OperationResult<ParsedUnitDto[]>> {
+  preview(file: File): Observable<any> {
     const formData = new FormData();
     formData.append('file', file);
-    return this.http.post<OperationResult<ParsedUnitDto[]>>(`${this.base}/book-parser/preview`, formData);
+    return this.http.post<any>(`${this.parserBase}/preview`, formData);
   }
 
-  save(subjectId: number, units: CreateUnitDto[]): Observable<OperationResult<UnitDto[]>> {
-    return this.http.post<OperationResult<UnitDto[]>>(
-      `${this.base}/book-parser/save?subjectId=${subjectId}`, units);
+  save(subjectId: number, units: CreateUnitDto[]): Observable<any> {
+    return this.http.post<any>(
+      `${this.parserBase}/save?subjectId=${subjectId}`, units);
+  }
+
+  generateLessonContent(rawContent: string, title: string): Observable<any> {
+    return this.http.post<any>(`${this.parserBase}/lesson/generate-content`, {
+      title,
+      rawContent
+    });
   }
 
   getGradeLevels(): Observable<any> {
-    return this.http.get(`${this.base}/grade-levels`);
+    return this.http.get(buildApiUrl('grade-levels'));
   }
 
   getSubjects(gradeLevelId?: number): Observable<any> {
     if (gradeLevelId) {
-      return this.http.get(`${this.base}/subjects/by-grade-level/${gradeLevelId}`);
+      return this.http.get(buildApiUrl(`subjects/by-grade-level/${gradeLevelId}`));
     }
-    return this.http.get(`${this.base}/subjects`);
+    return this.http.get(buildApiUrl('subjects'));
   }
 }

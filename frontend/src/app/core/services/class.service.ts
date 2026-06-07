@@ -2,7 +2,6 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { buildApiUrl } from '../utils/api-url';
-
 export interface ClassEntity {
   id: number;
   name: string;
@@ -19,41 +18,41 @@ export class ClassService {
   private http = inject(HttpClient);
   private apiUrl = buildApiUrl('class-management');
 
-  getAll(filter?: any): Observable<ClassEntity[]> {
+  getAll(filter?: any): Observable<any> {
     let params = new HttpParams();
     if (filter) {
       Object.keys(filter).forEach(key => {
         if (filter[key]) params = params.set(key, filter[key]);
       });
     }
-    return this.http.get<ClassEntity[]>(this.apiUrl, { params });
+    return this.http.get<any>(this.apiUrl, { params });
   }
 
-  getById(id: number): Observable<ClassEntity> {
-    return this.http.get<ClassEntity>(`${this.apiUrl}/${id}`);
+  getById(id: number): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/${id}`);
   }
 
-  getByGradeLevel(gradeLevelId: number): Observable<ClassEntity[]> {
-    return this.http.get<ClassEntity[]>(`${this.apiUrl}/by-grade-level/${gradeLevelId}`);
+  getByGradeLevel(gradeLevelId: number): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/by-grade-level/${gradeLevelId}`);
   }
 
-  getStudents(classId: number): Observable<any[]> {
-    return this.http.get<any[]>(`${this.apiUrl}/${classId}/students`);
+  getStudents(classId: number): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/${classId}/students`);
   }
 
-  create(data: Partial<ClassEntity>): Observable<ClassEntity> {
-    return this.http.post<ClassEntity>(this.apiUrl, data);
+  create(data: Partial<ClassEntity>): Observable<any> {
+    return this.http.post<any>(this.apiUrl, data);
   }
 
-  createWithStudents(data: any): Observable<ClassEntity> {
-    return this.http.post<ClassEntity>(`${this.apiUrl}/with-students`, data);
+  createWithStudents(data: any): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/with-students`, data);
   }
 
-  update(id: number, data: Partial<ClassEntity>): Observable<ClassEntity> {
-    return this.http.put<ClassEntity>(`${this.apiUrl}/${id}`, { ...data, id });
+  update(id: number, data: Partial<ClassEntity>): Observable<any> {
+    return this.http.put<any>(`${this.apiUrl}/${id}`, { ...data, id });
   }
 
-  delete(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/${id}`);
+  delete(id: number): Observable<any> {
+    return this.http.delete<any>(`${this.apiUrl}/${id}`);
   }
 }

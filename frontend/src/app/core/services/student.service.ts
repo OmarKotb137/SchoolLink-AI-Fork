@@ -1,9 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
 import { buildApiUrl } from '../utils/api-url';
-import { OperationResult } from '../models/api.model';
+import { map } from 'rxjs/operators';
 
 export interface Student {
   id: number;
@@ -51,45 +50,37 @@ export class StudentService {
   private http = inject(HttpClient);
   private apiUrl = buildApiUrl('students');
 
-  getAll(): Observable<Student[]> {
-    return this.http
-      .get<OperationResult<Student[]>>(this.apiUrl)
-      .pipe(map(res => res.data));
+  getAll(): Observable<any> {
+    return this.http.get<any>(this.apiUrl);
   }
 
-  search(filter: StudentSearchFilter): Observable<Student[]> {
+  search(filter: StudentSearchFilter): Observable<any> {
     let params = new HttpParams();
     if (filter.searchTerm) params = params.set('searchTerm', filter.searchTerm);
     if (filter.classId) params = params.set('classId', filter.classId);
     if (filter.academicYearId) params = params.set('academicYearId', filter.academicYearId);
     if (filter.isActive !== undefined) params = params.set('isActive', filter.isActive);
 
-    return this.http
-      .get<OperationResult<Student[]>>(`${this.apiUrl}/search`, { params })
-      .pipe(map(res => res.data));
+    return this.http.get<any>(`${this.apiUrl}/search`, { params });
   }
 
-  create(data: CreateStudentRequest): Observable<Student> {
-    return this.http
-      .post<OperationResult<Student>>(this.apiUrl, data)
-      .pipe(map(res => res.data));
+  create(data: CreateStudentRequest): Observable<any> {
+    return this.http.post<any>(this.apiUrl, data);
   }
 
-  update(id: number, data: UpdateStudentRequest): Observable<Student> {
-    return this.http
-      .put<OperationResult<Student>>(`${this.apiUrl}/${id}`, data)
-      .pipe(map(res => res.data));
+  update(id: number, data: UpdateStudentRequest): Observable<any> {
+    return this.http.put<any>(`${this.apiUrl}/${id}`, data);
   }
 
-  delete(id: number): Observable<void> {
+  delete(id: number): Observable<any> {
     return this.http
-      .delete<OperationResult<unknown>>(`${this.apiUrl}/${id}`)
+      .delete<any>(`${this.apiUrl}/${id}`)
       .pipe(map(() => void 0));
   }
 
-  linkUser(data: LinkStudentUserRequest): Observable<void> {
+  linkUser(data: LinkStudentUserRequest): Observable<any> {
     return this.http
-      .post<OperationResult<unknown>>(`${this.apiUrl}/link-user`, data)
+      .post<any>(`${this.apiUrl}/link-user`, data)
       .pipe(map(() => void 0));
   }
 }

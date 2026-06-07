@@ -28,6 +28,8 @@ export class UserManagement implements OnInit {
   sidebarOpen = signal(false);
   activeTab = signal<AccountTab>('all');
   searchQuery = signal('');
+  currentPage = signal(1);
+  itemsPerPage = signal(10);
   users = signal<User[]>([]);
   isLoading = signal(false);
   errorMessage = signal<string | null>(null);
@@ -71,6 +73,31 @@ export class UserManagement implements OnInit {
     });
   });
 
+  paginatedUsers = computed(() => {
+    const start = (this.currentPage() - 1) * this.itemsPerPage();
+    return this.filteredUsers().slice(start, start + this.itemsPerPage());
+  });
+
+  totalPages = computed(() => {
+    return Math.max(1, Math.ceil(this.filteredUsers().length / this.itemsPerPage()));
+  });
+
+  nextPage() {
+    if (this.currentPage() < this.totalPages()) {
+      this.currentPage.update(p => p + 1);
+    }
+  }
+
+  prevPage() {
+    if (this.currentPage() > 1) {
+      this.currentPage.update(p => p - 1);
+    }
+  }
+
+  goToPage(page: number) {
+    this.currentPage.set(page);
+  }
+
   totalCount = computed(() => this.users().length);
   adminCount = computed(() => this.users().filter(user => user.role.toLowerCase() === 'admin').length);
   parentCount = computed(() => this.users().filter(user => user.role.toLowerCase() === 'parent').length);
@@ -94,7 +121,7 @@ export class UserManagement implements OnInit {
 
     this.userService.getAll({ pageSize: 1000 }).subscribe({
       next: result => {
-        this.users.set(result.items ?? []);
+        this.users.set(result.data?.items ?? []);
         this.isLoading.set(false);
       },
       error: err => {
@@ -107,7 +134,7 @@ export class UserManagement implements OnInit {
 
   loadStudents() {
     this.studentService.getAll().subscribe({
-      next: students => this.students.set(students),
+      next: students => this.students.set(students.data ?? []),
       error: err => {
         const msg = err?.error?.message || 'تعذر تحميل قائمة الطلاب';
         this.showError(msg);
@@ -165,24 +192,24 @@ export class UserManagement implements OnInit {
 
     this.parentStudentService.getStudentsByParent(parentId).subscribe({
       next: students => {
-        if (students.length === 0) {
+        if ((students.data ?? students).length === 0) {
           this.parentLinkedStudents.set([]);
           this.isLoading.set(false);
           return;
         }
 
         forkJoin(
-          students.map(student =>
+          students.map((student: any) =>
             this.parentStudentService.getParentsByStudent(student.id).pipe(
-              map(links => ({
+              map((links: any) => ({
                 student,
-                link: links.find(link => link.parentId === parentId) ?? null
+                link: (links.data ?? links).find((link: any) => link.parentId === parentId) ?? null
               })),
               catchError(() => of({ student, link: null }))
             )
           )
         ).subscribe({
-          next: rows => {
+          next: (rows: any) => {
             this.parentLinkedStudents.set(rows);
             this.isLoading.set(false);
           },

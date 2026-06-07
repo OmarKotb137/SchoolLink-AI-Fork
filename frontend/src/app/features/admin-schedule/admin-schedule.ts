@@ -16,6 +16,7 @@ import { ClassSubjectTeacherService, ClassSubjectTeacher } from '../../core/serv
 import { RoomService, Room } from '../../core/services/room.service';
 import { SubjectService, Subject } from '../../core/services/subject.service';
 import { UserService, User } from '../../core/services/user.service';
+import { GradeLevelService, GradeLevel } from '../../core/services/grade-level.service';
 
 @Component({
   selector: 'app-admin-schedule',
@@ -37,16 +38,21 @@ export class AdminSchedule implements OnInit, OnDestroy {
   private roomService = inject(RoomService);
   private subjectService = inject(SubjectService);
   private userService = inject(UserService);
+  private gradeLevelService = inject(GradeLevelService);
 
   academicYears = signal<AcademicYear[]>([]);
   classes = signal<ClassEntity[]>([]);
+  grades = signal<GradeLevel[]>([]);
   subjects = signal<Subject[]>([]);
   teachers = signal<User[]>([]);
   allTimetables = signal<Timetable[]>([]);
   selectedTimetableId = signal<number | null>(null);
 
   selectedYearId: number | null = null;
+  selectedGradeId: number | null = null;
   selectedClassId: number | null = null;
+  filterClasses = signal<ClassEntity[]>([]);
+
   assignmentSubjectFilter = '';
   assignmentTeacherFilter = '';
   displayUserName = localStorage.getItem('fullName') || localStorage.getItem('username') || 'المشرف';
@@ -186,25 +192,44 @@ export class AdminSchedule implements OnInit, OnDestroy {
 
   loadInitialData() {
     this.subjectService.getAll().subscribe({
-      next: (data) => this.subjects.set(data),
+      next: (data) => this.subjects.set(data.data ?? data),
       error: () => this.showError('تعذر تحميل بيانات المواد')
     });
     this.userService.getByRole('Teacher', 1000).subscribe({
-      next: (res) => this.teachers.set(res.items || []),
+      next: (res) => this.teachers.set(res.data?.items ?? []),
       error: () => this.showError('تعذر تحميل بيانات المعلمين')
     });
+    this.gradeLevelService.getAll().subscribe({
+      next: (data) => {
+        const unwrapped = data.data ?? data;
+        const sortedGrades = unwrapped.sort((a: any, b: any) => a.levelOrder - b.levelOrder);
+        this.grades.set(sortedGrades);
+      },
+      error: () => this.showError('تعذر تحميل بيانات الصفوف الدراسية')
+    });
     this.classService.getAll().subscribe({
-      next: (data) => this.classes.set(data),
+      next: (data) => this.classes.set(data.data ?? data),
       error: () => this.showError('تعذر تحميل بيانات الفصول')
     });
     this.academicYearService.getAll().subscribe({
       next: (data) => {
-        this.academicYears.set(data);
-        const active = data.find(y => y.isCurrent);
+        const unwrapped = data.data ?? data;
+        this.academicYears.set(unwrapped);
+        const active = unwrapped.find((y: any) => y.isCurrent);
         if (active) this.selectedYearId = active.id;
       },
       error: () => this.showError('تعذر تحميل السنوات الدراسية')
     });
+  }
+
+  onGradeFilterChange() {
+    this.selectedClassId = null;
+    if (this.selectedGradeId) {
+      this.filterClasses.set(this.classes().filter(c => c.gradeLevelId === this.selectedGradeId));
+    } else {
+      this.filterClasses.set([]);
+    }
+    this.onFilterChange();
   }
 
   onFilterChange() {
@@ -225,9 +250,10 @@ export class AdminSchedule implements OnInit, OnDestroy {
   loadAssignments() {
     this.assignmentService.getByClass(this.selectedClassId!, this.selectedYearId!).subscribe({
       next: (data) => {
-        this.assignments.set(data);
+        const unwrapped = data.data ?? data;
+        this.assignments.set(unwrapped);
         // Rebuild Map for O(1) lookups (called 35× per render: 5 days × 7 periods)
-        this.assignmentMap = new Map(data.map(a => [a.id!, a]));
+        this.assignmentMap = new Map(unwrapped.map((a: any) => [a.id!, a]));
       },
       error: () => {
         this.assignments.set([]);
@@ -241,9 +267,9 @@ export class AdminSchedule implements OnInit, OnDestroy {
     this.isLoading.set(true);
     this.timetableService.getByClass(this.selectedClassId!, this.selectedYearId!).subscribe({
       next: (data) => {
-        const timetables = (Array.isArray(data) ? data : []).map(item => this.normalizeTimetable(item));
+        const timetables = (Array.isArray(data.data ?? data) ? (data.data ?? data) : []).map((item: any) => this.normalizeTimetable(item));
         const selectedTimetableId = this.selectedTimetableId();
-        const nextTimetable = timetables.find(item => item.id === selectedTimetableId)
+        const nextTimetable = timetables.find((item: any) => item.id === selectedTimetableId)
           || this.pickWorkingTimetable(timetables);
 
         this.allTimetables.set(timetables);
@@ -409,7 +435,7 @@ export class AdminSchedule implements OnInit, OnDestroy {
     this.timetableService.validate(timetable.id).subscribe({
       next: (result) => {
         this.isValidating.set(false);
-        this.validationResult.set(result);
+        this.validationResult.set(result.data ?? result);
         this.showSuccess(result.canActivate
           ? 'اكتملت المراجعة: الجدول جاهز للتفعيل.'
           : 'اكتملت المراجعة: توجد عناصر تحتاج معالجة قبل التفعيل.');
@@ -889,7 +915,7 @@ export class AdminSchedule implements OnInit, OnDestroy {
 
   private loadAvailableRooms(dayValue: string, periodNum: number) {
     this.roomService.getAvailable(dayValue, periodNum).subscribe({
-      next: (data: Room[]) => this.availableRooms.set(data),
+      next: (data: Room[]) => this.availableRooms.set((data as any).data ?? data),
       error: () => this.availableRooms.set([])
     });
   }

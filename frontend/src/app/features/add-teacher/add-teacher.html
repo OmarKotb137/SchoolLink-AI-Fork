@@ -1,324 +1,395 @@
 <app-sidebar [(isOpen)]="sidebarOpen" />
 <div class="main-content">
   <app-topbar userName="أحمد" />
-  <main class="p-gutter-desktop">
-    <div class="max-w-6xl mx-auto flex flex-col gap-stack-lg">
+  <main class="pt-16 min-h-screen bg-gray-50 flex flex-col">
+    <div class="flex-1 p-4 md:p-6 lg:p-8">
+      <div class="max-w-7xl mx-auto space-y-6 pb-10">
 
-      <div class="page-header-card">
-        <div>
-          <span class="section-eyebrow">إدارة المعلمين</span>
-          <h1 class="font-headline-lg text-headline-lg page-title">بيانات المعلم وتخصصاته</h1>
-          <p class="font-body-md text-body-md text-outline page-description">
+        <!-- Header -->
+        <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50">
+          <span class="text-sm font-medium text-blue-600 mb-1 block">إدارة المعلمين</span>
+          <h1 class="text-2xl font-bold text-gray-900 mb-2">بيانات المعلم وتخصصاته</h1>
+          <p class="text-sm text-gray-500 max-w-2xl">
             من هنا تضيف حساب المعلم وتحدد المواد التي يمكنه تدريسها. أما إسناده الفعلي لفصل ومادة خلال سنة دراسية معينة فيتم من صفحة التعيينات.
           </p>
         </div>
-      </div>
 
-      <div class="summary-grid">
-        <div class="summary-card">
-          <span class="summary-label">إجمالي المعلمين</span>
-          <strong class="summary-value">{{ getTeachersCount() }}</strong>
-          <span class="summary-hint">عدد الحسابات المسجلة في النظام</span>
-        </div>
-        <div class="summary-card success">
-          <span class="summary-label">المعلمين النشطين</span>
-          <strong class="summary-value">{{ getActiveTeachersCount() }}</strong>
-          <span class="summary-hint">المتاحون للعمل حاليا</span>
-        </div>
-        <div class="summary-card warning">
-          <span class="summary-label">غير النشطين</span>
-          <strong class="summary-value">{{ getInactiveTeachersCount() }}</strong>
-          <span class="summary-hint">حسابات موقوفة أو معطلة</span>
-        </div>
-        <div class="summary-card">
-          <span class="summary-label">نتائج الفلترة الحالية</span>
-          <strong class="summary-value">{{ getFilteredTeachersCount() }}</strong>
-          <span class="summary-hint">عدد المعلمين الظاهرين حسب البحث والفلاتر</span>
-        </div>
-      </div>
-
-      @if (errorMessage()) {
-        <div class="banner error-banner">
-          <span class="material-symbols-outlined">error</span>
-          <span>{{ errorMessage() }}</span>
-        </div>
-      }
-      @if (successMessage()) {
-        <div class="banner success-banner">
-          <span class="material-symbols-outlined">check_circle</span>
-          <span>{{ successMessage() }}</span>
-        </div>
-      }
-
-      <div class="glass-card teacher-form-card">
-        <div class="card-heading-row">
-          <div>
-            <h2 class="font-headline-md text-headline-md">إضافة معلم جديد</h2>
-            <p class="font-body-sm text-outline">هذه الصفحة خاصة ببيانات المعلم العامة وتخصصاته فقط.</p>
+        <!-- Summary Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="bg-white border border-gray-100 p-4 rounded-2xl text-center flex flex-col justify-center">
+            <span class="block text-xs text-gray-500 font-medium mb-1">إجمالي المعلمين</span>
+            <strong class="block text-2xl font-bold text-gray-900">{{ getTeachersCount() }}</strong>
+            <span class="block text-[10px] text-gray-400 mt-1">المسجلون في النظام</span>
           </div>
-          <div class="inline-tip-chip">
-            <span class="material-symbols-outlined">school</span>
-            <span>الخطوة التالية بعد الحفظ: صفحة التعيينات</span>
+          <div class="bg-emerald-50 border border-emerald-100 p-4 rounded-2xl text-center flex flex-col justify-center">
+            <span class="block text-xs text-emerald-600 font-medium mb-1">المعلمين النشطين</span>
+            <strong class="block text-2xl font-bold text-emerald-900">{{ getActiveTeachersCount() }}</strong>
+            <span class="block text-[10px] text-emerald-500 mt-1">المتاحون للعمل حاليا</span>
+          </div>
+          <div class="bg-orange-50 border border-orange-100 p-4 rounded-2xl text-center flex flex-col justify-center">
+            <span class="block text-xs text-orange-600 font-medium mb-1">غير النشطين</span>
+            <strong class="block text-2xl font-bold text-orange-900">{{ getInactiveTeachersCount() }}</strong>
+            <span class="block text-[10px] text-orange-500 mt-1">حسابات موقوفة أو معطلة</span>
+          </div>
+          <div class="bg-blue-50 border border-blue-100 p-4 rounded-2xl text-center flex flex-col justify-center">
+            <span class="block text-xs text-blue-600 font-medium mb-1">نتائج الفلترة الحالية</span>
+            <strong class="block text-2xl font-bold text-blue-900">{{ getFilteredTeachersCount() }}</strong>
+            <span class="block text-[10px] text-blue-500 mt-1">حسب البحث والفلاتر</span>
           </div>
         </div>
 
-        <div class="section-block">
-          <div class="section-block-header">
-            <h3 class="font-label-lg">1. بيانات الحساب</h3>
-            <p class="font-body-sm text-outline">أدخل الاسم والبريد الإلكتروني وكلمة المرور الأساسية للمعلم.</p>
+        <!-- Feedback Banners -->
+        @if (errorMessage()) {
+          <div class="flex items-center gap-3 p-4 text-sm text-red-800 rounded-2xl bg-red-50 border border-red-200">
+            <span class="material-symbols-outlined text-lg">error</span>
+            <span class="font-medium">{{ errorMessage() }}</span>
           </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-stack-md">
-            <div class="flex flex-col gap-1">
-              <label class="font-label-md text-label-md field-label">الاسم <span class="required-star">*</span></label>
-              <input class="glass-input" placeholder="مثال: أ. أحمد علي" [value]="newName()" (input)="newName.set($any($event.target).value)" />
-            </div>
-            <div class="flex flex-col gap-1">
-              <label class="font-label-md text-label-md field-label">البريد الإلكتروني <span class="required-star">*</span></label>
-              <input class="glass-input" type="email" placeholder="teacher@school.com" [value]="newEmail()" (input)="newEmail.set($any($event.target).value)" />
-            </div>
-            <div class="flex flex-col gap-1">
-              <label class="font-label-md text-label-md field-label">كلمة المرور <span class="required-star">*</span></label>
-              <input class="glass-input" type="password" placeholder="6 أحرف على الأقل" [value]="newPassword()" (input)="newPassword.set($any($event.target).value)" />
-            </div>
-            <div class="flex flex-col gap-1">
-              <label class="font-label-md text-label-md field-label">رقم الهاتف</label>
-              <input class="glass-input" type="tel" placeholder="01012345678" [value]="newPhone()" (input)="newPhone.set($any($event.target).value)" />
-            </div>
+        }
+        @if (successMessage()) {
+          <div class="flex items-center gap-3 p-4 text-sm text-green-800 rounded-2xl bg-emerald-50 border border-green-200">
+            <span class="material-symbols-outlined text-lg">check_circle</span>
+            <span class="font-medium">{{ successMessage() }}</span>
           </div>
-        </div>
+        }
 
-        <div class="section-block specialization-block">
-          <div class="section-block-header row-between">
+        <!-- Add Teacher Form Card -->
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50 p-6">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pb-4 border-b border-gray-100">
             <div>
-              <h3 class="font-label-lg">2. المواد التي يمكنه تدريسها</h3>
-              <p class="font-body-sm text-outline">هذه المواد تحفظ كتخصصات للمعلم، وليست تعيينا على فصل.</p>
+              <h2 class="text-lg font-bold text-gray-900 mb-1">إضافة معلم جديد</h2>
+              <p class="text-sm text-gray-500">هذه الصفحة خاصة ببيانات المعلم العامة وتخصصاته فقط.</p>
             </div>
-            @if (selectedSubjectIds().length > 0) {
-              <button class="secondary-btn-glass small-btn" type="button" (click)="clearSelectedSubjects()">
-                مسح التحديد
-              </button>
-            }
+            <div class="flex items-center gap-2 bg-blue-50 text-blue-700 px-3 py-1.5 rounded-2xl border border-blue-100 text-xs font-medium whitespace-nowrap">
+              <span class="material-symbols-outlined text-sm">school</span>
+              <span>الخطوة التالية بعد الحفظ: صفحة التعيينات</span>
+            </div>
           </div>
 
-          <div class="selected-subjects-panel">
-            <div class="selected-subjects-count">
-              <span class="material-symbols-outlined">menu_book</span>
-              <span>عدد المواد المختارة: {{ selectedSubjectIds().length }}</span>
+          <!-- Section 1: Account Info -->
+          <div class="mb-8">
+            <div class="mb-4">
+              <h3 class="text-base font-bold text-gray-900">1. بيانات الحساب</h3>
+              <p class="text-xs text-gray-500">أدخل الاسم والبريد الإلكتروني وكلمة المرور الأساسية للمعلم.</p>
             </div>
-            <p class="selected-subjects-text">{{ getSelectedSubjectsText() }}</p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div class="flex flex-col gap-2">
+                <label class="text-sm font-medium text-gray-900">الاسم <span class="text-red-500">*</span></label>
+                <input class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" placeholder="مثال: أ. أحمد علي" [value]="newName()" (input)="newName.set($any($event.target).value)" />
+              </div>
+              <div class="flex flex-col gap-2">
+                <label class="text-sm font-medium text-gray-900">البريد الإلكتروني <span class="text-red-500">*</span></label>
+                <input class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" type="email" placeholder="teacher@school.com" [value]="newEmail()" (input)="newEmail.set($any($event.target).value)" />
+              </div>
+              <div class="flex flex-col gap-2">
+                <label class="text-sm font-medium text-gray-900">كلمة المرور <span class="text-red-500">*</span></label>
+                <input class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" type="password" placeholder="6 أحرف على الأقل" [value]="newPassword()" (input)="newPassword.set($any($event.target).value)" />
+              </div>
+              <div class="flex flex-col gap-2">
+                <label class="text-sm font-medium text-gray-900">رقم الهاتف</label>
+                <input class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" type="tel" placeholder="01012345678" [value]="newPhone()" (input)="newPhone.set($any($event.target).value)" />
+              </div>
+            </div>
           </div>
 
-          @if (allSubjects().length === 0) {
-            <p class="text-outline font-body-sm">جار تحميل المواد...</p>
-          } @else {
-            <div class="flex flex-wrap gap-2">
-              @for (s of allSubjects(); track s.id) {
-                <button class="px-3 py-1.5 rounded-lg text-label-sm font-label-sm transition-all"
-                  type="button"
-                  [class.gradient-btn]="selectedSubjectIds().includes(s.id)"
-                  [class.secondary-btn-glass]="!selectedSubjectIds().includes(s.id)"
-                  (click)="toggleSubject(s.id)">{{ s.name }}</button>
+          <!-- Section 2: Specializations -->
+          <div class="mb-6 bg-gray-50 border border-gray-100 rounded-2xl p-5">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+              <div>
+                <h3 class="text-base font-bold text-gray-900">2. المواد التي يمكنه تدريسها</h3>
+                <p class="text-xs text-gray-500">هذه المواد تحفظ كتخصصات للمعلم، وليست تعيينا على فصل.</p>
+              </div>
+              @if (selectedSubjectIds().length > 0) {
+                <button class="text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-2xl px-3 py-1.5 hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 transition-colors" type="button" (click)="clearSelectedSubjects()">
+                  مسح التحديد
+                </button>
               }
             </div>
-          }
 
-          <div class="info-note">
-            <span class="material-symbols-outlined">info</span>
-            <p>الفصول والسنة الدراسية لا يتم تحديدها هنا، لأن الإسناد الفعلي يدار من صفحة التعيينات بحسب كل سنة دراسية.</p>
-          </div>
-        </div>
+            <div class="flex items-center gap-2 mb-4">
+              <span class="inline-flex items-center gap-1 bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-1 rounded-full">
+                <span class="material-symbols-outlined text-[14px]">menu_book</span>
+                عدد المواد المختارة: {{ selectedSubjectIds().length }}
+              </span>
+              <span class="text-sm text-gray-600 truncate">{{ getSelectedSubjectsText() }}</span>
+            </div>
 
-        <div class="form-actions-row">
-          <button class="secondary-btn-glass" (click)="resetForm()">تفريغ الحقول</button>
-          <button class="gradient-btn" (click)="saveTeacher()" [disabled]="!canSaveTeacher()">
-            @if (isLoading()) {
-              <span class="material-symbols-outlined spin-icon">refresh</span>
-              جار الحفظ...
+            @if (allSubjects().length === 0) {
+              <p class="text-sm text-gray-500">جار تحميل المواد...</p>
             } @else {
-              <span class="material-symbols-outlined">person_add</span>
-              إضافة المعلم
+              <div class="flex flex-wrap gap-2">
+                @for (s of allSubjects(); track s.id) {
+                  <button class="px-3 py-1.5 rounded-2xl text-sm font-medium transition-all border"
+                    type="button"
+                    [class.bg-blue-600]="selectedSubjectIds().includes(s.id)"
+                    [class.text-white]="selectedSubjectIds().includes(s.id)"
+                    [class.border-blue-600]="selectedSubjectIds().includes(s.id)"
+                    [class.bg-white]="!selectedSubjectIds().includes(s.id)"
+                    [class.text-gray-700]="!selectedSubjectIds().includes(s.id)"
+                    [class.border-gray-200]="!selectedSubjectIds().includes(s.id)"
+                    [class.hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5]="!selectedSubjectIds().includes(s.id)"
+                    (click)="toggleSubject(s.id)">{{ s.name }}</button>
+                }
+              </div>
             }
-          </button>
-        </div>
-      </div>
 
-      <div class="glass-table-container">
-        <div class="table-header-row">
-          <div>
-            <h2 class="font-headline-md text-headline-md">قائمة المعلمين</h2>
-            <p class="font-body-sm text-outline">تستطيع مراجعة حالة كل معلم وتعديل تخصصاته أو تفعيله أو تعطيله أو حذفه عند الحاجة.</p>
-          </div>
-        </div>
-
-        <div class="teacher-filters-card">
-          <div class="search-box teacher-search-box">
-            <span class="material-symbols-outlined">search</span>
-            <input
-              class="glass-input"
-              placeholder="ابحث بالاسم أو البريد أو الهاتف..."
-              [value]="searchQuery()"
-              (input)="searchQuery.set($any($event.target).value)"
-            />
+            <div class="mt-4 flex items-start gap-2 p-3 text-xs text-blue-800 rounded-2xl bg-blue-100/50">
+              <span class="material-symbols-outlined shrink-0 text-base">info</span>
+              <p class="font-medium">الفصول والسنة الدراسية لا يتم تحديدها هنا، لأن الإسناد الفعلي يدار من صفحة التعيينات بحسب كل سنة دراسية.</p>
+            </div>
           </div>
 
-          <div class="filter-group">
-            <label class="field-label">الحالة</label>
-            <select class="glass-select compact-select" [value]="statusFilter()" (change)="statusFilter.set($any($event.target).value)">
-              <option value="all">الكل</option>
-              <option value="active">نشط</option>
-              <option value="inactive">غير نشط</option>
-            </select>
-          </div>
-
-          <div class="filter-group">
-            <label class="field-label">المادة</label>
-            <select class="glass-select compact-select" [value]="subjectFilter()" (change)="subjectFilter.set($any($event.target).value === 'all' ? 'all' : +$any($event.target).value)">
-              <option value="all">كل المواد</option>
-              @for (subject of allSubjects(); track subject.id) {
-                <option [value]="subject.id">{{ subject.name }}</option>
+          <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
+            <button class="px-5 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 transition-colors" (click)="resetForm()">تفريغ الحقول</button>
+            <button class="px-5 py-2.5 text-sm font-medium text-white bg-blue-700 rounded-2xl hover:bg-blue-800 focus:ring-4 focus:ring-indigo-300 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" (click)="saveTeacher()" [disabled]="!canSaveTeacher()">
+              @if (isLoading()) {
+                <span class="material-symbols-outlined animate-spin text-sm">refresh</span>
+                جار الحفظ...
+              } @else {
+                <span class="material-symbols-outlined text-sm">person_add</span>
+                إضافة المعلم
               }
-            </select>
-          </div>
-
-          <div class="filter-actions">
-            <button class="secondary-btn-glass small-btn" type="button" (click)="resetFilters()">
-              إعادة ضبط
             </button>
           </div>
         </div>
 
-        <div class="overflow-x-auto">
-          <table class="w-full">
-            <thead>
-              <tr>
-                <th class="text-right p-4 font-label-md text-outline">الاسم</th>
-                <th class="text-right p-4 font-label-md text-outline">البريد الإلكتروني</th>
-                <th class="text-right p-4 font-label-md text-outline">الهاتف</th>
-                <th class="text-right p-4 font-label-md text-outline">التخصصات</th>
-                <th class="text-right p-4 font-label-md text-outline">الحالة</th>
-                <th class="text-center p-4 font-label-md text-outline">إجراءات</th>
-              </tr>
-            </thead>
-            <tbody>
-              @if (teachers().length === 0) {
-                <tr>
-                  <td colspan="6" class="p-10 text-center text-outline font-body-md">
-                    <div class="empty-state-block">
-                      <span class="material-symbols-outlined">person_search</span>
-                      <p>لا يوجد معلمون مسجلون حتى الآن. أضف أول معلم من النموذج أعلاه.</p>
-                    </div>
-                  </td>
-                </tr>
-              } @else if (filteredTeachers().length === 0) {
-                <tr>
-                  <td colspan="6" class="p-10 text-center text-outline font-body-md">
-                    <div class="empty-state-block">
-                      <span class="material-symbols-outlined">filter_alt_off</span>
-                      <p>لا توجد نتائج مطابقة للفلاتر الحالية.</p>
-                    </div>
-                  </td>
-                </tr>
-              }
-              @for (t of filteredTeachers(); track t.id) {
-                <tr>
-                  <td class="p-4 font-body-md teacher-name-cell">{{ t.fullName }}</td>
-                  <td class="p-4 font-body-md text-outline">{{ t.email }}</td>
-                  <td class="p-4 font-body-md text-outline">{{ t.phone || '—' }}</td>
-                  <td class="p-4 font-body-md text-outline subjects-cell">{{ getTeacherSubjectsText(t) }}</td>
-                  <td class="p-4">
-                    <span class="status-chip"
-                      [class.active-chip]="t.isActive"
-                      [class.inactive-chip]="!t.isActive">
-                      {{ t.isActive ? 'نشط' : 'غير نشط' }}
-                    </span>
-                  </td>
-                  <td class="p-4">
-                    <div class="flex items-center justify-center gap-1">
-                      <button class="icon-action-btn" (click)="editTeacher(t)" title="تعديل بيانات المعلم">
-                        <span class="material-symbols-outlined">edit</span>
-                      </button>
-                      <button class="icon-action-btn" (click)="toggleTeacherStatus(t)" [title]="t.isActive ? 'تعطيل المعلم' : 'تفعيل المعلم'">
-                        <span class="material-symbols-outlined">{{ t.isActive ? 'toggle_off' : 'toggle_on' }}</span>
-                      </button>
-                      <button class="icon-action-btn danger" (click)="deleteTeacher(t.id)" title="حذف المعلم أو تعطيله نهائيًا حسب التعيينات">
-                        <span class="material-symbols-outlined">delete</span>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      </div>
+        <!-- Teachers Table Card -->
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50 flex flex-col overflow-hidden">
+          
+          <div class="p-5 border-b border-gray-100">
+            <h2 class="text-lg font-bold text-gray-900">قائمة المعلمين</h2>
+            <p class="text-sm text-gray-500 mt-1">تستطيع مراجعة حالة كل معلم وتعديل تخصصاته أو تفعيله أو تعطيله أو حذفه عند الحاجة.</p>
+          </div>
 
+          <div class="p-4 bg-gray-50 border-b border-gray-100 flex flex-wrap md:flex-nowrap items-end gap-4">
+            
+            <div class="flex-1 w-full min-w-[200px]">
+              <label class="block mb-2 text-xs font-medium text-gray-700">البحث</label>
+              <div class="relative w-full">
+                <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                  <span class="material-symbols-outlined text-gray-400 text-sm">search</span>
+                </div>
+                <input type="text" class="bg-white border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full pr-10 p-2.5" placeholder="ابحث بالاسم أو البريد أو الهاتف..." [value]="searchQuery()" (input)="searchQuery.set($any($event.target).value); currentPage.set(1)">
+              </div>
+            </div>
+
+            <div class="w-full md:w-48">
+              <label class="block mb-2 text-xs font-medium text-gray-700">الحالة</label>
+              <select class="bg-white border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" [value]="statusFilter()" (change)="statusFilter.set($any($event.target).value); currentPage.set(1)">
+                <option value="all">الكل</option>
+                <option value="active">نشط</option>
+                <option value="inactive">غير نشط</option>
+              </select>
+            </div>
+
+            <div class="w-full md:w-64">
+              <label class="block mb-2 text-xs font-medium text-gray-700">المادة</label>
+              <select class="bg-white border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" [value]="subjectFilter()" (change)="subjectFilter.set($any($event.target).value === 'all' ? 'all' : +$any($event.target).value); currentPage.set(1)">
+                <option value="all">كل المواد</option>
+                @for (subject of allSubjects(); track subject.id) {
+                  <option [value]="subject.id">{{ subject.name }}</option>
+                }
+              </select>
+            </div>
+
+            <div>
+              <button class="px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 transition-colors whitespace-nowrap" type="button" (click)="resetFilters()">
+                إعادة ضبط
+              </button>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm text-right text-gray-500">
+              <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-100">
+                <tr>
+                  <th scope="col" class="px-6 py-4">الاسم</th>
+                  <th scope="col" class="px-6 py-4">البريد الإلكتروني</th>
+                  <th scope="col" class="px-6 py-4">الهاتف</th>
+                  <th scope="col" class="px-6 py-4">التخصصات</th>
+                  <th scope="col" class="px-6 py-4 text-center">الحالة</th>
+                  <th scope="col" class="px-6 py-4 text-center">إجراءات</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-200">
+                @if (teachers().length === 0) {
+                  <tr>
+                    <td colspan="6" class="px-6 py-16 text-center text-gray-500">
+                      <div class="flex flex-col items-center justify-center">
+                        <span class="material-symbols-outlined text-5xl text-gray-300 mb-3">person_search</span>
+                        <p class="text-base font-medium text-gray-900">لا يوجد معلمون مسجلون حتى الآن. أضف أول معلم من النموذج أعلاه.</p>
+                      </div>
+                    </td>
+                  </tr>
+                } @else if (filteredTeachers().length === 0) {
+                  <tr>
+                    <td colspan="6" class="px-6 py-16 text-center text-gray-500">
+                      <div class="flex flex-col items-center justify-center">
+                        <span class="material-symbols-outlined text-5xl text-gray-300 mb-3">filter_alt_off</span>
+                        <p class="text-base font-medium text-gray-900">لا توجد نتائج مطابقة للفلاتر الحالية.</p>
+                      </div>
+                    </td>
+                  </tr>
+                }
+                @for (t of paginatedTeachers(); track t.id) {
+                  <tr class="hover:bg-gray-50 transition-colors bg-white">
+                    <td class="px-6 py-4 font-bold text-gray-900">{{ t.fullName }}</td>
+                    <td class="px-6 py-4 text-gray-600">{{ t.email }}</td>
+                    <td class="px-6 py-4 text-gray-600">{{ t.phone || '—' }}</td>
+                    <td class="px-6 py-4 text-gray-600 max-w-xs truncate" [title]="getTeacherSubjectsText(t)">{{ getTeacherSubjectsText(t) }}</td>
+                    <td class="px-6 py-4 text-center">
+                      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border"
+                            [class.bg-emerald-50]="t.isActive"
+                            [class.text-green-700]="t.isActive"
+                            [class.border-green-200]="t.isActive"
+                            [class.bg-gray-100]="!t.isActive"
+                            [class.text-gray-700]="!t.isActive"
+                            [class.border-gray-200]="!t.isActive">
+                        {{ t.isActive ? 'نشط' : 'غير نشط' }}
+                      </span>
+                    </td>
+                    <td class="px-6 py-4 text-center">
+                      <div class="flex items-center justify-center gap-2">
+                        <button class="p-2 text-blue-600 hover:bg-blue-50 rounded-2xl transition-colors" (click)="editTeacher(t)" title="تعديل بيانات المعلم">
+                          <span class="material-symbols-outlined text-sm">edit</span>
+                        </button>
+                        <button class="p-2 text-gray-600 hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 rounded-2xl transition-colors" (click)="toggleTeacherStatus(t)" [title]="t.isActive ? 'تعطيل المعلم' : 'تفعيل المعلم'">
+                          <span class="material-symbols-outlined text-sm">{{ t.isActive ? 'toggle_off' : 'toggle_on' }}</span>
+                        </button>
+                        <button class="p-2 text-red-600 hover:bg-red-50 rounded-2xl transition-colors" (click)="deleteTeacher(t.id)" title="حذف المعلم أو تعطيله نهائيًا حسب التعيينات">
+                          <span class="material-symbols-outlined text-sm">delete</span>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Pagination -->
+          @if (totalPages() > 1) {
+            <div class="flex items-center justify-between p-4 bg-gray-50 border-t border-gray-100 flex-wrap gap-4">
+              <span class="text-sm text-gray-700">
+                إظهار <span class="font-semibold text-gray-900">{{ (currentPage() - 1) * itemsPerPage() + 1 }}</span> إلى <span class="font-semibold text-gray-900">{{ (currentPage() * itemsPerPage()) > filteredTeachers().length ? filteredTeachers().length : (currentPage() * itemsPerPage()) }}</span> من أصل <span class="font-semibold text-gray-900">{{ filteredTeachers().length }}</span> معلم
+              </span>
+              
+              <div class="flex items-center gap-2">
+                <button class="flex items-center justify-center px-3 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors" [disabled]="currentPage() === 1" (click)="prevPage()">
+                  <span class="material-symbols-outlined text-sm mr-1">chevron_right</span>
+                  السابق
+                </button>
+                
+                <div class="hidden sm:flex items-center gap-1">
+                  @for (p of [].constructor(totalPages()); track $index) {
+                    @if (
+                      $index + 1 === 1 ||
+                      $index + 1 === totalPages() ||
+                      ($index + 1 >= currentPage() - 1 && $index + 1 <= currentPage() + 1)
+                    ) {
+                      <button class="flex items-center justify-center w-8 h-8 text-sm font-medium rounded-2xl transition-colors border" 
+                              [class.bg-blue-600]="( $index + 1 ) === currentPage()"
+                              [class.text-white]="( $index + 1 ) === currentPage()"
+                              [class.border-blue-600]="( $index + 1 ) === currentPage()"
+                              [class.bg-white]="( $index + 1 ) !== currentPage()"
+                              [class.text-gray-900]="( $index + 1 ) !== currentPage()"
+                              [class.border-gray-200]="( $index + 1 ) !== currentPage()"
+                              [class.hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5]="( $index + 1 ) !== currentPage()"
+                              (click)="goToPage($index + 1)">
+                        {{ $index + 1 }}
+                      </button>
+                    } @else if (
+                      ($index + 1 === currentPage() - 2 && currentPage() > 3) ||
+                      ($index + 1 === currentPage() + 2 && currentPage() < totalPages() - 2)
+                    ) {
+                      <span class="flex items-center justify-center w-8 h-8 text-sm font-medium text-gray-500">...</span>
+                    }
+                  }
+                </div>
+
+                <button class="flex items-center justify-center px-3 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors" [disabled]="currentPage() === totalPages()" (click)="nextPage()">
+                  التالي
+                  <span class="material-symbols-outlined text-sm ml-1">chevron_left</span>
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+
+      </div>
     </div>
   </main>
 </div>
 
+<!-- Modals -->
+
 @if (showEditModal()) {
-  <div class="fixed inset-0 z-[60] flex items-center justify-center glass-overlay p-margin-mobile" (click)="closeEditModal()">
-    <div class="glass-modal max-w-2xl w-full max-h-[90vh] overflow-y-auto" (click)="$event.stopPropagation()">
-      <div class="glass-modal-header flex justify-between items-center">
+  <div class="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/50 backdrop-blur-sm p-4" (click)="closeEditModal()">
+    <div class="bg-white rounded-3xl shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden" (click)="$event.stopPropagation()">
+      <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
         <div>
-          <h2 class="font-headline-md text-headline-md modal-title">تعديل بيانات المعلم</h2>
-          <p class="font-body-sm text-outline">يمكنك تعديل البيانات الأساسية والتخصصات فقط من هنا.</p>
+          <h2 class="text-xl font-bold text-gray-900">تعديل بيانات المعلم</h2>
+          <p class="text-sm text-gray-500 mt-1">يمكنك تعديل البيانات الأساسية والتخصصات فقط من هنا.</p>
         </div>
-        <button class="p-2 rounded-full hover:bg-black/5 transition-colors" (click)="closeEditModal()">
+        <button class="text-gray-400 hover:text-gray-900 hover:bg-gray-200 p-2 rounded-2xl transition-colors" (click)="closeEditModal()">
           <span class="material-symbols-outlined">close</span>
         </button>
       </div>
 
-      <div class="p-stack-lg flex flex-col gap-stack-md">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-stack-md">
-          <div class="flex flex-col gap-1">
-            <label class="font-label-md field-label">الاسم <span class="required-star">*</span></label>
-            <input class="glass-input" [value]="newName()" (input)="newName.set($any($event.target).value)" />
+      <div class="p-6 overflow-y-auto flex-1">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
+          <div class="flex flex-col gap-2">
+            <label class="text-sm font-medium text-gray-900">الاسم <span class="text-red-500">*</span></label>
+            <input class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" [value]="newName()" (input)="newName.set($any($event.target).value)" />
           </div>
-          <div class="flex flex-col gap-1">
-            <label class="font-label-md field-label">رقم الهاتف</label>
-            <input class="glass-input" type="tel" [value]="newPhone()" (input)="newPhone.set($any($event.target).value)" />
+          <div class="flex flex-col gap-2">
+            <label class="text-sm font-medium text-gray-900">رقم الهاتف</label>
+            <input class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" type="tel" [value]="newPhone()" (input)="newPhone.set($any($event.target).value)" />
           </div>
         </div>
 
-        <div class="section-block specialization-block compact-block">
-          <div class="section-block-header row-between">
+        <div class="bg-gray-50 border border-gray-100 rounded-2xl p-5 mb-6">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
             <div>
-              <h3 class="font-label-lg">تخصصات المعلم</h3>
-              <p class="font-body-sm text-outline">يجب أن تظل هناك مادة واحدة على الأقل مربوطة بالمعلم.</p>
+              <h3 class="text-base font-bold text-gray-900">تخصصات المعلم</h3>
+              <p class="text-xs text-gray-500">يجب أن تظل هناك مادة واحدة على الأقل مربوطة بالمعلم.</p>
             </div>
             @if (selectedSubjectIds().length > 0) {
-              <button class="secondary-btn-glass small-btn" type="button" (click)="clearSelectedSubjects()">
+              <button class="text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-2xl px-3 py-1.5 hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 transition-colors" type="button" (click)="clearSelectedSubjects()">
                 مسح التحديد
               </button>
             }
           </div>
 
-          <p class="selected-subjects-text compact-text">{{ getSelectedSubjectsText() }}</p>
+          <p class="text-sm text-gray-600 mb-4">{{ getSelectedSubjectsText() }}</p>
 
           <div class="flex flex-wrap gap-2">
             @for (s of allSubjects(); track s.id) {
-              <button class="px-3 py-1.5 rounded-lg text-label-sm font-label-sm transition-all"
+              <button class="px-3 py-1.5 rounded-2xl text-sm font-medium transition-all border"
                 type="button"
-                [class.gradient-btn]="selectedSubjectIds().includes(s.id)"
-                [class.secondary-btn-glass]="!selectedSubjectIds().includes(s.id)"
+                [class.bg-blue-600]="selectedSubjectIds().includes(s.id)"
+                [class.text-white]="selectedSubjectIds().includes(s.id)"
+                [class.border-blue-600]="selectedSubjectIds().includes(s.id)"
+                [class.bg-white]="!selectedSubjectIds().includes(s.id)"
+                [class.text-gray-700]="!selectedSubjectIds().includes(s.id)"
+                [class.border-gray-200]="!selectedSubjectIds().includes(s.id)"
+                [class.hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5]="!selectedSubjectIds().includes(s.id)"
                 (click)="toggleSubject(s.id)">{{ s.name }}</button>
             }
           </div>
         </div>
 
-        <div class="info-note soft-note">
-          <span class="material-symbols-outlined">tips_and_updates</span>
-          <p>لتغيير البريد الإلكتروني أو كلمة المرور استخدم إدارة الحسابات، أما إسناد المعلم للفصول فيتم من صفحة التعيينات.</p>
+        <div class="flex items-start gap-3 p-4 text-sm text-yellow-800 rounded-2xl bg-yellow-50 border border-yellow-200">
+          <span class="material-symbols-outlined shrink-0 text-lg">tips_and_updates</span>
+          <p class="font-medium">لتغيير البريد الإلكتروني أو كلمة المرور استخدم إدارة الحسابات، أما إسناد المعلم للفصول فيتم من صفحة التعيينات.</p>
         </div>
       </div>
 
-      <div class="glass-modal-footer flex justify-end gap-3">
-        <button class="secondary-btn-glass" (click)="closeEditModal()">إلغاء</button>
-        <button class="gradient-btn" (click)="updateTeacher()" [disabled]="!canUpdateTeacher()">
+      <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 bg-gray-50">
+        <button class="px-5 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 transition-colors" (click)="closeEditModal()">إلغاء</button>
+        <button class="px-5 py-2.5 text-sm font-medium text-white bg-blue-700 rounded-2xl hover:bg-blue-800 focus:ring-4 focus:ring-indigo-300 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" (click)="updateTeacher()" [disabled]="!canUpdateTeacher()">
           @if (isLoading()) {
-            <span class="material-symbols-outlined spin-icon">refresh</span>
+            <span class="material-symbols-outlined animate-spin text-sm">refresh</span>
             جار الحفظ...
           } @else {
             حفظ التغييرات

@@ -1,176 +1,207 @@
 <app-sidebar [(isOpen)]="sidebarOpen" />
 <div class="main-content">
   <app-topbar userName="أحمد" />
-  <main class="p-gutter-desktop">
-    <div class="max-w-6xl mx-auto flex flex-col gap-stack-lg">
-      <div class="page-header-card">
-        <div>
-          <span class="section-eyebrow">إدارة الحسابات</span>
-          <h1 class="font-headline-lg text-headline-lg page-title">حسابات الأدمن وأولياء الأمور وحسابات الطلاب</h1>
-          <p class="font-body-md text-body-md text-outline page-description">
+  <main class="pt-16 min-h-screen bg-gray-50 flex flex-col">
+    <div class="flex-1 p-4 md:p-6 lg:p-8">
+      <div class="max-w-7xl mx-auto space-y-6 pb-10">
+
+        <!-- Header -->
+        <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50">
+          <span class="text-sm font-medium text-blue-600 mb-1 block">إدارة الحسابات</span>
+          <h1 class="text-2xl font-bold text-gray-900 mb-2">حسابات الأدمن وأولياء الأمور وحسابات الطلاب</h1>
+          <p class="text-sm text-gray-500 max-w-2xl">
             هذه الصفحة مخصصة للحسابات العامة فقط. من هنا تنشئ حسابات الأدمن وأولياء الأمور وحسابات الطلاب، كما يمكنك إدارة أبناء ولي الأمر مباشرة من نفس الصفحة.
           </p>
         </div>
-      </div>
 
-      <div class="summary-grid">
-        <div class="summary-card">
-          <span class="summary-label">إجمالي الحسابات</span>
-          <strong class="summary-value">{{ totalCount() }}</strong>
-          <span class="summary-hint">كل الحسابات العامة في النظام</span>
-        </div>
-        <div class="summary-card success">
-          <span class="summary-label">الحسابات النشطة</span>
-          <strong class="summary-value">{{ activeCount() }}</strong>
-          <span class="summary-hint">جاهزة لتسجيل الدخول حاليا</span>
-        </div>
-        <div class="summary-card">
-          <span class="summary-label">الأدمن</span>
-          <strong class="summary-value">{{ adminCount() }}</strong>
-          <span class="summary-hint">حسابات الإدارة</span>
-        </div>
-        <div class="summary-card">
-          <span class="summary-label">أولياء الأمور</span>
-          <strong class="summary-value">{{ parentCount() }}</strong>
-          <span class="summary-hint">حسابات أولياء الأمور</span>
-        </div>
-        <div class="summary-card warning">
-          <span class="summary-label">حسابات الطلاب</span>
-          <strong class="summary-value">{{ studentCount() }}</strong>
-          <span class="summary-hint">حسابات الدخول الخاصة بالطلاب</span>
-        </div>
-      </div>
-
-      @if (errorMessage()) {
-        <div class="banner error-banner">
-          <span class="material-symbols-outlined">error</span>
-          <span>{{ errorMessage() }}</span>
-        </div>
-      }
-      @if (successMessage()) {
-        <div class="banner success-banner">
-          <span class="material-symbols-outlined">check_circle</span>
-          <span>{{ successMessage() }}</span>
-        </div>
-      }
-
-      <div class="quick-actions-grid">
-        <button class="glass-action-card" type="button" (click)="openCreateModal('Admin')">
-          <span class="material-symbols-outlined">admin_panel_settings</span>
-          <strong>إضافة أدمن</strong>
-          <span>إنشاء حساب إداري جديد</span>
-        </button>
-        <button class="glass-action-card" type="button" (click)="openCreateModal('Parent')">
-          <span class="material-symbols-outlined">family_restroom</span>
-          <strong>إضافة ولي أمر</strong>
-          <span>ثم إدارة الأبناء والربط من هنا</span>
-        </button>
-        <button class="glass-action-card" type="button" (click)="openCreateModal('Student')">
-          <span class="material-symbols-outlined">badge</span>
-          <strong>إضافة حساب طالب</strong>
-          <span>حساب دخول فقط بدون ملف أكاديمي</span>
-        </button>
-        <button class="glass-action-card secondary" type="button" (click)="navigateTo('/teacher-management')">
-          <span class="material-symbols-outlined">school</span>
-          <strong>إدارة المعلمين</strong>
-          <span>للبيانات والتخصصات والتعيينات</span>
-        </button>
-        <button class="glass-action-card secondary" type="button" (click)="navigateTo('/student-management')">
-          <span class="material-symbols-outlined">groups</span>
-          <strong>إدارة الطلاب</strong>
-          <span>للملفات الأكاديمية وربط الحسابات</span>
-        </button>
-      </div>
-
-      <div class="glass-card teacher-form-card">
-        <div class="card-heading-row">
-          <div>
-            <h2 class="font-headline-md text-headline-md">قائمة الحسابات</h2>
-            <p class="font-body-sm text-outline">يمكنك البحث والتصفية وإدارة حالة الحسابات العامة من هنا.</p>
+        <!-- Summary Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div class="bg-white border border-gray-100 p-4 rounded-2xl text-center flex flex-col justify-center">
+            <span class="block text-xs text-gray-500 font-medium mb-1">إجمالي الحسابات</span>
+            <strong class="block text-2xl font-bold text-gray-900">{{ totalCount() }}</strong>
+            <span class="block text-[10px] text-gray-400 mt-1">كل الحسابات العامة</span>
           </div>
-          <button class="gradient-btn" type="button" (click)="openCreateModal()">
-            <span class="material-symbols-outlined">person_add</span>
-            إضافة حساب
+          <div class="bg-emerald-50 border border-emerald-100 p-4 rounded-2xl text-center flex flex-col justify-center">
+            <span class="block text-xs text-emerald-600 font-medium mb-1">الحسابات النشطة</span>
+            <strong class="block text-2xl font-bold text-emerald-900">{{ activeCount() }}</strong>
+            <span class="block text-[10px] text-emerald-500 mt-1">جاهزة لتسجيل الدخول</span>
+          </div>
+          <div class="bg-white border border-gray-100 p-4 rounded-2xl text-center flex flex-col justify-center">
+            <span class="block text-xs text-gray-500 font-medium mb-1">الأدمن</span>
+            <strong class="block text-2xl font-bold text-gray-900">{{ adminCount() }}</strong>
+            <span class="block text-[10px] text-gray-400 mt-1">حسابات الإدارة</span>
+          </div>
+          <div class="bg-white border border-gray-100 p-4 rounded-2xl text-center flex flex-col justify-center">
+            <span class="block text-xs text-gray-500 font-medium mb-1">أولياء الأمور</span>
+            <strong class="block text-2xl font-bold text-gray-900">{{ parentCount() }}</strong>
+            <span class="block text-[10px] text-gray-400 mt-1">حسابات أولياء الأمور</span>
+          </div>
+          <div class="bg-orange-50 border border-orange-100 p-4 rounded-2xl text-center flex flex-col justify-center">
+            <span class="block text-xs text-orange-600 font-medium mb-1">حسابات الطلاب</span>
+            <strong class="block text-2xl font-bold text-orange-900">{{ studentCount() }}</strong>
+            <span class="block text-[10px] text-orange-500 mt-1">حسابات دخول الطلاب</span>
+          </div>
+        </div>
+
+        <!-- Feedback Banners -->
+        @if (errorMessage()) {
+          <div class="flex items-center gap-3 p-4 text-sm text-red-800 rounded-2xl bg-red-50 border border-red-200">
+            <span class="material-symbols-outlined text-lg">error</span>
+            <span class="font-medium">{{ errorMessage() }}</span>
+          </div>
+        }
+        @if (successMessage()) {
+          <div class="flex items-center gap-3 p-4 text-sm text-green-800 rounded-2xl bg-emerald-50 border border-green-200">
+            <span class="material-symbols-outlined text-lg">check_circle</span>
+            <span class="font-medium">{{ successMessage() }}</span>
+          </div>
+        }
+
+        <!-- Quick Actions Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <button class="bg-white border border-gray-100 hover:border-blue-300 hover:bg-blue-50 hover:shadow-md transition-all p-4 rounded-3xl flex flex-col items-center text-center gap-2 group" type="button" (click)="openCreateModal('Admin')">
+            <span class="material-symbols-outlined text-3xl text-blue-600 group-hover:scale-110 transition-transform">admin_panel_settings</span>
+            <strong class="text-sm text-gray-900 block">إضافة أدمن</strong>
+            <span class="text-xs text-gray-500">حساب إداري جديد</span>
+          </button>
+          <button class="bg-white border border-gray-100 hover:border-blue-300 hover:bg-blue-50 hover:shadow-md transition-all p-4 rounded-3xl flex flex-col items-center text-center gap-2 group" type="button" (click)="openCreateModal('Parent')">
+            <span class="material-symbols-outlined text-3xl text-blue-600 group-hover:scale-110 transition-transform">family_restroom</span>
+            <strong class="text-sm text-gray-900 block">إضافة ولي أمر</strong>
+            <span class="text-xs text-gray-500">إدارة الأبناء والربط</span>
+          </button>
+          <button class="bg-white border border-gray-100 hover:border-blue-300 hover:bg-blue-50 hover:shadow-md transition-all p-4 rounded-3xl flex flex-col items-center text-center gap-2 group" type="button" (click)="openCreateModal('Student')">
+            <span class="material-symbols-outlined text-3xl text-blue-600 group-hover:scale-110 transition-transform">badge</span>
+            <strong class="text-sm text-gray-900 block">إضافة حساب طالب</strong>
+            <span class="text-xs text-gray-500">دخول بدون ملف</span>
+          </button>
+          <button class="bg-gray-50 border border-gray-100 hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50 transition-all p-4 rounded-3xl flex flex-col items-center text-center gap-2 group" type="button" (click)="navigateTo('/teacher-management')">
+            <span class="material-symbols-outlined text-3xl text-gray-600 group-hover:scale-110 transition-transform">school</span>
+            <strong class="text-sm text-gray-900 block">إدارة المعلمين</strong>
+            <span class="text-xs text-gray-500">البيانات والتخصصات</span>
+          </button>
+          <button class="bg-gray-50 border border-gray-100 hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50 transition-all p-4 rounded-3xl flex flex-col items-center text-center gap-2 group" type="button" (click)="navigateTo('/student-management')">
+            <span class="material-symbols-outlined text-3xl text-gray-600 group-hover:scale-110 transition-transform">groups</span>
+            <strong class="text-sm text-gray-900 block">إدارة الطلاب</strong>
+            <span class="text-xs text-gray-500">الملفات والربط</span>
           </button>
         </div>
 
-        <div class="toolbar-row">
-          <div class="glass-tabs">
-            <button class="glass-tab" [class.active]="activeTab() === 'all'" (click)="activeTab.set('all')">الكل</button>
-            <button class="glass-tab" [class.active]="activeTab() === 'admins'" (click)="activeTab.set('admins')">الأدمن</button>
-            <button class="glass-tab" [class.active]="activeTab() === 'parents'" (click)="activeTab.set('parents')">أولياء الأمور</button>
-            <button class="glass-tab" [class.active]="activeTab() === 'students'" (click)="activeTab.set('students')">حسابات الطلاب</button>
+        <!-- Table Card -->
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50 flex flex-col overflow-hidden">
+          
+          <div class="p-5 border-b border-gray-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <h2 class="text-lg font-bold text-gray-900">قائمة الحسابات</h2>
+              <p class="text-sm text-gray-500 mt-1">البحث والتصفية وإدارة الحسابات العامة.</p>
+            </div>
+            <button class="text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-lg transform transition-all hover:-translate-y-0.5 focus:ring-4 focus:ring-indigo-300 font-medium rounded-2xl text-sm px-4 py-2 flex items-center gap-2 transition-colors" type="button" (click)="openCreateModal()">
+              <span class="material-symbols-outlined text-sm">person_add</span>
+              إضافة حساب
+            </button>
           </div>
 
-          <div class="search-box">
-            <span class="material-symbols-outlined">search</span>
-            <input class="glass-input" placeholder="ابحث بالاسم أو البريد أو الهاتف..." [value]="searchQuery()" (input)="searchQuery.set($any($event.target).value)" />
-          </div>
-        </div>
+          <div class="p-4 bg-gray-50 border-b border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4">
+            <!-- Tabs -->
+            <div class="flex flex-wrap items-center bg-gray-200/50 p-1 rounded-2xl">
+              <button class="px-4 py-1.5 text-sm font-medium rounded-xl transition-colors" [class.bg-white]="activeTab() === 'all'" [class.shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50]="activeTab() === 'all'" [class.text-gray-900]="activeTab() === 'all'" [class.text-gray-500]="activeTab() !== 'all'" [class.hover:text-gray-700]="activeTab() !== 'all'" (click)="activeTab.set('all'); currentPage.set(1)">الكل</button>
+              <button class="px-4 py-1.5 text-sm font-medium rounded-xl transition-colors" [class.bg-white]="activeTab() === 'admins'" [class.shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50]="activeTab() === 'admins'" [class.text-gray-900]="activeTab() === 'admins'" [class.text-gray-500]="activeTab() !== 'admins'" [class.hover:text-gray-700]="activeTab() !== 'admins'" (click)="activeTab.set('admins'); currentPage.set(1)">الأدمن</button>
+              <button class="px-4 py-1.5 text-sm font-medium rounded-xl transition-colors" [class.bg-white]="activeTab() === 'parents'" [class.shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50]="activeTab() === 'parents'" [class.text-gray-900]="activeTab() === 'parents'" [class.text-gray-500]="activeTab() !== 'parents'" [class.hover:text-gray-700]="activeTab() !== 'parents'" (click)="activeTab.set('parents'); currentPage.set(1)">أولياء الأمور</button>
+              <button class="px-4 py-1.5 text-sm font-medium rounded-xl transition-colors" [class.bg-white]="activeTab() === 'students'" [class.shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50]="activeTab() === 'students'" [class.text-gray-900]="activeTab() === 'students'" [class.text-gray-500]="activeTab() !== 'students'" [class.hover:text-gray-700]="activeTab() !== 'students'" (click)="activeTab.set('students'); currentPage.set(1)">الطلاب</button>
+            </div>
 
-        <div class="glass-table-container">
+            <!-- Search -->
+            <div class="relative w-full md:w-72">
+              <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                <span class="material-symbols-outlined text-gray-400 text-sm">search</span>
+              </div>
+              <input type="text" class="bg-white border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full pr-10 p-2.5 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50" placeholder="ابحث بالاسم أو البريد أو الهاتف..." [value]="searchQuery()" (input)="searchQuery.set($any($event.target).value); currentPage.set(1)">
+            </div>
+          </div>
+
           <div class="overflow-x-auto">
-            <table class="w-full">
-              <thead>
+            <table class="w-full text-sm text-right text-gray-500">
+              <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-100">
                 <tr>
-                  <th class="text-right p-4 font-label-md text-outline">الاسم</th>
-                  <th class="text-right p-4 font-label-md text-outline">الدور</th>
-                  <th class="text-right p-4 font-label-md text-outline">البريد الإلكتروني</th>
-                  <th class="text-right p-4 font-label-md text-outline">الهاتف</th>
-                  <th class="text-right p-4 font-label-md text-outline">الحالة</th>
-                  <th class="text-right p-4 font-label-md text-outline">إدارة الأبناء</th>
-                  <th class="text-center p-4 font-label-md text-outline">الإجراءات</th>
+                  <th scope="col" class="px-6 py-4">الاسم</th>
+                  <th scope="col" class="px-6 py-4">الدور</th>
+                  <th scope="col" class="px-6 py-4">البريد الإلكتروني</th>
+                  <th scope="col" class="px-6 py-4">الهاتف</th>
+                  <th scope="col" class="px-6 py-4 text-center">الحالة</th>
+                  <th scope="col" class="px-6 py-4 text-center">إدارة الأبناء</th>
+                  <th scope="col" class="px-6 py-4 text-center">الإجراءات</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody class="divide-y divide-gray-200">
                 @if (isLoading()) {
                   <tr>
-                    <td colspan="7" class="p-10 text-center text-outline font-body-md">جار تحميل الحسابات...</td>
+                    <td colspan="7" class="px-6 py-12 text-center text-gray-500">
+                      <div class="flex flex-col items-center justify-center">
+                        <span class="material-symbols-outlined animate-spin text-4xl text-blue-600 mb-2">progress_activity</span>
+                        <p>جار تحميل الحسابات...</p>
+                      </div>
+                    </td>
                   </tr>
                 } @else if (filteredUsers().length === 0) {
                   <tr>
-                    <td colspan="7" class="p-10 text-center text-outline font-body-md">
-                      <div class="empty-state-block">
-                        <span class="material-symbols-outlined">manage_accounts</span>
-                        <p>لا توجد حسابات مطابقة للفلاتر الحالية.</p>
+                    <td colspan="7" class="px-6 py-16 text-center text-gray-500">
+                      <div class="flex flex-col items-center justify-center">
+                        <span class="material-symbols-outlined text-5xl text-gray-300 mb-3">manage_accounts</span>
+                        <p class="text-base font-medium text-gray-900">لا توجد حسابات مطابقة للفلاتر الحالية.</p>
                       </div>
                     </td>
                   </tr>
                 }
 
-                @for (user of filteredUsers(); track user.id) {
-                  <tr>
-                    <td class="p-4 font-body-md teacher-name-cell">{{ user.fullName }}</td>
-                    <td class="p-4">
-                      <span class="role-chip">{{ getRoleLabel(user.role) }}</span>
+                @for (user of paginatedUsers(); track user.id) {
+                  <tr class="hover:bg-gray-50 transition-colors bg-white">
+                    <td class="px-6 py-4 font-bold text-gray-900">{{ user.fullName }}</td>
+                    <td class="px-6 py-4">
+                      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border"
+                            [class.bg-purple-50]="user.role.toLowerCase() === 'admin'"
+                            [class.text-purple-700]="user.role.toLowerCase() === 'admin'"
+                            [class.border-purple-200]="user.role.toLowerCase() === 'admin'"
+                            [class.bg-blue-50]="user.role.toLowerCase() === 'parent'"
+                            [class.text-blue-700]="user.role.toLowerCase() === 'parent'"
+                            [class.border-blue-200]="user.role.toLowerCase() === 'parent'"
+                            [class.bg-orange-50]="user.role.toLowerCase() === 'student'"
+                            [class.text-orange-700]="user.role.toLowerCase() === 'student'"
+                            [class.border-orange-200]="user.role.toLowerCase() === 'student'">
+                        {{ getRoleLabel(user.role) }}
+                      </span>
                     </td>
-                    <td class="p-4 font-body-md text-outline">{{ user.email }}</td>
-                    <td class="p-4 font-body-md text-outline">{{ user.phone || '—' }}</td>
-                    <td class="p-4">
-                      <span class="status-chip" [class.active-chip]="user.isActive" [class.inactive-chip]="!user.isActive">
+                    <td class="px-6 py-4 text-gray-600">{{ user.email }}</td>
+                    <td class="px-6 py-4 text-gray-600">{{ user.phone || '—' }}</td>
+                    <td class="px-6 py-4 text-center">
+                      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border"
+                            [class.bg-emerald-50]="user.isActive"
+                            [class.text-green-700]="user.isActive"
+                            [class.border-green-200]="user.isActive"
+                            [class.bg-gray-100]="!user.isActive"
+                            [class.text-gray-700]="!user.isActive"
+                            [class.border-gray-200]="!user.isActive">
                         {{ user.isActive ? 'نشط' : 'غير نشط' }}
                       </span>
                     </td>
-                    <td class="p-4">
+                    <td class="px-6 py-4 text-center">
                       @if (user.role.toLowerCase() === 'parent') {
-                        <button class="secondary-btn-glass small-btn" type="button" (click)="openParentLinksModal(user)">
-                          <span class="material-symbols-outlined">groups</span>
+                        <button class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-2xl hover:bg-blue-100 transition-colors" type="button" (click)="openParentLinksModal(user)">
+                          <span class="material-symbols-outlined text-[14px]">groups</span>
                           إدارة الأبناء
                         </button>
                       } @else {
-                        <span class="text-outline">—</span>
+                        <span class="text-gray-400">—</span>
                       }
                     </td>
-                    <td class="p-4">
-                      <div class="flex items-center justify-center gap-1">
-                        <button class="icon-action-btn" type="button" title="تعديل الحساب" (click)="openEditModal(user)">
-                          <span class="material-symbols-outlined">edit</span>
+                    <td class="px-6 py-4 text-center">
+                      <div class="flex items-center justify-center gap-2">
+                        <button class="p-2 text-blue-600 hover:bg-blue-50 rounded-2xl transition-colors" type="button" title="تعديل الحساب" (click)="openEditModal(user)">
+                          <span class="material-symbols-outlined text-sm">edit</span>
                         </button>
-                        <button class="icon-action-btn" type="button" [title]="user.isActive ? 'تعطيل الحساب' : 'تفعيل الحساب'" (click)="toggleAccountStatus(user)">
-                          <span class="material-symbols-outlined">{{ user.isActive ? 'toggle_off' : 'toggle_on' }}</span>
+                        <button class="p-2 text-gray-600 hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 rounded-2xl transition-colors" type="button" [title]="user.isActive ? 'تعطيل الحساب' : 'تفعيل الحساب'" (click)="toggleAccountStatus(user)">
+                          <span class="material-symbols-outlined text-sm">{{ user.isActive ? 'toggle_off' : 'toggle_on' }}</span>
                         </button>
-                        <button class="icon-action-btn danger" type="button" title="حذف الحساب" (click)="deleteAccount(user)">
-                          <span class="material-symbols-outlined">delete</span>
+                        <button class="p-2 text-red-600 hover:bg-red-50 rounded-2xl transition-colors" type="button" title="حذف الحساب" (click)="deleteAccount(user)">
+                          <span class="material-symbols-outlined text-sm">delete</span>
                         </button>
                       </div>
                     </td>
@@ -179,64 +210,114 @@
               </tbody>
             </table>
           </div>
+
+          <!-- Pagination -->
+          @if (totalPages() > 1) {
+            <div class="flex items-center justify-between p-4 bg-gray-50 border-t border-gray-100 flex-wrap gap-4">
+              <span class="text-sm text-gray-700">
+                إظهار <span class="font-semibold text-gray-900">{{ (currentPage() - 1) * itemsPerPage() + 1 }}</span> إلى <span class="font-semibold text-gray-900">{{ (currentPage() * itemsPerPage()) > filteredUsers().length ? filteredUsers().length : (currentPage() * itemsPerPage()) }}</span> من أصل <span class="font-semibold text-gray-900">{{ filteredUsers().length }}</span> حساب
+              </span>
+              
+              <div class="flex items-center gap-2">
+                <button class="flex items-center justify-center px-3 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors" [disabled]="currentPage() === 1" (click)="prevPage()">
+                  <span class="material-symbols-outlined text-sm mr-1">chevron_right</span>
+                  السابق
+                </button>
+                
+                <div class="hidden sm:flex items-center gap-1">
+                  @for (p of [].constructor(totalPages()); track $index) {
+                    @if (
+                      $index + 1 === 1 ||
+                      $index + 1 === totalPages() ||
+                      ($index + 1 >= currentPage() - 1 && $index + 1 <= currentPage() + 1)
+                    ) {
+                      <button class="flex items-center justify-center w-8 h-8 text-sm font-medium rounded-2xl transition-colors border" 
+                              [class.bg-blue-600]="( $index + 1 ) === currentPage()"
+                              [class.text-white]="( $index + 1 ) === currentPage()"
+                              [class.border-blue-600]="( $index + 1 ) === currentPage()"
+                              [class.bg-white]="( $index + 1 ) !== currentPage()"
+                              [class.text-gray-900]="( $index + 1 ) !== currentPage()"
+                              [class.border-gray-200]="( $index + 1 ) !== currentPage()"
+                              [class.hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5]="( $index + 1 ) !== currentPage()"
+                              (click)="goToPage($index + 1)">
+                        {{ $index + 1 }}
+                      </button>
+                    } @else if (
+                      ($index + 1 === currentPage() - 2 && currentPage() > 3) ||
+                      ($index + 1 === currentPage() + 2 && currentPage() < totalPages() - 2)
+                    ) {
+                      <span class="flex items-center justify-center w-8 h-8 text-sm font-medium text-gray-500">...</span>
+                    }
+                  }
+                </div>
+
+                <button class="flex items-center justify-center px-3 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors" [disabled]="currentPage() === totalPages()" (click)="nextPage()">
+                  التالي
+                  <span class="material-symbols-outlined text-sm ml-1">chevron_left</span>
+                </button>
+              </div>
+            </div>
+          }
         </div>
       </div>
     </div>
   </main>
 </div>
 
+<!-- Modals -->
+
 @if (showCreateModal()) {
-  <div class="fixed inset-0 z-[60] flex items-center justify-center glass-overlay p-margin-mobile" (click)="closeModals()">
-    <div class="glass-modal max-w-2xl w-full max-h-[90vh] overflow-y-auto" (click)="$event.stopPropagation()">
-      <div class="glass-modal-header flex justify-between items-center">
+  <div class="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/50 backdrop-blur-sm p-4" (click)="closeModals()">
+    <div class="bg-white rounded-3xl shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden" (click)="$event.stopPropagation()">
+      <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
         <div>
-          <h2 class="font-headline-md text-headline-md modal-title">إضافة حساب جديد</h2>
-          <p class="font-body-sm text-outline">هذه الصفحة للحسابات العامة فقط: أدمن، ولي أمر، أو حساب طالب.</p>
+          <h2 class="text-xl font-bold text-gray-900">إضافة حساب جديد</h2>
+          <p class="text-sm text-gray-500 mt-1">هذه الصفحة للحسابات العامة فقط: أدمن، ولي أمر، أو حساب طالب.</p>
         </div>
-        <button class="p-2 rounded-full hover:bg-black/5 transition-colors" (click)="closeModals()">
+        <button class="text-gray-400 hover:text-gray-900 hover:bg-gray-200 p-2 rounded-2xl transition-colors" (click)="closeModals()">
           <span class="material-symbols-outlined">close</span>
         </button>
       </div>
 
-      <div class="p-stack-lg flex flex-col gap-stack-md">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-stack-md">
-          <div class="flex flex-col gap-1">
-            <label class="font-label-md field-label">الاسم الكامل <span class="required-star">*</span></label>
-            <input class="glass-input" [value]="formName()" (input)="formName.set($any($event.target).value)" />
+      <div class="p-6 overflow-y-auto flex-1">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div class="flex flex-col gap-2">
+            <label class="text-sm font-medium text-gray-900">الاسم الكامل <span class="text-red-500">*</span></label>
+            <input class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" [value]="formName()" (input)="formName.set($any($event.target).value)" />
           </div>
-          <div class="flex flex-col gap-1">
-            <label class="font-label-md field-label">نوع الحساب <span class="required-star">*</span></label>
-            <select class="glass-select" [value]="formRole()" (change)="formRole.set($any($event.target).value)">
+          <div class="flex flex-col gap-2">
+            <label class="text-sm font-medium text-gray-900">نوع الحساب <span class="text-red-500">*</span></label>
+            <select class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" [value]="formRole()" (change)="formRole.set($any($event.target).value)">
               <option value="Admin">أدمن</option>
               <option value="Parent">ولي أمر</option>
               <option value="Student">حساب طالب</option>
             </select>
           </div>
-          <div class="flex flex-col gap-1">
-            <label class="font-label-md field-label">البريد الإلكتروني <span class="required-star">*</span></label>
-            <input class="glass-input" type="email" [value]="formEmail()" (input)="formEmail.set($any($event.target).value)" />
+          <div class="flex flex-col gap-2">
+            <label class="text-sm font-medium text-gray-900">البريد الإلكتروني <span class="text-red-500">*</span></label>
+            <input class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" type="email" [value]="formEmail()" (input)="formEmail.set($any($event.target).value)" />
           </div>
-          <div class="flex flex-col gap-1">
-            <label class="font-label-md field-label">رقم الهاتف</label>
-            <input class="glass-input" type="tel" [value]="formPhone()" (input)="formPhone.set($any($event.target).value)" />
+          <div class="flex flex-col gap-2">
+            <label class="text-sm font-medium text-gray-900">رقم الهاتف</label>
+            <input class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" type="tel" [value]="formPhone()" (input)="formPhone.set($any($event.target).value)" />
           </div>
-          <div class="flex flex-col gap-1 md:col-span-2">
-            <label class="font-label-md field-label">كلمة المرور <span class="required-star">*</span></label>
-            <input class="glass-input" type="password" [value]="formPassword()" (input)="formPassword.set($any($event.target).value)" />
+          <div class="flex flex-col gap-2 md:col-span-2">
+            <label class="text-sm font-medium text-gray-900">كلمة المرور <span class="text-red-500">*</span></label>
+            <input class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" type="password" [value]="formPassword()" (input)="formPassword.set($any($event.target).value)" />
           </div>
         </div>
 
-        <div class="info-note">
-          <span class="material-symbols-outlined">info</span>
-          <p>إنشاء المعلمين يتم من إدارة المعلمين. يمكنك بعد إنشاء ولي الأمر فتح "إدارة الأبناء" من الجدول لربطه بالطلاب وتعديل صلة القرابة.</p>
+        <div class="mt-6 flex items-start gap-3 p-4 text-sm text-blue-800 rounded-2xl bg-blue-50 border border-blue-200">
+          <span class="material-symbols-outlined shrink-0 text-lg">info</span>
+          <p class="font-medium">إنشاء المعلمين يتم من إدارة المعلمين. يمكنك بعد إنشاء ولي الأمر فتح "إدارة الأبناء" من الجدول لربطه بالطلاب وتعديل صلة القرابة.</p>
         </div>
       </div>
 
-      <div class="glass-modal-footer flex justify-end gap-3">
-        <button class="secondary-btn-glass" (click)="closeModals()">إلغاء</button>
-        <button class="gradient-btn" (click)="saveAccount()" [disabled]="!canSaveAccount()">
+      <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 bg-gray-50">
+        <button class="px-5 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 transition-colors" (click)="closeModals()">إلغاء</button>
+        <button class="px-5 py-2.5 text-sm font-medium text-white bg-blue-700 rounded-2xl hover:bg-blue-800 focus:ring-4 focus:ring-indigo-300 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" (click)="saveAccount()" [disabled]="!canSaveAccount()">
           @if (isLoading()) {
-            <span class="material-symbols-outlined spin-icon">refresh</span>
+            <span class="material-symbols-outlined animate-spin text-sm">refresh</span>
             جار الحفظ...
           } @else {
             حفظ الحساب
@@ -248,45 +329,45 @@
 }
 
 @if (showEditModal()) {
-  <div class="fixed inset-0 z-[60] flex items-center justify-center glass-overlay p-margin-mobile" (click)="closeModals()">
-    <div class="glass-modal max-w-2xl w-full max-h-[90vh] overflow-y-auto" (click)="$event.stopPropagation()">
-      <div class="glass-modal-header flex justify-between items-center">
+  <div class="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/50 backdrop-blur-sm p-4" (click)="closeModals()">
+    <div class="bg-white rounded-3xl shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden" (click)="$event.stopPropagation()">
+      <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
         <div>
-          <h2 class="font-headline-md text-headline-md modal-title">تعديل الحساب</h2>
-          <p class="font-body-sm text-outline">يمكن تعديل الاسم والهاتف من هنا. تغيير الدور أو البريد غير متاح حاليًا من الـ API.</p>
+          <h2 class="text-xl font-bold text-gray-900">تعديل الحساب</h2>
+          <p class="text-sm text-gray-500 mt-1">يمكن تعديل الاسم والهاتف من هنا. تغيير الدور أو البريد غير متاح حاليًا من الـ API.</p>
         </div>
-        <button class="p-2 rounded-full hover:bg-black/5 transition-colors" (click)="closeModals()">
+        <button class="text-gray-400 hover:text-gray-900 hover:bg-gray-200 p-2 rounded-2xl transition-colors" (click)="closeModals()">
           <span class="material-symbols-outlined">close</span>
         </button>
       </div>
 
-      <div class="p-stack-lg flex flex-col gap-stack-md">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-stack-md">
-          <div class="flex flex-col gap-1">
-            <label class="font-label-md field-label">الاسم الكامل <span class="required-star">*</span></label>
-            <input class="glass-input" [value]="formName()" (input)="formName.set($any($event.target).value)" />
+      <div class="p-6 overflow-y-auto flex-1">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div class="flex flex-col gap-2">
+            <label class="text-sm font-medium text-gray-900">الاسم الكامل <span class="text-red-500">*</span></label>
+            <input class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" [value]="formName()" (input)="formName.set($any($event.target).value)" />
           </div>
-          <div class="flex flex-col gap-1">
-            <label class="font-label-md field-label">نوع الحساب</label>
-            <input class="glass-input" [value]="getRoleLabel(formRole())" disabled />
+          <div class="flex flex-col gap-2">
+            <label class="text-sm font-medium text-gray-900">نوع الحساب</label>
+            <input class="bg-gray-100 border border-gray-200 text-gray-500 text-sm rounded-2xl block w-full p-2.5 cursor-not-allowed" [value]="getRoleLabel(formRole())" disabled />
           </div>
-          <div class="flex flex-col gap-1 md:col-span-2">
-            <label class="font-label-md field-label">رقم الهاتف</label>
-            <input class="glass-input" type="tel" [value]="formPhone()" (input)="formPhone.set($any($event.target).value)" />
+          <div class="flex flex-col gap-2 md:col-span-2">
+            <label class="text-sm font-medium text-gray-900">رقم الهاتف</label>
+            <input class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" type="tel" [value]="formPhone()" (input)="formPhone.set($any($event.target).value)" />
           </div>
         </div>
 
-        <div class="info-note soft-note">
-          <span class="material-symbols-outlined">tips_and_updates</span>
-          <p>لإنشاء أو إدارة المعلمين استخدم إدارة المعلمين. أما أولياء الأمور فإدارة الحساب والربط بالأبناء تتم من هنا.</p>
+        <div class="mt-6 flex items-start gap-3 p-4 text-sm text-yellow-800 rounded-2xl bg-yellow-50 border border-yellow-200">
+          <span class="material-symbols-outlined shrink-0 text-lg">tips_and_updates</span>
+          <p class="font-medium">لإنشاء أو إدارة المعلمين استخدم إدارة المعلمين. أما أولياء الأمور فإدارة الحساب والربط بالأبناء تتم من هنا.</p>
         </div>
       </div>
 
-      <div class="glass-modal-footer flex justify-end gap-3">
-        <button class="secondary-btn-glass" (click)="closeModals()">إلغاء</button>
-        <button class="gradient-btn" (click)="updateAccount()" [disabled]="!canUpdateAccount()">
+      <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 bg-gray-50">
+        <button class="px-5 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 transition-colors" (click)="closeModals()">إلغاء</button>
+        <button class="px-5 py-2.5 text-sm font-medium text-white bg-blue-700 rounded-2xl hover:bg-blue-800 focus:ring-4 focus:ring-indigo-300 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" (click)="updateAccount()" [disabled]="!canUpdateAccount()">
           @if (isLoading()) {
-            <span class="material-symbols-outlined spin-icon">refresh</span>
+            <span class="material-symbols-outlined animate-spin text-sm">refresh</span>
             جار الحفظ...
           } @else {
             حفظ التغييرات
@@ -298,105 +379,112 @@
 }
 
 @if (showParentLinksModal()) {
-  <div class="fixed inset-0 z-[60] flex items-center justify-center glass-overlay p-margin-mobile" (click)="closeParentLinksModal()">
-    <div class="glass-modal parent-links-modal max-w-4xl w-full max-h-[90vh] overflow-y-auto" (click)="$event.stopPropagation()">
-      <div class="glass-modal-header flex justify-between items-center">
+  <div class="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/50 backdrop-blur-sm p-4" (click)="closeParentLinksModal()">
+    <div class="bg-white rounded-3xl shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden" (click)="$event.stopPropagation()">
+      <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
         <div>
-          <h2 class="font-headline-md text-headline-md modal-title">إدارة أبناء ولي الأمر</h2>
-          <p class="font-body-sm text-outline">
+          <h2 class="text-xl font-bold text-gray-900">إدارة أبناء ولي الأمر</h2>
+          <p class="text-sm text-gray-500 mt-1">
             @if (managingParent(); as parent) {
-              {{ parent.fullName }} - {{ parent.email }}
+              <span class="font-bold text-gray-700">{{ parent.fullName }}</span> - {{ parent.email }}
             }
           </p>
         </div>
-        <button class="p-2 rounded-full hover:bg-black/5 transition-colors" (click)="closeParentLinksModal()">
+        <button class="text-gray-400 hover:text-gray-900 hover:bg-gray-200 p-2 rounded-2xl transition-colors" (click)="closeParentLinksModal()">
           <span class="material-symbols-outlined">close</span>
         </button>
       </div>
 
-      <div class="p-stack-lg flex flex-col gap-stack-md">
-        <div class="parent-links-summary">
-          <div class="summary-mini-card">
-            <span class="summary-label">عدد الأبناء الحالي</span>
-            <strong class="summary-value mini">{{ managedParentChildrenCount() }}</strong>
+      <div class="p-6 overflow-y-auto flex-1 flex flex-col gap-6">
+        
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="bg-blue-50 border border-blue-100 p-4 rounded-2xl flex items-center justify-between">
+            <span class="text-sm font-medium text-blue-800">عدد الأبناء الحالي</span>
+            <strong class="text-2xl font-bold text-blue-900">{{ managedParentChildrenCount() }}</strong>
           </div>
-          <div class="summary-mini-card">
-            <span class="summary-label">طلاب متاحون للربط</span>
-            <strong class="summary-value mini">{{ availableStudentsForParent().length }}</strong>
-          </div>
-        </div>
-
-        <div class="parent-link-create">
-          <div class="flex flex-col gap-1">
-            <label class="font-label-md field-label">اختر الطالب</label>
-            <select class="glass-select" [value]="selectedStudentToLink() ?? ''" (change)="selectedStudentToLink.set($any($event.target).value ? +$any($event.target).value : null)">
-              <option value="">اختر طالبًا للربط</option>
-              @for (student of availableStudentsForParent(); track student.id) {
-                <option [value]="student.id">{{ student.fullName }} @if (student.nationalId) { - {{ student.nationalId }} }</option>
-              }
-            </select>
-          </div>
-
-          <div class="flex flex-col gap-1">
-            <label class="font-label-md field-label">صلة القرابة</label>
-            <select class="glass-select" [value]="selectedRelationship()" (change)="setSelectedRelationshipFromValue($any($event.target).value)">
-              <option value="1">الأب</option>
-              <option value="2">الأم</option>
-              <option value="3">الوصي</option>
-              <option value="4">أخ / أخت</option>
-              <option value="5">أخرى</option>
-            </select>
-          </div>
-
-          <div class="parent-link-actions">
-            <button class="gradient-btn" type="button" (click)="linkStudentToParent()" [disabled]="isLoading() || !selectedStudentToLink()">
-              <span class="material-symbols-outlined">person_add</span>
-              ربط الطالب
-            </button>
+          <div class="bg-gray-50 border border-gray-100 p-4 rounded-2xl flex items-center justify-between">
+            <span class="text-sm font-medium text-gray-700">طلاب متاحون للربط</span>
+            <strong class="text-2xl font-bold text-gray-900">{{ availableStudentsForParent().length }}</strong>
           </div>
         </div>
 
-        <div class="glass-table-container">
-          <div class="table-caption-row">
-            <div>
-              <h3 class="font-headline-md text-headline-md">الأبناء المرتبطون</h3>
-              <p class="font-body-sm text-outline">يمكنك تعديل صلة القرابة أو فك الربط من هنا.</p>
+        <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50">
+          <h3 class="text-base font-bold text-gray-900 mb-4 border-b border-gray-100 pb-2">ربط طالب جديد</h3>
+          <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+            <div class="md:col-span-6 flex flex-col gap-2">
+              <label class="text-sm font-medium text-gray-900">اختر الطالب</label>
+              <select class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" [value]="selectedStudentToLink() ?? ''" (change)="selectedStudentToLink.set($any($event.target).value ? +$any($event.target).value : null)">
+                <option value="">اختر طالبًا للربط</option>
+                @for (student of availableStudentsForParent(); track student.id) {
+                  <option [value]="student.id">{{ student.fullName }} @if (student.nationalId) { - {{ student.nationalId }} }</option>
+                }
+              </select>
             </div>
+
+            <div class="md:col-span-4 flex flex-col gap-2">
+              <label class="text-sm font-medium text-gray-900">صلة القرابة</label>
+              <select class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" [value]="selectedRelationship()" (change)="setSelectedRelationshipFromValue($any($event.target).value)">
+                <option value="1">الأب</option>
+                <option value="2">الأم</option>
+                <option value="3">الوصي</option>
+                <option value="4">أخ / أخت</option>
+                <option value="5">أخرى</option>
+              </select>
+            </div>
+
+            <div class="md:col-span-2">
+              <button class="w-full text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-lg transform transition-all hover:-translate-y-0.5 focus:ring-4 focus:ring-indigo-300 font-medium rounded-2xl text-sm px-4 py-2.5 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" type="button" (click)="linkStudentToParent()" [disabled]="isLoading() || !selectedStudentToLink()">
+                <span class="material-symbols-outlined text-sm">person_add</span>
+                ربط
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white border border-gray-100 rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50 overflow-hidden flex flex-col">
+          <div class="p-4 border-b border-gray-100 bg-gray-50">
+            <h3 class="text-base font-bold text-gray-900">الأبناء المرتبطون</h3>
+            <p class="text-sm text-gray-500 mt-1">يمكنك تعديل صلة القرابة أو فك الربط من هنا.</p>
           </div>
 
           <div class="overflow-x-auto">
-            <table class="w-full">
-              <thead>
+            <table class="w-full text-sm text-right text-gray-500">
+              <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-100">
                 <tr>
-                  <th class="text-right p-4 font-label-md text-outline">الطالب</th>
-                  <th class="text-right p-4 font-label-md text-outline">الرقم القومي</th>
-                  <th class="text-right p-4 font-label-md text-outline">صلة القرابة</th>
-                  <th class="text-center p-4 font-label-md text-outline">إجراءات</th>
+                  <th scope="col" class="px-6 py-3">الطالب</th>
+                  <th scope="col" class="px-6 py-3">الرقم القومي</th>
+                  <th scope="col" class="px-6 py-3">صلة القرابة</th>
+                  <th scope="col" class="px-6 py-3 text-center">إجراءات</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody class="divide-y divide-gray-200">
                 @if (isLoading() && parentLinkedStudents().length === 0) {
                   <tr>
-                    <td colspan="4" class="p-10 text-center text-outline font-body-md">جار تحميل أبناء ولي الأمر...</td>
+                    <td colspan="4" class="px-6 py-10 text-center text-gray-500">
+                      <div class="flex flex-col items-center justify-center">
+                        <span class="material-symbols-outlined animate-spin text-3xl text-blue-600 mb-2">progress_activity</span>
+                        <p>جار تحميل الأبناء...</p>
+                      </div>
+                    </td>
                   </tr>
                 } @else if (parentLinkedStudents().length === 0) {
                   <tr>
-                    <td colspan="4" class="p-10 text-center text-outline font-body-md">
-                      <div class="empty-state-block">
-                        <span class="material-symbols-outlined">family_restroom</span>
-                        <p>لا يوجد أبناء مرتبطون بهذا الحساب حتى الآن.</p>
+                    <td colspan="4" class="px-6 py-12 text-center text-gray-500">
+                      <div class="flex flex-col items-center justify-center">
+                        <span class="material-symbols-outlined text-4xl text-gray-300 mb-2">family_restroom</span>
+                        <p class="font-medium text-gray-900">لا يوجد أبناء مرتبطون بهذا الحساب حتى الآن.</p>
                       </div>
                     </td>
                   </tr>
                 }
 
                 @for (item of parentLinkedStudents(); track item.student.id) {
-                  <tr>
-                    <td class="p-4 font-body-md teacher-name-cell">{{ item.student.fullName }}</td>
-                    <td class="p-4 font-body-md text-outline">{{ item.student.nationalId || '—' }}</td>
-                    <td class="p-4">
+                  <tr class="bg-white hover:bg-gray-50 transition-colors">
+                    <td class="px-6 py-4 font-bold text-gray-900">{{ item.student.fullName }}</td>
+                    <td class="px-6 py-4 text-gray-600">{{ item.student.nationalId || '—' }}</td>
+                    <td class="px-6 py-4">
                       @if (item.link) {
-                        <select class="glass-select compact-select" [value]="item.link.relationship" (change)="updateParentRelationship(item.link, $any($event.target).value)">
+                        <select class="bg-gray-50 border border-gray-200 text-gray-900 text-xs rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2" [value]="item.link.relationship" (change)="updateParentRelationship(item.link, $any($event.target).value)">
                           <option value="1">الأب</option>
                           <option value="2">الأم</option>
                           <option value="3">الوصي</option>
@@ -404,14 +492,14 @@
                           <option value="5">أخرى</option>
                         </select>
                       } @else {
-                        <span class="text-outline">{{ getRelationshipLabel(null) }}</span>
+                        <span class="text-gray-400">{{ getRelationshipLabel(null) }}</span>
                       }
                     </td>
-                    <td class="p-4">
+                    <td class="px-6 py-4 text-center">
                       <div class="flex items-center justify-center gap-1">
                         @if (item.link) {
-                          <button class="icon-action-btn danger" type="button" title="فك الربط" (click)="unlinkStudentFromParent(item.link)">
-                            <span class="material-symbols-outlined">link_off</span>
+                          <button class="p-2 text-red-600 hover:bg-red-50 rounded-2xl transition-colors" type="button" title="فك الربط" (click)="unlinkStudentFromParent(item.link)">
+                            <span class="material-symbols-outlined text-sm">link_off</span>
                           </button>
                         }
                       </div>
@@ -424,8 +512,8 @@
         </div>
       </div>
 
-      <div class="glass-modal-footer flex justify-end gap-3">
-        <button class="secondary-btn-glass" (click)="closeParentLinksModal()">إغلاق</button>
+      <div class="px-6 py-4 border-t border-gray-100 flex justify-end bg-gray-50">
+        <button class="px-5 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 transition-colors" (click)="closeParentLinksModal()">إغلاق</button>
       </div>
     </div>
   </div>

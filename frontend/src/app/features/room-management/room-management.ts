@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
@@ -19,6 +19,35 @@ export class RoomManagement implements OnInit {
   private roomService = inject(RoomService);
 
   rooms = signal<Room[]>([]);
+
+  currentPage = signal(1);
+  itemsPerPage = signal(10);
+
+  paginatedRooms = computed(() => {
+    const start = (this.currentPage() - 1) * this.itemsPerPage();
+    return this.rooms().slice(start, start + this.itemsPerPage());
+  });
+
+  totalPages = computed(() => {
+    return Math.max(1, Math.ceil(this.rooms().length / this.itemsPerPage()));
+  });
+
+  nextPage() {
+    if (this.currentPage() < this.totalPages()) {
+      this.currentPage.update(p => p + 1);
+    }
+  }
+
+  prevPage() {
+    if (this.currentPage() > 1) {
+      this.currentPage.update(p => p - 1);
+    }
+  }
+
+  goToPage(page: number) {
+    this.currentPage.set(page);
+  }
+
   roomTypes = [
     { value: 'Classroom',   label: 'قاعة دراسية' },
     { value: 'ScienceLab',  label: 'معمل علوم'   },
@@ -46,7 +75,10 @@ export class RoomManagement implements OnInit {
   loadRooms() {
     if (this.selectedTypeFilter) {
       this.roomService.getByType(this.selectedTypeFilter).subscribe({
-        next: (data) => this.rooms.set(data),
+        next: (data) => {
+          this.rooms.set(data.data ?? data);
+          this.currentPage.set(1);
+        },
         error: (err) => {
           console.error('Failed to load rooms by type', err);
           this.showError('فشل في تحميل القاعات. حاول مرة أخرى.');
@@ -54,7 +86,10 @@ export class RoomManagement implements OnInit {
       });
     } else {
       this.roomService.getAll().subscribe({
-        next: (data) => this.rooms.set(data),
+        next: (data) => {
+          this.rooms.set(data.data ?? data);
+          this.currentPage.set(1);
+        },
         error: (err) => {
           console.error('Failed to load rooms', err);
           this.showError('فشل في تحميل القاعات. تأكد من الاتصال بالخادم.');

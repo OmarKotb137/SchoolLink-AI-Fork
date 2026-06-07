@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
@@ -8,6 +8,7 @@ import { ClassService, ClassEntity } from '../../core/services/class.service';
 import { SubjectService, Subject } from '../../core/services/subject.service';
 import { TeacherService, Teacher } from '../../core/services/teacher.service';
 import { AcademicYearService } from '../../core/services/academic-year.service';
+import { GradeLevelService, GradeLevel } from '../../core/services/grade-level.service';
 
 @Component({
   selector: 'app-teacher-assignments',
@@ -25,17 +26,53 @@ export class TeacherAssignments implements OnInit {
   private subjectService = inject(SubjectService);
   private teacherService = inject(TeacherService);
   private academicYearService = inject(AcademicYearService);
+  private gradeLevelService = inject(GradeLevelService);
 
   assignments = signal<ClassSubjectTeacher[]>([]);
   classes = signal<ClassEntity[]>([]);
+  grades = signal<GradeLevel[]>([]);
   subjects = signal<Subject[]>([]);
   teachers = signal<Teacher[]>([]);
+
+  currentPage = signal(1);
+  itemsPerPage = signal(10);
+
+  paginatedAssignments = computed(() => {
+    const start = (this.currentPage() - 1) * this.itemsPerPage();
+    return this.assignments().slice(start, start + this.itemsPerPage());
+  });
+
+  totalPages = computed(() => {
+    return Math.max(1, Math.ceil(this.assignments().length / this.itemsPerPage()));
+  });
+
+  nextPage() {
+    if (this.currentPage() < this.totalPages()) {
+      this.currentPage.update(p => p + 1);
+    }
+  }
+
+  prevPage() {
+    if (this.currentPage() > 1) {
+      this.currentPage.update(p => p - 1);
+    }
+  }
+
+  goToPage(page: number) {
+    this.currentPage.set(page);
+  }
 
   formSubjects = signal<Subject[]>([]);
   formTeachers = signal<Teacher[]>([]);
   noTeachersAvailable = signal(false);
   editFormTeachers = signal<Teacher[]>([]);
   editNoTeachersAvailable = signal(false);
+
+  selectedNewGradeId: number | null = null;
+  selectedFilterGradeId: number | null = null;
+
+  formClasses = signal<ClassEntity[]>([]);
+  filterClasses = signal<ClassEntity[]>([]);
 
   selectedClassFilter: number | null = null;
 
@@ -55,14 +92,25 @@ export class TeacherAssignments implements OnInit {
 
   ngOnInit() {
     this.loadAcademicYear();
+    this.loadGrades();
     this.loadSubjects();
     this.loadTeachers();
+  }
+
+  loadGrades() {
+    this.gradeLevelService.getAll().subscribe({
+      next: (data) => {
+        const sortedGrades = (data.data ?? data).sort((a: any, b: any) => a.levelOrder - b.levelOrder);
+        this.grades.set(sortedGrades);
+      },
+      error: () => this.showError('تعذر تحميل بيانات الصفوف الدراسية')
+    });
   }
 
   loadAcademicYear() {
     this.academicYearService.getAll().subscribe({
       next: (years) => {
-        const current = years.find(y => y.isCurrent);
+        const current = (years.data ?? years).find((y: any) => y.isCurrent);
         if (!current) {
           this.showError('تعذر تحديد السنة الدراسية الحالية');
           return;
@@ -78,7 +126,7 @@ export class TeacherAssignments implements OnInit {
 
   loadClasses(academicYearId?: number) {
     this.classService.getAll(academicYearId ? { academicYearId } : undefined).subscribe({
-      next: (data) => this.classes.set(data),
+      next: (data) => this.classes.set(data.data ?? data),
       error: () => this.showError('تعذر تحميل بيانات الفصول')
     });
   }
@@ -86,8 +134,8 @@ export class TeacherAssignments implements OnInit {
   loadSubjects() {
     this.subjectService.getAll().subscribe({
       next: (data) => {
-        this.subjects.set(data);
-        this.formSubjects.set(data);
+        this.subjects.set(data.data ?? data);
+        this.formSubjects.set(data.data ?? data);
       },
       error: () => this.showError('تعذر تحميل بيانات المواد')
     });
@@ -96,12 +144,22 @@ export class TeacherAssignments implements OnInit {
   loadTeachers() {
     this.teacherService.getAll(1000).subscribe({
       next: (res) => {
-        const list = res.items || [];
+        const list = res.data?.items ?? [];
         this.teachers.set(list);
         this.formTeachers.set(list);
       },
       error: () => this.showError('تعذر تحميل بيانات المعلمين')
     });
+  }
+
+  onNewGradeChange() {
+    this.newAssignment.classId = 0;
+    if (this.selectedNewGradeId) {
+      this.formClasses.set(this.classes().filter(c => c.gradeLevelId === this.selectedNewGradeId));
+    } else {
+      this.formClasses.set([]);
+    }
+    this.onNewClassChange();
   }
 
   onNewClassChange() {
@@ -133,8 +191,9 @@ export class TeacherAssignments implements OnInit {
         next: (list) => {
           if (requestVersion !== this.availableTeachersRequestVersion) return;
 
-          if (list.length > 0) {
-            this.formTeachers.set(list);
+          const data = list.data ?? list;
+          if (data.length > 0) {
+            this.formTeachers.set(data);
             this.noTeachersAvailable.set(false);
           } else {
             this.formTeachers.set([]);
@@ -162,7 +221,8 @@ export class TeacherAssignments implements OnInit {
     this.isLoading.set(true);
     this.assignmentService.getByClass(this.selectedClassFilter, this.currentAcademicYearId ?? undefined).subscribe({
       next: (data) => {
-        this.assignments.set(data);
+        this.assignments.set(data.data ?? data);
+        this.currentPage.set(1);
         this.isLoading.set(false);
       },
       error: () => {
@@ -171,6 +231,16 @@ export class TeacherAssignments implements OnInit {
         this.showError('تعذر تحميل التعيينات');
       }
     });
+  }
+
+  onFilterGradeChange() {
+    this.selectedClassFilter = null;
+    if (this.selectedFilterGradeId) {
+      this.filterClasses.set(this.classes().filter(c => c.gradeLevelId === this.selectedFilterGradeId));
+    } else {
+      this.filterClasses.set([]);
+    }
+    this.onClassFilterChange();
   }
 
   onClassFilterChange() {
@@ -186,7 +256,9 @@ export class TeacherAssignments implements OnInit {
   }
 
   getClassName(classId: number): string {
-    return this.classes().find(c => c.id == classId)?.name || 'غير محدد';
+    const c = this.classes().find(c => c.id == classId);
+    if (!c) return 'غير محدد';
+    return c.gradeLevelName ? `${c.gradeLevelName} - ${c.name}` : c.name;
   }
 
   getSelectedClassName(): string {
@@ -271,7 +343,7 @@ export class TeacherAssignments implements OnInit {
             if (requestVersion !== this.editTeachersRequestVersion) return;
 
             const current = this.teachers().find(t => t.id === assignment.teacherId);
-            const others = list.filter(t => t.id !== assignment.teacherId);
+            const others = list.filter((t: any) => t.id !== assignment.teacherId);
             const merged = current ? [current, ...others] : others;
 
             if (merged.length > 0) {

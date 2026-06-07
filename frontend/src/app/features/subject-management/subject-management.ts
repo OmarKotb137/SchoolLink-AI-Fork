@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
@@ -19,6 +19,34 @@ export class SubjectManagement implements OnInit {
   private subjectService = inject(SubjectService);
   subjects = signal<Subject[]>([]);
 
+  currentPage = signal(1);
+  itemsPerPage = signal(10);
+
+  paginatedSubjects = computed(() => {
+    const start = (this.currentPage() - 1) * this.itemsPerPage();
+    return this.subjects().slice(start, start + this.itemsPerPage());
+  });
+
+  totalPages = computed(() => {
+    return Math.max(1, Math.ceil(this.subjects().length / this.itemsPerPage()));
+  });
+
+  nextPage() {
+    if (this.currentPage() < this.totalPages()) {
+      this.currentPage.update(p => p + 1);
+    }
+  }
+
+  prevPage() {
+    if (this.currentPage() > 1) {
+      this.currentPage.update(p => p - 1);
+    }
+  }
+
+  goToPage(page: number) {
+    this.currentPage.set(page);
+  }
+
   // FIX #1: كانت signal('') — [(ngModel)] بتبطل تشتغل مع signals
   // الحل: plain property عادية
   searchTerm = '';
@@ -37,7 +65,10 @@ export class SubjectManagement implements OnInit {
 
   loadSubjects() {
     this.subjectService.getAll().subscribe({
-      next: (data) => this.subjects.set(data),
+      next: (data) => {
+        this.subjects.set(data.data ?? data);
+        this.currentPage.set(1);
+      },
       // FIX #2: error handler مع رسالة للمستخدم
       error: (err) => {
         console.error('Failed to load subjects', err);
@@ -57,11 +88,12 @@ export class SubjectManagement implements OnInit {
     // لأن الـ backend endpoint بيبحث بالاسم فقط
     this.subjectService.getAll().subscribe({
       next: (data) => {
-        const filtered = data.filter(s =>
+        const filtered = (data.data ?? data).filter((s: any) =>
           s.name.toLowerCase().includes(term) ||
           s.code.toLowerCase().includes(term)
         );
         this.subjects.set(filtered);
+        this.currentPage.set(1);
       },
       error: (err) => {
         console.error('Search failed', err);
@@ -73,6 +105,7 @@ export class SubjectManagement implements OnInit {
   // FIX #4: clear البحث + auto-reset للـ subjects list
   clearSearch() {
     this.searchTerm = '';
+    this.currentPage.set(1);
     this.loadSubjects();
   }
 

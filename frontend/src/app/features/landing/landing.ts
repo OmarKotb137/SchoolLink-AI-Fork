@@ -11,7 +11,7 @@ export class Landing {
   constructor(private router: Router) {}
 
   navigateToLogin() {
-    this.router.navigate(['/login']);
+    this.router.navigate(['/login-guardian']);
   }
 
   navigateToAdmin() {

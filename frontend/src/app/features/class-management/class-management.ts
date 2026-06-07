@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
@@ -26,6 +26,34 @@ export class ClassManagement implements OnInit {
   gradeLevels = signal<GradeLevel[]>([]);
   academicYears = signal<AcademicYear[]>([]);
 
+  currentPage = signal(1);
+  itemsPerPage = signal(10);
+
+  paginatedClasses = computed(() => {
+    const start = (this.currentPage() - 1) * this.itemsPerPage();
+    return this.classes().slice(start, start + this.itemsPerPage());
+  });
+
+  totalPages = computed(() => {
+    return Math.max(1, Math.ceil(this.classes().length / this.itemsPerPage()));
+  });
+
+  nextPage() {
+    if (this.currentPage() < this.totalPages()) {
+      this.currentPage.update(p => p + 1);
+    }
+  }
+
+  prevPage() {
+    if (this.currentPage() > 1) {
+      this.currentPage.update(p => p - 1);
+    }
+  }
+
+  goToPage(page: number) {
+    this.currentPage.set(page);
+  }
+
   // FIX #1: كانوا signals — [(ngModel)] بتبطل تشتغل مع signals
   // الحل: plain properties عادية
   selectedGradeFilter: number | null = null;
@@ -49,8 +77,9 @@ export class ClassManagement implements OnInit {
   loadAcademicYears() {
     this.academicYearService.getAll().subscribe({
       next: (data) => {
-        this.academicYears.set(data);
-        const activeYear = data.find(y => y.isCurrent);
+        const d = data.data ?? data;
+        this.academicYears.set(d);
+        const activeYear = d.find((y: any) => y.isCurrent);
         if (activeYear) {
           this.newClass.academicYearId = activeYear.id;
           // FIX #2: هنا بس نستدعي loadClasses بعد ما السنة اتضبطت
@@ -69,7 +98,7 @@ export class ClassManagement implements OnInit {
 
   loadGradeLevels() {
     this.gradeLevelService.getAll().subscribe({
-      next: (data) => this.gradeLevels.set(data),
+      next: (data) => this.gradeLevels.set(data.data ?? data),
       error: (err) => {
         console.error('Failed to load grade levels', err);
         this.showError('فشل في تحميل المراحل الدراسية.');
@@ -84,7 +113,10 @@ export class ClassManagement implements OnInit {
     if (this.selectedYearFilter) filter.academicYearId = this.selectedYearFilter;
 
     this.classService.getAll(filter).subscribe({
-      next: (data) => this.classes.set(data),
+      next: (data) => {
+        this.classes.set(data.data ?? data);
+        this.currentPage.set(1);
+      },
       error: (err) => {
         console.error('Failed to load classes', err);
         this.showError('فشل في تحميل الفصول الدراسية.');

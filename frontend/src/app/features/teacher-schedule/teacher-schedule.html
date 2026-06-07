@@ -1,115 +1,123 @@
 <app-sidebar [(isOpen)]="sidebarOpen" />
 <div class="main-content">
   <app-topbar [userName]="displayUserName" />
-  <main class="pt-16 h-screen flex flex-col bg-background p-6">
+  <main class="pt-16 min-h-screen bg-gray-50 flex flex-col">
+    <div class="flex-1 p-4 md:p-6 lg:p-8">
+      <div class="max-w-7xl mx-auto space-y-6 pb-10">
 
-    <!-- Header -->
-    <div class="mb-6 teacher-hero">
-      <div class="teacher-hero-copy">
-        <span class="teacher-eyebrow">Teacher Timetable</span>
-        <h2 class="font-headline-lg text-headline-lg text-primary mb-2 flex items-center gap-2">
-          <span class="material-symbols-outlined text-4xl">calendar_today</span> جدولي الشخصي
-        </h2>
-        <p class="font-body-md text-on-surface-variant">يعرض هذا الجدول جميع الحصص المكلف بها عبر مختلف الفصول.</p>
-      </div>
+        <!-- Header -->
+        <section class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50">
+          <div>
+            <span class="text-sm font-medium text-blue-600 mb-1 block">Teacher Timetable</span>
+            <h2 class="text-2xl font-bold text-gray-900 mb-2 flex items-center gap-2">
+              <span class="material-symbols-outlined text-3xl text-blue-600">calendar_today</span> جدولي الشخصي
+            </h2>
+            <p class="text-sm text-gray-500 max-w-2xl">يعرض هذا الجدول جميع الحصص المكلف بها عبر مختلف الفصول.</p>
+          </div>
 
-      <div class="teacher-hero-stats">
-        <div class="teacher-stat-card">
-          <span class="teacher-stat-label">إجمالي الحصص</span>
-          <strong class="teacher-stat-value">{{ slots().length }}</strong>
-          <span class="teacher-stat-hint">الحصص المسندة لك هذا العام</span>
+          <div class="flex items-center gap-4 w-full md:w-auto">
+            <div class="bg-gray-50 border border-gray-100 p-4 rounded-2xl flex-1 md:w-40 text-center">
+              <span class="block text-xs text-gray-500 font-medium mb-1">إجمالي الحصص</span>
+              <strong class="block text-2xl font-bold text-gray-900">{{ slots().length }}</strong>
+              <span class="block text-[10px] text-gray-400 mt-1">الحصص المسندة لك هذا العام</span>
+            </div>
+
+            <div class="bg-blue-50 border border-blue-100 p-4 rounded-2xl flex-1 md:w-40 text-center">
+              <span class="block text-xs text-blue-600 font-medium mb-1">عدد الفترات اليومية</span>
+              <strong class="block text-2xl font-bold text-blue-900">{{ periods().length }}</strong>
+              <span class="block text-[10px] text-blue-500 mt-1">مستخرجة من الجدول</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Error banner: بيظهر لما يحصل خطأ في الـ API -->
+        <div *ngIf="errorMessage()" class="flex items-center justify-between gap-3 p-4 rounded-2xl bg-red-50 text-sm text-red-800 border border-red-200 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50">
+          <div class="flex items-center gap-3">
+            <span class="material-symbols-outlined text-lg">error</span>
+            <span class="font-medium">{{ errorMessage() }}</span>
+          </div>
+          <button (click)="loadSchedule()" class="text-xs font-bold underline hover:no-underline px-3 py-1.5 rounded-xl hover:bg-red-100 transition-colors">
+            إعادة المحاولة
+          </button>
         </div>
 
-        <div class="teacher-stat-card accent">
-          <span class="teacher-stat-label">عدد الفترات اليومية</span>
-          <strong class="teacher-stat-value">{{ periods().length }}</strong>
-          <span class="teacher-stat-hint">مستخرجة تلقائيًا من بيانات الجدول</span>
+        <!-- Schedule grid card -->
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50 overflow-hidden flex flex-col relative min-h-[500px]">
+
+          <!-- Loading spinner -->
+          <div *ngIf="isLoading()" class="absolute inset-0 bg-white/80 z-10 flex flex-col items-center justify-center">
+            <span class="material-symbols-outlined animate-spin text-5xl text-blue-600 mb-3">progress_activity</span>
+            <span class="text-gray-500 font-medium">جاري تحميل الجدول...</span>
+          </div>
+
+          <!--
+            FIX: كان الشرط "scheduleData()" — بس scheduleData كانت بتتحط فيها الـ OperationResult
+                 كاملاً (object) فكانت دايماً truthy حتى لو مفيش slots.
+                 دلوقتي slots() هي الـ array نفسها — فالشرط واضح ومباشر.
+          -->
+          <div class="overflow-x-auto w-full h-full">
+            <table *ngIf="!isLoading() && slots().length > 0" class="w-full border-collapse min-w-[800px] text-center text-sm">
+              <thead>
+                <tr class="bg-gray-50 border-b border-gray-100">
+                  <th class="p-4 border-l border-gray-100 w-32 font-bold text-gray-900 uppercase">اليوم / الحصة</th>
+                  <th *ngFor="let p of periods()" class="p-4 border-l border-gray-100 font-bold text-gray-900">
+                    <div class="text-sm mb-1">{{ p.label }}</div>
+                    <div class="text-xs text-gray-500 font-medium bg-white border border-gray-100 rounded px-2 py-0.5 inline-block">{{ p.start }} - {{ p.end }}</div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let day of days" class="border-b border-gray-100 hover:bg-gray-50/50 transition-colors">
+
+                  <td class="p-4 border-l border-gray-100 font-bold text-gray-900 bg-gray-50/50 shadow-[inset_-4px_0_0_0_#3b82f6]">
+                    {{ day.label }}
+                  </td>
+
+                  <td *ngFor="let p of periods()" class="border-l border-gray-100 h-28 p-2 relative align-middle">
+                    <!--
+                      getSlot() بتتنادى مرة واحدة بس للخلية بفضل "as slot"
+                      بدل ما كانت بتتنادى 4-5 مرات لكل خلية (مرة للـ ngIf + مرة لكل property)
+                    -->
+                    <ng-container *ngIf="getSlot(day.value, p.num) as slot">
+                      <div class="w-full h-full min-h-[90px] flex flex-col justify-center items-center p-2 rounded-2xl transition-transform hover:scale-[1.02] cursor-default"
+                           [ngClass]="slot.isBreak ? 'bg-orange-50 border border-orange-100' : 'bg-blue-50 border border-blue-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50'">
+
+                        <!-- Break -->
+                        <ng-container *ngIf="slot.isBreak; else lessonTpl">
+                          <span class="material-symbols-outlined text-orange-500 mb-1 text-2xl">local_cafe</span>
+                          <span class="font-bold text-orange-700 text-sm">راحة</span>
+                        </ng-container>
+
+                        <!-- Lesson -->
+                        <ng-template #lessonTpl>
+                          <span class="font-bold text-blue-900 mb-1.5 text-sm">{{ slot.subjectName }}</span>
+                          <div class="flex flex-col items-center gap-1 w-full px-2">
+                            <span class="bg-white text-gray-700 text-xs px-2 py-0.5 rounded border border-gray-100 w-full truncate" [title]="slot.className">{{ slot.className }}</span>
+                            <span *ngIf="slot.roomName" class="text-purple-700 font-medium text-[11px] truncate w-full" [title]="slot.roomName">
+                              📍 {{ slot.roomName }}
+                            </span>
+                          </div>
+                        </ng-template>
+
+                      </div>
+                    </ng-container>
+                  </td>
+
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Empty state: الـ API رجع بنجاح بس مفيش حصص للمعلم ده -->
+          <div *ngIf="!isLoading() && hasLoaded() && !errorMessage() && slots().length === 0"
+               class="flex-1 flex flex-col items-center justify-center text-gray-500 p-16">
+            <span class="material-symbols-outlined text-6xl mb-4 text-gray-300">event_busy</span>
+            <h3 class="text-lg font-bold text-gray-900 mb-2">لا توجد حصص مجدولة</h3>
+            <p class="text-sm">لم يتم تسجيل أي حصص لك في العام الدراسي الحالي بعد.</p>
+          </div>
+
         </div>
       </div>
-    </div>
-
-    <!-- Error banner: بيظهر لما يحصل خطأ في الـ API -->
-    <div *ngIf="errorMessage()"
-         class="flex items-center gap-3 p-4 mb-4 rounded-xl bg-red-50 text-error border border-error/20 font-body-sm">
-      <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">error</span>
-      {{ errorMessage() }}
-      <button (click)="loadSchedule()"
-              class="mr-auto text-xs underline hover:no-underline">
-        إعادة المحاولة
-      </button>
-    </div>
-
-    <!-- Schedule grid card -->
-    <div class="flex-1 overflow-auto bg-surface-container-lowest rounded-2xl border border-outline-variant/30 shadow-sm relative teacher-table-shell">
-
-      <!-- Loading spinner -->
-      <div *ngIf="isLoading()" class="absolute inset-0 bg-white/80 z-10 flex items-center justify-center">
-        <span class="material-symbols-outlined animate-spin text-4xl text-primary">progress_activity</span>
-      </div>
-
-      <!--
-        FIX: كان الشرط "scheduleData()" — بس scheduleData كانت بتتحط فيها الـ OperationResult
-             كاملاً (object) فكانت دايماً truthy حتى لو مفيش slots.
-             دلوقتي slots() هي الـ array نفسها — فالشرط واضح ومباشر.
-      -->
-      <table *ngIf="!isLoading() && slots().length > 0"
-             class="w-full border-collapse min-w-[800px] text-center teacher-table">
-        <thead>
-          <tr class="bg-surface-container-low border-b border-outline-variant/30">
-            <th class="p-4 border-l border-outline-variant/30 w-32 font-bold text-on-surface">اليوم / الحصة</th>
-            <th *ngFor="let p of periods()" class="p-4 border-l border-outline-variant/30 font-bold text-on-surface">
-              <div class="text-sm">{{ p.label }}</div>
-              <div class="text-xs text-on-surface-variant font-normal">{{ p.start }} - {{ p.end }}</div>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let day of days"
-              class="border-b border-outline-variant/30 hover:bg-surface-container-lowest transition-colors">
-
-            <td class="p-4 border-l border-outline-variant/30 font-bold text-primary bg-surface-container-lowest/50">
-              {{ day.label }}
-            </td>
-
-            <td *ngFor="let p of periods()" class="border-l border-outline-variant/30 h-24 p-2 relative">
-              <!--
-                getSlot() بتتنادى مرة واحدة بس للخلية بفضل "as slot"
-                بدل ما كانت بتتنادى 4-5 مرات لكل خلية (مرة للـ ngIf + مرة لكل property)
-              -->
-              <ng-container *ngIf="getSlot(day.value, p.num) as slot">
-                <div class="w-full h-full flex flex-col justify-center items-center text-sm p-1 rounded-xl bg-primary/10 border border-primary/20">
-
-                  <!-- Break -->
-                  <ng-container *ngIf="slot.isBreak; else lessonTpl">
-                    <span class="material-symbols-outlined text-secondary mb-1">local_cafe</span>
-                    <span class="font-bold text-secondary">راحة</span>
-                  </ng-container>
-
-                  <!-- Lesson -->
-                  <ng-template #lessonTpl>
-                    <span class="font-bold text-primary mb-1">{{ slot.subjectName }}</span>
-                    <div class="flex flex-col items-center text-xs text-on-surface-variant gap-0.5">
-                      <span>{{ slot.className }}</span>
-                      <span *ngIf="slot.roomName" class="text-secondary">{{ slot.roomName }}</span>
-                    </div>
-                  </ng-template>
-
-                </div>
-              </ng-container>
-            </td>
-
-          </tr>
-        </tbody>
-      </table>
-
-      <!-- Empty state: الـ API رجع بنجاح بس مفيش حصص للمعلم ده -->
-      <div *ngIf="!isLoading() && hasLoaded() && !errorMessage() && slots().length === 0"
-           class="h-full flex flex-col items-center justify-center text-on-surface-variant p-10">
-        <span class="material-symbols-outlined text-6xl mb-4 opacity-50">event_busy</span>
-        <h3 class="font-headline-md mb-2">لا توجد حصص مجدولة</h3>
-        <p class="font-body-md">لم يتم تسجيل أي حصص لك في العام الدراسي الحالي بعد.</p>
-      </div>
-
     </div>
   </main>
 </div>

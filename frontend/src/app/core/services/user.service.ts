@@ -1,9 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
 import { buildApiUrl } from '../utils/api-url';
-import { OperationResult, PagedResult } from '../models/api.model';
+import { PagedResult } from '../models/api.model';
 
 export interface User {
   id: number;
@@ -46,7 +45,7 @@ export class UserService {
   private http = inject(HttpClient);
   private apiUrl = buildApiUrl('Users');
 
-  getAll(filter?: GetUsersFilter): Observable<PagedResult<User>> {
+  getAll(filter?: GetUsersFilter): Observable<any> {
     let params = new HttpParams();
 
     if (filter?.role) params = params.set('role', filter.role);
@@ -55,43 +54,31 @@ export class UserService {
     if (filter?.page) params = params.set('page', filter.page);
     if (filter?.pageSize) params = params.set('pageSize', filter.pageSize);
 
-    return this.http
-      .get<OperationResult<PagedResult<User>>>(this.apiUrl, { params })
-      .pipe(map(res => res.data));
+    return this.http.get<any>(this.apiUrl, { params });
   }
 
-  getById(id: number): Observable<User> {
-    return this.http
-      .get<OperationResult<User>>(`${this.apiUrl}/${id}`)
-      .pipe(map(res => res.data));
+  getById(id: number): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/${id}`);
   }
 
-  getByRole(role: string, pageSize: number = 1000): Observable<PagedResult<User>> {
+  getByRole(role: string, pageSize: number = 1000): Observable<any> {
     const params = new HttpParams().set('pageSize', pageSize.toString());
-    return this.http
-      .get<OperationResult<PagedResult<User>>>(`${this.apiUrl}/role/${role}`, { params })
-      .pipe(map(res => res.data));
+    return this.http.get<any>(`${this.apiUrl}/role/${role}`, { params });
   }
 
-  createUser(data: CreateUserRequest): Observable<User> {
-    return this.http
-      .post<OperationResult<User>>(this.apiUrl, data)
-      .pipe(map(res => res.data));
+  createUser(data: CreateUserRequest): Observable<any> {
+    return this.http.post<any>(this.apiUrl, data);
   }
 
-  updateUser(id: number, data: UpdateUserRequest): Observable<User> {
-    return this.http
-      .put<OperationResult<User>>(`${this.apiUrl}/${id}`, data)
-      .pipe(map(res => res.data));
+  updateUser(id: number, data: UpdateUserRequest): Observable<any> {
+    return this.http.put<any>(`${this.apiUrl}/${id}`, data);
   }
 
-  setActiveStatus(id: number, isActive: boolean): Observable<void> {
-    return this.http
-      .patch<OperationResult<unknown>>(`${this.apiUrl}/${id}/active-status`, isActive)
-      .pipe(map(() => void 0));
+  setActiveStatus(id: number, isActive: boolean): Observable<any> {
+    return this.http.patch<any>(`${this.apiUrl}/${id}/active-status`, isActive);
   }
 
-  deleteUser(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/${id}`);
+  deleteUser(id: number): Observable<any> {
+    return this.http.delete<any>(`${this.apiUrl}/${id}`);
   }
 }
