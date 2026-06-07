@@ -64,4 +64,8 @@ export class ClassSubjectTeacherService {
   delete(id: number): Observable<any> {
     return this.http.delete<any>(`${this.apiUrl}/${id}`);
   }
+
+  getMyAssignmentsCurrentYear(): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/my-assignments/current-year`);
+  }
 }
