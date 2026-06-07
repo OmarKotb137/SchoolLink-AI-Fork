@@ -192,6 +192,16 @@ public class ClassController : ControllerBase
     }
 
     [Authorize(Roles = "Admin")]
+    [HttpGet("stats")]
+    public async Task<IActionResult> GetStats([FromQuery] int? academicYearId = null)
+    {
+        var result = await _classService.GetClassStatsAsync(academicYearId);
+        if (!result.IsSuccess)
+            return BadRequest(result);
+        return Ok(result);
+    }
+
+    [Authorize(Roles = "Admin")]
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id)
     {

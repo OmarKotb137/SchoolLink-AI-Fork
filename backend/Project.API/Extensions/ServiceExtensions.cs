@@ -81,6 +81,8 @@ public static class ServiceExtensions
         services.AddScoped<IStudentEnrollmentService, StudentEnrollmentService>();
         services.AddScoped<IParentStudentService, ParentStudentService>();
         services.AddScoped<IStudyPlanService, StudyPlanService>();
+        services.AddScoped<IDashboardService, DashboardService>();
+        services.AddScoped<IParentDashboardService, ParentDashboardService>();
         services.AddScoped<ILessonFeedbackService, LessonFeedbackService>();
         services.AddScoped<IUnitService, UnitService>();
         services.AddScoped<IBookParserService, BookParserService>();
