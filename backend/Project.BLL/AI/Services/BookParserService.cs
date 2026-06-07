@@ -44,8 +44,9 @@ public class BookParserService : IBookParserService
         _httpClient = httpClientFactory.CreateClient("MistralOcr");
         _cache = cache;
         _mistralApiKey = configuration["AI:Mistral:ApiKey"] ?? "862c34pvzZx0QPCkggmKbzemlqtjocun";
-        _openRouterApiKey = configuration["LlmSettings:OpenRouter:ApiKey"] ?? "";
-        _openRouterModel = configuration["LlmSettings:OpenRouter:LessonCorrectionModel"] ?? "openrouter/owl-alpha";
+        var correctionProvider = configuration["LlmSettings:LessonCorrection:Provider"] ?? "OpenRouter";
+        _openRouterModel = configuration["LlmSettings:LessonCorrection:Model"] ?? "openrouter/owl-alpha";
+        _openRouterApiKey = configuration.GetSection($"LlmSettings:{correctionProvider}")["ApiKey"] ?? "";
     }
 
     // ─────────────────────────────────────────────────────────────────────────

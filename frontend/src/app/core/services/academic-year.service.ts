@@ -21,6 +21,10 @@ export class AcademicYearService {
     return this.http.get<any>(this.apiUrl);
   }
 
+  getCurrent(): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/current`);
+  }
+
   getById(id: number): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/${id}`);
   }

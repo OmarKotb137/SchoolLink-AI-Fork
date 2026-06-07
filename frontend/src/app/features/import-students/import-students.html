@@ -6,10 +6,17 @@
 
       <div>
         <h1 class="font-headline-lg text-headline-lg" style="font-weight:800;background:linear-gradient(135deg,#00236f,#1a4a9e);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">استيراد الطلاب</h1>
-        <p class="font-body-md text-body-md text-outline">رفع ملف Excel أو Word لاستيراد أسماء الطلاب</p>
+        <p class="font-body-md text-body-md text-outline">ارفع ملفات (صور، PDF، Excel، Word) لاستيراد أسماء الطلاب بالذكاء الاصطناعي</p>
       </div>
 
-      @if (!students().length && !showSuccess()) {
+      @if (isLoading()) {
+        <div class="glass-card" style="padding:48px;text-align:center;">
+          <div class="animate-spin" style="width:40px;height:40px;border:4px solid #e0e0e0;border-top-color:#00236f;border-radius:50%;margin:0 auto 16px;"></div>
+          <p class="font-body-md text-body-md text-outline">جاري تحليل الملف...</p>
+        </div>
+      }
+
+      @if (!students().length && !showSuccess() && !isLoading()) {
         <div
           class="glass-card" style="padding:48px;text-align:center;cursor:pointer;"
           [class.bg-primary/5]="isDragging()"
@@ -23,11 +30,18 @@
           </div>
           <h3 class="font-headline-md text-headline-md mb-2" style="font-weight:700;">إسقاط الملف هنا</h3>
           <p class="font-body-md text-body-md text-outline mb-4">أو اختر ملف من جهازك</p>
-          <p class="font-label-sm text-label-sm text-outline mb-6">يدعم ملفات .xlsx و .docx</p>
+          <p class="font-label-sm text-label-sm text-outline mb-6">يدعم صور، PDF، Excel، Word — يمكنك رفع عدة ملفات</p>
+          @if (fileNames().length > 1) {
+            <div class="flex flex-wrap gap-2 justify-center mb-4">
+              @for (name of fileNames(); track name) {
+                <span class="px-3 py-1 rounded-full bg-white/30 backdrop-blur-sm text-body-sm font-label-sm">{{ name }}</span>
+              }
+            </div>
+          }
           <label class="gradient-btn" style="cursor:pointer;display:inline-flex;">
             <span class="material-symbols-outlined">folder_open</span>
-            اختر ملف
-            <input type="file" accept=".xlsx,.xls,.docx" class="hidden" (change)="onFileSelected($event)" />
+            اختر ملفات
+            <input type="file" accept="image/*,.pdf,.xlsx,.xls,.docx,.csv,.txt" multiple class="hidden" (change)="onFileSelected($event)" />
           </label>
         </div>
       }
@@ -39,11 +53,11 @@
             <span class="gradient-btn" style="padding:4px 14px;border-radius:999px;font-size:12px;">{{ students().length }} طالب</span>
           </div>
           <div class="flex items-center gap-3">
-            <select class="glass-select" [value]="selectedClass()" (change)="selectedClass.set($any($event.target).value)">
+            <select class="glass-select" [value]="selectedClassId() ?? ''" (change)="selectedClassId.set($any($event.target).value ? +$any($event.target).value : null)">
               <option value="">اختر الفصل...</option>
-              @for (c of allClasses; track c) { <option [value]="c">{{ c }}</option> }
+              @for (c of classes(); track c.id) { <option [value]="c.id">{{ c.name }}</option> }
             </select>
-            <button class="gradient-btn" (click)="saveStudents()" [disabled]="!students().length">
+            <button class="gradient-btn" (click)="saveStudents()" [disabled]="!students().length || isLoading()">
               <span class="material-symbols-outlined">save</span>
               حفظ وإضافة
             </button>
@@ -54,7 +68,7 @@
         @if (showError()) {
           <div class="bg-error/10 backdrop-blur-sm border border-error/30 rounded-2xl p-4 flex items-center gap-3">
             <span class="material-symbols-outlined text-error" style="font-variation-settings:'FILL'1;">error</span>
-            <span class="font-body-md text-body-md text-error">يرجى اختيار الفصل قبل الحفظ</span>
+            <span class="font-body-md text-body-md text-error">{{ errorMessage() }}</span>
           </div>
         }
 
@@ -73,7 +87,7 @@
                   <tr>
                     <td class="p-4 font-body-md text-outline">{{ $index + 1 }}</td>
                     <td class="p-4">
-                      <input class="w-full bg-transparent border-b border-transparent hover:border-outline-variant focus:border-primary outline-none font-body-md text-body-md py-1" [value]="s.name" (input)="updateStudentName(s.id, $any($event.target).value)" />
+                      <input class="w-full bg-transparent border-b border-transparent hover:border-outline-variant focus:border-primary outline-none font-body-md text-body-md py-1" [value]="s.fullName" (input)="updateStudentName(s.id, $any($event.target).value)" />
                     </td>
                     <td class="p-4 text-center">
                       <button class="p-1.5 rounded-lg hover:bg-white/50 text-outline hover:text-error transition-colors" (click)="removeStudent(s.id)"><span class="material-symbols-outlined">close</span></button>
