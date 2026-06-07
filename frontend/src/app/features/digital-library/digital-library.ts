@@ -5,7 +5,7 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
 import { Topbar } from '../../layouts/topbar/topbar';
 import { LibraryService } from '../../core/services/library.service';
-import { LibraryItemDto } from '../../core/models/library.model';
+import { LibraryItemDto, LibraryItemType } from '../../core/models/library.model';
 import { RoleService } from '../../shared/role.service';
 
 @Component({
@@ -20,6 +20,7 @@ export class DigitalLibrary implements OnInit {
   private libraryService = inject(LibraryService);
   private sanitizer = inject(DomSanitizer);
   private roleService = inject(RoleService);
+  protected LibraryItemType = LibraryItemType;
   canManage = computed(() => this.roleService.canAccess(['admin', 'teacher']));
 
   items = signal<LibraryItemDto[]>([]);
@@ -55,7 +56,7 @@ export class DigitalLibrary implements OnInit {
   uploadForm = {
     title: '',
     description: '',
-    itemType: 'Book',
+    itemType: LibraryItemType.Book,
     subjectId: null as number | null,
     file: null as File | null,
     linkUrl: ''
@@ -264,7 +265,7 @@ export class DigitalLibrary implements OnInit {
     this.uploadForm = {
       title: '',
       description: '',
-      itemType: 'Book',
+      itemType: LibraryItemType.Book,
       subjectId: null,
       file: null,
       linkUrl: ''

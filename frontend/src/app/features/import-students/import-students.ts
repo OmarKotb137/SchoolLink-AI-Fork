@@ -1,8 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
 import { Topbar } from '../../layouts/topbar/topbar';
-import { StudentImportService, ImportedStudent, ClassInfo } from '../../core/services/student-import.service';
-import { ClassService } from '../../core/services/class.service';
+import { StudentImportService, ImportedStudent } from '../../core/services/student-import.service';
 import { AcademicYearService } from '../../core/services/academic-year.service';
 
 @Component({
@@ -13,37 +12,24 @@ import { AcademicYearService } from '../../core/services/academic-year.service';
 })
 export class ImportStudents {
   private importSvc = inject(StudentImportService);
-  private classSvc = inject(ClassService);
   private yearSvc = inject(AcademicYearService);
 
   sidebarOpen = signal(false);
   students = signal<ImportedStudent[]>([]);
-  selectedClassId = signal<number | null>(null);
   selectedYearId = signal<number | null>(null);
   isDragging = signal(false);
   showSuccess = signal(false);
   showError = signal(false);
   errorMessage = signal('');
   isLoading = signal(false);
-  classes = signal<ClassInfo[]>([]);
   fileNames = signal<string[]>([]);
 
   private nextId = 1;
 
   constructor() {
-    this.loadClasses();
-  }
-
-  private loadClasses() {
     this.yearSvc.getCurrent().subscribe((res: any) => {
       const yearId = res?.data?.id;
-      if (yearId) {
-        this.selectedYearId.set(yearId);
-        this.classSvc.getAll({ academicYearId: yearId }).subscribe((res2: any) => {
-          const list = res2?.data ?? res2 ?? [];
-          this.classes.set(list.map((c: any) => ({ id: c.id, name: c.name })));
-        });
-      }
+      if (yearId) this.selectedYearId.set(yearId);
     });
   }
 
@@ -121,11 +107,6 @@ export class ImportStudents {
   }
 
   saveStudents() {
-    if (!this.selectedClassId()) {
-      this.showError.set(true);
-      this.errorMessage.set('يرجى اختيار الفصل قبل الحفظ');
-      return;
-    }
     this.isLoading.set(true);
     const body = {
       students: this.students().map(s => ({
@@ -134,7 +115,6 @@ export class ImportStudents {
         gender: s.gender,
         birthDate: s.birthDate,
       })),
-      classId: this.selectedClassId(),
       academicYearId: this.selectedYearId(),
     };
     this.importSvc.import(body).subscribe({
@@ -155,7 +135,6 @@ export class ImportStudents {
 
   resetAll() {
     this.students.set([]);
-    this.selectedClassId.set(null);
     this.selectedYearId.set(null);
     this.showSuccess.set(false);
     this.showError.set(false);

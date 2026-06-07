@@ -72,10 +72,11 @@ public static class SeedData
 
         if (await ctx.AcademicYears.AnyAsync())
         {
-            await SeedUnitsAndLessons(ctx);
-            await SeedStudentUsers(ctx);
-            await SeedEvaluationPeriods(ctx);
-            return;
+        await SeedUnitsAndLessons(ctx);
+        await SeedStudentUsers(ctx);
+        await SeedEvaluationPeriods(ctx);
+        await SeedParents(ctx);
+        return;
         }
 
         var now = DateTime.UtcNow;
@@ -493,6 +494,9 @@ public static class SeedData
         ctx.PeriodAverages.AddRange(avgBatch);
         await ctx.SaveChangesAsync();
 
+        // ── 15.1 Parent accounts ──
+        await SeedParents(ctx);
+
         // ── 16. PeriodicAssessments (exam1 & exam2) ──
         var asmBatch = new List<PeriodicAssessment>();
         foreach (var enr in enrollments)
@@ -569,31 +573,6 @@ public static class SeedData
             }
         }
         ctx.DailyAbsences.AddRange(absBatch);
-        await ctx.SaveChangesAsync();
-
-        // ── 19. Parent accounts (simple) ──
-        int parentCount = 0;
-        foreach (var st in students)
-        {
-            if (parentCount >= 20) break;
-            var parent = new User
-            {
-                FullName = $"وليّ أمر {st.FullName}",
-                Email = $"parent{st.Id}@school.com",
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Parent@123"),
-                Role = UserRole.Parent, IsActive = true,
-                CreatedAt = now, UpdatedAt = now
-            };
-            ctx.Users.Add(parent);
-            await ctx.SaveChangesAsync();
-            ctx.ParentStudents.Add(new ParentStudent
-            {
-                ParentId = parent.Id, StudentId = st.Id,
-                Relationship = RelationshipType.Father,
-                CreatedAt = now, UpdatedAt = now
-            });
-            parentCount++;
-        }
         await ctx.SaveChangesAsync();
 
         await SeedUnitsAndLessons(ctx);
@@ -759,6 +738,50 @@ public static class SeedData
         var year = await ctx.AcademicYears.FirstAsync();
         var periods = Project.Domain.Helpers.EvaluationPeriodGenerator.GeneratePeriods(year.Id, year.StartDate, year.EndDate);
         ctx.EvaluationPeriods.AddRange(periods);
+        await ctx.SaveChangesAsync();
+    }
+
+    private static async Task SeedParents(AppDbContext ctx)
+    {
+        var now = DateTime.UtcNow;
+        var existingParentEmails = await ctx.Users
+            .Where(u => u.Role == UserRole.Parent && u.Email != null)
+            .Select(u => u.Email!)
+            .ToListAsync();
+        var emailSet = new HashSet<string>(existingParentEmails);
+
+        var studentsWithoutParent = await ctx.Students
+            .Where(s => !s.IsDeleted && !ctx.ParentStudents.Any(ps => ps.StudentId == s.Id))
+            .ToListAsync();
+
+        foreach (var st in studentsWithoutParent)
+        {
+            var email = $"parent{st.Id}@school.com";
+            if (emailSet.Contains(email)) continue;
+
+            var parent = new User
+            {
+                FullName = $"وليّ أمر {st.FullName}",
+                Email = email,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Parent@123"),
+                Role = UserRole.Parent,
+                IsActive = true,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            ctx.Users.Add(parent);
+            await ctx.SaveChangesAsync();
+
+            ctx.ParentStudents.Add(new ParentStudent
+            {
+                ParentId = parent.Id,
+                StudentId = st.Id,
+                Relationship = RelationshipType.Father,
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+            emailSet.Add(email);
+        }
         await ctx.SaveChangesAsync();
     }
 }

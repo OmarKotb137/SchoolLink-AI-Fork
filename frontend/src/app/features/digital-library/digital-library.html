@@ -192,11 +192,11 @@
                   <div>
                     <label class="block text-label-md font-label-md text-on-surface mb-1">نوع الملف <span class="text-error text-red-500">*</span></label>
                     <select [(ngModel)]="uploadForm.itemType" class="w-full bg-surface-container border border-outline-variant rounded-lg px-4 py-2 text-body-md focus:outline-none focus:border-primary transition-colors">
-                      <option value="Book">كتاب منهجي</option>
-                      <option value="File">ملف / ورقة عمل</option>
-                      <option value="Video">فيديو تعليمي</option>
-                      <option value="Link">رابط خارجي</option>
-                      <option value="Note">ملاحظات / ملخص</option>
+                      <option [ngValue]="LibraryItemType.Book">كتاب منهجي</option>
+                      <option [ngValue]="LibraryItemType.File">ملف / ورقة عمل</option>
+                      <option [ngValue]="LibraryItemType.Video">فيديو تعليمي</option>
+                      <option [ngValue]="LibraryItemType.Link">رابط خارجي</option>
+                      <option [ngValue]="LibraryItemType.Note">ملاحظات / ملخص</option>
                     </select>
                   </div>
                   <div>

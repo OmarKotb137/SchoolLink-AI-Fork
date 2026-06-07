@@ -53,10 +53,6 @@
             <span class="gradient-btn" style="padding:4px 14px;border-radius:999px;font-size:12px;">{{ students().length }} طالب</span>
           </div>
           <div class="flex items-center gap-3">
-            <select class="glass-select" [value]="selectedClassId() ?? ''" (change)="selectedClassId.set($any($event.target).value ? +$any($event.target).value : null)">
-              <option value="">اختر الفصل...</option>
-              @for (c of classes(); track c.id) { <option [value]="c.id">{{ c.name }}</option> }
-            </select>
             <button class="gradient-btn" (click)="saveStudents()" [disabled]="!students().length || isLoading()">
               <span class="material-symbols-outlined">save</span>
               حفظ وإضافة

@@ -249,14 +249,17 @@ public class StudentImportService : IStudentImportService
         };
     }
 
-    public async Task<OperationResult<ImportResult>> ImportWithAiAsync(List<ImportedStudentDto> students, int classId, int? academicYearId, CancellationToken ct = default)
+    public async Task<OperationResult<ImportResult>> ImportWithAiAsync(List<ImportedStudentDto> students, int? classId, int? academicYearId, CancellationToken ct = default)
     {
         if (students == null || students.Count == 0)
             return OperationResult<ImportResult>.Failure("يجب توفير طالب واحد على الأقل", 400);
 
-        var classEntity = await _unitOfWork.Classes.GetByIdAsync(classId, ct);
-        if (classEntity == null || classEntity.IsDeleted)
-            return OperationResult<ImportResult>.Failure("الفصل غير موجود", 404);
+        if (classId.HasValue)
+        {
+            var classEntity = await _unitOfWork.Classes.GetByIdAsync(classId.Value, ct);
+            if (classEntity == null || classEntity.IsDeleted)
+                return OperationResult<ImportResult>.Failure("الفصل غير موجود", 404);
+        }
 
         var result = new ImportResult();
 

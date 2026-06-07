@@ -45,7 +45,7 @@ export class LibraryService {
     file: File | null,
     linkUrl: string | null,
     title: string,
-    itemType: string,
+    itemType: number,
     subjectId: number | null,
     gradeLevelId: number | null,
     academicYearId: number | null,

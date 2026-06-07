@@ -52,6 +52,6 @@ public class StudentImportController : ControllerBase
 public class AiImportRequest
 {
     public List<ImportedStudentDto> Students { get; set; } = new();
-    public int ClassId { get; set; }
+    public int? ClassId { get; set; }
     public int? AcademicYearId { get; set; }
 }
