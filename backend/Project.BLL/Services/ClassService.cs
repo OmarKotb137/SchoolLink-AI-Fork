@@ -236,4 +236,39 @@ public class ClassService : IClassService
             _mapper.Map<ClassDto>(withIncludes),
             "تم إنشاء الفصل مع الطلاب بنجاح");
     }
+
+    public async Task<OperationResult<int>> GetClassCountAsync(int? academicYearId = null)
+    {
+        if (academicYearId.HasValue)
+        {
+            var count = await _unitOfWork.Classes.CountAsync(c =>
+                c.AcademicYearId == academicYearId.Value && !c.IsDeleted);
+            return OperationResult<int>.Success(count, "تم جلب عدد الفصول بنجاح");
+        }
+
+        var totalCount = await _unitOfWork.Classes.CountAsync(c => !c.IsDeleted);
+        return OperationResult<int>.Success(totalCount, "تم جلب عدد الفصول بنجاح");
+    }
+
+    public async Task<OperationResult<object>> GetClassStatsAsync(int? academicYearId = null)
+    {
+        var classes = academicYearId.HasValue
+            ? await _unitOfWork.Classes.FindAsync(c => c.AcademicYearId == academicYearId.Value && !c.IsDeleted)
+            : await _unitOfWork.Classes.FindAsync(c => !c.IsDeleted);
+
+        var total = classes.Count;
+        var gradeLevelGroups = classes.GroupBy(c => c.GradeLevelId);
+
+        var stats = new
+        {
+            TotalClasses = total,
+            GradeLevelDistribution = gradeLevelGroups.Select(g => new
+            {
+                GradeLevelId = g.Key,
+                Count = g.Count()
+            })
+        };
+
+        return OperationResult<object>.Success(stats, "تم جلب إحصائيات الفصول بنجاح");
+    }
 }

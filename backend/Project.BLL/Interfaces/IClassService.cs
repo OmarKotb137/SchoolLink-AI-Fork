@@ -14,4 +14,6 @@ public interface IClassService
     Task<OperationResult<ClassDto>>              GetClassWithStudentsAsync(int classId);
     Task<OperationResult<IEnumerable<ClassDto>>> GetClassesByTeacherAsync(int teacherId, int academicYearId);
     Task<OperationResult<ClassDto>>              CreateClassWithStudentsAsync(CreateClassWithStudentsRequest request);
+    Task<OperationResult<int>>                   GetClassCountAsync(int? academicYearId = null);
+    Task<OperationResult<object>>                GetClassStatsAsync(int? academicYearId = null);
 }

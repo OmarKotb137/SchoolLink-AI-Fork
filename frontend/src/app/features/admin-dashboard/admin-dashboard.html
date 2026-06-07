@@ -1,6 +1,6 @@
     <app-sidebar [(isOpen)]="sidebarOpen" />
     <div class="main-content">
-      <app-topbar userName="أحمد" />
+      <app-topbar [userName]="userName" />
       <main class="p-gutter-desktop">
         <div class="flex flex-col gap-gutter-desktop">
           <!-- Stats Cards -->
@@ -12,8 +12,7 @@
                 </div>
                 <div>
                   <p class="text-on-surface-variant text-label-sm">إجمالي الطلاب</p>
-                  <p class="text-headline-md font-bold text-on-surface">1,247</p>
-                  <p class="text-green-600 text-label-sm">+12% هذا الشهر</p>
+                  <p class="text-headline-md font-bold text-on-surface" style="font-size: 25px;">{{ data()?.totalStudents ?? '—' }}</p>
                 </div>
               </div>
             </div>
@@ -24,8 +23,7 @@
                 </div>
                 <div>
                   <p class="text-on-surface-variant text-label-sm">إجمالي المعلمين</p>
-                  <p class="text-headline-md font-bold text-on-surface">89</p>
-                  <p class="text-green-600 text-label-sm">+3 هذا الشهر</p>
+                  <p class="text-headline-md font-bold text-on-surface" style="font-size: 25px;">{{ data()?.totalTeachers ?? '—' }}</p>
                 </div>
               </div>
             </div>
@@ -36,7 +34,7 @@
                 </div>
                 <div>
                   <p class="text-on-surface-variant text-label-sm">الفصول الدراسية</p>
-                  <p class="text-headline-md font-bold text-on-surface">42</p>
+                  <p class="text-headline-md font-bold text-on-surface" style="font-size: 25px;">{{ data()?.totalClasses ?? '—' }}</p>
                 </div>
               </div>
             </div>
@@ -47,8 +45,7 @@
                 </div>
                 <div>
                   <p class="text-on-surface-variant text-label-sm">نسبة النجاح</p>
-                  <p class="text-headline-md font-bold text-on-surface">94.2%</p>
-                  <p class="text-green-600 text-label-sm">+2.1%</p>
+                  <p class="text-headline-md font-bold text-on-surface" style="font-size: 25px;">{{ data()?.successRate ?? '—' }}%</p>
                 </div>
               </div>
             </div>
@@ -59,27 +56,28 @@
             <div class="lg:col-span-2 bg-surface-container-lowest rounded-2xl p-widget-padding shadow-sm border border-outline-variant/20">
               <h3 class="font-headline-md mb-4">النشاط الأكاديمي</h3>
               <div class="h-64 flex items-end justify-between gap-2">
-                <div class="flex-1 bg-primary/20 h-[60%] rounded-t-lg"></div>
-                <div class="flex-1 bg-primary/20 h-[45%] rounded-t-lg"></div>
-                <div class="flex-1 bg-primary h-[80%] rounded-t-lg"></div>
-                <div class="flex-1 bg-primary/20 h-[55%] rounded-t-lg"></div>
-                <div class="flex-1 bg-primary h-[75%] rounded-t-lg"></div>
-                <div class="flex-1 bg-primary/20 h-[90%] rounded-t-lg"></div>
-                <div class="flex-1 bg-primary/20 h-[50%] rounded-t-lg"></div>
+                @for (h of barHeights(); track $index) {
+                  <div class="flex-1 rounded-t-lg transition-all duration-500"
+                    [class]="$index === 2 || $index === 4 ? 'bg-primary' : 'bg-primary/20'"
+                    [style.height.%]="h">
+                  </div>
+                }
               </div>
               <div class="flex justify-between mt-2 text-label-sm text-outline">
-                <span>السبت</span><span>الأحد</span><span>الإثنين</span><span>الثلاثاء</span><span>الأربعاء</span><span>الخميس</span><span>الجمعة</span>
+                @for (day of data()?.weeklyActivity ?? []; track $index) {
+                  <span>{{ day.day }}</span>
+                }
               </div>
             </div>
             <div class="bg-surface-container-lowest rounded-2xl p-widget-padding shadow-sm border border-outline-variant/20">
               <h3 class="font-headline-md mb-4">أحدث الأنشطة</h3>
               <div class="space-y-4">
-                @for (activity of activities; track activity) {
+                @for (activity of data()?.recentActivities; track $index) {
                   <div class="flex items-center gap-3 p-3 bg-surface-container-low rounded-xl">
                     <span class="material-symbols-outlined text-primary">circle</span>
                     <div>
                       <p class="text-label-sm font-bold">{{ activity }}</p>
-                      <p class="text-[11px] text-outline">منذ دقائق</p>
+                      <p class="text-[11px] text-outline">منذ قليل</p>
                     </div>
                   </div>
                 }
@@ -96,7 +94,7 @@
                   <tr><th class="pb-3 px-2">الاسم</th><th class="pb-3 px-2">الدور</th><th class="pb-3 px-2">البريد</th><th class="pb-3 px-2">الحالة</th></tr>
                 </thead>
                 <tbody>
-                  @for (user of users; track user.name) {
+                  @for (user of data()?.recentUsers; track $index) {
                     <tr class="border-b border-outline-variant/10">
                       <td class="py-3 px-2 text-label-sm">{{ user.name }}</td>
                       <td class="py-3 px-2 text-label-sm text-outline">{{ user.role }}</td>
