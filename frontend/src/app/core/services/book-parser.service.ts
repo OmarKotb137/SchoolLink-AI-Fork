@@ -75,6 +75,50 @@ export class BookParserService {
     });
   }
 
+  reExtractLessonContent(previewId: string, lessonTitle: string, pageStart: number, pageEnd: number | null): Observable<any> {
+    return this.http.post<any>(`${this.parserBase}/lesson/re-extract`, {
+      previewId,
+      lessonTitle,
+      pageStart,
+      pageEnd
+    });
+  }
+
+  reExtractUnitContent(previewId: string, unitName: string, pageStart: number, pageEnd: number | null): Observable<any> {
+    return this.http.post<any>(`${this.parserBase}/unit/re-extract`, {
+      previewId,
+      unitName,
+      pageStart,
+      pageEnd
+    });
+  }
+
+  getParsedSubjects(): Observable<any> {
+    return this.http.get<any>(`${this.parserBase}/subjects`);
+  }
+
+  getSubjectStructure(subjectId: number): Observable<any> {
+    return this.http.get<any>(`${this.parserBase}/subjects/${subjectId}`);
+  }
+
+  updateUnit(unitId: number, name: string, content?: string): Observable<any> {
+    const body: any = { name };
+    if (content !== undefined) body.content = content;
+    return this.http.put<any>(`${this.parserBase}/units/${unitId}`, body);
+  }
+
+  updateLesson(lessonId: number, title: string): Observable<any> {
+    return this.http.put<any>(`${this.parserBase}/lessons/${lessonId}`, { title });
+  }
+
+  createLesson(unitId: number, dto: { title: string; displayOrder: number }): Observable<any> {
+    return this.http.post<any>(`${this.parserBase}/units/${unitId}/lessons`, dto);
+  }
+
+  createUnit(subjectId: number, dto: { name: string; displayOrder: number }): Observable<any> {
+    return this.http.post<any>(`${this.parserBase}/subjects/${subjectId}/units`, dto);
+  }
+
   getGradeLevels(): Observable<any> {
     return this.http.get(buildApiUrl('grade-levels'));
   }

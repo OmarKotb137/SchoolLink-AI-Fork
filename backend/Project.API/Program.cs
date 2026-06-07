@@ -15,6 +15,9 @@ try
 
     var builder = WebApplication.CreateBuilder(args);
 
+    builder.WebHost.ConfigureKestrel(options =>
+        options.Limits.MaxRequestBodySize = 100_000_000);
+
     builder.Host.UseSerilog((context, services, config) =>
         config.ReadFrom.Configuration(context.Configuration)
               .ReadFrom.Services(services)
@@ -24,6 +27,7 @@ try
                   rollingInterval: RollingInterval.Day,
                   retainedFileCountLimit: 30));
 
+    builder.Services.AddMemoryCache();
     builder.Services.AddControllers()
         .AddJsonOptions(options =>
         {

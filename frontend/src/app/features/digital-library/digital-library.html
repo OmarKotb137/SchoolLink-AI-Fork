@@ -10,9 +10,11 @@
                 <h2 class="text-headline-lg-mobile md:text-headline-lg font-headline-lg font-bold text-on-surface mb-1">المكتبة الرقمية</h2>
                 <p class="text-body-lg font-body-lg text-on-surface-variant">تصفح وإدارة الموارد التعليمية المعتمدة.</p>
               </div>
-              <button (click)="openUploadModal()" class="px-6 py-2.5 bg-primary text-on-primary rounded-full font-label-md text-label-md hover:bg-primary/90 transition-colors shadow-sm flex items-center gap-2 whitespace-nowrap self-start md:self-auto">
-                <span class="material-symbols-outlined text-[20px]">upload</span> رفع ملف جديد
-              </button>
+              @if (canManage()) {
+                <button (click)="openUploadModal()" class="px-6 py-2.5 bg-primary text-on-primary rounded-full font-label-md text-label-md hover:bg-primary/90 transition-colors shadow-sm flex items-center gap-2 whitespace-nowrap self-start md:self-auto">
+                  <span class="material-symbols-outlined text-[20px]">upload</span> رفع ملف جديد
+                </button>
+              }
             </div>
 
             <!-- Search bar -->
@@ -118,7 +120,6 @@
                   <div class="p-4 flex-1 flex flex-col">
                     <div class="flex items-start justify-between mb-2">
                       <h3 class="text-body-md font-body-md font-semibold text-on-surface line-clamp-2" [title]="item.title">{{item.title}}</h3>
-                      <button class="text-outline hover:text-primary transition-colors"><span class="material-symbols-outlined text-[20px]">more_vert</span></button>
                     </div>
                     <p class="text-label-sm font-label-sm text-on-surface-variant mb-4">{{item.subjectName || 'عام'}} • {{item.gradeLevelName || 'كل المراحل'}}</p>
                     <div class="mt-auto flex items-center gap-2 pt-4 border-t border-surface-container-high">
@@ -128,14 +129,20 @@
                       <a [href]="getDownloadUrl(item.fileUrl)" target="_blank" class="w-10 h-10 flex items-center justify-center bg-primary-fixed text-primary hover:bg-primary hover:text-on-primary rounded-lg transition-colors">
                         <span class="material-symbols-outlined text-[20px]">download</span>
                       </a>
-                      <button (click)="requestDelete(item.id)" [disabled]="deletingId() === item.id"
-                              class="w-10 h-10 flex items-center justify-center bg-error/10 text-error hover:bg-error hover:text-white rounded-lg transition-colors disabled:opacity-40">
-                        @if (deletingId() === item.id) {
-                          <span class="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
-                        } @else {
-                          <span class="material-symbols-outlined text-[20px]">delete</span>
-                        }
-                      </button>
+                      @if (canManage()) {
+                        <button (click)="openEditModal(item)"
+                                class="w-10 h-10 flex items-center justify-center bg-primary-fixed text-primary hover:bg-primary hover:text-on-primary rounded-lg transition-colors">
+                          <span class="material-symbols-outlined text-[20px]">edit</span>
+                        </button>
+                        <button (click)="requestDelete(item.id)" [disabled]="deletingId() === item.id"
+                                class="w-10 h-10 flex items-center justify-center bg-error/10 text-error hover:bg-error hover:text-white rounded-lg transition-colors disabled:opacity-40">
+                          @if (deletingId() === item.id) {
+                            <span class="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
+                          } @else {
+                            <span class="material-symbols-outlined text-[20px]">delete</span>
+                          }
+                        </button>
+                      }
                     </div>
                   </div>
                 </div>
@@ -248,6 +255,36 @@
                   } @else {
                     <span class="material-symbols-outlined text-[18px]">check_circle</span> حفظ ورفع
                   }
+                </button>
+              </div>
+            </div>
+          </div>
+        }
+
+        <!-- Edit Modal -->
+        @if (showEditModal() && editingItem()) {
+          <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" style="direction: rtl;">
+            <div class="bg-surface-container-lowest rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+              <div class="p-6 border-b border-outline-variant flex items-center justify-between">
+                <h3 class="text-headline-sm font-headline-sm text-on-surface font-bold">تعديل الملف</h3>
+                <button (click)="closeEditModal()" class="text-on-surface-variant hover:text-on-surface transition-colors flex items-center justify-center">
+                  <span class="material-symbols-outlined">close</span>
+                </button>
+              </div>
+              <div class="p-6 overflow-y-auto flex-1 space-y-5">
+                <div>
+                  <label class="block text-label-md font-label-md text-on-surface mb-1">عنوان الملف <span class="text-error text-red-500">*</span></label>
+                  <input [(ngModel)]="editForm.title" type="text" class="w-full bg-surface-container border border-outline-variant rounded-lg px-4 py-2 text-body-md focus:outline-none focus:border-primary transition-colors" placeholder="أدخل عنوان الملف">
+                </div>
+                <div>
+                  <label class="block text-label-md font-label-md text-on-surface mb-1">وصف الملف</label>
+                  <textarea [(ngModel)]="editForm.description" rows="3" class="w-full bg-surface-container border border-outline-variant rounded-lg px-4 py-2 text-body-md focus:outline-none focus:border-primary transition-colors" placeholder="وصف قصير للملف..."></textarea>
+                </div>
+              </div>
+              <div class="p-6 border-t border-outline-variant flex justify-end gap-3 bg-surface-container-low">
+                <button (click)="closeEditModal()" class="px-6 py-2 rounded-full border border-outline-variant text-on-surface font-label-md hover:bg-surface-container transition-colors">إلغاء</button>
+                <button (click)="submitEdit()" class="px-6 py-2 rounded-full bg-primary text-on-primary font-label-md hover:bg-primary/90 transition-colors flex items-center gap-2">
+                  <span class="material-symbols-outlined text-[18px]">check_circle</span> حفظ التعديلات
                 </button>
               </div>
             </div>

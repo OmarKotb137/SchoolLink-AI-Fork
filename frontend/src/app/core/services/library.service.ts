@@ -72,4 +72,8 @@ export class LibraryService {
   delete(id: number) {
     return this.http.delete<any>(`${this.base}/Library/${id}`);
   }
+
+  update(id: number, dto: { title: string; description?: string; isActive?: boolean }) {
+    return this.http.put<any>(`${this.base}/Library/${id}`, dto);
+  }
 }

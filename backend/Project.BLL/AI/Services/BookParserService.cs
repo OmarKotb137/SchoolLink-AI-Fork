@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Common.Results;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Project.BLL.AI.ExamAgent.Interfaces;
@@ -20,6 +21,7 @@ public class BookParserService : IBookParserService
     private readonly IUnitService _unitService;
     private readonly ILogger<BookParserService> _logger;
     private readonly HttpClient _httpClient;
+    private readonly IMemoryCache _cache;
     private readonly string _mistralApiKey;
     private readonly string _openRouterApiKey;
     private readonly string _openRouterModel;
@@ -33,12 +35,14 @@ public class BookParserService : IBookParserService
         IUnitService unitService,
         ILogger<BookParserService> logger,
         IHttpClientFactory httpClientFactory,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IMemoryCache cache)
     {
         _llmClient = llmClient;
         _unitService = unitService;
         _logger = logger;
         _httpClient = httpClientFactory.CreateClient("MistralOcr");
+        _cache = cache;
         _mistralApiKey = configuration["AI:Mistral:ApiKey"] ?? "862c34pvzZx0QPCkggmKbzemlqtjocun";
         _openRouterApiKey = configuration["LlmSettings:OpenRouter:ApiKey"] ?? "";
         _openRouterModel = configuration["LlmSettings:OpenRouter:LessonCorrectionModel"] ?? "openrouter/owl-alpha";
@@ -48,7 +52,7 @@ public class BookParserService : IBookParserService
     //  Public API
     // ─────────────────────────────────────────────────────────────────────────
 
-    public async Task<OperationResult<List<ParsedUnitDto>>> PreviewBookAsync(
+    public async Task<OperationResult<BookPreviewResult>> PreviewBookAsync(
         Stream pdfStream, string fileName)
     {
         try
@@ -63,7 +67,7 @@ public class BookParserService : IBookParserService
             if (ocrResult is null)
             {
                 _logger.LogWarning("Mistral OCR returned null for {FileName}", fileName);
-                return OperationResult<List<ParsedUnitDto>>.Failure(
+                return OperationResult<BookPreviewResult>.Failure(
                     "فشل استخراج النص من ملف PDF عبر Mistral OCR.", 500);
             }
 
@@ -72,7 +76,7 @@ public class BookParserService : IBookParserService
             _logger.LogInformation("Extracted {Len} chars from OCR pages for {FileName}", tocText?.Length ?? 0, fileName);
 
             if (string.IsNullOrWhiteSpace(tocText))
-                return OperationResult<List<ParsedUnitDto>>.Failure(
+                return OperationResult<BookPreviewResult>.Failure(
                     "لم يتم استخراج نص من ملف PDF. تأكد من أن الملف يحتوي على نص قابل للقراءة.", 400);
 
             var parsed = await AnalyzeWithLlmAsync(tocText, fileName);
@@ -83,7 +87,7 @@ public class BookParserService : IBookParserService
             }
 
             if (parsed is null || parsed.Count == 0)
-                return OperationResult<List<ParsedUnitDto>>.Failure(
+                return OperationResult<BookPreviewResult>.Failure(
                     "لم يتمكن النظام من تحليل هيكل الكتاب. تأكد من أن ملف PDF يحتوي على فهرس (Table of Contents) في أول 7 صفحات.", 400);
 
             _logger.LogInformation("Parsed {Count} units for {FileName}", parsed.Count, fileName);
@@ -95,12 +99,21 @@ public class BookParserService : IBookParserService
             // استخراج المحتوى الخام للوحدات والدروس من OCR
             ExtractContentFromOcr(ocrResult, parsed);
 
-            return OperationResult<List<ParsedUnitDto>>.Success(parsed);
+            // تخزين OCR في cache للاستخدام عند إعادة استخراج المحتوى
+            var previewId = Guid.NewGuid().ToString("N");
+            var cacheKey = $"book-ocr-{previewId}";
+            _cache.Set(cacheKey, StripImages(ocrResult), TimeSpan.FromMinutes(30));
+
+            return OperationResult<BookPreviewResult>.Success(new BookPreviewResult
+            {
+                PreviewId = previewId,
+                Units = parsed
+            });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "BookParser preview failed for {FileName}", fileName);
-            return OperationResult<List<ParsedUnitDto>>.Failure($"حدث خطأ: {ex.Message}", 500);
+            return OperationResult<BookPreviewResult>.Failure($"حدث خطأ: {ex.Message}", 500);
         }
     }
 
@@ -486,18 +499,22 @@ public class BookParserService : IBookParserService
                       3. لكل درس، حدد رقم الصفحة التي يبدأ فيها والصفحة التي ينتهي فيها
                       4. إذا كانت المادة لا تحتوي على دروس داخل الوحدات (مثل اللغة الإنجليزية)، فأرجع الوحدات فقط مع مصفوفة lessons فارغة
 
-                      ملاحظات:
-                      - الأرقام التي تظهر بجانب العناوين في الفهرس غالباً هي أرقام الصفحات
+                      ملاحظات مهمة:
+                      - الأرقام التي تظهر في نهاية السطر غالباً هي أرقام الصفحات
+                      - مثال: "Unit 1 Gen Alpha 13" → name: "Unit 1 Gen Alpha", pageStart: 13
+                      - مثال: "Review 1 55" → name: "Review 1", pageStart: 55 (مراجعات تعامل كوحدات)
+                      - مثال: "الوحدة الأولى: الأعداد 15" → name: "الوحدة الأولى: الأعداد", pageStart: 15
+                      - إذا كان السطر يحتوي على وحدة/مراجعة ورقم صفحة في النهاية، استخرج الرقم كـ pageStart
                       - قد تظهر أرقام الصفحات في الجانب الأيسر أو الأيمن
-                      - استخدم أرقام الصفحات الحقيقية من الكتاب (وليس رقم الصفحة في ملف PDF)
-                      - حقل content للوحدة سيتم ملؤه لاحقاً من النص الفعلي للصفحات - اتركه فارغاً ""
+                      - استخدم أرقام الصفحات الحقيقية من الكتاب
+                      - حقل content للوحدة سيتم ملؤه لاحقاً - اتركه فارغاً ""
 
                       أرجع النتيجة بصيغة JSON فقط (بدون أي نص إضافي):
                       [
                         {
-                          "name": "اسم الوحدة كاملاً",
+                          "name": "اسم الوحدة كاملاً بدون رقم الصفحة",
                           "content": "",
-                          "pageStart": 1,
+                          "pageStart": 13,
                           "pageEnd": 30,
                           "displayOrder": 1,
                           "lessons": [
@@ -573,31 +590,42 @@ public class BookParserService : IBookParserService
         {
             var normalizedLine = NormalizeArabicNumbers(line);
             
-            // Remove Arabic diacritics (tashkeel) for reliable regex matching
             var cleanLine = System.Text.RegularExpressions.Regex.Replace(normalizedLine, @"\p{Mn}", "");
 
-            // Unit detection - must be a heading line (starts with ## or contains الوحدة at beginning)
-            // Exclude table rows (start with |), page references, and book metadata lines
             var isTableRow = cleanLine.StartsWith("|") || cleanLine.StartsWith("---");
             var isPageRef  = System.Text.RegularExpressions.Regex.IsMatch(cleanLine, @"^\d+\s*$");
             var isMetadata = cleanLine.Contains("للصف") || cleanLine.Contains("الفصل الدراسي") 
                              || cleanLine.Contains("كتاب") || cleanLine.Contains("مدرسة");
 
+            // Detect unit headings: الوحدة, Unit N, Review N, مراجعة, etc.
             var isUnitHeading = !isTableRow && !isPageRef && !isMetadata && (
-                // ## الوحدة الأولى : ...
                 System.Text.RegularExpressions.Regex.IsMatch(cleanLine, @"^#{1,3}\s*الوحدة", System.Text.RegularExpressions.RegexOptions.IgnoreCase) ||
-                // الوحدة الأولى at start of line (TOC entry without ##)
                 System.Text.RegularExpressions.Regex.IsMatch(cleanLine, @"^الوحدة\s+", System.Text.RegularExpressions.RegexOptions.IgnoreCase) ||
-                // Unit 1 / Unit One
-                System.Text.RegularExpressions.Regex.IsMatch(cleanLine, @"^Unit\s+", System.Text.RegularExpressions.RegexOptions.IgnoreCase)
+                System.Text.RegularExpressions.Regex.IsMatch(cleanLine, @"^Unit\s+\d+", System.Text.RegularExpressions.RegexOptions.IgnoreCase) ||
+                // Review N / مراجعة N as standalone units
+                System.Text.RegularExpressions.Regex.IsMatch(cleanLine, @"^(Review|Revision|مراجعة)\s+\d+", System.Text.RegularExpressions.RegexOptions.IgnoreCase)
             );
 
             if (isUnitHeading)
             {
-                var name = System.Text.RegularExpressions.Regex.Replace(cleanLine, @"[#*|_]", "").Trim();
-                if (name.Length > 3)
+                var rawName = System.Text.RegularExpressions.Regex.Replace(cleanLine, @"[#*|_]", "").Trim();
+                if (rawName.Length > 3)
                 {
-                    // Check if we already have a unit that starts with the same 2 words (e.g., "الوحدة الأولى")
+                    // Extract trailing page number from line like "Unit 1 Gen Alpha 13" or "Review 1 55"
+                    int? trailingPage = null;
+                    var pageMatch = System.Text.RegularExpressions.Regex.Match(rawName, @"\s+(\d+)\s*$");
+                    if (pageMatch.Success)
+                    {
+                        var num = int.Parse(pageMatch.Groups[1].Value);
+                        if (num > 0 && num < 500)
+                        {
+                            trailingPage = num;
+                            // Remove page number from the name
+                            rawName = rawName[..pageMatch.Index].Trim();
+                        }
+                    }
+
+                    var name = rawName;
                     var nameParts = name.Split(new[] { ' ', ':' }, StringSplitOptions.RemoveEmptyEntries);
                     ParsedUnitDto? existingUnit = null;
 
@@ -617,9 +645,10 @@ public class BookParserService : IBookParserService
                     if (existingUnit != null)
                     {
                         currentUnit = existingUnit;
-                        // Optionally update name if the new one is longer (might be more complete from TOC)
                         if (name.Length > existingUnit.Name.Length)
                             existingUnit.Name = name;
+                        if (trailingPage.HasValue && existingUnit.PageStart is null)
+                            existingUnit.PageStart = trailingPage;
                     }
                     else
                     {
@@ -627,6 +656,7 @@ public class BookParserService : IBookParserService
                         {
                             Name = name,
                             Content = "",
+                            PageStart = trailingPage,
                             DisplayOrder = units.Count + 1,
                             Lessons = new List<ParsedLessonDto>()
                         };
@@ -638,6 +668,10 @@ public class BookParserService : IBookParserService
 
             if (currentUnit != null)
             {
+                // Skip lines that look like metadata/headers/footers (two numbers, short, etc.)
+                if (System.Text.RegularExpressions.Regex.IsMatch(cleanLine, @"^\d+\s+\d+\s*$"))
+                    continue;
+
                 // Try to extract lesson from line
                 // Format 1: | 12 | Lesson Title |
                 var m = System.Text.RegularExpressions.Regex.Match(cleanLine, @"(?:^|\s|\|)\s*(\d+)\s*(?:\||-|\s)+(.*?)(?:\||$)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
@@ -687,6 +721,102 @@ public class BookParserService : IBookParserService
         return input.Replace('٠', '0').Replace('١', '1').Replace('٢', '2')
                     .Replace('٣', '3').Replace('٤', '4').Replace('٥', '5')
                     .Replace('٦', '6').Replace('٧', '7').Replace('٨', '8').Replace('٩', '9');
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    //  OCR Cache & Re-extract
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private static MistralOcrResponse StripImages(MistralOcrResponse original)
+    {
+        if (original.Pages is null) return original;
+        return new MistralOcrResponse
+        {
+            Pages = original.Pages.Select(p => new MistralOcrPage
+            {
+                Index = p.Index,
+                Markdown = p.Markdown,
+                Text = p.Text
+            }).ToList(),
+            Text = original.Text
+        };
+    }
+
+    public async Task<OperationResult<string>> ReExtractLessonContentAsync(
+        string previewId, string lessonTitle, int pageStart, int? pageEnd)
+    {
+        try
+        {
+            var cacheKey = $"book-ocr-{previewId}";
+            if (!_cache.TryGetValue(cacheKey, out MistralOcrResponse? ocrResult) || ocrResult is null)
+                return OperationResult<string>.Failure("انتهت صلاحية الجلسة. يرجى إعادة تحليل الكتاب.", 400);
+
+            var totalPages = ocrResult.Pages?.Count ?? 0;
+            if (totalPages == 0)
+                return OperationResult<string>.Failure("لا توجد صفحات في الـ PDF المستخرج.", 400);
+
+            var start = Math.Max(1, pageStart);
+            var end = pageEnd is not null ? Math.Min(totalPages, pageEnd.Value) : totalPages;
+
+            var pageTextsMap = BuildPageTextMap(ocrResult);
+            var pageTexts = new List<string>();
+            for (int i = start; i <= end; i++)
+            {
+                if (pageTextsMap.TryGetValue(i, out var text) && !string.IsNullOrWhiteSpace(text))
+                    pageTexts.Add(text.Trim());
+            }
+
+            var rawContent = string.Join("\n\n", pageTexts);
+            if (string.IsNullOrWhiteSpace(rawContent))
+                return OperationResult<string>.Failure("لم يتم العثور على محتوى للنطاق المحدد.", 400);
+
+            // نرجّع المحتوى الخام من OCR مباشرة (بدون AI عشان السرعة)
+            return OperationResult<string>.Success(rawContent);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "ReExtractLessonContent failed for {Title} pages {S}-{E}", lessonTitle, pageStart, pageEnd);
+            return OperationResult<string>.Failure($"حدث خطأ: {ex.Message}", 500);
+        }
+    }
+
+    public async Task<OperationResult<string>> ReExtractUnitContentAsync(
+        string previewId, string unitName, int pageStart, int? pageEnd)
+    {
+        try
+        {
+            var cacheKey = $"book-ocr-{previewId}";
+            if (!_cache.TryGetValue(cacheKey, out MistralOcrResponse? ocrResult) || ocrResult is null)
+                return OperationResult<string>.Failure("انتهت صلاحية الجلسة. يرجى إعادة تحليل الكتاب.", 400);
+
+            var totalPages = ocrResult.Pages?.Count ?? 0;
+            if (totalPages == 0)
+                return OperationResult<string>.Failure("لا توجد صفحات في الـ PDF المستخرج.", 400);
+
+            var start = Math.Max(1, pageStart);
+            var end = pageEnd is not null ? Math.Min(totalPages, pageEnd.Value) : totalPages;
+
+            var pageTextsMap = BuildPageTextMap(ocrResult);
+            var pageTexts = new List<string>();
+            for (int i = start; i <= end; i++)
+            {
+                if (pageTextsMap.TryGetValue(i, out var text) && !string.IsNullOrWhiteSpace(text))
+                    pageTexts.Add(text.Trim());
+            }
+
+            var rawContent = string.Join("\n\n", pageTexts);
+            if (string.IsNullOrWhiteSpace(rawContent))
+                return OperationResult<string>.Failure("لم يتم العثور على محتوى للنطاق المحدد.", 400);
+
+            // نرجّع المحتوى الخام من OCR مباشرة (بدون AI عشان السرعة)
+            // المستخدم يقدر يضغط على "تظبيط بالـ AI" لو عايز تنظيف
+            return OperationResult<string>.Success(rawContent);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "ReExtractUnitContent failed for {Name} pages {S}-{E}", unitName, pageStart, pageEnd);
+            return OperationResult<string>.Failure($"حدث خطأ: {ex.Message}", 500);
+        }
     }
 }
 

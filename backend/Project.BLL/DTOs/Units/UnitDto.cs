@@ -43,6 +43,21 @@ public class CreateUnitDto
     public List<CreateLessonDto>? Lessons { get; set; }
 }
 
+public class SubjectWithStructureDto
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? GradeLevelName { get; set; }
+    public int UnitCount { get; set; }
+    public int LessonCount { get; set; }
+}
+
+public class BookPreviewResult
+{
+    public string PreviewId { get; set; } = string.Empty;
+    public List<ParsedUnitDto> Units { get; set; } = new();
+}
+
 public class ParsedUnitDto
 {
     public string Name { get; set; } = string.Empty;
