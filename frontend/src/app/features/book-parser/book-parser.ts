@@ -89,8 +89,9 @@ export class BookParser {
     this.parsedUnits.set([]);
     this.service.preview(file).subscribe({
       next: (res) => {
-        this.parsedUnits.set(res);
-        this.totalLessons.set(res.reduce((a, u) => a + u.lessons.length, 0));
+        const data = res.data ?? res;
+        this.parsedUnits.set(data);
+        this.totalLessons.set(Array.isArray(data) ? data.reduce((a, u) => a + u.lessons.length, 0) : 0);
         this.step.set('preview');
         this.loadingPreview.set(false);
       },
@@ -178,7 +179,8 @@ export class BookParser {
     this.generatingContent.set(true);
     this.service.generateLessonContent(lesson.content, lesson.title).subscribe({
       next: (res) => {
-        const updatedLesson = { ...lesson, content: res };
+        const content = typeof res === 'string' ? res : (res?.data ?? '');
+        const updatedLesson = { ...lesson, content };
         this.selectedLesson.set(updatedLesson);
 
         const uIdx = this.selectedLessonUnitIndex()!;

@@ -100,7 +100,7 @@ export class TeacherAssignments implements OnInit {
   loadGrades() {
     this.gradeLevelService.getAll().subscribe({
       next: (data) => {
-        const sortedGrades = data.sort((a, b) => a.levelOrder - b.levelOrder);
+        const sortedGrades = (data.data ?? data).sort((a, b) => a.levelOrder - b.levelOrder);
         this.grades.set(sortedGrades);
       },
       error: () => this.showError('تعذر تحميل بيانات الصفوف الدراسية')
@@ -110,7 +110,7 @@ export class TeacherAssignments implements OnInit {
   loadAcademicYear() {
     this.academicYearService.getAll().subscribe({
       next: (years) => {
-        const current = years.find(y => y.isCurrent);
+        const current = (years.data ?? years).find(y => y.isCurrent);
         if (!current) {
           this.showError('تعذر تحديد السنة الدراسية الحالية');
           return;
@@ -126,7 +126,7 @@ export class TeacherAssignments implements OnInit {
 
   loadClasses(academicYearId?: number) {
     this.classService.getAll(academicYearId ? { academicYearId } : undefined).subscribe({
-      next: (data) => this.classes.set(data),
+      next: (data) => this.classes.set(data.data ?? data),
       error: () => this.showError('تعذر تحميل بيانات الفصول')
     });
   }
@@ -134,8 +134,8 @@ export class TeacherAssignments implements OnInit {
   loadSubjects() {
     this.subjectService.getAll().subscribe({
       next: (data) => {
-        this.subjects.set(data);
-        this.formSubjects.set(data);
+        this.subjects.set(data.data ?? data);
+        this.formSubjects.set(data.data ?? data);
       },
       error: () => this.showError('تعذر تحميل بيانات المواد')
     });
@@ -144,7 +144,7 @@ export class TeacherAssignments implements OnInit {
   loadTeachers() {
     this.teacherService.getAll(1000).subscribe({
       next: (res) => {
-        const list = res.items || [];
+        const list = res.data?.items ?? [];
         this.teachers.set(list);
         this.formTeachers.set(list);
       },
@@ -191,8 +191,9 @@ export class TeacherAssignments implements OnInit {
         next: (list) => {
           if (requestVersion !== this.availableTeachersRequestVersion) return;
 
-          if (list.length > 0) {
-            this.formTeachers.set(list);
+          const data = list.data ?? list;
+          if (data.length > 0) {
+            this.formTeachers.set(data);
             this.noTeachersAvailable.set(false);
           } else {
             this.formTeachers.set([]);
@@ -220,7 +221,7 @@ export class TeacherAssignments implements OnInit {
     this.isLoading.set(true);
     this.assignmentService.getByClass(this.selectedClassFilter, this.currentAcademicYearId ?? undefined).subscribe({
       next: (data) => {
-        this.assignments.set(data);
+        this.assignments.set(data.data ?? data);
         this.currentPage.set(1);
         this.isLoading.set(false);
       },

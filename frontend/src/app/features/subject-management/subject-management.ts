@@ -66,7 +66,7 @@ export class SubjectManagement implements OnInit {
   loadSubjects() {
     this.subjectService.getAll().subscribe({
       next: (data) => {
-        this.subjects.set(data);
+        this.subjects.set(data.data ?? data);
         this.currentPage.set(1);
       },
       // FIX #2: error handler مع رسالة للمستخدم
@@ -88,7 +88,7 @@ export class SubjectManagement implements OnInit {
     // لأن الـ backend endpoint بيبحث بالاسم فقط
     this.subjectService.getAll().subscribe({
       next: (data) => {
-        const filtered = data.filter(s =>
+        const filtered = (data.data ?? data).filter(s =>
           s.name.toLowerCase().includes(term) ||
           s.code.toLowerCase().includes(term)
         );

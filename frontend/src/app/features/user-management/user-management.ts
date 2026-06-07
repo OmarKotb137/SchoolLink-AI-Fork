@@ -121,7 +121,7 @@ export class UserManagement implements OnInit {
 
     this.userService.getAll({ pageSize: 1000 }).subscribe({
       next: result => {
-        this.users.set(result.items ?? []);
+        this.users.set(result.data?.items ?? []);
         this.isLoading.set(false);
       },
       error: err => {
@@ -134,7 +134,7 @@ export class UserManagement implements OnInit {
 
   loadStudents() {
     this.studentService.getAll().subscribe({
-      next: students => this.students.set(students),
+      next: students => this.students.set(students.data ?? []),
       error: err => {
         const msg = err?.error?.message || 'تعذر تحميل قائمة الطلاب';
         this.showError(msg);
@@ -192,7 +192,7 @@ export class UserManagement implements OnInit {
 
     this.parentStudentService.getStudentsByParent(parentId).subscribe({
       next: students => {
-        if (students.length === 0) {
+        if ((students.data ?? students).length === 0) {
           this.parentLinkedStudents.set([]);
           this.isLoading.set(false);
           return;
@@ -203,7 +203,7 @@ export class UserManagement implements OnInit {
             this.parentStudentService.getParentsByStudent(student.id).pipe(
               map(links => ({
                 student,
-                link: links.find(link => link.parentId === parentId) ?? null
+                link: (links.data ?? links).find(link => link.parentId === parentId) ?? null
               })),
               catchError(() => of({ student, link: null }))
             )
