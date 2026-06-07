@@ -8,4 +8,5 @@ public class UpdateEvaluationTemplateRequest
     public string Name { get; set; } = string.Empty;
     public EvaluationCalculationType CalculationType { get; set; }
     public bool IsActive { get; set; }
+    public int Weeks { get; set; } = 12;
 }

@@ -10,6 +10,7 @@ namespace Project.Domain.Entities
         public string Name { get; set; } = string.Empty;
         public EvaluationCalculationType CalculationType { get; set; }
         public bool IsActive { get; set; } = true;
+        public int Weeks { get; set; } = 12;
 
         // Navigation Properties
         public GradeLevel GradeLevel { get; set; } = null!;

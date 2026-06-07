@@ -73,6 +73,7 @@ public class StudentImportService : IStudentImportService
             else
             {
                 var text = ExtractText(f.Data, ext);
+                _logger.LogInformation("Extracted {Len} chars from {File}", text?.Length ?? 0, f.FileName);
                 if (!string.IsNullOrWhiteSpace(text))
                     parts.Add(new { text });
             }
@@ -173,9 +174,13 @@ public class StudentImportService : IStudentImportService
                     if (ssEntry != null)
                     {
                         using var sr = new StreamReader(ssEntry.Open());
-                        sharedStrings = XElement.Parse(sr.ReadToEnd())
-                            .Descendants().Where(e => e.Name.LocalName == "t")
-                            .Select(e => e.Value).ToList();
+                        var ssXml = XElement.Parse(sr.ReadToEnd());
+                        sharedStrings = ssXml.Descendants()
+                            .Where(e => e.Name.LocalName == "si")
+                            .Select(si => string.Concat(si.Descendants()
+                                .Where(t => t.Name.LocalName == "t")
+                                .Select(t => t.Value)))
+                            .ToList();
                     }
 
                     var sheetIdx = 0;
@@ -188,13 +193,26 @@ public class StudentImportService : IStudentImportService
                         var doc = XElement.Parse(sr.ReadToEnd());
                         foreach (var c in doc.Descendants().Where(e => e.Name.LocalName == "c"))
                         {
-                            var v = c.Descendants().FirstOrDefault(e => e.Name.LocalName == "v");
-                            if (v == null) continue;
                             var t = c.Attribute("t")?.Value;
-                            if (t == "s" && int.TryParse(v.Value, out var si) && si < sharedStrings.Count)
-                                sb.Append(sharedStrings[si] + " ");
+
+                            if (t == "s")
+                            {
+                                var v = c.Descendants().FirstOrDefault(e => e.Name.LocalName == "v");
+                                if (v != null && int.TryParse(v.Value, out var si) && si < sharedStrings.Count)
+                                    sb.Append(sharedStrings[si] + " ");
+                            }
+                            else if (t == "str" || t == "inlineStr")
+                            {
+                                var inline = c.Descendants().FirstOrDefault(e => e.Name.LocalName == "t");
+                                if (inline != null)
+                                    sb.Append(inline.Value + " ");
+                            }
                             else
-                                sb.Append(v.Value + " ");
+                            {
+                                var v = c.Descendants().FirstOrDefault(e => e.Name.LocalName == "v");
+                                if (v != null)
+                                    sb.Append(v.Value + " ");
+                            }
                         }
                         sb.AppendLine();
                     }

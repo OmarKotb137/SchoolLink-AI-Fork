@@ -79,6 +79,9 @@
                 <tr>
                   <th class="text-right p-4 font-label-md text-outline">#</th>
                   <th class="text-right p-4 font-label-md text-outline">اسم الطالب</th>
+                  <th class="text-right p-4 font-label-md text-outline">الرقم القومي</th>
+                  <th class="text-center p-4 font-label-md text-outline">الجنس</th>
+                  <th class="text-center p-4 font-label-md text-outline">تاريخ الميلاد</th>
                   <th class="text-center p-4 font-label-md text-outline" style="width:80px"></th>
                 </tr>
               </thead>
@@ -87,7 +90,20 @@
                   <tr>
                     <td class="p-4 font-body-md text-outline">{{ $index + 1 }}</td>
                     <td class="p-4">
-                      <input class="w-full bg-transparent border-b border-transparent hover:border-outline-variant focus:border-primary outline-none font-body-md text-body-md py-1" [value]="s.fullName" (input)="updateStudentName(s.id, $any($event.target).value)" />
+                      <input class="w-full bg-transparent border-b border-transparent hover:border-outline-variant focus:border-primary outline-none font-body-md text-body-md py-1" [value]="s.fullName" (input)="updateStudentName(s.id, $any($event.target).value)" placeholder="الاسم كاملاً" />
+                    </td>
+                    <td class="p-4">
+                      <input class="w-full bg-transparent border-b border-transparent hover:border-outline-variant focus:border-primary outline-none font-body-md text-body-md py-1" [value]="s.nationalId ?? ''" (input)="updateStudentNationalId(s.id, $any($event.target).value)" placeholder="الرقم القومي" dir="ltr" />
+                    </td>
+                    <td class="p-4 text-center">
+                      <select class="glass-select text-sm" [value]="s.gender ?? ''" (change)="updateStudentGender(s.id, $any($event.target).value)">
+                        <option value="">—</option>
+                        <option value="Male">ذكر</option>
+                        <option value="Female">أنثى</option>
+                      </select>
+                    </td>
+                    <td class="p-4 text-center">
+                      <input type="date" class="bg-transparent border-b border-transparent hover:border-outline-variant focus:border-primary outline-none font-body-md text-body-md py-1 text-center" [value]="s.birthDate ?? ''" (change)="updateStudentBirthDate(s.id, $any($event.target).value)" />
                     </td>
                     <td class="p-4 text-center">
                       <button class="p-1.5 rounded-lg hover:bg-white/50 text-outline hover:text-error transition-colors" (click)="removeStudent(s.id)"><span class="material-symbols-outlined">close</span></button>

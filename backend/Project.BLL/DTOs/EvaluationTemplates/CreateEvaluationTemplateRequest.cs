@@ -9,4 +9,5 @@ public class CreateEvaluationTemplateRequest
     public int AcademicYearId { get; set; }
     public string Name { get; set; } = string.Empty;
     public EvaluationCalculationType CalculationType { get; set; }
+    public int Weeks { get; set; } = 12;
 }

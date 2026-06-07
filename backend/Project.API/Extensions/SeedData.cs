@@ -74,6 +74,7 @@ public static class SeedData
         {
             await SeedUnitsAndLessons(ctx);
             await SeedStudentUsers(ctx);
+            await SeedEvaluationPeriods(ctx);
             return;
         }
 
@@ -349,51 +350,10 @@ public static class SeedData
         }
         await ctx.SaveChangesAsync();
 
-        // ── 11. EvaluationPeriods — 12 weeks + months ──
-        var weekNames = new[] {
-            "الأسبوع الأول", "الأسبوع الثاني", "الأسبوع الثالث", "الأسبوع الرابع",
-            "الأسبوع الخامس", "الأسبوع السادس", "الأسبوع السابع", "الأسبوع الثامن",
-            "الأسبوع التاسع", "الأسبوع العاشر", "الأسبوع الحادي عشر", "الأسبوع الثاني عشر"
-        };
-        var monthNames = new[] { "فبراير", "مارس", "أبريل" };
-        var periodsList = new List<EvaluationPeriod>();
-        for (int w = 0; w < 12; w++)
-        {
-            var start = new DateOnly(2026, 2, 1).AddDays(w * 7);
-            var p = new EvaluationPeriod
-            {
-                AcademicYearId = year.Id, Name = weekNames[w],
-                PeriodType = PeriodType.Weekly, OrderNum = w + 1,
-                StartDate = start, EndDate = start.AddDays(4),
-                MonthName = monthNames[w < 4 ? 0 : w < 8 ? 1 : 2],
-                CreatedAt = now, UpdatedAt = now
-            };
-            ctx.EvaluationPeriods.Add(p);
-            periodsList.Add(p);
-        }
-        // Monthly periods too
-        var feb = new EvaluationPeriod
-        {
-            AcademicYearId = year.Id, Name = "شهر فبراير",
-            PeriodType = PeriodType.Monthly, OrderNum = 1,
-            StartDate = new DateOnly(2026, 2, 1), EndDate = new DateOnly(2026, 2, 28),
-            MonthName = "فبراير", CreatedAt = now, UpdatedAt = now
-        };
-        var mar = new EvaluationPeriod
-        {
-            AcademicYearId = year.Id, Name = "شهر مارس",
-            PeriodType = PeriodType.Monthly, OrderNum = 2,
-            StartDate = new DateOnly(2026, 3, 1), EndDate = new DateOnly(2026, 3, 31),
-            MonthName = "مارس", CreatedAt = now, UpdatedAt = now
-        };
-        var apr = new EvaluationPeriod
-        {
-            AcademicYearId = year.Id, Name = "شهر أبريل",
-            PeriodType = PeriodType.Monthly, OrderNum = 3,
-            StartDate = new DateOnly(2026, 4, 1), EndDate = new DateOnly(2026, 4, 30),
-            MonthName = "أبريل", CreatedAt = now, UpdatedAt = now
-        };
-        ctx.EvaluationPeriods.AddRange(feb, mar, apr);
+        // ── 11. EvaluationPeriods — dynamic from academic year ──
+        var generatedPeriods = Project.Domain.Helpers.EvaluationPeriodGenerator.GeneratePeriods(year.Id, year.StartDate, year.EndDate);
+        var periodsList = generatedPeriods.ToList();
+        ctx.EvaluationPeriods.AddRange(periodsList);
         await ctx.SaveChangesAsync();
 
         // ── 12. EvaluationTemplates (Math + Arabic) ──
@@ -788,6 +748,17 @@ public static class SeedData
                 st.UserId = su.Id;
             }
         }
+        await ctx.SaveChangesAsync();
+    }
+
+    private static async Task SeedEvaluationPeriods(AppDbContext ctx)
+    {
+        if (await ctx.EvaluationPeriods.AnyAsync())
+            return;
+
+        var year = await ctx.AcademicYears.FirstAsync();
+        var periods = Project.Domain.Helpers.EvaluationPeriodGenerator.GeneratePeriods(year.Id, year.StartDate, year.EndDate);
+        ctx.EvaluationPeriods.AddRange(periods);
         await ctx.SaveChangesAsync();
     }
 }

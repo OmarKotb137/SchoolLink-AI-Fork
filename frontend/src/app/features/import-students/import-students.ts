@@ -80,7 +80,7 @@ export class ImportStudents {
       next: (res: any) => {
         this.isLoading.set(false);
         const list = res?.data?.students ?? [];
-        const imported: ImportedStudent[] = list.map((s: any, i: number) => ({
+        const imported: ImportedStudent[] = list.map((s: any) => ({
           id: this.nextId++,
           fullName: s.fullName ?? '',
           nationalId: s.nationalId,
@@ -108,6 +108,18 @@ export class ImportStudents {
     this.students.update(list => list.map(s => s.id === id ? { ...s, fullName: name } : s));
   }
 
+  updateStudentNationalId(id: number, val: string) {
+    this.students.update(list => list.map(s => s.id === id ? { ...s, nationalId: val || null } : s));
+  }
+
+  updateStudentGender(id: number, val: string) {
+    this.students.update(list => list.map(s => s.id === id ? { ...s, gender: val || null } : s));
+  }
+
+  updateStudentBirthDate(id: number, val: string) {
+    this.students.update(list => list.map(s => s.id === id ? { ...s, birthDate: val || null } : s));
+  }
+
   saveStudents() {
     if (!this.selectedClassId()) {
       this.showError.set(true);
@@ -115,7 +127,17 @@ export class ImportStudents {
       return;
     }
     this.isLoading.set(true);
-    this.importSvc.import(this.students(), this.selectedClassId()!, this.selectedYearId()!).subscribe({
+    const body = {
+      students: this.students().map(s => ({
+        fullName: s.fullName,
+        nationalId: s.nationalId,
+        gender: s.gender,
+        birthDate: s.birthDate,
+      })),
+      classId: this.selectedClassId(),
+      academicYearId: this.selectedYearId(),
+    };
+    this.importSvc.import(body).subscribe({
       next: () => {
         this.isLoading.set(false);
         this.showSuccess.set(true);
