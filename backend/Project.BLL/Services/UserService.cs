@@ -7,6 +7,8 @@ using Project.BLL.Interfaces;
 using Project.DAL.Interfaces;
 using Project.Domain.Enums;
 using Project.Domain.Entities;
+using System.Security.Cryptography;
+using Project.BLL.Utils;
 
 namespace Project.BLL.Services;
 
@@ -290,5 +292,25 @@ public class UserService : IUserService
         var filtered = users.Where(u => !u.IsDeleted).OrderBy(u => u.FullName);
         var dtos = _mapper.Map<IEnumerable<UserDto>>(filtered);
         return OperationResult<IEnumerable<UserDto>>.Success(dtos, "تم تصدير المستخدمين بنجاح");
+    }
+
+    public async Task<OperationResult<ResetPasswordResult>> ResetPasswordAsync(int userId)
+    {
+        var user = await _unitOfWork.Users.GetByIdAsync(userId);
+        if (user == null || user.IsDeleted)
+            return OperationResult<ResetPasswordResult>.Failure($"لم يتم العثور على مستخدم بالمعرف {userId}");
+
+        var newPassword = PasswordGenerator.Generate();
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+        user.UpdatedAt = DateTime.UtcNow;
+        _unitOfWork.Users.Update(user);
+        await _unitOfWork.SaveChangesAsync();
+
+        return OperationResult<ResetPasswordResult>.Success(new ResetPasswordResult
+        {
+            UserId = user.Id,
+            FullName = user.FullName,
+            NewPassword = newPassword
+        }, "تم إعادة تعيين كلمة المرور بنجاح");
     }
 }

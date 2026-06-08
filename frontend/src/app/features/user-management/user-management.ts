@@ -10,6 +10,7 @@ import { Student, StudentService } from '../../core/services/student.service';
 import {
   GenerateBulkStudentAccountsResult,
   GenerateStudentAccountResult,
+  ResetPasswordResult,
   StudentAccountCandidate,
   User,
   UserService
@@ -56,6 +57,9 @@ export class UserManagement implements OnInit {
   showParentLinksModal = signal(false);
   showCredentialsModal = signal(false);
   showBulkResultModal = signal(false);
+  showResetPasswordModal = signal(false);
+
+  showFormPassword = signal(false);
 
   editingUserId = signal<number | null>(null);
   managingParent = signal<User | null>(null);
@@ -63,6 +67,7 @@ export class UserManagement implements OnInit {
   selectedRelationship = signal<RelationshipType>(1);
   lastGeneratedCred = signal<GenerateStudentAccountResult | null>(null);
   bulkResult = signal<GenerateBulkStudentAccountsResult | null>(null);
+  resetPasswordResult = signal<ResetPasswordResult | null>(null);
   parentChildSearch = signal('');
 
   formName = signal('');
@@ -219,9 +224,12 @@ export class UserManagement implements OnInit {
     this.showEditModal.set(false);
     this.showCredentialsModal.set(false);
     this.showBulkResultModal.set(false);
+    this.showResetPasswordModal.set(false);
     this.editingUserId.set(null);
     this.lastGeneratedCred.set(null);
     this.bulkResult.set(null);
+    this.resetPasswordResult.set(null);
+    this.showFormPassword.set(false);
     this.resetForm();
   }
 
@@ -438,6 +446,25 @@ export class UserManagement implements OnInit {
       },
       error: err => {
         this.showError(this.extractErrorMessage(err, 'تعذر حذف الحساب'));
+        this.isLoading.set(false);
+      }
+    });
+  }
+
+  resetPassword(user: User) {
+    if (!confirm(`هل تريد إعادة تعيين كلمة مرور حساب "${user.fullName}"؟\nسيتم توليد كلمة مرور جديدة عشوائية.`)) {
+      return;
+    }
+
+    this.isLoading.set(true);
+    this.userService.resetPassword(user.id).subscribe({
+      next: res => {
+        this.resetPasswordResult.set(res.data ?? null);
+        this.showResetPasswordModal.set(true);
+        this.isLoading.set(false);
+      },
+      error: err => {
+        this.showError(this.extractErrorMessage(err, 'تعذر إعادة تعيين كلمة المرور'));
         this.isLoading.set(false);
       }
     });

@@ -87,6 +87,12 @@ export interface CreateParentWithStudentsResult {
   }>;
 }
 
+export interface ResetPasswordResult {
+  userId: number;
+  fullName: string;
+  newPassword: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -146,5 +152,9 @@ export class UserService {
 
   createParentWithStudents(data: CreateParentWithStudentsRequest): Observable<OperationResult<CreateParentWithStudentsResult>> {
     return this.http.post<OperationResult<CreateParentWithStudentsResult>>(`${this.accountGenUrl}/parents/create-with-students`, data);
+  }
+
+  resetPassword(userId: number): Observable<OperationResult<ResetPasswordResult>> {
+    return this.http.post<OperationResult<ResetPasswordResult>>(`${this.apiUrl}/${userId}/reset-password`, {});
   }
 }

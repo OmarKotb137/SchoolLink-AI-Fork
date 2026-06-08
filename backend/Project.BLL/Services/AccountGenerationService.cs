@@ -7,16 +7,13 @@ using Project.DAL.Interfaces;
 using Project.Domain.Entities;
 using Project.Domain.Enums;
 using System.Security.Cryptography;
+using Project.BLL.Utils;
 
 namespace Project.BLL.Services;
 
 public class AccountGenerationService : IAccountGenerationService
 {
     private static readonly char[] EmailChars = "abcdefghjkmnpqrstuvwxyz23456789".ToCharArray();
-    private static readonly char[] PasswordUpper = "ABCDEFGHJKLMNPQRSTUVWXYZ".ToCharArray();
-    private static readonly char[] PasswordLower = "abcdefghjkmnpqrstuvwxyz".ToCharArray();
-    private static readonly char[] PasswordDigits = "23456789".ToCharArray();
-    private static readonly char[] PasswordAll = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789".ToCharArray();
 
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper _mapper;
@@ -237,22 +234,7 @@ public class AccountGenerationService : IAccountGenerationService
         }
     }
 
-    private static string GenerateSecurePassword()
-    {
-        var bytes = new byte[10];
-        RandomNumberGenerator.Fill(bytes);
-
-        var chars = new char[10];
-        chars[0] = PasswordUpper[bytes[0] % PasswordUpper.Length];
-        chars[1] = PasswordLower[bytes[1] % PasswordLower.Length];
-        chars[2] = PasswordDigits[bytes[2] % PasswordDigits.Length];
-
-        for (var i = 3; i < chars.Length; i++)
-            chars[i] = PasswordAll[bytes[i] % PasswordAll.Length];
-
-        RandomNumberGenerator.Shuffle(chars.AsSpan());
-        return new string(chars);
-    }
+    private static string GenerateSecurePassword() => PasswordGenerator.Generate();
 
     private async Task<string> GenerateUniqueStudentEmailAsync()
     {

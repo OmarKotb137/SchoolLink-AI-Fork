@@ -126,4 +126,14 @@ public class UsersController : ControllerBase
             return NotFound(result);
         return NoContent();
     }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPost("{id}/reset-password")]
+    public async Task<IActionResult> ResetPassword(int id)
+    {
+        var result = await _userService.ResetPasswordAsync(id);
+        if (!result.IsSuccess)
+            return BadRequest(result);
+        return Ok(result);
+    }
 }

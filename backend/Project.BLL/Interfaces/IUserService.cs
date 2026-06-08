@@ -23,4 +23,5 @@ public interface IUserService
     Task<OperationResult<UserDto>> GetUserByEmailAsync(string email);
     Task<OperationResult<IEnumerable<UserDto>>> GetStudentsByParentAsync(int parentId);
     Task<OperationResult<IEnumerable<UserDto>>> ExportUsersAsync(UserRole? role = null);
+    Task<OperationResult<ResetPasswordResult>> ResetPasswordAsync(int userId);
 }
