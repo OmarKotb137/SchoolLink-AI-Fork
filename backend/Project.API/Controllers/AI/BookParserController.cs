@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Project.BLL.AI.Interfaces;
 using Project.BLL.DTOs;
+using Project.BLL.Interfaces;
 
 namespace Project.API.Controllers.AI;
 
@@ -11,13 +12,17 @@ namespace Project.API.Controllers.AI;
 public class BookParserController : ControllerBase
 {
     private readonly IBookParserService _bookParserService;
+    private readonly IUnitService _unitService;
 
-    public BookParserController(IBookParserService bookParserService)
+    public BookParserController(IBookParserService bookParserService, IUnitService unitService)
     {
         _bookParserService = bookParserService;
+        _unitService = unitService;
     }
 
     [HttpPost("preview")]
+    [RequestSizeLimit(100_000_000)]
+    [RequestFormLimits(MultipartBodyLengthLimit = 100_000_000)]
     public async Task<IActionResult> Preview(IFormFile file)
     {
         if (file == null || file.Length == 0)
@@ -32,7 +37,20 @@ public class BookParserController : ControllerBase
         using var stream = file.OpenReadStream();
         var result = await _bookParserService.PreviewBookAsync(stream, file.FileName);
 
-        return result.IsSuccess ? Ok(result) : BadRequest(result);
+        if (result.IsSuccess && result.Data is not null)
+        {
+            return Ok(new
+            {
+                isSuccess = true,
+                data = new
+                {
+                    previewId = result.Data.PreviewId,
+                    units = result.Data.Units
+                },
+                statusCode = 200
+            });
+        }
+        return BadRequest(result);
     }
 
     [HttpPost("save")]
@@ -54,10 +72,106 @@ public class BookParserController : ControllerBase
         var result = await _bookParserService.CleanLessonContentWithAiAsync(request.RawContent, request.Title);
         return result.IsSuccess ? Ok(result) : BadRequest(result);
     }
+
+    [HttpGet("subjects")]
+    public async Task<IActionResult> GetParsedSubjects()
+    {
+        var result = await _unitService.GetParsedSubjectsWithStructureAsync();
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
+    }
+
+    [HttpGet("subjects/{subjectId}")]
+    public async Task<IActionResult> GetSubjectStructure(int subjectId)
+    {
+        var result = await _unitService.GetUnitsWithLessonsBySubjectAsync(subjectId);
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
+    }
+
+    [HttpPut("units/{unitId}")]
+    public async Task<IActionResult> UpdateUnit(int unitId, [FromBody] UpdateUnitRequest request)
+    {
+        var result = await _unitService.UpdateUnitAsync(unitId, request.Name, request.Content, request.PageStart, request.PageEnd);
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
+    }
+
+    [HttpPut("lessons/{lessonId}")]
+    public async Task<IActionResult> UpdateLesson(int lessonId, [FromBody] UpdateLessonRequest request)
+    {
+        var result = await _unitService.UpdateLessonAsync(lessonId, request.Title, request.Content, request.PageStart, request.PageEnd);
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
+    }
+
+    [HttpPost("units/{unitId}/lessons")]
+    public async Task<IActionResult> CreateLesson(int unitId, [FromBody] CreateLessonDto dto)
+    {
+        var result = await _unitService.CreateLessonAsync(unitId, dto);
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
+    }
+
+    [HttpPost("subjects/{subjectId}/units")]
+    public async Task<IActionResult> CreateUnit(int subjectId, [FromBody] CreateUnitDto dto)
+    {
+        var result = await _unitService.CreateUnitAsync(subjectId, dto);
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
+    }
+
+    [HttpPost("lesson/re-extract")]
+    public async Task<IActionResult> ReExtractLessonContent([FromBody] ReExtractLessonRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.PreviewId) || string.IsNullOrWhiteSpace(request.LessonTitle))
+            return BadRequest(new { message = "PreviewId وعنوان الدرس مطلوبان." });
+
+        var result = await _bookParserService.ReExtractLessonContentAsync(
+            request.PreviewId, request.LessonTitle, request.PageStart, request.PageEnd);
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
+    }
+
+    [HttpPost("unit/re-extract")]
+    public async Task<IActionResult> ReExtractUnitContent([FromBody] ReExtractUnitRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.PreviewId))
+            return BadRequest(new { message = "PreviewId مطلوب." });
+
+        var result = await _bookParserService.ReExtractUnitContentAsync(
+            request.PreviewId, request.UnitName ?? "Unit", request.PageStart, request.PageEnd);
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
+    }
 }
 
 public class GenerateLessonContentRequest
 {
     public string Title { get; set; } = string.Empty;
     public string RawContent { get; set; } = string.Empty;
+}
+
+public class ReExtractLessonRequest
+{
+    public string PreviewId { get; set; } = string.Empty;
+    public string LessonTitle { get; set; } = string.Empty;
+    public int PageStart { get; set; }
+    public int? PageEnd { get; set; }
+}
+
+public class ReExtractUnitRequest
+{
+    public string PreviewId { get; set; } = string.Empty;
+    public string? UnitName { get; set; }
+    public int PageStart { get; set; }
+    public int? PageEnd { get; set; }
+}
+
+public class UpdateUnitRequest
+{
+    public string Name { get; set; } = string.Empty;
+    public string? Content { get; set; }
+    public int? PageStart { get; set; }
+    public int? PageEnd { get; set; }
+}
+
+public class UpdateLessonRequest
+{
+    public string Title { get; set; } = string.Empty;
+    public string? Content { get; set; }
+    public int? PageStart { get; set; }
+    public int? PageEnd { get; set; }
 }

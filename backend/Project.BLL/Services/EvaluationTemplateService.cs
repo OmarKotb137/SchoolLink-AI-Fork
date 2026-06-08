@@ -38,6 +38,15 @@ public class EvaluationTemplateService : IEvaluationTemplateService
                 request.GradeLevelId, request.SubjectId, request.AcademicYearId))
             return OperationResult<EvaluationTemplateDto>.Failure("يوجد قالب تقييم لهذا الصف والمادة والسنة بالفعل");
 
+        var existingPeriods = await _unitOfWork.EvaluationPeriods.GetByAcademicYearAsync(request.AcademicYearId);
+        if (existingPeriods.Count == 0)
+        {
+            var periods = Project.Domain.Helpers.EvaluationPeriodGenerator.GeneratePeriods(
+                request.AcademicYearId, year.StartDate, year.EndDate);
+            foreach (var p in periods)
+                await _unitOfWork.EvaluationPeriods.AddAsync(p);
+        }
+
         var entity = _mapper.Map<EvaluationTemplate>(request);
         entity.IsActive = true;
 
@@ -59,6 +68,7 @@ public class EvaluationTemplateService : IEvaluationTemplateService
         entity.Name = request.Name;
         entity.CalculationType = request.CalculationType;
         entity.IsActive = request.IsActive;
+        entity.Weeks = request.Weeks;
         entity.UpdatedAt = DateTime.UtcNow;
 
         _unitOfWork.EvaluationTemplates.Update(entity);

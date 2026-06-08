@@ -38,7 +38,7 @@ public abstract class OpenAICompatibleProvider : ILLMProvider
         return await GenerateChatAsync(systemPrompt, messages, ct);
     }
 
-    public async Task<string> GenerateChatAsync(string systemPrompt, List<ChatMessage> messages, CancellationToken ct = default)
+    public virtual async Task<string> GenerateChatAsync(string systemPrompt, List<ChatMessage> messages, CancellationToken ct = default)
     {
         var body = new
         {

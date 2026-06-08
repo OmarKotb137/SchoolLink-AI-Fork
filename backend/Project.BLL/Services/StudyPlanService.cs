@@ -50,12 +50,14 @@ public class StudyPlanService : IStudyPlanService
             var dayOffset = (i % Math.Max(Math.Abs(totalDays), 1));
             var currentDate = request.StartDate.AddDays(dayOffset);
 
+            var startHour = 9 + random.Next(1, 8);
+            var duration = random.Next(1, 4);
             items.Add(new StudyPlanItem
             {
                 SubjectId = subject.Id,
                 DayOfWeek = (SchoolDay)((int)currentDate.DayOfWeek % 5 + 1),
-                StartTime = new TimeOnly(9, 0).AddHours(random.Next(1, 8)),
-                EndTime = new TimeOnly(9, 0).AddHours(random.Next(2, 9)),
+                StartTime = new TimeOnly(startHour, 0),
+                EndTime = new TimeOnly(startHour + duration, 0),
                 Topic = $"مراجعة {subject.Name}",
                 Notes = "جلسة دراسية مقترحة من الذكاء الاصطناعي",
                 IsCompleted = false
@@ -128,6 +130,7 @@ public class StudyPlanService : IStudyPlanService
             GeneratedByAI = false,
             StartDate = request.StartDate,
             EndDate = request.EndDate,
+            RestDay = request.RestDay,
             IsActive = true,
             Items = request.Items.Select(i => new StudyPlanItem
             {
@@ -251,6 +254,35 @@ public class StudyPlanService : IStudyPlanService
 
         var dto = _mapper.Map<StudyPlanItemDto>(item);
         return OperationResult<StudyPlanItemDto>.Success(dto, "تم تحديث الجلسة الدراسية بنجاح");
+    }
+
+    public async Task<OperationResult> DeleteSessionAsync(int studyPlanItemId, int enrollmentId)
+    {
+        var item = await _unitOfWork.StudyPlanItems.GetByIdAsync(studyPlanItemId);
+        if (item == null || item.IsDeleted)
+            return OperationResult.Failure("الجلسة الدراسية غير موجودة");
+
+        var plan = await _unitOfWork.StudyPlans.GetByIdAsync(item.StudyPlanId);
+        if (plan == null || plan.IsDeleted || !plan.IsActive || plan.EnrollmentId != enrollmentId)
+            return OperationResult.Failure("الجلسة لا تنتمي إلى خطتك الدراسية النشطة");
+
+        _unitOfWork.StudyPlanItems.SoftDelete(item);
+        await _unitOfWork.SaveChangesAsync();
+
+        return OperationResult.Success("تم حذف الجلسة الدراسية بنجاح");
+    }
+
+    public async Task<OperationResult> UpdateRestDayAsync(int studyPlanId, int? restDay)
+    {
+        var plan = await _unitOfWork.StudyPlans.GetByIdAsync(studyPlanId);
+        if (plan == null || plan.IsDeleted)
+            return OperationResult.Failure("خطة الدراسة غير موجودة");
+
+        plan.RestDay = restDay;
+        _unitOfWork.StudyPlans.Update(plan);
+        await _unitOfWork.SaveChangesAsync();
+
+        return OperationResult.Success("تم تحديث يوم الراحة بنجاح");
     }
 
     private StudyPlanDto MapToDto(StudyPlan plan)

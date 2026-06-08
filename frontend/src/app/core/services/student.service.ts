@@ -78,6 +78,10 @@ export class StudentService {
       .pipe(map(() => void 0));
   }
 
+  getByUserId(userId: number): Observable<any> {
+    return this.http.get(`${this.apiUrl}/by-user/${userId}`);
+  }
+
   linkUser(data: LinkStudentUserRequest): Observable<any> {
     return this.http
       .post<any>(`${this.apiUrl}/link-user`, data)

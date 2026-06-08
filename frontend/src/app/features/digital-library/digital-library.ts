@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, inject } from '@angular/core';
+import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -6,6 +6,7 @@ import { Sidebar } from '../../layouts/sidebar/sidebar';
 import { Topbar } from '../../layouts/topbar/topbar';
 import { LibraryService } from '../../core/services/library.service';
 import { LibraryItemDto, LibraryItemType } from '../../core/models/library.model';
+import { RoleService } from '../../shared/role.service';
 
 @Component({
   selector: 'app-digital-library',
@@ -18,6 +19,9 @@ export class DigitalLibrary implements OnInit {
   sidebarOpen = signal(false);
   private libraryService = inject(LibraryService);
   private sanitizer = inject(DomSanitizer);
+  private roleService = inject(RoleService);
+  protected LibraryItemType = LibraryItemType;
+  canManage = computed(() => this.roleService.canAccess(['admin', 'teacher']));
 
   items = signal<LibraryItemDto[]>([]);
   latestItems = signal<LibraryItemDto[]>([]);
@@ -33,6 +37,10 @@ export class DigitalLibrary implements OnInit {
 
   showUploadModal = signal(false);
   uploading = signal(false);
+
+  showEditModal = signal(false);
+  editingItem = signal<LibraryItemDto | null>(null);
+  editForm = { title: '', description: '' };
 
   showViewerModal = signal(false);
   viewerItem = signal<LibraryItemDto | null>(null);
@@ -54,8 +62,6 @@ export class DigitalLibrary implements OnInit {
     linkUrl: ''
   };
 
-  LibraryItemType = LibraryItemType;
-
   ngOnInit() {
     this.loadSubjects();
     this.loadLatest();
@@ -75,7 +81,7 @@ export class DigitalLibrary implements OnInit {
   loadLatest() {
     this.libraryService.getLatest(1).subscribe({
       next: (res) => {
-        this.latestItems.set(Array.isArray(res.data) ? res.data : []);
+        this.latestItems.set(res.data?.items ?? []);
       },
       error: (err) => console.error('Error fetching latest items', err)
     });
@@ -189,11 +195,46 @@ export class DigitalLibrary implements OnInit {
     return this.sanitizer.bypassSecurityTrustResourceUrl(url);
   }
 
+  openEditModal(item: LibraryItemDto) {
+    this.editingItem.set(item);
+    this.editForm = { title: item.title, description: item.description || '' };
+    this.showEditModal.set(true);
+  }
+
+  closeEditModal() {
+    this.showEditModal.set(false);
+    this.editingItem.set(null);
+  }
+
+  submitEdit() {
+    const item = this.editingItem();
+    if (!item || !this.editForm.title) return;
+
+    this.libraryService.update(item.id, {
+      title: this.editForm.title,
+      description: this.editForm.description || undefined
+    }).subscribe({
+      next: () => {
+        this.items.update(list => list.map(i =>
+          i.id === item.id ? { ...i, title: this.editForm.title, description: this.editForm.description } : i
+        ));
+        this.latestItems.update(list => list.map(i =>
+          i.id === item.id ? { ...i, title: this.editForm.title, description: this.editForm.description } : i
+        ));
+        this.closeEditModal();
+        this.showToast('تم تعديل الملف بنجاح', 'success');
+      },
+      error: () => {
+        this.showToast('فشل تعديل الملف، حاول مجدداً', 'error');
+      }
+    });
+  }
+
   openViewer(item: LibraryItemDto) {
     this.viewerItem.set(item);
     if (this.isYouTubeLink(item.fileUrl)) {
       this.viewerSafeUrl.set(this.getSafeUrl(this.getYTEmbedUrl(item.fileUrl)));
-    } else if (item.itemType !== LibraryItemType.Video && !this.isImage(item.fileUrl)) {
+    } else if (item.itemType !== 'Video' && !this.isImage(item.fileUrl)) {
       this.viewerSafeUrl.set(this.getSafeUrl(this.getViewerIframeUrl(item.fileUrl)));
     } else {
       this.viewerSafeUrl.set(null);

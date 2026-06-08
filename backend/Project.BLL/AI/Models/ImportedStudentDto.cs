@@ -2,17 +2,25 @@ using Project.Domain.Enums;
 
 namespace Project.BLL.AI.Models;
 
+public class FileData
+{
+    public byte[] Data { get; set; } = Array.Empty<byte>();
+    public string FileName { get; set; } = string.Empty;
+    public string ContentType { get; set; } = "application/octet-stream";
+}
+
 public class ImportedStudentDto
 {
     public string FullName { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
-    public string? Phone { get; set; }
     public string? NationalId { get; set; }
-    public DateTime? DateOfBirth { get; set; }
-    public Gender Gender { get; set; }
-    public string? ParentName { get; set; }
-    public string? ParentEmail { get; set; }
-    public string? ParentPhone { get; set; }
+    public Gender? Gender { get; set; }
+    public DateOnly? BirthDate { get; set; }
+}
+
+public class ImportPreviewResult
+{
+    public List<ImportedStudentDto> Students { get; set; } = new();
+    public List<string> Errors { get; set; } = new();
 }
 
 public class ImportResult

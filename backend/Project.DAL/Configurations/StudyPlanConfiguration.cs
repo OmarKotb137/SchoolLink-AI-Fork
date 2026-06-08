@@ -19,6 +19,8 @@ namespace Project.DAL.Configurations
             builder.Property(x => x.EndDate)
                 .HasColumnType("date");
 
+            builder.Property(x => x.RestDay);
+
             builder.HasOne(x => x.Enrollment)
                 .WithMany()
                 .HasForeignKey(x => x.EnrollmentId)

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Project.BLL.AI.Interfaces;
+using Project.BLL.AI.Models;
 
 namespace Project.API.Controllers.AI;
 
@@ -14,24 +15,43 @@ public class StudentImportController : ControllerBase
     public StudentImportController(IStudentImportService service) => _service = service;
 
     [HttpPost("preview")]
-    public async Task<IActionResult> Preview(IFormFile file, CancellationToken ct)
+    [RequestSizeLimit(100 * 1024 * 1024)]
+    public async Task<IActionResult> Preview(List<IFormFile> files, CancellationToken ct)
     {
-        if (file == null || file.Length == 0)
-            return BadRequest("الملف مطلوب");
+        if (files == null || files.Count == 0)
+            return BadRequest(new { error = "يرجى رفع ملف واحد على الأقل" });
 
-        using var stream = file.OpenReadStream();
-        var result = await _service.PreviewImportAsync(stream, ct);
+        var fileDataList = new List<FileData>();
+        foreach (var f in files)
+        {
+            using var ms = new MemoryStream();
+            await f.CopyToAsync(ms, ct);
+            fileDataList.Add(new FileData
+            {
+                Data = ms.ToArray(),
+                FileName = f.FileName,
+                ContentType = f.ContentType
+            });
+        }
+
+        var result = await _service.PreviewImportAsync(fileDataList, ct);
         return result.IsSuccess ? Ok(result) : BadRequest(result);
     }
 
     [HttpPost("import")]
-    public async Task<IActionResult> Import(IFormFile file, int classId, int academicYearId, CancellationToken ct)
+    public async Task<IActionResult> Import([FromBody] AiImportRequest request, CancellationToken ct)
     {
-        if (file == null || file.Length == 0)
-            return BadRequest("الملف مطلوب");
+        if (request.Students == null || request.Students.Count == 0)
+            return BadRequest(new { error = "يجب توفير طالب واحد على الأقل" });
 
-        using var stream = file.OpenReadStream();
-        var result = await _service.ImportFromExcelAsync(stream, classId, academicYearId, ct);
+        var result = await _service.ImportWithAiAsync(request.Students, request.ClassId, request.AcademicYearId, ct);
         return result.IsSuccess ? Ok(result) : BadRequest(result);
     }
+}
+
+public class AiImportRequest
+{
+    public List<ImportedStudentDto> Students { get; set; } = new();
+    public int? ClassId { get; set; }
+    public int? AcademicYearId { get; set; }
 }

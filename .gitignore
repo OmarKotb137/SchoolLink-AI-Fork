@@ -27,3 +27,4 @@ obj/Project.DAL.EntityFrameworkCore.targets
 account-generation-plan-v3.md
 grade-promotion-plan-v2.md
 tailwind-flowbite-guidelines.md
+/tests

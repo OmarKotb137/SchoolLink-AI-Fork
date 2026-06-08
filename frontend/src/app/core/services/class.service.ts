@@ -55,4 +55,8 @@ export class ClassService {
   delete(id: number): Observable<any> {
     return this.http.delete<any>(`${this.apiUrl}/${id}`);
   }
+
+  getMyClassesCurrentYear(): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/my-classes/current-year`);
+  }
 }

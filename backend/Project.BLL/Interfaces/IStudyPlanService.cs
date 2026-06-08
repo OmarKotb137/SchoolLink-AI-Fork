@@ -13,4 +13,6 @@ public interface IStudyPlanService
     Task<OperationResult<IEnumerable<StudyPlanSummaryDto>>> GetAllStudyPlansAsync(int enrollmentId);
     Task<OperationResult> DeactivateStudyPlanAsync(int studyPlanId);
     Task<OperationResult<StudyPlanItemDto>> UpdateStudyPlanItemAsync(UpdateStudyPlanItemRequest request);
+    Task<OperationResult> DeleteSessionAsync(int studyPlanItemId, int enrollmentId);
+    Task<OperationResult> UpdateRestDayAsync(int studyPlanId, int? restDay);
 }

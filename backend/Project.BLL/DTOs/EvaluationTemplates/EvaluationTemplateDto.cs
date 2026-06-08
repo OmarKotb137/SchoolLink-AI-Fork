@@ -11,6 +11,7 @@ public class EvaluationTemplateDto
     public string Name { get; set; } = string.Empty;
     public EvaluationCalculationType CalculationType { get; set; }
     public bool IsActive { get; set; }
+    public int Weeks { get; set; }
     public string? GradeLevelName { get; set; }
     public string? SubjectName { get; set; }
     public string? AcademicYearName { get; set; }

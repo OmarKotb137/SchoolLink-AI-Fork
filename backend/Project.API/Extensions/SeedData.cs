@@ -72,9 +72,11 @@ public static class SeedData
 
         if (await ctx.AcademicYears.AnyAsync())
         {
-            await SeedUnitsAndLessons(ctx);
-            await SeedStudentUsers(ctx);
-            return;
+        await SeedUnitsAndLessons(ctx);
+        await SeedStudentUsers(ctx);
+        await SeedEvaluationPeriods(ctx);
+        await SeedParents(ctx);
+        return;
         }
 
         var now = DateTime.UtcNow;
@@ -349,51 +351,10 @@ public static class SeedData
         }
         await ctx.SaveChangesAsync();
 
-        // ── 11. EvaluationPeriods — 12 weeks + months ──
-        var weekNames = new[] {
-            "الأسبوع الأول", "الأسبوع الثاني", "الأسبوع الثالث", "الأسبوع الرابع",
-            "الأسبوع الخامس", "الأسبوع السادس", "الأسبوع السابع", "الأسبوع الثامن",
-            "الأسبوع التاسع", "الأسبوع العاشر", "الأسبوع الحادي عشر", "الأسبوع الثاني عشر"
-        };
-        var monthNames = new[] { "فبراير", "مارس", "أبريل" };
-        var periodsList = new List<EvaluationPeriod>();
-        for (int w = 0; w < 12; w++)
-        {
-            var start = new DateOnly(2026, 2, 1).AddDays(w * 7);
-            var p = new EvaluationPeriod
-            {
-                AcademicYearId = year.Id, Name = weekNames[w],
-                PeriodType = PeriodType.Weekly, OrderNum = w + 1,
-                StartDate = start, EndDate = start.AddDays(4),
-                MonthName = monthNames[w < 4 ? 0 : w < 8 ? 1 : 2],
-                CreatedAt = now, UpdatedAt = now
-            };
-            ctx.EvaluationPeriods.Add(p);
-            periodsList.Add(p);
-        }
-        // Monthly periods too
-        var feb = new EvaluationPeriod
-        {
-            AcademicYearId = year.Id, Name = "شهر فبراير",
-            PeriodType = PeriodType.Monthly, OrderNum = 1,
-            StartDate = new DateOnly(2026, 2, 1), EndDate = new DateOnly(2026, 2, 28),
-            MonthName = "فبراير", CreatedAt = now, UpdatedAt = now
-        };
-        var mar = new EvaluationPeriod
-        {
-            AcademicYearId = year.Id, Name = "شهر مارس",
-            PeriodType = PeriodType.Monthly, OrderNum = 2,
-            StartDate = new DateOnly(2026, 3, 1), EndDate = new DateOnly(2026, 3, 31),
-            MonthName = "مارس", CreatedAt = now, UpdatedAt = now
-        };
-        var apr = new EvaluationPeriod
-        {
-            AcademicYearId = year.Id, Name = "شهر أبريل",
-            PeriodType = PeriodType.Monthly, OrderNum = 3,
-            StartDate = new DateOnly(2026, 4, 1), EndDate = new DateOnly(2026, 4, 30),
-            MonthName = "أبريل", CreatedAt = now, UpdatedAt = now
-        };
-        ctx.EvaluationPeriods.AddRange(feb, mar, apr);
+        // ── 11. EvaluationPeriods — dynamic from academic year ──
+        var generatedPeriods = Project.Domain.Helpers.EvaluationPeriodGenerator.GeneratePeriods(year.Id, year.StartDate, year.EndDate);
+        var periodsList = generatedPeriods.ToList();
+        ctx.EvaluationPeriods.AddRange(periodsList);
         await ctx.SaveChangesAsync();
 
         // ── 12. EvaluationTemplates (Math + Arabic) ──
@@ -533,6 +494,9 @@ public static class SeedData
         ctx.PeriodAverages.AddRange(avgBatch);
         await ctx.SaveChangesAsync();
 
+        // ── 15.1 Parent accounts ──
+        await SeedParents(ctx);
+
         // ── 16. PeriodicAssessments (exam1 & exam2) ──
         var asmBatch = new List<PeriodicAssessment>();
         foreach (var enr in enrollments)
@@ -609,31 +573,6 @@ public static class SeedData
             }
         }
         ctx.DailyAbsences.AddRange(absBatch);
-        await ctx.SaveChangesAsync();
-
-        // ── 19. Parent accounts (simple) ──
-        int parentCount = 0;
-        foreach (var st in students)
-        {
-            if (parentCount >= 20) break;
-            var parent = new User
-            {
-                FullName = $"وليّ أمر {st.FullName}",
-                Email = $"parent{st.Id}@school.com",
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Parent@123"),
-                Role = UserRole.Parent, IsActive = true,
-                CreatedAt = now, UpdatedAt = now
-            };
-            ctx.Users.Add(parent);
-            await ctx.SaveChangesAsync();
-            ctx.ParentStudents.Add(new ParentStudent
-            {
-                ParentId = parent.Id, StudentId = st.Id,
-                Relationship = RelationshipType.Father,
-                CreatedAt = now, UpdatedAt = now
-            });
-            parentCount++;
-        }
         await ctx.SaveChangesAsync();
 
         await SeedUnitsAndLessons(ctx);
@@ -787,6 +726,61 @@ public static class SeedData
                 await ctx.SaveChangesAsync();
                 st.UserId = su.Id;
             }
+        }
+        await ctx.SaveChangesAsync();
+    }
+
+    private static async Task SeedEvaluationPeriods(AppDbContext ctx)
+    {
+        if (await ctx.EvaluationPeriods.AnyAsync())
+            return;
+
+        var year = await ctx.AcademicYears.FirstAsync();
+        var periods = Project.Domain.Helpers.EvaluationPeriodGenerator.GeneratePeriods(year.Id, year.StartDate, year.EndDate);
+        ctx.EvaluationPeriods.AddRange(periods);
+        await ctx.SaveChangesAsync();
+    }
+
+    private static async Task SeedParents(AppDbContext ctx)
+    {
+        var now = DateTime.UtcNow;
+        var existingParentEmails = await ctx.Users
+            .Where(u => u.Role == UserRole.Parent && u.Email != null)
+            .Select(u => u.Email!)
+            .ToListAsync();
+        var emailSet = new HashSet<string>(existingParentEmails);
+
+        var studentsWithoutParent = await ctx.Students
+            .Where(s => !s.IsDeleted && !ctx.ParentStudents.Any(ps => ps.StudentId == s.Id))
+            .ToListAsync();
+
+        foreach (var st in studentsWithoutParent)
+        {
+            var email = $"parent{st.Id}@school.com";
+            if (emailSet.Contains(email)) continue;
+
+            var parent = new User
+            {
+                FullName = $"وليّ أمر {st.FullName}",
+                Email = email,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Parent@123"),
+                Role = UserRole.Parent,
+                IsActive = true,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            ctx.Users.Add(parent);
+            await ctx.SaveChangesAsync();
+
+            ctx.ParentStudents.Add(new ParentStudent
+            {
+                ParentId = parent.Id,
+                StudentId = st.Id,
+                Relationship = RelationshipType.Father,
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+            emailSet.Add(email);
         }
         await ctx.SaveChangesAsync();
     }

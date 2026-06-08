@@ -10,7 +10,7 @@ export interface LibraryItemDto {
   id: number;
   title: string;
   description?: string;
-  itemType: LibraryItemType;
+  itemType: string;
   fileUrl?: string;
   subjectId?: number;
   subjectName?: string;

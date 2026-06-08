@@ -40,7 +40,7 @@ public static class LlmClientFactory
                 {
                     var apiKey = config["LlmSettings:CloudflareAI:ApiKey"]
                                  ?? throw new InvalidOperationException("CloudflareAI ApiKey is missing");
-                    client.DefaultRequestHeaders.TryAddWithoutValidation("cf-aig-authorization", $"Bearer {apiKey}");
+                    client.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
                 });
                 break;
 

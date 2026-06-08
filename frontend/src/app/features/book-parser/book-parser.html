@@ -135,38 +135,67 @@
             </div>
           </div>
 
+          <!-- Toolbar: Add unit / reorder -->
+          @if (step() === 'preview') {
+            <div class="flex items-center gap-3 flex-wrap">
+              <button (click)="addUnit()" class="px-4 py-2 rounded-full border border-dashed border-primary text-primary font-label-md text-label-md hover:bg-primary-fixed transition-colors flex items-center gap-1">
+                <span class="material-symbols-outlined text-[18px]">add</span>
+                إضافة وحدة جديدة
+              </button>
+            </div>
+          }
+
           <!-- Units list -->
           <div class="flex flex-col gap-4">
             @for (unit of parsedUnits(); track $index; let idx = $index) {
               <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant overflow-hidden shadow-sm hover:shadow-md transition-shadow">
 
                 <!-- Unit header -->
-                <button (click)="toggleUnit(idx)"
-                        class="w-full flex items-center justify-between p-5 hover:bg-surface-container/50 transition-colors text-right">
-                  <div class="flex items-center gap-4">
+                <div class="flex items-center justify-between p-5 text-right">
+                  <button (click)="toggleUnit(idx)"
+                          class="flex items-center gap-4 hover:bg-surface-container/50 transition-colors rounded-xl flex-1 text-right">
                     <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
                          [class.bg-primary-fixed]="unit.lessons.length > 0"
-                         [class.bg-secondary-fixed]="unit.lessons.length === 0">
+                         [class.bg-secondary-fixed]="unit.lessons && unit.lessons.length === 0">
                       <span class="material-symbols-outlined"
                             [class.text-primary]="unit.lessons.length > 0"
-                            [class.text-secondary]="unit.lessons.length === 0"
+                            [class.text-secondary]="!unit.lessons || unit.lessons.length === 0"
                             style="font-variation-settings: 'FILL' 1;">
-                        {{ unit.lessons.length > 0 ? 'folder' : 'auto_stories' }}
+                        {{ unit.lessons && unit.lessons.length > 0 ? 'folder' : 'auto_stories' }}
                       </span>
                     </div>
-                    <div class="text-right">
-                      <div class="flex items-center gap-2 flex-wrap">
-                        <h3 class="text-body-md font-body-md font-semibold text-on-surface">{{unit.name}}</h3>
-                        @if (unit.lessons.length > 0) {
-                          <span class="text-label-xs bg-primary-fixed text-primary px-2 py-0.5 rounded-full text-xs">
-                            {{unit.lessons.length}} درس
-                          </span>
-                        } @else {
-                          <span class="text-label-xs bg-secondary-fixed text-secondary px-2 py-0.5 rounded-full text-xs">
-                            وحدة بدون دروس مفصلة
-                          </span>
-                        }
-                      </div>
+                    <div class="text-right flex-1 min-w-0">
+                      @if (step() === 'preview' && editingUnitIndex() === idx) {
+                        <div class="flex items-center gap-2">
+                          <input [ngModel]="editingUnitName()" (ngModelChange)="editingUnitName.set($event)"
+                                 (keyup.enter)="saveUnitName(idx)" (keyup.escape)="cancelEditUnitName()"
+                                 #unitInput
+                                 class="flex-1 bg-surface-container border border-primary rounded-lg px-3 py-1.5 text-body-md font-body-md font-semibold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+                                 autofocus>
+                          <button (click)="saveUnitName(idx)" class="text-primary hover:bg-primary-fixed rounded-full p-1">
+                            <span class="material-symbols-outlined text-[18px]">check</span>
+                          </button>
+                          <button (click)="cancelEditUnitName()" class="text-on-surface-variant hover:bg-surface-container rounded-full p-1">
+                            <span class="material-symbols-outlined text-[18px]">close</span>
+                          </button>
+                        </div>
+                      } @else {
+                        <div class="flex items-center gap-2 flex-wrap cursor-pointer" (click)="startEditUnitName(idx)">
+                          <h3 class="text-body-md font-body-md font-semibold text-on-surface hover:text-primary transition-colors">{{unit.name}}</h3>
+                          @if (step() === 'preview') {
+                            <span class="material-symbols-outlined text-[14px] text-on-surface-variant opacity-50">edit</span>
+                          }
+                          @if (unit.lessons && unit.lessons.length > 0) {
+                            <span class="text-label-xs bg-primary-fixed text-primary px-2 py-0.5 rounded-full text-xs">
+                              {{unit.lessons.length}} درس
+                            </span>
+                          } @else {
+                            <span class="text-label-xs bg-secondary-fixed text-secondary px-2 py-0.5 rounded-full text-xs">
+                              وحدة بدون دروس مفصلة
+                            </span>
+                          }
+                        </div>
+                      }
                       <p class="text-label-sm font-label-sm text-on-surface-variant mt-0.5">
                         @if (unit.pageStart) {
                           <span>ص {{unit.pageStart}}{{unit.pageEnd ? ' — ص ' + unit.pageEnd : ''}} • </span>
@@ -174,50 +203,137 @@
                         <span>{{unit.content ? (unit.content.length > 80 ? (unit.content.slice(0, 80) + '...') : unit.content) : 'بدون محتوى مستخرج'}}</span>
                       </p>
                     </div>
-                  </div>
-                  <span class="material-symbols-outlined text-on-surface-variant transition-transform duration-300"
+                  </button>
+
+                  <!-- Unit actions -->
+                  @if (step() === 'preview') {
+                    <div class="flex items-center gap-1 shrink-0 mr-2">
+                      <button (click)="moveUnit(idx, idx - 1)" [disabled]="idx === 0"
+                              class="p-1.5 rounded-full hover:bg-surface-container text-on-surface-variant disabled:opacity-20 transition-colors">
+                        <span class="material-symbols-outlined text-[18px]">expand_less</span>
+                      </button>
+                      <button (click)="moveUnit(idx, idx + 1)" [disabled]="idx === parsedUnits().length - 1"
+                              class="p-1.5 rounded-full hover:bg-surface-container text-on-surface-variant disabled:opacity-20 transition-colors">
+                        <span class="material-symbols-outlined text-[18px]">expand_more</span>
+                      </button>
+                      <button (click)="deleteUnit(idx)"
+                              class="p-1.5 rounded-full hover:bg-error-container text-error transition-colors">
+                        <span class="material-symbols-outlined text-[18px]">delete</span>
+                      </button>
+                    </div>
+                  }
+
+                  <span class="material-symbols-outlined text-on-surface-variant transition-transform duration-300 mr-2"
                         [class.rotate-180]="expandedUnit() === idx">expand_more</span>
-                </button>
+                </div>
 
                 <!-- Expanded content -->
                 @if (expandedUnit() === idx) {
                   <div class="border-t border-outline-variant">
 
-                    @if (unit.lessons.length > 0) {
+                    @if (unit.lessons && unit.lessons.length > 0) {
                       <!-- Lessons table -->
                       <div class="overflow-x-auto">
                         <table class="w-full text-right">
                           <thead>
                             <tr class="bg-surface-container text-label-md font-label-md text-on-surface-variant">
-                              <th class="py-3 px-5 font-semibold">#</th>
-                              <th class="py-3 px-5 font-semibold">اسم الدرس</th>
-                              <th class="py-3 px-5 font-semibold text-center">صفحة البداية</th>
-                              <th class="py-3 px-5 font-semibold text-center">صفحة النهاية</th>
-                              <th class="py-3 px-5 font-semibold text-center">الصفحات</th>
-                              <th class="py-3 px-5 font-semibold text-center">الإجراءات</th>
+                              <th class="py-3 px-3 font-semibold w-10">#</th>
+                              <th class="py-3 px-3 font-semibold">اسم الدرس</th>
+                              <th class="py-3 px-3 font-semibold text-center w-24">صفحة البداية</th>
+                              <th class="py-3 px-3 font-semibold text-center w-24">صفحة النهاية</th>
+                              <th class="py-3 px-3 font-semibold text-center w-20">الصفحات</th>
+                              <th class="py-3 px-3 font-semibold text-center w-40">الإجراءات</th>
                             </tr>
                           </thead>
                           <tbody>
                             @for (lesson of unit.lessons; track $index; let lIdx = $index) {
-                              <tr class="border-t border-outline-variant hover:bg-surface-container/50 transition-colors text-body-md font-body-md">
-                                <td class="py-3 px-5 text-on-surface-variant">{{$index + 1}}</td>
-                                <td class="py-3 px-5 font-medium text-on-surface">{{lesson.title}}</td>
-                                <td class="py-3 px-5 text-on-surface-variant text-center">{{lesson.pageStart ?? '—'}}</td>
-                                <td class="py-3 px-5 text-on-surface-variant text-center">{{lesson.pageEnd ?? '—'}}</td>
-                                <td class="py-3 px-5 text-center">
-                                  @if (lesson.pageStart && lesson.pageEnd) {
-                                    <span class="bg-primary-fixed text-primary text-label-xs px-2 py-0.5 rounded-full text-xs font-medium">
-                                      {{ lesson.pageEnd - lesson.pageStart + 1 }} ص
-                                    </span>
+                              <tr class="border-t border-outline-variant hover:bg-surface-container/50 transition-colors text-body-md font-body-md"
+                                  [class.bg-secondary-fixed/20]="moveLessonSrc()?.unitIdx === idx && moveLessonSrc()?.lessonIdx === lIdx">
+                                <td class="py-2 px-3 text-on-surface-variant text-center">{{$index + 1}}</td>
+                                <td class="py-2 px-3 font-medium text-on-surface">
+                                  @if (step() === 'preview' && editingLessonKey() === idx + '-' + lIdx) {
+                                    <div class="flex items-center gap-1">
+                                      <input [ngModel]="editingLessonTitle()" (ngModelChange)="editingLessonTitle.set($event)"
+                                             (keyup.enter)="saveLessonTitle(idx, lIdx)" (keyup.escape)="cancelEditLessonTitle()"
+                                             class="flex-1 bg-surface-container border border-primary rounded-lg px-2 py-1 text-body-md font-body-md focus:outline-none focus:ring-2 focus:ring-primary/30 min-w-[120px]"
+                                             autofocus>
+                                      <button (click)="saveLessonTitle(idx, lIdx)" class="text-primary hover:bg-primary-fixed rounded-full p-0.5">
+                                        <span class="material-symbols-outlined text-[16px]">check</span>
+                                      </button>
+                                      <button (click)="cancelEditLessonTitle()" class="text-on-surface-variant hover:bg-surface-container rounded-full p-0.5">
+                                        <span class="material-symbols-outlined text-[16px]">close</span>
+                                      </button>
+                                    </div>
                                   } @else {
-                                    <span class="text-on-surface-variant">—</span>
+                                    <span class="cursor-pointer hover:text-primary transition-colors flex items-center gap-1"
+                                          (click)="startEditLessonTitle(idx, lIdx)">
+                                      {{lesson.title}}
+                                      @if (step() === 'preview') {
+                                        <span class="material-symbols-outlined text-[14px] text-on-surface-variant opacity-30">edit</span>
+                                      }
+                                    </span>
                                   }
                                 </td>
-                                <td class="py-3 px-5 text-center">
-                                  <button (click)="openLessonModal(idx, lIdx)"
-                                          class="px-4 py-1.5 rounded-full border border-outline-variant text-primary font-label-sm text-label-sm hover:bg-primary-fixed transition-colors">
-                                    عرض المحتوى
-                                  </button>
+                                <td class="py-2 px-3 text-on-surface-variant text-center">{{lesson.pageStart ?? '—'}}</td>
+                                <td class="py-2 px-3 text-on-surface-variant text-center">{{lesson.pageEnd ?? '—'}}</td>
+                                <td class="py-2 px-3 text-center">
+                                  @if (step() === 'preview' && editingLessonRange()?.unitIdx === idx && editingLessonRange()?.lessonIdx === lIdx) {
+                                    <input [ngModel]="editingLessonRangeValue()" (ngModelChange)="editingLessonRangeValue.set($event)"
+                                           (keyup.enter)="saveLessonRange(idx, lIdx)" (keyup.escape)="cancelEditLessonRange()"
+                                           placeholder="مثلاً: 15 - 20"
+                                           class="w-24 text-center bg-surface-container border border-primary rounded-lg px-1.5 py-0.5 text-body-sm font-body-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                                           autofocus>
+                                  } @else if (lesson.pageStart || lesson.pageEnd) {
+                                    <span class="cursor-pointer hover:bg-primary-fixed/50 rounded-full px-2 py-0.5 transition-colors inline-block"
+                                          (click)="startEditLessonRange(idx, lIdx)"
+                                          [title]="(step() === 'preview' ? 'تعديل النطاق' : '')">
+                                      <span class="bg-primary-fixed text-primary text-label-xs px-2 py-0.5 rounded-full text-xs font-medium">
+                                        {{ lesson.pageStart ?? '?' }} — {{ lesson.pageEnd ?? '?' }}
+                                      </span>
+                                    </span>
+                                  } @else {
+                                    <span class="cursor-pointer text-on-surface-variant hover:text-primary transition-colors"
+                                          (click)="startEditLessonRange(idx, lIdx)"
+                                          [title]="(step() === 'preview' ? 'إضافة نطاق صفحات' : '')">
+                                      —
+                                    </span>
+                                  }
+                                </td>
+                                <td class="py-2 px-3">
+                                  <div class="flex items-center justify-center gap-1 flex-wrap">
+                                    <button (click)="openLessonModal(idx, lIdx)"
+                                            class="px-3 py-1 rounded-full border border-outline-variant text-primary font-label-sm text-label-sm hover:bg-primary-fixed transition-colors text-nowrap">
+                                      عرض المحتوى
+                                    </button>
+                                    @if (step() === 'preview') {
+                                      @if (moveLessonSrc()?.unitIdx === idx && moveLessonSrc()?.lessonIdx === lIdx) {
+                                        <div class="flex items-center gap-1">
+                                          <select #targetUnit (change)="moveLessonTo(+targetUnit.value)" class="bg-surface-container border border-outline-variant rounded-lg px-2 py-1 text-label-sm text-on-surface text-right max-w-[130px]">
+                                            <option value="">انقل إلى...</option>
+                                            @for (u of parsedUnits(); track $index; let ui = $index) {
+                                              @if (ui !== idx) {
+                                                <option [value]="ui">{{u.name}}</option>
+                                              }
+                                            }
+                                          </select>
+                                          <button (click)="cancelMoveLesson()" class="text-on-surface-variant hover:bg-surface-container rounded-full p-0.5">
+                                            <span class="material-symbols-outlined text-[16px]">close</span>
+                                          </button>
+                                        </div>
+                                      } @else {
+                                        <button (click)="startMoveLesson(idx, lIdx)"
+                                                class="p-1 rounded-full hover:bg-surface-container text-on-surface-variant transition-colors"
+                                                title="نقل الدرس">
+                                          <span class="material-symbols-outlined text-[16px]">drive_file_move</span>
+                                        </button>
+                                      }
+                                      <button (click)="deleteLesson(idx, lIdx)"
+                                              class="p-1 rounded-full hover:bg-error-container text-error transition-colors"
+                                              title="حذف الدرس">
+                                        <span class="material-symbols-outlined text-[16px]">delete</span>
+                                      </button>
+                                    }
+                                  </div>
                                 </td>
                               </tr>
                             }
@@ -233,13 +349,59 @@
                             <span class="material-symbols-outlined text-[18px] text-secondary">article</span>
                             محتوى الوحدة المستخرج
                           </h4>
-                          <span class="text-label-xs bg-secondary-fixed text-secondary px-2 py-0.5 rounded-full text-xs">
-                            ص {{unit.pageStart}} — ص {{unit.pageEnd}}
-                          </span>
+                          @if (editingUnitRange() === idx) {
+                            <input #unitRangeInput
+                                   (blur)="saveUnitRange(idx)"
+                                   (keydown.enter)="saveUnitRange(idx)"
+                                   (keydown.escape)="cancelEditUnitRange()"
+                                   [(ngModel)]="editingUnitRangeValue"
+                                   class="w-28 text-label-xs bg-surface-container border border-outline-variant rounded-full px-2 py-0.5 text-center text-on-surface focus:outline-none focus:border-primary"
+                                   placeholder="بداية - نهاية"
+                                   autofocus>
+                          } @else {
+                            <span class="text-label-xs bg-secondary-fixed text-secondary px-2 py-0.5 rounded-full text-xs cursor-pointer hover:bg-secondary-fixed-dimmed transition-colors"
+                                  (click)="startEditUnitRange(idx)">
+                              ص {{unit.pageStart}}{{unit.pageEnd ? ' — ص ' + unit.pageEnd : ''}}
+                            </span>
+                          }
                         </div>
-                        <div class="bg-surface-container rounded-xl p-4 text-body-sm font-body-sm text-on-surface leading-relaxed whitespace-pre-line max-h-80 overflow-y-auto border border-outline-variant">
-                          {{unit.content}}
-                        </div>
+                        @if (step() === 'preview' && editingPreviewUnitContent() === idx) {
+                          <textarea #unitContent
+                                    class="w-full bg-surface-container border border-outline-variant rounded-xl p-4 text-body-sm font-body-sm text-on-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all min-h-[200px]"
+                                    [value]="unit.content"
+                                    placeholder="تعديل محتوى الوحدة..."></textarea>
+                          <div class="mt-3 flex justify-end gap-2">
+                            <button (click)="editingPreviewUnitContent.set(null)"
+                                    class="px-4 py-2 rounded-full border border-outline-variant text-on-surface font-label-sm text-label-sm hover:bg-surface-container transition-colors">إلغاء</button>
+                            <button (click)="editUnitContent(idx, unitContent.value)"
+                                    class="px-4 py-2 rounded-full bg-primary text-on-primary font-label-sm text-label-sm hover:bg-primary/90 transition-colors flex items-center gap-1">
+                              <span class="material-symbols-outlined text-[16px]">save</span>
+                              حفظ
+                            </button>
+                          </div>
+                        } @else {
+                          <div class="bg-surface-container rounded-xl p-4 text-body-sm font-body-sm text-on-surface leading-relaxed whitespace-pre-line max-h-80 overflow-y-auto border border-outline-variant">
+                            {{unit.content}}
+                          </div>
+                        }
+                        @if (step() === 'preview') {
+                          <div class="mt-3 flex items-center gap-2">
+                            <button (click)="cleanUnitContentWithAi(idx)" [disabled]="cleaningUnitContent() === idx"
+                                    class="px-4 py-2 rounded-full bg-primary text-on-primary font-label-sm text-label-sm hover:bg-primary/90 transition-colors flex items-center gap-1 disabled:opacity-50">
+                              @if (cleaningUnitContent() === idx) {
+                                <span class="material-symbols-outlined animate-spin text-[16px]">progress_activity</span>
+                              } @else {
+                                <span class="material-symbols-outlined text-[16px]">auto_awesome</span>
+                              }
+                              تظبيط بالـ AI
+                            </button>
+                            <button (click)="editingPreviewUnitContent.set(editingPreviewUnitContent() === idx ? null : idx)"
+                                    class="px-4 py-2 rounded-full border border-outline-variant text-on-surface font-label-sm text-label-sm hover:bg-surface-container transition-colors flex items-center gap-1">
+                              <span class="material-symbols-outlined text-[16px]">edit</span>
+                              {{ editingPreviewUnitContent() === idx ? 'إلغاء' : 'تعديل يدوي' }}
+                            </button>
+                          </div>
+                        }
                       </div>
 
                     } @else {
@@ -250,12 +412,212 @@
                       </div>
                     }
 
+                    <!-- Add lesson button -->
+                    @if (step() === 'preview') {
+                      <div class="p-4 border-t border-outline-variant flex justify-center">
+                        <button (click)="addLesson(idx)" class="px-4 py-1.5 rounded-full border border-dashed border-outline-variant text-on-surface-variant font-label-sm text-label-sm hover:bg-surface-container transition-colors flex items-center gap-1">
+                          <span class="material-symbols-outlined text-[16px]">add</span>
+                          إضافة درس
+                        </button>
+                      </div>
+                    }
                   </div>
                 }
               </div>
             }
           </div>
+
+          <!-- Empty state -->
+          @if (parsedUnits().length === 0) {
+            <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-12 text-center shadow-sm">
+              <span class="material-symbols-outlined text-6xl text-on-surface-variant mb-4 opacity-50">auto_stories</span>
+              <h3 class="text-headline-sm font-headline-sm font-bold text-on-surface mb-2">لم يتم استخراج أي وحدات</h3>
+              <p class="text-body-md font-body-md text-on-surface-variant max-w-lg mx-auto">لم يتمكن النظام من التعرف على هيكل الكتاب. قد يكون تنسيق الفهرس غير قياسي.</p>
+            </div>
+          }
+
+          <!-- Save button (bottom, always visible) -->
+          @if (step() === 'preview' && parsedUnits().length > 0) {
+            <div class="flex justify-center mt-4">
+              <button (click)="save()" [disabled]="saving()"
+                      class="px-10 py-3.5 rounded-full bg-primary text-on-primary font-label-md text-label-md hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2 shadow-lg shadow-primary/20">
+                @if (saving()) {
+                  <span class="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
+                  جاري الحفظ...
+                } @else {
+                  <span class="material-symbols-outlined text-[20px]">save</span>
+                  حفظ هيكل الكتاب ({{parsedUnits().length}} وحدة • {{totalLessons()}} درس)
+                }
+              </button>
+            </div>
+          }
         }
+
+        <!-- Previously saved subjects -->
+        <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant overflow-hidden shadow-sm">
+          <div class="flex items-center justify-between p-5 border-b border-outline-variant">
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">library_books</span>
+              <h3 class="text-headline-sm font-headline-sm font-bold text-on-surface">المواد المضافة سابقاً</h3>
+            </div>
+            @if (loadingSubjects()) {
+              <span class="material-symbols-outlined animate-spin text-on-surface-variant text-[20px]">progress_activity</span>
+            }
+          </div>
+          @if (parsedSubjects().length === 0 && !loadingSubjects()) {
+            <div class="p-8 text-center">
+              <span class="material-symbols-outlined text-4xl text-on-surface-variant mb-2">info</span>
+              <p class="text-on-surface-variant text-label-md">لم يتم إضافة أي كتب بعد</p>
+            </div>
+          } @else {
+            @for (group of subjectsGroupedByGrade(); track group[0]) {
+              <div class="mb-6">
+                <div class="flex items-center gap-2 px-4 py-2 mb-2">
+                  <span class="material-symbols-outlined text-[18px] text-on-surface-variant">school</span>
+                  <h4 class="text-label-md font-label-md font-semibold text-on-surface">{{group[0]}}</h4>
+                </div>
+                <div class="divide-y divide-outline-variant border border-outline-variant rounded-xl overflow-hidden bg-surface-container-lowest">
+                  @for (item of group[1]; track item.id; let i = $index) {
+                    <div>
+                      <button (click)="toggleSubject(item.id)"
+                              class="w-full flex items-center justify-between p-4 hover:bg-surface-container/50 transition-colors text-right">
+                        <div class="flex items-center gap-3 min-w-0">
+                          <span class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" [class.bg-primary-fixed]="i % 2 === 0"
+                                [class.bg-secondary-fixed]="i % 2 !== 0">
+                            <span class="material-symbols-outlined text-[18px]" [class.text-primary]="i % 2 === 0" [class.text-secondary]="i % 2 !== 0"
+                                  style="font-variation-settings: 'FILL' 1;">menu_book</span>
+                          </span>
+                      <div class="min-w-0 text-right">
+                        <p class="text-body-md font-body-md font-semibold text-on-surface truncate">{{item.name}}</p>
+                        <p class="text-label-sm text-on-surface-variant flex items-center gap-2 mt-0.5">
+                          <span>{{item.unitCount}} وحدة</span>
+                          <span class="w-1 h-1 rounded-full bg-on-surface-variant inline-block"></span>
+                          <span>{{item.lessonCount}} درس</span>
+                        </p>
+                      </div>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                      @if (loadingSubjectUnits() && expandedSubjectId() === item.id) {
+                        <span class="material-symbols-outlined animate-spin text-on-surface-variant text-[18px]">progress_activity</span>
+                      } @else {
+                        <span class="material-symbols-outlined text-on-surface-variant transition-transform duration-300"
+                              [class.rotate-180]="expandedSubjectId() === item.id">expand_more</span>
+                      }
+                    </div>
+                  </button>
+                  @if (expandedSubjectId() === item.id) {
+                    <div class="border-t border-outline-variant bg-surface-container/30">
+                      <div class="p-2 flex justify-center border-b border-outline-variant/30">
+                        <button (click)="addSavedUnit()" class="px-3 py-1 rounded-full border border-dashed border-outline-variant text-on-surface-variant text-label-sm hover:bg-surface-container transition-colors flex items-center gap-1">
+                          <span class="material-symbols-outlined text-[16px]">add</span>
+                          إضافة وحدة
+                        </button>
+                      </div>
+                      @if (loadingSubjectUnits()) {
+                        <div class="flex items-center justify-center gap-2 py-6">
+                          <span class="material-symbols-outlined animate-spin text-on-surface-variant">progress_activity</span>
+                          <span class="text-label-md text-on-surface-variant">جاري التحميل...</span>
+                        </div>
+                      } @else if (subjectUnits().length === 0) {
+                        <div class="py-6 text-center text-label-md text-on-surface-variant">لا توجد وحدات</div>
+                      } @else {
+                        <div class="divide-y divide-outline-variant/50">
+                          @for (unit of subjectUnits(); track unit.id) {
+                            <div class="p-4">
+                              <div class="flex items-center justify-between mb-2">
+                                @if (editingSavedUnitId() === unit.id) {
+                                  <div class="flex items-center gap-2 flex-1">
+                                    <input [ngModel]="editingSavedUnitName()" (ngModelChange)="editingSavedUnitName.set($event)"
+                                           (keyup.enter)="saveSavedUnitName(unit.id)" (keyup.escape)="cancelEditSavedUnit()"
+                                           class="flex-1 bg-surface-container border border-primary rounded-lg px-2 py-1 text-body-md font-body-md font-semibold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+                                           autofocus>
+                                    <button (click)="saveSavedUnitName(unit.id)" class="text-primary hover:bg-primary-fixed rounded-full p-0.5"><span class="material-symbols-outlined text-[18px]">check</span></button>
+                                    <button (click)="cancelEditSavedUnit()" class="text-on-surface-variant hover:bg-surface-container rounded-full p-0.5"><span class="material-symbols-outlined text-[18px]">close</span></button>
+                                  </div>
+                                } @else {
+                                  <div class="flex items-center gap-2 min-w-0">
+                                    <span class="text-body-md font-body-md font-semibold text-on-surface truncate cursor-pointer hover:text-primary"
+                                          (click)="startEditSavedUnit(unit.id, unit.name)">{{unit.name}}</span>
+                                    <button (click)="startEditSavedUnit(unit.id, unit.name)" class="text-on-surface-variant opacity-30 hover:opacity-100 transition-opacity"><span class="material-symbols-outlined text-[14px]">edit</span></button>
+                                  </div>
+                                }
+                                <button (click)="addSavedLesson(unit.id)" class="text-primary hover:bg-primary-fixed rounded-full p-1" title="إضافة درس"><span class="material-symbols-outlined text-[18px]">add</span></button>
+                              </div>
+                              @if (unit.lessons && unit.lessons.length > 0) {
+                                <div class="flex flex-wrap gap-2">
+                                  @for (lesson of unit.lessons; track lesson.id) {
+                                    <div class="flex items-center gap-1 bg-surface-container-high rounded-full px-3 py-1 hover:bg-primary-fixed transition-colors group">
+                                      @if (editingSavedLessonId() === lesson.id) {
+                                        <input [ngModel]="editingSavedLessonTitle()" (ngModelChange)="editingSavedLessonTitle.set($event)"
+                                               (keyup.enter)="saveSavedLessonName(lesson.id)" (keyup.escape)="cancelEditSavedLesson()"
+                                               class="w-24 bg-surface-container border border-primary rounded-lg px-1.5 py-0.5 text-label-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+                                               autofocus>
+                                        <button (click)="saveSavedLessonName(lesson.id)" class="text-primary"><span class="material-symbols-outlined text-[14px]">check</span></button>
+                                        <button (click)="cancelEditSavedLesson()" class="text-on-surface-variant"><span class="material-symbols-outlined text-[14px]">close</span></button>
+                                      } @else {
+                                        <button (click)="openSavedLesson(lesson)"
+                                                class="text-on-surface text-label-sm cursor-pointer text-right">
+                                          {{lesson.title}}
+                                          @if (lesson.pageStart) {
+                                            <span class="text-on-surface-variant"> (ص {{lesson.pageStart}}{{lesson.pageEnd ? ' - ' + lesson.pageEnd : ''}})</span>
+                                          }
+                                        </button>
+                                        <button (click)="startEditSavedLesson(lesson.id, lesson.title)" class="text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity"><span class="material-symbols-outlined text-[14px]">edit</span></button>
+                                      }
+                                    </div>
+                                  }
+                                </div>
+                              } @else if (editingSavedUnitContent() === unit.id) {
+                                <div class="flex flex-col gap-2">
+                                  <textarea #unitContent [value]="unit.content || ''"
+                                            class="w-full bg-surface-container border border-outline-variant rounded-xl p-3 text-body-sm font-body-sm text-on-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                                            rows="4" placeholder="أدخل محتوى الوحدة..."></textarea>
+                                  <div class="flex justify-end gap-2">
+                                    <button (click)="editingSavedUnitContent.set(null)" class="px-3 py-1.5 rounded-full border border-outline-variant text-on-surface font-label-sm text-label-sm hover:bg-surface-container transition-colors">إلغاء</button>
+                                    <button (click)="saveSavedUnitContent(unit.id, unit.name, unitContent.value)" class="px-3 py-1.5 rounded-full bg-primary text-on-primary font-label-sm text-label-sm hover:bg-primary/90 transition-colors">حفظ المحتوى</button>
+                                  </div>
+                                </div>
+                              } @else if (unit.content) {
+                                <div class="relative">
+                                  <div class="bg-surface-container rounded-xl p-3 text-body-sm font-body-sm text-on-surface leading-relaxed whitespace-pre-line max-h-40 overflow-y-auto border border-outline-variant">
+                                    {{unit.content}}
+                                  </div>
+                                  <div class="flex gap-1 mt-1 justify-end">
+                                    <button (click)="openSavedUnitContent(unit)"
+                                            class="text-primary hover:bg-primary-fixed rounded-full p-1 text-label-sm flex items-center gap-1"
+                                            title="عرض كامل">
+                                      <span class="material-symbols-outlined text-[16px]">open_in_full</span>
+                                      عرض كامل
+                                    </button>
+                                    <button (click)="editingSavedUnitContent.set(unit.id)"
+                                            class="text-on-surface-variant hover:text-primary hover:bg-surface-container-lowest rounded-full p-1 text-label-sm flex items-center gap-1"
+                                            title="تعديل">
+                                      <span class="material-symbols-outlined text-[16px]">edit</span>
+                                    </button>
+                                  </div>
+                                </div>
+                              } @else {
+                                <div class="flex items-center justify-between">
+                                  <p class="text-label-sm text-on-surface-variant">لا توجد دروس</p>
+                                  <button (click)="editingSavedUnitContent.set(unit.id)" class="text-primary hover:bg-primary-fixed rounded-full p-1 text-label-sm flex items-center gap-1">
+                                    <span class="material-symbols-outlined text-[16px]">note_add</span>
+                                    إضافة محتوى
+                                  </button>
+                                </div>
+                              }
+                            </div>
+                          }
+                        </div>
+                      }
+                    </div>
+                  }
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+          }
+        </div>
       </div>
     </div>
   </main>
@@ -299,16 +661,18 @@
                 class="px-6 py-2.5 rounded-full border border-outline-variant text-on-surface font-label-md text-label-md hover:bg-surface-container-high transition-colors">
           إغلاق
         </button>
-        <button (click)="generateLessonContent()" [disabled]="generatingContent() || !selectedLesson()?.content"
-                class="px-6 py-2.5 rounded-full bg-primary text-on-primary font-label-md text-label-md hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2 shadow-sm">
-          @if (generatingContent()) {
-            <span class="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
-            جاري المعالجة...
-          } @else {
-            <span class="material-symbols-outlined text-[18px]">auto_awesome</span>
-            تظبيط بالـ AI
-          }
-        </button>
+        @if (selectedLessonUnitIndex() !== null && selectedLessonIndex() !== null) {
+          <button (click)="generateLessonContent()" [disabled]="generatingContent() || !selectedLesson()?.content"
+                  class="px-6 py-2.5 rounded-full bg-primary text-on-primary font-label-md text-label-md hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2 shadow-sm">
+            @if (generatingContent()) {
+              <span class="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
+              جاري المعالجة...
+            } @else {
+              <span class="material-symbols-outlined text-[18px]">auto_awesome</span>
+              تظبيط بالـ AI
+            }
+          </button>
+        }
       </div>
     </div>
   </div>

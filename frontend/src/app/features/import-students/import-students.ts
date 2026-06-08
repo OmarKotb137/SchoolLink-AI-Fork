@@ -1,11 +1,8 @@
-import { Component, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
 import { Topbar } from '../../layouts/topbar/topbar';
-
-interface ImportedStudent {
-  id: number;
-  name: string;
-}
+import { StudentImportService, ImportedStudent } from '../../core/services/student-import.service';
+import { AcademicYearService } from '../../core/services/academic-year.service';
 
 @Component({
   selector: 'app-import-students',
@@ -14,14 +11,27 @@ interface ImportedStudent {
   styleUrl: './import-students.css'
 })
 export class ImportStudents {
+  private importSvc = inject(StudentImportService);
+  private yearSvc = inject(AcademicYearService);
+
   sidebarOpen = signal(false);
   students = signal<ImportedStudent[]>([]);
-  selectedClass = signal('');
+  selectedYearId = signal<number | null>(null);
   isDragging = signal(false);
   showSuccess = signal(false);
   showError = signal(false);
+  errorMessage = signal('');
+  isLoading = signal(false);
+  fileNames = signal<string[]>([]);
 
-  allClasses = ['الصف الأول - أ', 'الصف الأول - ب', 'الصف الثاني - أ', 'الصف الثاني - ب', 'الصف الثالث - أ', 'الصف الثالث - ب'];
+  private nextId = 1;
+
+  constructor() {
+    this.yearSvc.getCurrent().subscribe((res: any) => {
+      const yearId = res?.data?.id;
+      if (yearId) this.selectedYearId.set(yearId);
+    });
+  }
 
   onDragOver(e: DragEvent) {
     e.preventDefault();
@@ -36,31 +46,44 @@ export class ImportStudents {
   onDrop(e: DragEvent) {
     e.preventDefault();
     this.isDragging.set(false);
-    this.parseFile(e.dataTransfer?.files);
+    if (e.dataTransfer?.files?.length) this.parseFiles(e.dataTransfer.files);
   }
 
   onFileSelected(e: Event) {
     const input = e.target as HTMLInputElement;
-    this.parseFile(input.files);
+    if (input.files?.length) this.parseFiles(input.files);
     input.value = '';
   }
 
-  parseFile(files: FileList | null | undefined) {
-    if (!files || files.length === 0) return;
+  parseFiles(files: FileList) {
+    if (!files.length) return;
     this.showSuccess.set(false);
     this.showError.set(false);
-    this.students.set([
-      { id: 1, name: 'أحمد محمد السيد' },
-      { id: 2, name: 'سارة علي حسن' },
-      { id: 3, name: 'محمود حسن إبراهيم' },
-      { id: 4, name: 'فاطمة أحمد عمر' },
-      { id: 5, name: 'عمر سعيد محمود' },
-      { id: 6, name: 'ليلى خالد محمد' },
-      { id: 7, name: 'يوسف عبد الله ناصر' },
-      { id: 8, name: 'مريم طارق حسين' },
-      { id: 9, name: 'إبراهيم أحمد سامي' },
-      { id: 10, name: 'نور حسن علي' },
-    ]);
+    this.isLoading.set(true);
+    this.fileNames.set(Array.from(files).map(f => f.name));
+
+    this.importSvc.preview(files).subscribe({
+      next: (res: any) => {
+        this.isLoading.set(false);
+        const list = res?.data?.students ?? [];
+        const imported: ImportedStudent[] = list.map((s: any) => ({
+          id: this.nextId++,
+          fullName: s.fullName ?? '',
+          nationalId: s.nationalId,
+          gender: s.gender,
+          birthDate: s.birthDate,
+        }));
+        this.students.set(imported);
+        if (res?.data?.errors?.length) {
+          console.warn('تحذيرات:', res.data.errors);
+        }
+      },
+      error: () => {
+        this.isLoading.set(false);
+        this.showError.set(true);
+        this.errorMessage.set('فشل تحليل الملفات. تأكد من صيغ الملفات وحاول مجدداً.');
+      }
+    });
   }
 
   removeStudent(id: number) {
@@ -68,24 +91,54 @@ export class ImportStudents {
   }
 
   updateStudentName(id: number, name: string) {
-    this.students.update(list => list.map(s => s.id === id ? { ...s, name } : s));
+    this.students.update(list => list.map(s => s.id === id ? { ...s, fullName: name } : s));
+  }
+
+  updateStudentNationalId(id: number, val: string) {
+    this.students.update(list => list.map(s => s.id === id ? { ...s, nationalId: val || null } : s));
+  }
+
+  updateStudentGender(id: number, val: string) {
+    this.students.update(list => list.map(s => s.id === id ? { ...s, gender: val || null } : s));
+  }
+
+  updateStudentBirthDate(id: number, val: string) {
+    this.students.update(list => list.map(s => s.id === id ? { ...s, birthDate: val || null } : s));
   }
 
   saveStudents() {
-    if (!this.selectedClass()) {
-      this.showError.set(true);
-      return;
-    }
-    this.showSuccess.set(true);
-    this.showError.set(false);
-    this.students.set([]);
-    this.selectedClass.set('');
+    this.isLoading.set(true);
+    const body = {
+      students: this.students().map(s => ({
+        fullName: s.fullName,
+        nationalId: s.nationalId,
+        gender: s.gender,
+        birthDate: s.birthDate,
+      })),
+      academicYearId: this.selectedYearId(),
+    };
+    this.importSvc.import(body).subscribe({
+      next: () => {
+        this.isLoading.set(false);
+        this.showSuccess.set(true);
+        this.showError.set(false);
+        this.students.set([]);
+        this.fileNames.set([]);
+      },
+      error: (err) => {
+        this.isLoading.set(false);
+        this.showError.set(true);
+        this.errorMessage.set(err?.error?.message || err?.error?.error || 'فشل الحفظ');
+      }
+    });
   }
 
   resetAll() {
     this.students.set([]);
-    this.selectedClass.set('');
+    this.selectedYearId.set(null);
     this.showSuccess.set(false);
     this.showError.set(false);
+    this.errorMessage.set('');
+    this.fileNames.set([]);
   }
 }

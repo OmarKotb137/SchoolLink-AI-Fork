@@ -443,13 +443,13 @@ export class GradeMonitor implements OnInit {
     };
 
     if (apiId) {
-      this.api.updateTemplate(apiId, { id: apiId, name: data.name, calculationType: 1, isActive: true }).subscribe({
+      this.api.updateTemplate(apiId, { id: apiId, name: data.name, calculationType: 1, isActive: true, weeks: this.tWeeks() || 12 }).subscribe({
         next: () => saveItems(apiId),
         error: () => saveLocal(),
       });
     } else {
       if (!this.tSubjectId()) { this.showSnackbar('اختر المادة أولاً'); this.saving.set(false); return; }
-      this.api.createTemplate({ gradeLevelId: 1, subjectId: this.tSubjectId(), academicYearId: 1, name: data.name, calculationType: 1 }).subscribe({
+      this.api.createTemplate({ gradeLevelId: 1, subjectId: this.tSubjectId(), academicYearId: 1, name: data.name, calculationType: 1, weeks: this.tWeeks() || 12 }).subscribe({
         next: (res) => saveItems(res.data.id),
         error: () => saveLocal(),
       });
@@ -784,6 +784,13 @@ export class GradeMonitor implements OnInit {
     this.clearGrades();
     if (this.dataReady()) this.loadEvaluations();
     else this.pendingReload.set(true);
+  }
+
+  // ══ يُستدعى من الـ HTML عند تغيير الأسبوع ══
+  onWeekChange(event: Event) {
+    const value = Number((event.target as HTMLSelectElement).value);
+    this.entryWeek.set(value);
+    this.onClassOrWeekChange();
   }
 
   // ══ يُستدعى من الـ HTML عند تغيير الأسبوع أو الفصل ══

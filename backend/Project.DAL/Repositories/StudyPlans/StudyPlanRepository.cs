@@ -14,6 +14,10 @@ public class StudyPlanRepository : Repository<StudyPlan>, IStudyPlanRepository
         int enrollmentId,
         CancellationToken ct = default)
         => await _context.StudyPlans
+            .Include(sp => sp.Items
+                .OrderBy(i => i.DayOfWeek)
+                .ThenBy(i => i.StartTime))
+                .ThenInclude(i => i.Subject)
             .FirstOrDefaultAsync(sp =>
                 sp.EnrollmentId == enrollmentId &&
                 sp.IsActive, ct);

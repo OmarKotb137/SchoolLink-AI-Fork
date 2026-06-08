@@ -15,6 +15,9 @@ try
 
     var builder = WebApplication.CreateBuilder(args);
 
+    builder.WebHost.ConfigureKestrel(options =>
+        options.Limits.MaxRequestBodySize = 100_000_000);
+
     builder.Host.UseSerilog((context, services, config) =>
         config.ReadFrom.Configuration(context.Configuration)
               .ReadFrom.Services(services)
@@ -24,6 +27,7 @@ try
                   rollingInterval: RollingInterval.Day,
                   retainedFileCountLimit: 30));
 
+    builder.Services.AddMemoryCache();
     builder.Services.AddControllers()
         .AddJsonOptions(options =>
         {
@@ -62,11 +66,14 @@ try
         options.AddPolicy("AllowAngular", policy =>
             policy.WithOrigins("http://localhost:4200")
                   .AllowAnyHeader()
-                  .AllowAnyMethod());
+                  .AllowAnyMethod()
+                  .AllowCredentials());
     });
 
     var app = builder.Build();
     await SeedData.Initialize(app.Services);
+
+    app.UseCors("AllowAngular");
 
     if (app.Environment.IsDevelopment())
     {
@@ -76,8 +83,7 @@ try
 
     app.UseStaticFiles();
     app.UseMiddleware<ExceptionMiddleware>();
-    app.UseCors("AllowAngular");
-    app.UseHttpsRedirection();
+    // app.UseHttpsRedirection(); // معطل أثناء التطوير — الفرونت بيستخدم HTTPS مباشرة
     app.UseAuthentication();
 
     app.UseAuthorization();
