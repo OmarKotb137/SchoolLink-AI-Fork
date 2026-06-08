@@ -1,7 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Project.DAL.Interfaces.Repositories.StudyPlans;
 using Project.Domain.Entities;
-using Project.Domain.Enums;
 using Project.DAL.Context;
 
 namespace Project.DAL.Repositories.StudyPlans;
@@ -23,7 +22,7 @@ public class StudyPlanItemRepository : Repository<StudyPlanItem>, IStudyPlanItem
 
     public async Task<IReadOnlyList<StudyPlanItem>> GetByStudyPlanAndDayAsync(
         int studyPlanId,
-        SchoolDay day,
+        int day,
         CancellationToken ct = default)
         => await _context.StudyPlanItems
             .Where(i =>

@@ -6,7 +6,7 @@ namespace Project.Domain.Entities
     {
         public int StudyPlanId { get; set; }
         public int SubjectId { get; set; }
-        public SchoolDay DayOfWeek { get; set; }
+        public int DayOfWeek { get; set; }
         public TimeOnly StartTime { get; set; }
         public TimeOnly EndTime { get; set; }
         public string? Topic { get; set; }

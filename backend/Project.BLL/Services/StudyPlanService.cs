@@ -55,7 +55,7 @@ public class StudyPlanService : IStudyPlanService
             items.Add(new StudyPlanItem
             {
                 SubjectId = subject.Id,
-                DayOfWeek = (SchoolDay)((int)currentDate.DayOfWeek % 5 + 1),
+                DayOfWeek = ((int)currentDate.DayOfWeek + 1) % 7,
                 StartTime = new TimeOnly(startHour, 0),
                 EndTime = new TimeOnly(startHour + duration, 0),
                 Topic = $"مراجعة {subject.Name}",

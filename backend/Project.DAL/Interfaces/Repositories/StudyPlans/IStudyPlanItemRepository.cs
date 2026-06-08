@@ -1,13 +1,11 @@
 ﻿using Project.Domain.Entities;
-using Project.Domain.Enums;
-using System.Linq.Expressions;
 
 namespace Project.DAL.Interfaces.Repositories.StudyPlans;
 
 public interface IStudyPlanItemRepository : IRepository<StudyPlanItem>
 {
     Task<IReadOnlyList<StudyPlanItem>> GetByStudyPlanIdAsync(int studyPlanId, CancellationToken ct = default);
-    Task<IReadOnlyList<StudyPlanItem>> GetByStudyPlanAndDayAsync(int studyPlanId, SchoolDay day, CancellationToken ct = default);
+    Task<IReadOnlyList<StudyPlanItem>> GetByStudyPlanAndDayAsync(int studyPlanId, int day, CancellationToken ct = default);
     Task<IReadOnlyList<StudyPlanItem>> GetBySubjectAsync(int studyPlanId, int subjectId, CancellationToken ct = default);
 
     Task<IReadOnlyList<StudyPlanItem>> GetIncompleteByStudyPlanAsync(int studyPlanId, CancellationToken ct = default);

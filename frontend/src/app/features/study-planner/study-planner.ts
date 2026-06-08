@@ -8,7 +8,7 @@ import { SubjectService } from '../../core/services/subject.service';
 import { EnrollmentService } from '../../core/services/enrollment.service';
 import { AcademicYearService } from '../../core/services/academic-year.service';
 import { StudyPlannerService } from '../../core/services/study-planner.service';
-import { StudyPlanDto, StudyPlanItemDto, DAY_NAMES, PERIOD_NAMES, SCHOOL_DAY_TO_GRID, GRID_TO_SCHOOL_DAY, CreateStudyPlanItemRequest } from '../../core/models/study-plan.model';
+import { StudyPlanDto, StudyPlanItemDto, DAY_NAMES, PERIOD_NAMES, CreateStudyPlanItemRequest } from '../../core/models/study-plan.model';
 
 @Component({
   selector: 'app-study-planner',
@@ -237,10 +237,8 @@ export class StudyPlanner implements OnInit {
     const map = new Map<string, StudyPlanItemDto[]>();
     const comp = new Set<number>();
     for (const item of plan.items) {
-      const gridCol = typeof item.dayOfWeek === 'string'
-        ? (SCHOOL_DAY_TO_GRID[item.dayOfWeek] ?? -1)
-        : (item.dayOfWeek >= 0 && item.dayOfWeek <= 4 ? item.dayOfWeek + 1 : -1);
-      if (gridCol < 1) continue;
+      const gridCol = item.dayOfWeek;
+      if (gridCol < 0 || gridCol > 6) continue;
       const periodIndex = this.periodForTime(item.startTime);
       const key = `${periodIndex}-${gridCol}`;
       if (!map.has(key)) map.set(key, []);
@@ -325,7 +323,7 @@ export class StudyPlanner implements OnInit {
           if (st >= et) { const t = st; st = et; et = t; }
           return {
             subjectId: i.subjectId,
-            dayOfWeek: typeof i.dayOfWeek === 'string' ? i.dayOfWeek : GRID_TO_SCHOOL_DAY[(i.dayOfWeek as number) + 1] || 'Sunday',
+            dayOfWeek: i.dayOfWeek,
             startTime: st,
             endTime: et,
             topic: i.topic,
@@ -434,27 +432,17 @@ export class StudyPlanner implements OnInit {
     if (!eid || !backup || !aiP) return;
 
     const selectedAiItems = aiP.items
-      .filter(i => {
-        const col = typeof i.dayOfWeek === 'string'
-          ? SCHOOL_DAY_TO_GRID[i.dayOfWeek]
-          : i.dayOfWeek + 1;
-        return this.aiSelectedDays().has(col);
-      })
+      .filter(i => this.aiSelectedDays().has(i.dayOfWeek))
       .map(i => ({
         subjectId: i.subjectId,
-        dayOfWeek: typeof i.dayOfWeek === 'string' ? i.dayOfWeek : GRID_TO_SCHOOL_DAY[(i.dayOfWeek as number) + 1] || 'Sunday',
+        dayOfWeek: i.dayOfWeek,
         startTime: i.startTime,
         endTime: i.endTime,
         topic: i.topic,
         notes: i.notes,
       }));
 
-    const nonSelectedBackupItems = backup.items.filter(i => {
-      const col = typeof i.dayOfWeek === 'string'
-        ? SCHOOL_DAY_TO_GRID[i.dayOfWeek]
-        : i.dayOfWeek + 1;
-      return !this.aiSelectedDays().has(col);
-    });
+    const nonSelectedBackupItems = backup.items.filter(i => !this.aiSelectedDays().has(i.dayOfWeek));
 
     const merged = [...nonSelectedBackupItems, ...selectedAiItems];
 
@@ -483,9 +471,7 @@ export class StudyPlanner implements OnInit {
     if (!p) return [];
     const groups: { dayName: string; dayIndex: number; items: StudyPlanItemDto[] }[] = [];
     for (const item of p.items) {
-      const dayOfWeekVal = typeof item.dayOfWeek === 'string' ? item.dayOfWeek : '';
-      const gridCol = SCHOOL_DAY_TO_GRID[dayOfWeekVal];
-      if (gridCol === undefined) continue;
+      const gridCol = item.dayOfWeek;
       const dayName = this.days[gridCol];
       let group = groups.find(g => g.dayIndex === gridCol);
       if (!group) {
@@ -535,18 +521,13 @@ export class StudyPlanner implements OnInit {
     if (!this.newSession.subjectId) { this.addError.set('اختر مادة'); return; }
 
     const gridCol = this.activeDayIndex();
-    const schoolDayStr = GRID_TO_SCHOOL_DAY[gridCol];
-    if (!schoolDayStr) {
-      this.addError.set('لا يمكن إضافة جلسة في هذا اليوم (اليوم غير مدرسي)');
-      return;
-    }
 
     this.addLoading.set(true);
     this.addError.set('');
 
     const newItem = {
       subjectId: this.newSession.subjectId,
-      dayOfWeek: schoolDayStr,
+      dayOfWeek: gridCol,
       startTime: this.to24h(this.addStartHour, this.addStartMin, this.addStartPeriod),
       endTime: this.to24h(this.addEndHour, this.addEndMin, this.addEndPeriod),
       topic: this.newSession.topic || undefined,
@@ -557,7 +538,7 @@ export class StudyPlanner implements OnInit {
     if (plan) {
       const existingItems = plan.items.map(i => ({
         subjectId: i.subjectId,
-        dayOfWeek: typeof i.dayOfWeek === 'string' ? i.dayOfWeek : GRID_TO_SCHOOL_DAY[(i.dayOfWeek as number) + 1] || 'Sunday',
+        dayOfWeek: i.dayOfWeek,
         startTime: i.startTime,
         endTime: i.endTime,
         topic: i.topic,

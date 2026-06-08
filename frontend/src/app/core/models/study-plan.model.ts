@@ -16,7 +16,7 @@ export interface StudyPlanItemDto {
   studyPlanId: number;
   subjectId: number;
   subjectName: string;
-  dayOfWeek: string | number;
+  dayOfWeek: number;
   startTime: string;
   endTime: string;
   topic?: string;
@@ -54,7 +54,7 @@ export interface CreateStudyPlanRequest {
 
 export interface CreateStudyPlanItemRequest {
   subjectId: number;
-  dayOfWeek: string;
+  dayOfWeek: number;
   startTime: string;
   endTime: string;
   topic?: string;
@@ -65,7 +65,7 @@ export interface UpdateStudyPlanItemRequest {
   id: number;
   studyPlanId: number;
   subjectId?: number | null;
-  dayOfWeek?: string | null;
+  dayOfWeek?: number | null;
   startTime?: string | null;
   endTime?: string | null;
   topic?: string | null;
@@ -94,11 +94,11 @@ export interface SessionCell {
 export const DAY_NAMES = ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'];
 
 export const SCHOOL_DAY_TO_GRID: Record<string, number> = {
-  'Sunday': 1, 'Monday': 2, 'Tuesday': 3, 'Wednesday': 4, 'Thursday': 5,
+  'Saturday': 0, 'Sunday': 1, 'Monday': 2, 'Tuesday': 3, 'Wednesday': 4, 'Thursday': 5, 'Friday': 6,
 };
 
 export const GRID_TO_SCHOOL_DAY: Record<number, string> = {
-  1: 'Sunday', 2: 'Monday', 3: 'Tuesday', 4: 'Wednesday', 5: 'Thursday',
+  0: 'Saturday', 1: 'Sunday', 2: 'Monday', 3: 'Tuesday', 4: 'Wednesday', 5: 'Thursday', 6: 'Friday',
 };
 export const PERIOD_NAMES = [
   { label: 'الصباح', icon: 'wb_sunny', color: '#2563eb', start: '08:00', end: '12:00' },
