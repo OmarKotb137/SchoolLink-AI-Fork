@@ -56,7 +56,7 @@ export class RoleService {
       case 'parent':
         return '/login-guardian';
       default:
-        return '/login';
+        return '/index';
     }
   }
 

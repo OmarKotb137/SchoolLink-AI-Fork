@@ -4,18 +4,15 @@
   <main class="pt-16 min-h-screen bg-gray-50 flex flex-col">
     <div class="flex-1 p-4 md:p-6 lg:p-8">
       <div class="max-w-7xl mx-auto space-y-6 pb-10">
-
-        <!-- Header -->
-        <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50">
+        <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300">
           <span class="text-sm font-medium text-blue-600 mb-1 block">إدارة الحسابات</span>
           <h1 class="text-2xl font-bold text-gray-900 mb-2">حسابات الأدمن وأولياء الأمور وحسابات الطلاب</h1>
           <p class="text-sm text-gray-500 max-w-2xl">
-            هذه الصفحة مخصصة للحسابات العامة فقط. من هنا تنشئ حسابات الأدمن وأولياء الأمور وحسابات الطلاب، كما يمكنك إدارة أبناء ولي الأمر مباشرة من نفس الصفحة.
+            هذه الصفحة مخصصة للحسابات العامة فقط. من هنا تنشئ الحسابات العامة، وتولد حسابات الطلاب غير المرتبطين، وتدير أبناء ولي الأمر من نفس المكان.
           </p>
         </div>
 
-        <!-- Summary Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-4">
           <div class="bg-white border border-gray-100 p-4 rounded-2xl text-center flex flex-col justify-center">
             <span class="block text-xs text-gray-500 font-medium mb-1">إجمالي الحسابات</span>
             <strong class="block text-2xl font-bold text-gray-900">{{ totalCount() }}</strong>
@@ -41,9 +38,13 @@
             <strong class="block text-2xl font-bold text-orange-900">{{ studentCount() }}</strong>
             <span class="block text-[10px] text-orange-500 mt-1">حسابات دخول الطلاب</span>
           </div>
+          <div class="bg-blue-50 border border-blue-100 p-4 rounded-2xl text-center flex flex-col justify-center">
+            <span class="block text-xs text-blue-600 font-medium mb-1">طلاب بدون حساب</span>
+            <strong class="block text-2xl font-bold text-blue-900">{{ studentCandidatesCount() }}</strong>
+            <span class="block text-[10px] text-blue-500 mt-1">جاهزون للتوليد السريع</span>
+          </div>
         </div>
 
-        <!-- Feedback Banners -->
         @if (errorMessage()) {
           <div class="flex items-center gap-3 p-4 text-sm text-red-800 rounded-2xl bg-red-50 border border-red-200">
             <span class="material-symbols-outlined text-lg">error</span>
@@ -57,7 +58,6 @@
           </div>
         }
 
-        <!-- Quick Actions Grid -->
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
           <button class="bg-white border border-gray-100 hover:border-blue-300 hover:bg-blue-50 hover:shadow-md transition-all p-4 rounded-3xl flex flex-col items-center text-center gap-2 group" type="button" (click)="openCreateModal('Admin')">
             <span class="material-symbols-outlined text-3xl text-blue-600 group-hover:scale-110 transition-transform">admin_panel_settings</span>
@@ -86,9 +86,88 @@
           </button>
         </div>
 
-        <!-- Table Card -->
-        <div class="bg-white rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50 flex flex-col overflow-hidden">
-          
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden">
+          <div class="p-5 border-b border-gray-100 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 bg-gray-50">
+            <div>
+              <h2 class="text-lg font-bold text-gray-900">توليد حسابات الطلاب</h2>
+              <p class="text-sm text-gray-500 mt-1">الطلاب الموجودون هنا ليس لديهم حساب دخول بعد. يمكنك إنشاء حساب فردي أو توليد الكل مرة واحدة.</p>
+            </div>
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
+              <div class="relative w-full sm:w-80">
+                <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                  <span class="material-symbols-outlined text-gray-400 text-sm">search</span>
+                </div>
+                <input
+                  type="text"
+                  class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500 block w-full pr-10 p-2.5"
+                  placeholder="ابحث باسم الطالب أو الرقم القومي..."
+                  [value]="candidateSearchQuery()"
+                  (input)="candidateSearchQuery.set($any($event.target).value)"
+                />
+              </div>
+              <button
+                class="px-4 py-2 text-sm font-medium text-white rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-lg transform transition-all hover:-translate-y-0.5 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                type="button"
+                (click)="generateAllStudentAccounts()"
+                [disabled]="isGenerating() || filteredCandidates().length === 0">
+                <span class="material-symbols-outlined text-sm">group_add</span>
+                @if (isGenerating()) {
+                  جار التوليد...
+                } @else {
+                  توليد للكل
+                }
+              </button>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm text-right text-gray-500">
+              <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th scope="col" class="px-6 py-4">الطالب</th>
+                  <th scope="col" class="px-6 py-4">الرقم القومي</th>
+                  <th scope="col" class="px-6 py-4">النوع</th>
+                  <th scope="col" class="px-6 py-4">تاريخ الإضافة</th>
+                  <th scope="col" class="px-6 py-4 text-center">الإجراء</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-200">
+                @if (filteredCandidates().length === 0) {
+                  <tr>
+                    <td colspan="5" class="px-6 py-14 text-center">
+                      <div class="flex flex-col items-center justify-center gap-2 text-gray-500">
+                        <span class="material-symbols-outlined text-5xl text-blue-200">verified_user</span>
+                        <p class="text-base font-medium text-gray-900">لا يوجد طلاب مطابقون بدون حسابات.</p>
+                        <p class="text-sm text-gray-500">يمكن أن تكون كل الحسابات مولدة بالفعل أو أن البحث الحالي لا يطابق أي طالب.</p>
+                      </div>
+                    </td>
+                  </tr>
+                }
+
+                @for (candidate of filteredCandidates(); track candidate.studentId) {
+                  <tr class="hover:bg-blue-50 transition-colors">
+                    <td class="px-6 py-4 font-bold text-gray-900">{{ candidate.fullName }}</td>
+                    <td class="px-6 py-4 text-gray-600">{{ candidate.nationalId || '—' }}</td>
+                    <td class="px-6 py-4 text-gray-600">{{ candidate.gender || '—' }}</td>
+                    <td class="px-6 py-4 text-gray-600">{{ candidate.createdAt | date: 'yyyy/MM/dd' }}</td>
+                    <td class="px-6 py-4 text-center">
+                      <button
+                        class="px-4 py-2 text-sm font-medium text-white rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-lg transform transition-all hover:-translate-y-0.5 inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        type="button"
+                        (click)="generateSingleStudentAccount(candidate)"
+                        [disabled]="isGenerating()">
+                        <span class="material-symbols-outlined text-sm">badge</span>
+                        توليد حساب
+                      </button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col overflow-hidden">
           <div class="p-5 border-b border-gray-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <h2 class="text-lg font-bold text-gray-900">قائمة الحسابات</h2>
@@ -101,26 +180,24 @@
           </div>
 
           <div class="p-4 bg-gray-50 border-b border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4">
-            <!-- Tabs -->
             <div class="flex flex-wrap items-center bg-gray-200/50 p-1 rounded-2xl">
-              <button class="px-4 py-1.5 text-sm font-medium rounded-xl transition-colors" [class.bg-white]="activeTab() === 'all'" [class.shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50]="activeTab() === 'all'" [class.text-gray-900]="activeTab() === 'all'" [class.text-gray-500]="activeTab() !== 'all'" [class.hover:text-gray-700]="activeTab() !== 'all'" (click)="activeTab.set('all'); currentPage.set(1)">الكل</button>
-              <button class="px-4 py-1.5 text-sm font-medium rounded-xl transition-colors" [class.bg-white]="activeTab() === 'admins'" [class.shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50]="activeTab() === 'admins'" [class.text-gray-900]="activeTab() === 'admins'" [class.text-gray-500]="activeTab() !== 'admins'" [class.hover:text-gray-700]="activeTab() !== 'admins'" (click)="activeTab.set('admins'); currentPage.set(1)">الأدمن</button>
-              <button class="px-4 py-1.5 text-sm font-medium rounded-xl transition-colors" [class.bg-white]="activeTab() === 'parents'" [class.shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50]="activeTab() === 'parents'" [class.text-gray-900]="activeTab() === 'parents'" [class.text-gray-500]="activeTab() !== 'parents'" [class.hover:text-gray-700]="activeTab() !== 'parents'" (click)="activeTab.set('parents'); currentPage.set(1)">أولياء الأمور</button>
-              <button class="px-4 py-1.5 text-sm font-medium rounded-xl transition-colors" [class.bg-white]="activeTab() === 'students'" [class.shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50]="activeTab() === 'students'" [class.text-gray-900]="activeTab() === 'students'" [class.text-gray-500]="activeTab() !== 'students'" [class.hover:text-gray-700]="activeTab() !== 'students'" (click)="activeTab.set('students'); currentPage.set(1)">الطلاب</button>
+              <button class="px-4 py-1.5 text-sm font-medium rounded-xl transition-colors" [class.bg-white]="activeTab() === 'all'" [class.shadow-md]="activeTab() === 'all'" [class.text-gray-900]="activeTab() === 'all'" [class.text-gray-500]="activeTab() !== 'all'" [class.hover:text-gray-700]="activeTab() !== 'all'" (click)="activeTab.set('all'); currentPage.set(1)">الكل</button>
+              <button class="px-4 py-1.5 text-sm font-medium rounded-xl transition-colors" [class.bg-white]="activeTab() === 'admins'" [class.shadow-md]="activeTab() === 'admins'" [class.text-gray-900]="activeTab() === 'admins'" [class.text-gray-500]="activeTab() !== 'admins'" [class.hover:text-gray-700]="activeTab() !== 'admins'" (click)="activeTab.set('admins'); currentPage.set(1)">الأدمن</button>
+              <button class="px-4 py-1.5 text-sm font-medium rounded-xl transition-colors" [class.bg-white]="activeTab() === 'parents'" [class.shadow-md]="activeTab() === 'parents'" [class.text-gray-900]="activeTab() === 'parents'" [class.text-gray-500]="activeTab() !== 'parents'" [class.hover:text-gray-700]="activeTab() !== 'parents'" (click)="activeTab.set('parents'); currentPage.set(1)">أولياء الأمور</button>
+              <button class="px-4 py-1.5 text-sm font-medium rounded-xl transition-colors" [class.bg-white]="activeTab() === 'students'" [class.shadow-md]="activeTab() === 'students'" [class.text-gray-900]="activeTab() === 'students'" [class.text-gray-500]="activeTab() !== 'students'" [class.hover:text-gray-700]="activeTab() !== 'students'" (click)="activeTab.set('students'); currentPage.set(1)">الطلاب</button>
             </div>
 
-            <!-- Search -->
             <div class="relative w-full md:w-72">
               <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                 <span class="material-symbols-outlined text-gray-400 text-sm">search</span>
               </div>
-              <input type="text" class="bg-white border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full pr-10 p-2.5 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50" placeholder="ابحث بالاسم أو البريد أو الهاتف..." [value]="searchQuery()" (input)="searchQuery.set($any($event.target).value); currentPage.set(1)">
+              <input type="text" class="bg-white border border-gray-300 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500 block w-full pr-10 p-2.5" placeholder="ابحث بالاسم أو البريد أو الهاتف..." [value]="searchQuery()" (input)="searchQuery.set($any($event.target).value); currentPage.set(1)">
             </div>
           </div>
 
           <div class="overflow-x-auto">
             <table class="w-full text-sm text-right text-gray-500">
-              <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-100">
+              <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th scope="col" class="px-6 py-4">الاسم</th>
                   <th scope="col" class="px-6 py-4">الدور</th>
@@ -211,7 +288,6 @@
             </table>
           </div>
 
-          <!-- Pagination -->
           @if (totalPages() > 1) {
             <div class="flex items-center justify-between p-4 bg-gray-50 border-t border-gray-100 flex-wrap gap-4">
               <span class="text-sm text-gray-700">
@@ -264,12 +340,10 @@
   </main>
 </div>
 
-<!-- Modals -->
-
 @if (showCreateModal()) {
   <div class="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/50 backdrop-blur-sm p-4" (click)="closeModals()">
     <div class="bg-white rounded-3xl shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden" (click)="$event.stopPropagation()">
-      <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+      <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
         <div>
           <h2 class="text-xl font-bold text-gray-900">إضافة حساب جديد</h2>
           <p class="text-sm text-gray-500 mt-1">هذه الصفحة للحسابات العامة فقط: أدمن، ولي أمر، أو حساب طالب.</p>
@@ -283,11 +357,11 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div class="flex flex-col gap-2">
             <label class="text-sm font-medium text-gray-900">الاسم الكامل <span class="text-red-500">*</span></label>
-            <input class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" [value]="formName()" (input)="formName.set($any($event.target).value)" />
+            <input class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5" [value]="formName()" (input)="formName.set($any($event.target).value)" />
           </div>
           <div class="flex flex-col gap-2">
             <label class="text-sm font-medium text-gray-900">نوع الحساب <span class="text-red-500">*</span></label>
-            <select class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" [value]="formRole()" (change)="formRole.set($any($event.target).value)">
+            <select class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5" [value]="formRole()" (change)="setFormRole($any($event.target).value)">
               <option value="Admin">أدمن</option>
               <option value="Parent">ولي أمر</option>
               <option value="Student">حساب طالب</option>
@@ -295,27 +369,130 @@
           </div>
           <div class="flex flex-col gap-2">
             <label class="text-sm font-medium text-gray-900">البريد الإلكتروني <span class="text-red-500">*</span></label>
-            <input class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" type="email" [value]="formEmail()" (input)="formEmail.set($any($event.target).value)" />
+            <input class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5" type="email" [value]="formEmail()" (input)="formEmail.set($any($event.target).value)" />
           </div>
           <div class="flex flex-col gap-2">
             <label class="text-sm font-medium text-gray-900">رقم الهاتف</label>
-            <input class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" type="tel" [value]="formPhone()" (input)="formPhone.set($any($event.target).value)" />
+            <input class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5" type="tel" [value]="formPhone()" (input)="formPhone.set($any($event.target).value)" />
           </div>
           <div class="flex flex-col gap-2 md:col-span-2">
             <label class="text-sm font-medium text-gray-900">كلمة المرور <span class="text-red-500">*</span></label>
-            <input class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" type="password" [value]="formPassword()" (input)="formPassword.set($any($event.target).value)" />
+            <input class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5" type="password" [value]="formPassword()" (input)="formPassword.set($any($event.target).value)" />
           </div>
         </div>
 
         <div class="mt-6 flex items-start gap-3 p-4 text-sm text-blue-800 rounded-2xl bg-blue-50 border border-blue-200">
           <span class="material-symbols-outlined shrink-0 text-lg">info</span>
-          <p class="font-medium">إنشاء المعلمين يتم من إدارة المعلمين. يمكنك بعد إنشاء ولي الأمر فتح "إدارة الأبناء" من الجدول لربطه بالطلاب وتعديل صلة القرابة.</p>
+          <p class="font-medium">إنشاء المعلمين يتم من إدارة المعلمين. يمكنك من هنا إنشاء ولي أمر مع ربط أبنائه مباشرة أثناء الحفظ.</p>
         </div>
+
+        @if (formRole() === 'Parent') {
+          <div class="mt-6 bg-white border border-gray-100 rounded-2xl p-5 shadow-lg hover:shadow-xl transition-shadow duration-300">
+            <div class="flex items-start justify-between gap-4 mb-4">
+              <div>
+                <h3 class="text-base font-bold text-gray-900">ربط الأبناء أثناء الإنشاء</h3>
+                <p class="text-sm text-gray-500 mt-1">ابحث باسم الطالب وأضفه إلى ولي الأمر قبل إنشاء الحساب.</p>
+              </div>
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-blue-50 text-blue-700 border-blue-200">
+                {{ selectedChildren().length }} محدد
+              </span>
+            </div>
+
+            <div class="relative">
+              <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                <span class="material-symbols-outlined text-gray-400 text-sm">search</span>
+              </div>
+              <input
+                type="text"
+                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500 block w-full pr-10 p-2.5"
+                placeholder="ابحث عن طالب بالاسم..."
+                [value]="parentChildSearch()"
+                (input)="searchStudentsForParent($any($event.target).value)"
+              />
+            </div>
+
+            @if (isSearchingStudents()) {
+              <div class="mt-3 flex items-center gap-2 text-sm text-gray-500">
+                <span class="material-symbols-outlined animate-spin text-base">progress_activity</span>
+                جار البحث...
+              </div>
+            }
+
+            @if (parentChildSearchResults().length > 0) {
+              <div class="mt-3 border border-gray-100 rounded-2xl overflow-hidden">
+                @for (student of parentChildSearchResults(); track student.id) {
+                  <button
+                    type="button"
+                    class="w-full px-4 py-3 text-right bg-white hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0 flex items-center justify-between gap-4"
+                    (click)="addChildToParent(student)">
+                    <div>
+                      <div class="font-medium text-gray-900">{{ student.fullName }}</div>
+                      <div class="text-xs text-gray-500">{{ student.nationalId || 'بدون رقم قومي' }}</div>
+                    </div>
+                    <span class="inline-flex items-center gap-1 text-sm font-medium text-blue-700">
+                      <span class="material-symbols-outlined text-base">add_circle</span>
+                      إضافة
+                    </span>
+                  </button>
+                }
+              </div>
+            }
+
+            @if (selectedChildren().length > 0) {
+              <div class="mt-5 overflow-x-auto">
+                <table class="w-full text-sm text-right text-gray-500">
+                  <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th class="px-4 py-3">الطالب</th>
+                      <th class="px-4 py-3">صلة القرابة</th>
+                      <th class="px-4 py-3 text-center">إجراء</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-gray-200">
+                    @for (child of selectedChildren(); track child.student.id) {
+                      <tr class="hover:bg-blue-50 transition-colors">
+                        <td class="px-4 py-3">
+                          <div class="font-medium text-gray-900">{{ child.student.fullName }}</div>
+                          <div class="text-xs text-gray-500">{{ child.student.nationalId || 'بدون رقم قومي' }}</div>
+                        </td>
+                        <td class="px-4 py-3">
+                          <select
+                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5"
+                            [value]="child.relationship"
+                            (change)="updateChildRelationship(child.student.id, $any($event.target).value)">
+                            <option value="1">الأب</option>
+                            <option value="2">الأم</option>
+                            <option value="3">الوصي</option>
+                            <option value="4">أخ / أخت</option>
+                            <option value="5">أخرى</option>
+                          </select>
+                        </td>
+                        <td class="px-4 py-3 text-center">
+                          <button
+                            type="button"
+                            class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 inline-flex items-center gap-2"
+                            (click)="removeChildFromParent(child.student.id)">
+                            <span class="material-symbols-outlined text-sm">delete</span>
+                            إزالة
+                          </button>
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            } @else {
+              <div class="mt-4 p-4 rounded-2xl bg-gray-50 border border-gray-100 text-sm text-gray-500">
+                لم يتم اختيار أبناء بعد. يمكنك إنشاء الحساب بدون ربط أو إضافة أبناء من البحث بالأعلى.
+              </div>
+            }
+          </div>
+        }
       </div>
 
-      <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 bg-gray-50">
-        <button class="px-5 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 transition-colors" (click)="closeModals()">إلغاء</button>
-        <button class="px-5 py-2.5 text-sm font-medium text-white bg-blue-700 rounded-2xl hover:bg-blue-800 focus:ring-4 focus:ring-indigo-300 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" (click)="saveAccount()" [disabled]="!canSaveAccount()">
+      <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3 bg-gray-50">
+        <button class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 flex items-center gap-2" (click)="closeModals()">إلغاء</button>
+        <button class="px-4 py-2 text-sm font-medium text-white rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-lg transform transition-all hover:-translate-y-0.5 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" (click)="saveAccount()" [disabled]="!canSaveAccount()">
           @if (isLoading()) {
             <span class="material-symbols-outlined animate-spin text-sm">refresh</span>
             جار الحفظ...
@@ -331,7 +508,7 @@
 @if (showEditModal()) {
   <div class="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/50 backdrop-blur-sm p-4" (click)="closeModals()">
     <div class="bg-white rounded-3xl shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden" (click)="$event.stopPropagation()">
-      <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+      <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
         <div>
           <h2 class="text-xl font-bold text-gray-900">تعديل الحساب</h2>
           <p class="text-sm text-gray-500 mt-1">يمكن تعديل الاسم والهاتف من هنا. تغيير الدور أو البريد غير متاح حاليًا من الـ API.</p>
@@ -345,7 +522,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div class="flex flex-col gap-2">
             <label class="text-sm font-medium text-gray-900">الاسم الكامل <span class="text-red-500">*</span></label>
-            <input class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" [value]="formName()" (input)="formName.set($any($event.target).value)" />
+            <input class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5" [value]="formName()" (input)="formName.set($any($event.target).value)" />
           </div>
           <div class="flex flex-col gap-2">
             <label class="text-sm font-medium text-gray-900">نوع الحساب</label>
@@ -353,7 +530,7 @@
           </div>
           <div class="flex flex-col gap-2 md:col-span-2">
             <label class="text-sm font-medium text-gray-900">رقم الهاتف</label>
-            <input class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" type="tel" [value]="formPhone()" (input)="formPhone.set($any($event.target).value)" />
+            <input class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5" type="tel" [value]="formPhone()" (input)="formPhone.set($any($event.target).value)" />
           </div>
         </div>
 
@@ -363,9 +540,9 @@
         </div>
       </div>
 
-      <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 bg-gray-50">
-        <button class="px-5 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 transition-colors" (click)="closeModals()">إلغاء</button>
-        <button class="px-5 py-2.5 text-sm font-medium text-white bg-blue-700 rounded-2xl hover:bg-blue-800 focus:ring-4 focus:ring-indigo-300 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" (click)="updateAccount()" [disabled]="!canUpdateAccount()">
+      <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3 bg-gray-50">
+        <button class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 flex items-center gap-2" (click)="closeModals()">إلغاء</button>
+        <button class="px-4 py-2 text-sm font-medium text-white rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-lg transform transition-all hover:-translate-y-0.5 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" (click)="updateAccount()" [disabled]="!canUpdateAccount()">
           @if (isLoading()) {
             <span class="material-symbols-outlined animate-spin text-sm">refresh</span>
             جار الحفظ...
@@ -381,7 +558,7 @@
 @if (showParentLinksModal()) {
   <div class="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/50 backdrop-blur-sm p-4" (click)="closeParentLinksModal()">
     <div class="bg-white rounded-3xl shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden" (click)="$event.stopPropagation()">
-      <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+      <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
         <div>
           <h2 class="text-xl font-bold text-gray-900">إدارة أبناء ولي الأمر</h2>
           <p class="text-sm text-gray-500 mt-1">
@@ -396,7 +573,6 @@
       </div>
 
       <div class="p-6 overflow-y-auto flex-1 flex flex-col gap-6">
-        
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div class="bg-blue-50 border border-blue-100 p-4 rounded-2xl flex items-center justify-between">
             <span class="text-sm font-medium text-blue-800">عدد الأبناء الحالي</span>
@@ -413,7 +589,7 @@
           <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
             <div class="md:col-span-6 flex flex-col gap-2">
               <label class="text-sm font-medium text-gray-900">اختر الطالب</label>
-              <select class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" [value]="selectedStudentToLink() ?? ''" (change)="selectedStudentToLink.set($any($event.target).value ? +$any($event.target).value : null)">
+              <select class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5" [value]="selectedStudentToLink() ?? ''" (change)="selectedStudentToLink.set($any($event.target).value ? +$any($event.target).value : null)">
                 <option value="">اختر طالبًا للربط</option>
                 @for (student of availableStudentsForParent(); track student.id) {
                   <option [value]="student.id">{{ student.fullName }} @if (student.nationalId) { - {{ student.nationalId }} }</option>
@@ -423,7 +599,7 @@
 
             <div class="md:col-span-4 flex flex-col gap-2">
               <label class="text-sm font-medium text-gray-900">صلة القرابة</label>
-              <select class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" [value]="selectedRelationship()" (change)="setSelectedRelationshipFromValue($any($event.target).value)">
+              <select class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5" [value]="selectedRelationship()" (change)="setSelectedRelationshipFromValue($any($event.target).value)">
                 <option value="1">الأب</option>
                 <option value="2">الأم</option>
                 <option value="3">الوصي</option>
@@ -433,7 +609,7 @@
             </div>
 
             <div class="md:col-span-2">
-              <button class="w-full text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-lg transform transition-all hover:-translate-y-0.5 focus:ring-4 focus:ring-indigo-300 font-medium rounded-2xl text-sm px-4 py-2.5 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" type="button" (click)="linkStudentToParent()" [disabled]="isLoading() || !selectedStudentToLink()">
+              <button class="w-full px-4 py-2 text-sm font-medium text-white rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-lg transform transition-all hover:-translate-y-0.5 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" type="button" (click)="linkStudentToParent()" [disabled]="isLoading() || !selectedStudentToLink()">
                 <span class="material-symbols-outlined text-sm">person_add</span>
                 ربط
               </button>
@@ -441,7 +617,7 @@
           </div>
         </div>
 
-        <div class="bg-white border border-gray-100 rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50 overflow-hidden flex flex-col">
+        <div class="bg-white border border-gray-100 rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden flex flex-col">
           <div class="p-4 border-b border-gray-100 bg-gray-50">
             <h3 class="text-base font-bold text-gray-900">الأبناء المرتبطون</h3>
             <p class="text-sm text-gray-500 mt-1">يمكنك تعديل صلة القرابة أو فك الربط من هنا.</p>
@@ -449,7 +625,7 @@
 
           <div class="overflow-x-auto">
             <table class="w-full text-sm text-right text-gray-500">
-              <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-100">
+              <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th scope="col" class="px-6 py-3">الطالب</th>
                   <th scope="col" class="px-6 py-3">الرقم القومي</th>
@@ -484,7 +660,7 @@
                     <td class="px-6 py-4 text-gray-600">{{ item.student.nationalId || '—' }}</td>
                     <td class="px-6 py-4">
                       @if (item.link) {
-                        <select class="bg-gray-50 border border-gray-200 text-gray-900 text-xs rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2" [value]="item.link.relationship" (change)="updateParentRelationship(item.link, $any($event.target).value)">
+                        <select class="bg-gray-50 border border-gray-300 text-gray-900 text-xs rounded-2xl focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2" [value]="item.link.relationship" (change)="updateParentRelationship(item.link, $any($event.target).value)">
                           <option value="1">الأب</option>
                           <option value="2">الأم</option>
                           <option value="3">الوصي</option>
@@ -512,9 +688,154 @@
         </div>
       </div>
 
-      <div class="px-6 py-4 border-t border-gray-100 flex justify-end bg-gray-50">
-        <button class="px-5 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 transition-colors" (click)="closeParentLinksModal()">إغلاق</button>
+      <div class="px-6 py-4 border-t border-gray-200 flex justify-end bg-gray-50">
+        <button class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 flex items-center gap-2" (click)="closeParentLinksModal()">إغلاق</button>
       </div>
     </div>
   </div>
+}
+
+@if (showCredentialsModal()) {
+  @if (lastGeneratedCred(); as credential) {
+    <div class="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/50 backdrop-blur-sm p-4" (click)="closeModals()">
+      <div class="bg-white rounded-3xl shadow-xl max-w-xl w-full max-h-[90vh] flex flex-col overflow-hidden" (click)="$event.stopPropagation()">
+        <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+          <div>
+            <h2 class="text-xl font-bold text-gray-900">بيانات الحساب الجديدة</h2>
+            <p class="text-sm text-gray-500 mt-1">هذه البيانات تظهر مرة واحدة فقط. احفظها أو اطبعها قبل الإغلاق.</p>
+          </div>
+          <button class="text-gray-400 hover:text-gray-900 hover:bg-gray-200 p-2 rounded-2xl transition-colors" (click)="closeModals()">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+
+        <div class="p-6 overflow-y-auto flex-1 space-y-4">
+          <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-sm text-amber-800">
+            احفظ أو اطبع هذه البيانات الآن، لأن كلمة المرور لن تُعرض مرة أخرى.
+          </div>
+
+          <div class="grid grid-cols-1 gap-4">
+            <div class="bg-white border border-gray-100 rounded-2xl p-4 shadow-lg hover:shadow-xl transition-shadow duration-300">
+              <span class="block text-xs text-gray-500 mb-1">اسم الطالب</span>
+              <strong class="text-base text-gray-900">{{ credential.studentName }}</strong>
+            </div>
+            <div class="bg-white border border-gray-100 rounded-2xl p-4 shadow-lg hover:shadow-xl transition-shadow duration-300">
+              <div class="flex items-center justify-between gap-3">
+                <div>
+                  <span class="block text-xs text-gray-500 mb-1">بريد الدخول</span>
+                  <strong class="text-sm text-gray-900 break-all font-mono">{{ credential.generatedEmail }}</strong>
+                </div>
+                <button class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 flex items-center gap-2" type="button" (click)="copyToClipboard(credential.generatedEmail)">
+                  <span class="material-symbols-outlined text-sm">content_copy</span>
+                  نسخ
+                </button>
+              </div>
+            </div>
+            <div class="bg-blue-50 border border-blue-100 rounded-2xl p-4 shadow-lg hover:shadow-xl transition-shadow duration-300">
+              <div class="flex items-center justify-between gap-3">
+                <div>
+                  <span class="block text-xs text-blue-600 mb-1">كلمة المرور</span>
+                  <strong class="text-base text-blue-900 break-all font-mono">{{ credential.plainPassword }}</strong>
+                </div>
+                <button class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 flex items-center gap-2" type="button" (click)="copyToClipboard(credential.plainPassword)">
+                  <span class="material-symbols-outlined text-sm">content_copy</span>
+                  نسخ
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3 bg-gray-50">
+          <button class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 flex items-center gap-2" type="button" (click)="printSingleCredentials()">
+            <span class="material-symbols-outlined text-sm">print</span>
+            طباعة
+          </button>
+          <button class="px-4 py-2 text-sm font-medium text-white rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-lg transform transition-all hover:-translate-y-0.5 flex items-center gap-2" type="button" (click)="closeModals()">
+            تم
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+}
+
+@if (showBulkResultModal()) {
+  @if (bulkResult(); as bulk) {
+    <div class="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/50 backdrop-blur-sm p-4" (click)="closeModals()">
+      <div class="bg-white rounded-3xl shadow-xl max-w-5xl w-full max-h-[90vh] flex flex-col overflow-hidden" (click)="$event.stopPropagation()">
+        <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+          <div>
+            <h2 class="text-xl font-bold text-gray-900">تقرير التوليد الجماعي</h2>
+            <p class="text-sm text-gray-500 mt-1">راجع النتائج واحفظ بيانات الدخول للطلاب الذين تم إنشاؤها بنجاح.</p>
+          </div>
+          <button class="text-gray-400 hover:text-gray-900 hover:bg-gray-200 p-2 rounded-2xl transition-colors" (click)="closeModals()">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+
+        <div class="p-6 overflow-y-auto flex-1 space-y-5">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-gray-50 border border-gray-100 p-4 rounded-2xl text-center">
+              <span class="block text-xs text-gray-500 mb-1">الإجمالي</span>
+              <strong class="text-2xl text-gray-900 font-bold">{{ bulk.totalRequested }}</strong>
+            </div>
+            <div class="bg-emerald-50 border border-emerald-100 p-4 rounded-2xl text-center">
+              <span class="block text-xs text-emerald-600 mb-1">نجح</span>
+              <strong class="text-2xl text-emerald-900 font-bold">{{ bulk.successCount }}</strong>
+            </div>
+            <div class="bg-red-50 border border-red-100 p-4 rounded-2xl text-center">
+              <span class="block text-xs text-red-600 mb-1">فشل</span>
+              <strong class="text-2xl text-red-900 font-bold">{{ bulk.failureCount }}</strong>
+            </div>
+          </div>
+
+          <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-sm text-amber-800">
+            احفظ أو اطبع النتائج الآن، لأن كلمات المرور الخاصة بالطلاب الناجحين لن تُعرض مرة أخرى.
+          </div>
+
+          <div class="overflow-x-auto border border-gray-100 rounded-2xl">
+            <table class="w-full text-sm text-right text-gray-500">
+              <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th class="px-4 py-3">الطالب</th>
+                  <th class="px-4 py-3">بريد الدخول</th>
+                  <th class="px-4 py-3">كلمة المرور</th>
+                  <th class="px-4 py-3">الحالة</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-200">
+                @for (result of bulk.results; track result.studentId) {
+                  <tr class="transition-colors hover:bg-blue-50" [class.bg-red-50]="!result.success">
+                    <td class="px-4 py-3 font-medium text-gray-900">{{ result.studentName || 'غير معروف' }}</td>
+                    <td class="px-4 py-3 font-mono text-xs text-gray-700">{{ result.generatedEmail || '—' }}</td>
+                    <td class="px-4 py-3 font-mono text-xs text-blue-700 font-bold">{{ result.plainPassword || '—' }}</td>
+                    <td class="px-4 py-3">
+                      @if (result.success) {
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-emerald-50 text-emerald-700 border-emerald-200">
+                          تم بنجاح
+                        </span>
+                      } @else {
+                        <span class="text-xs text-red-700">{{ result.errorMessage }}</span>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3 bg-gray-50">
+          <button class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 flex items-center gap-2" type="button" (click)="printBulkCredentials()">
+            <span class="material-symbols-outlined text-sm">print</span>
+            طباعة التقرير
+          </button>
+          <button class="px-4 py-2 text-sm font-medium text-white rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-lg transform transition-all hover:-translate-y-0.5 flex items-center gap-2" type="button" (click)="closeModals()">
+            إغلاق
+          </button>
+        </div>
+      </div>
+    </div>
+  }
 }

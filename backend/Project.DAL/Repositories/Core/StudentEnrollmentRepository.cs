@@ -43,6 +43,24 @@ public class StudentEnrollmentRepository : Repository<StudentEnrollment>, IStude
             .OrderBy(e => e.Student.FullName)
             .ToListAsync(ct);
 
+    public async Task<IReadOnlyList<StudentEnrollment>> GetActiveByGradeLevelAndYearWithDetailsAsync(
+        int gradeLevelId,
+        int academicYearId,
+        CancellationToken ct = default)
+        => await _context.StudentEnrollments
+            .Where(e =>
+                e.AcademicYearId == academicYearId &&
+                e.LeftAt == null &&
+                !e.IsDeleted &&
+                e.Class.GradeLevelId == gradeLevelId &&
+                !e.Class.IsDeleted)
+            .Include(e => e.Student)
+            .Include(e => e.Class)
+                .ThenInclude(c => c.GradeLevel)
+            .Include(e => e.AcademicYear)
+            .OrderBy(e => e.Student.FullName)
+            .ToListAsync(ct);
+
     public async Task<IReadOnlyList<StudentEnrollment>> GetHistoryByStudentAsync(
         int studentId,
         CancellationToken ct = default)
@@ -95,6 +113,33 @@ public class StudentEnrollmentRepository : Repository<StudentEnrollment>, IStude
         => await _context.StudentEnrollments
             .Include(e => e.Student)
             .FirstOrDefaultAsync(e => e.Id == enrollmentId, ct);
+
+    public async Task<StudentEnrollment?> GetByIdWithDetailsAsync(
+        int enrollmentId,
+        CancellationToken ct = default)
+        => await _context.StudentEnrollments
+            .Include(e => e.Student)
+            .Include(e => e.Class)
+                .ThenInclude(c => c.GradeLevel)
+            .Include(e => e.AcademicYear)
+            .FirstOrDefaultAsync(e => e.Id == enrollmentId, ct);
+
+    public async Task<IReadOnlyList<StudentEnrollment>> GetByIdsWithDetailsAsync(
+        IEnumerable<int> enrollmentIds,
+        CancellationToken ct = default)
+    {
+        var ids = enrollmentIds.Distinct().ToList();
+        if (ids.Count == 0)
+            return Array.Empty<StudentEnrollment>();
+
+        return await _context.StudentEnrollments
+            .Where(e => ids.Contains(e.Id))
+            .Include(e => e.Student)
+            .Include(e => e.Class)
+                .ThenInclude(c => c.GradeLevel)
+            .Include(e => e.AcademicYear)
+            .ToListAsync(ct);
+    }
 
     public async Task<IReadOnlyList<StudentEnrollment>> GetByClassWithStudentAsync(
         int classId,

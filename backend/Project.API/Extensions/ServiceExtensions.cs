@@ -34,6 +34,7 @@ public static class ServiceExtensions
 
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IUserService, UserService>();
+        services.AddScoped<IAccountGenerationService, AccountGenerationService>();
         services.AddScoped<ITeacherService, TeacherService>();
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<IAnnouncementService, AnnouncementService>();
@@ -81,6 +82,7 @@ public static class ServiceExtensions
         services.AddScoped<IFinalGradeService, FinalGradeService>();
         services.AddScoped<IStudentService, StudentService>();
         services.AddScoped<IStudentEnrollmentService, StudentEnrollmentService>();
+        services.AddScoped<IStudentProgressionService, StudentProgressionService>();
         services.AddScoped<IParentStudentService, ParentStudentService>();
         services.AddScoped<IStudyPlanService, StudyPlanService>();
         services.AddScoped<IDashboardService, DashboardService>();

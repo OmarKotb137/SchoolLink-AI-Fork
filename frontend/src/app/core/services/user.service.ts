@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { buildApiUrl } from '../utils/api-url';
-import { PagedResult } from '../models/api.model';
+import { OperationResult } from '../models/api.model';
 
 export interface User {
   id: number;
@@ -38,12 +38,62 @@ export interface UpdateUserRequest {
   profilePictureUrl?: string;
 }
 
+export interface StudentAccountCandidate {
+  studentId: number;
+  fullName: string;
+  nationalId?: string | null;
+  gender?: string | null;
+  createdAt?: string;
+}
+
+export interface GenerateStudentAccountResult {
+  studentId: number;
+  studentName: string;
+  generatedEmail: string;
+  plainPassword: string;
+  success: boolean;
+  errorMessage?: string | null;
+}
+
+export interface GenerateBulkStudentAccountsResult {
+  totalRequested: number;
+  successCount: number;
+  failureCount: number;
+  results: GenerateStudentAccountResult[];
+}
+
+export interface ParentChildLinkRequest {
+  studentId: number;
+  relationship: number;
+}
+
+export interface CreateParentWithStudentsRequest {
+  fullName: string;
+  email: string;
+  password: string;
+  phone?: string;
+  children: ParentChildLinkRequest[];
+}
+
+export interface CreateParentWithStudentsResult {
+  parent: User;
+  linkedCount: number;
+  failedCount: number;
+  linkResults: Array<{
+    studentId: number;
+    studentName: string;
+    success: boolean;
+    errorMessage?: string | null;
+  }>;
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class UserService {
   private http = inject(HttpClient);
   private apiUrl = buildApiUrl('Users');
+  private accountGenUrl = buildApiUrl('account-generation');
 
   getAll(filter?: GetUsersFilter): Observable<any> {
     let params = new HttpParams();
@@ -80,5 +130,21 @@ export class UserService {
 
   deleteUser(id: number): Observable<any> {
     return this.http.delete<any>(`${this.apiUrl}/${id}`);
+  }
+
+  getStudentAccountCandidates(): Observable<OperationResult<StudentAccountCandidate[]>> {
+    return this.http.get<OperationResult<StudentAccountCandidate[]>>(`${this.accountGenUrl}/student-candidates`);
+  }
+
+  generateStudentAccount(studentId: number): Observable<OperationResult<GenerateStudentAccountResult>> {
+    return this.http.post<OperationResult<GenerateStudentAccountResult>>(`${this.accountGenUrl}/students/generate`, { studentId });
+  }
+
+  generateBulkStudentAccounts(studentIds: number[]): Observable<OperationResult<GenerateBulkStudentAccountsResult>> {
+    return this.http.post<OperationResult<GenerateBulkStudentAccountsResult>>(`${this.accountGenUrl}/students/generate-bulk`, { studentIds });
+  }
+
+  createParentWithStudents(data: CreateParentWithStudentsRequest): Observable<OperationResult<CreateParentWithStudentsResult>> {
+    return this.http.post<OperationResult<CreateParentWithStudentsResult>>(`${this.accountGenUrl}/parents/create-with-students`, data);
   }
 }

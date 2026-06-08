@@ -33,8 +33,8 @@ public class ParentStudentService : IParentStudentService
         if (student == null || student.IsDeleted)
             return OperationResult<ParentStudentDto>.Failure("الطالب غير موجود");
 
-        var existingLinks = await _unitOfWork.ParentStudents.GetByParentIdAsync(request.ParentId);
-        if (existingLinks.Any(l => !l.IsDeleted && l.StudentId == request.StudentId))
+        var exists = await _unitOfWork.ParentStudents.ExistsByParentAndStudentAsync(request.ParentId, request.StudentId);
+        if (exists)
             return OperationResult<ParentStudentDto>.Failure("ولي الأمر مرتبط بالفعل بهذا الطالب");
 
         var link = _mapper.Map<ParentStudent>(request);

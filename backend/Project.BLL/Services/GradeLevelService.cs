@@ -47,6 +47,10 @@ public class GradeLevelService : IGradeLevelService
         if (existing is not null && !existing.IsDeleted)
             return OperationResult<GradeLevelDto>.Failure("اسم الصف الدراسي موجود بالفعل");
 
+        var duplicateLevelOrderMessage = await ValidateUniqueLevelOrderForCreateAsync(request.LevelOrder);
+        if (duplicateLevelOrderMessage is not null)
+            return OperationResult<GradeLevelDto>.Failure(duplicateLevelOrderMessage);
+
         // 2. Stage validation
         if (request.Stage is not null && !ValidStages.Contains(request.Stage))
             return OperationResult<GradeLevelDto>.Failure("قيمة المرحلة التعليمية غير صحيحة");
@@ -83,6 +87,10 @@ public class GradeLevelService : IGradeLevelService
         var existing = await _unitOfWork.GradeLevels.GetByNameAsync(request.Name);
         if (existing is not null && !existing.IsDeleted && existing.Id != request.Id)
             return OperationResult<GradeLevelDto>.Failure("اسم الصف الدراسي مستخدم بالفعل");
+
+        var duplicateLevelOrderMessage = await ValidateUniqueLevelOrderForUpdateAsync(request.LevelOrder, request.Id);
+        if (duplicateLevelOrderMessage is not null)
+            return OperationResult<GradeLevelDto>.Failure(duplicateLevelOrderMessage);
 
         // 3. Stage validation
         if (request.Stage is not null && !ValidStages.Contains(request.Stage))

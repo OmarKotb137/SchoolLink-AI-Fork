@@ -1,0 +1,551 @@
+<app-sidebar [(isOpen)]="sidebarOpen" />
+<div class="main-content">
+  <app-topbar [userName]="displayUserName" />
+
+  <main class="pt-16 min-h-screen bg-gray-50">
+    <div class="p-4 md:p-6 lg:p-8">
+      <div class="max-w-7xl mx-auto space-y-6 pb-10">
+
+        <section class="bg-white rounded-2xl border border-gray-100 shadow-lg overflow-hidden">
+          <div class="p-6 bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-600 text-white">
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div>
+                <span class="text-sm font-medium text-blue-100 block mb-1">Student Progression</span>
+                <h2 class="text-2xl md:text-3xl font-bold mb-2">إدارة نهاية العام الدراسي</h2>
+                <p class="text-sm md:text-base text-blue-50 max-w-3xl">
+                  ترقية الطلاب أو إبقاؤهم في نفس الصف أو تخريجهم مع معالجة جزئية آمنة لكل طالب على حدة.
+                </p>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3 min-w-[260px]">
+                <div class="bg-white/10 border border-white/20 rounded-2xl p-4 text-center">
+                  <span class="block text-xs text-blue-100 mb-1">الطلاب المحمّلون</span>
+                  <strong class="text-2xl font-bold">{{ candidates().length }}</strong>
+                </div>
+                <div class="bg-white/10 border border-white/20 rounded-2xl p-4 text-center">
+                  <span class="block text-xs text-blue-100 mb-1">المحددون</span>
+                  <strong class="text-2xl font-bold">{{ selectedCount() }}</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div class="space-y-3">
+          <div *ngIf="errorMessage()" class="flex items-center gap-3 p-4 rounded-2xl bg-red-50 border border-red-200 text-red-800">
+            <span class="material-symbols-outlined">error</span>
+            <span>{{ errorMessage() }}</span>
+          </div>
+
+          <div *ngIf="successMessage()" class="flex items-center gap-3 p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800">
+            <span class="material-symbols-outlined">check_circle</span>
+            <span>{{ successMessage() }}</span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 xl:grid-cols-12 gap-6">
+          <section class="xl:col-span-4 bg-white rounded-2xl border border-gray-100 shadow-lg p-5 space-y-5 h-fit">
+            <div>
+              <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+                <span class="material-symbols-outlined text-indigo-600">filter_alt</span>
+                اختيار مصدر العملية
+              </h3>
+              <p class="text-sm text-gray-500 mt-1">
+                اختر السنة والصف ثم حمّل كل القيود النشطة الموجودة في هذا الصف عبر كل فصوله.
+              </p>
+            </div>
+
+            <div>
+              <label class="block mb-2 text-sm font-medium text-gray-900">السنة الدراسية المصدر</label>
+              <select
+                class="w-full bg-gray-50 border border-gray-200 rounded-2xl p-3 text-sm"
+                [ngModel]="selectedSourceAcademicYearId()"
+                (ngModelChange)="selectedSourceAcademicYearId.set($event); onSourceSelectionChanged()">
+                <option [ngValue]="null">-- اختر السنة --</option>
+                <option *ngFor="let year of academicYears()" [ngValue]="year.id">
+                  {{ year.name }} {{ year.isCurrent ? '(الحالية)' : '' }}
+                </option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block mb-2 text-sm font-medium text-gray-900">الصف الدراسي المصدر</label>
+              <select
+                class="w-full bg-gray-50 border border-gray-200 rounded-2xl p-3 text-sm"
+                [ngModel]="selectedSourceGradeLevelId()"
+                (ngModelChange)="selectedSourceGradeLevelId.set($event); onSourceSelectionChanged()">
+                <option [ngValue]="null">-- اختر الصف --</option>
+                <option *ngFor="let grade of gradeLevels()" [ngValue]="grade.id">
+                  {{ grade.name }}
+                </option>
+              </select>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div class="rounded-2xl border border-gray-200 bg-gray-50 p-4">
+                <span class="text-xs text-gray-500 block mb-1">الصف التالي</span>
+                <strong class="text-sm text-gray-900">
+                  {{ nextGradeLevel()?.name || 'لا يوجد صف تالٍ' }}
+                </strong>
+              </div>
+
+              <div class="rounded-2xl border border-gray-200 bg-gray-50 p-4">
+                <span class="text-xs text-gray-500 block mb-1">سنوات لاحقة</span>
+                <strong class="text-sm text-gray-900">{{ futureAcademicYears().length }}</strong>
+              </div>
+            </div>
+
+            <button
+              (click)="loadCandidates()"
+              [disabled]="isBootstrapping() || isLoadingCandidates()"
+              class="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-2xl text-white bg-gradient-to-r from-blue-600 to-indigo-600 disabled:opacity-60 disabled:cursor-not-allowed hover:shadow-lg transition-all">
+              <span class="material-symbols-outlined text-lg">
+                {{ isLoadingCandidates() ? 'hourglass_top' : 'group_search' }}
+              </span>
+              {{ isLoadingCandidates() ? 'جارٍ تحميل الطلاب...' : 'تحميل المرشحين' }}
+            </button>
+
+            <div class="border-t border-gray-100 pt-5 space-y-4">
+              <div>
+                <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <span class="material-symbols-outlined text-indigo-600">task_alt</span>
+                  إعداد العملية
+                </h3>
+                <p class="text-sm text-gray-500 mt-1">
+                  اختر نوع العملية ثم حدد الوجهة المطلوبة إذا كانت العملية ليست تخرجاً.
+                </p>
+              </div>
+
+              <div class="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  (click)="onActionChanged(1)"
+                  class="rounded-2xl border px-3 py-3 text-sm font-medium transition-all"
+                  [class.bg-blue-600]="action() === 1"
+                  [class.text-white]="action() === 1"
+                  [class.border-blue-600]="action() === 1"
+                  [class.bg-white]="action() !== 1"
+                  [class.text-gray-800]="action() !== 1"
+                  [class.border-gray-200]="action() !== 1">
+                  ترقية
+                </button>
+
+                <button
+                  type="button"
+                  (click)="onActionChanged(2)"
+                  class="rounded-2xl border px-3 py-3 text-sm font-medium transition-all"
+                  [class.bg-amber-500]="action() === 2"
+                  [class.text-white]="action() === 2"
+                  [class.border-amber-500]="action() === 2"
+                  [class.bg-white]="action() !== 2"
+                  [class.text-gray-800]="action() !== 2"
+                  [class.border-gray-200]="action() !== 2">
+                  إبقاء
+                </button>
+
+                <button
+                  type="button"
+                  (click)="onActionChanged(3)"
+                  class="rounded-2xl border px-3 py-3 text-sm font-medium transition-all"
+                  [class.bg-emerald-600]="action() === 3"
+                  [class.text-white]="action() === 3"
+                  [class.border-emerald-600]="action() === 3"
+                  [class.bg-white]="action() !== 3"
+                  [class.text-gray-800]="action() !== 3"
+                  [class.border-gray-200]="action() !== 3">
+                  تخرج
+                </button>
+              </div>
+
+              <div *ngIf="hasTargetConfigurationIssue()" class="p-4 rounded-2xl border border-amber-200 bg-amber-50 text-amber-800 text-sm">
+                {{ hasTargetConfigurationIssue() }}
+              </div>
+
+              <div *ngIf="action() !== 3" class="space-y-4">
+                <div>
+                  <label class="block mb-2 text-sm font-medium text-gray-900">السنة الدراسية الهدف</label>
+                  <select
+                    class="w-full bg-gray-50 border border-gray-200 rounded-2xl p-3 text-sm"
+                    [ngModel]="selectedTargetAcademicYearId()"
+                    (ngModelChange)="onTargetAcademicYearChanged($event)">
+                    <option [ngValue]="null">-- اختر السنة الهدف --</option>
+                    <option *ngFor="let year of futureAcademicYears()" [ngValue]="year.id">{{ year.name }}</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label class="block mb-2 text-sm font-medium text-gray-900">الفصل الهدف</label>
+                  <select
+                    class="w-full bg-gray-50 border border-gray-200 rounded-2xl p-3 text-sm"
+                    [ngModel]="selectedTargetClassId()"
+                    (ngModelChange)="selectedTargetClassId.set($event)">
+                    <option [ngValue]="null">-- اختر الفصل الهدف --</option>
+                    <option *ngFor="let cls of availableTargetClasses()" [ngValue]="cls.id">
+                      {{ cls.name }} - {{ cls.gradeLevelName || cls.gradeLevelId }}
+                    </option>
+                  </select>
+                </div>
+
+                <div class="p-4 rounded-2xl border border-gray-200 bg-gray-50 text-sm text-gray-700">
+                  الصف المستهدف:
+                  <strong>{{ action() === 1 ? (nextGradeLevel()?.name || 'غير متاح') : (selectedSourceGradeLevel()?.name || 'غير محدد') }}</strong>
+                </div>
+              </div>
+
+              <div *ngIf="action() === 3" class="p-4 rounded-2xl border border-red-200 bg-red-50 text-red-800 text-sm">
+                سيتم إغلاق القيد الحالي وتعطيل الطالب، وقد تُعطَّل حسابات أولياء الأمور إذا لم يعد لديهم أبناء نشطون.
+              </div>
+
+              <div>
+                <label class="block mb-2 text-sm font-medium text-gray-900">تاريخ التنفيذ</label>
+                <input
+                  type="date"
+                  class="w-full bg-gray-50 border border-gray-200 rounded-2xl p-3 text-sm"
+                  [ngModel]="effectiveDate()"
+                  (ngModelChange)="effectiveDate.set($event)" />
+              </div>
+
+              <div>
+                <label class="block mb-2 text-sm font-medium text-gray-900">ملاحظة إدارية</label>
+                <textarea
+                  rows="3"
+                  class="w-full bg-gray-50 border border-gray-200 rounded-2xl p-3 text-sm resize-none"
+                  placeholder="تُحفظ داخل سبب الإغلاق للقيد الحالي"
+                  [ngModel]="note()"
+                  (ngModelChange)="note.set($event)"></textarea>
+              </div>
+
+              <div class="rounded-2xl border border-gray-200 bg-gray-50 p-4 space-y-2 text-sm">
+                <div class="flex items-center justify-between">
+                  <span class="text-gray-500">العملية الحالية</span>
+                  <strong class="text-gray-900">{{ getActionLabel(action()) }}</strong>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-gray-500">عدد الطلاب المحددين</span>
+                  <strong class="text-gray-900">{{ selectedCount() }}</strong>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-gray-500">حسابات الطلاب المتأثرة</span>
+                  <strong class="text-gray-900">{{ action() === 3 ? selectedStudentsWithAccountsCount() : 0 }}</strong>
+                </div>
+              </div>
+
+              <button
+                (click)="execute()"
+                [disabled]="!canExecute() || isExecuting()"
+                class="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-2xl text-white bg-gradient-to-r from-emerald-600 to-teal-600 disabled:opacity-60 disabled:cursor-not-allowed hover:shadow-lg transition-all">
+                <span class="material-symbols-outlined text-lg">
+                  {{ isExecuting() ? 'hourglass_top' : 'play_circle' }}
+                </span>
+                {{ isExecuting() ? 'جارٍ تنفيذ العملية...' : 'تنفيذ العملية' }}
+              </button>
+            </div>
+          </section>
+
+          <section class="xl:col-span-8 space-y-6">
+            <div class="bg-white rounded-2xl border border-gray-100 shadow-lg p-5 space-y-5">
+              <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                <div>
+                  <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-indigo-600">tune</span>
+                    أدوات التحديد والفلترة
+                  </h3>
+                  <p class="text-sm text-gray-500 mt-1">
+                    التحديد الذكي يعمل على النتائج المعروضة حالياً بعد البحث والفلاتر.
+                  </p>
+                </div>
+
+                <div class="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+                  المعروض حالياً:
+                  <strong class="text-gray-900">{{ filteredCandidates().length }}</strong>
+                  من أصل
+                  <strong class="text-gray-900">{{ candidates().length }}</strong>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                <div>
+                  <label class="block mb-2 text-sm font-medium text-gray-900">بحث</label>
+                  <input
+                    type="text"
+                    class="w-full bg-gray-50 border border-gray-200 rounded-2xl p-3 text-sm"
+                    placeholder="اسم الطالب أو الفصل"
+                    [ngModel]="searchQuery()"
+                    (ngModelChange)="searchQuery.set($event)" />
+                </div>
+
+                <div>
+                  <label class="block mb-2 text-sm font-medium text-gray-900">حالة الحساب</label>
+                  <select
+                    class="w-full bg-gray-50 border border-gray-200 rounded-2xl p-3 text-sm"
+                    [ngModel]="accountFilter()"
+                    (ngModelChange)="accountFilter.set($event)">
+                    <option value="all">الكل</option>
+                    <option value="with-account">له حساب طالب</option>
+                    <option value="without-account">بدون حساب</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label class="block mb-2 text-sm font-medium text-gray-900">حالة الدرجة النهائية</label>
+                  <select
+                    class="w-full bg-gray-50 border border-gray-200 rounded-2xl p-3 text-sm"
+                    [ngModel]="gradeFilter()"
+                    (ngModelChange)="gradeFilter.set($event)">
+                    <option value="all">الكل</option>
+                    <option value="published">منشورة</option>
+                    <option value="unpublished">غير منشورة</option>
+                    <option value="missing">بدون درجات</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label class="block mb-2 text-sm font-medium text-gray-900">الترتيب</label>
+                  <select
+                    class="w-full bg-gray-50 border border-gray-200 rounded-2xl p-3 text-sm"
+                    [ngModel]="sortMode()"
+                    (ngModelChange)="sortMode.set($event)">
+                    <option value="name">بالاسم</option>
+                    <option value="high">الأعلى درجة</option>
+                    <option value="low">الأقل درجة</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 lg:grid-cols-[220px,1fr] gap-4">
+                <div>
+                  <label class="block mb-2 text-sm font-medium text-gray-900">درجة النجاح المقترحة</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    class="w-full bg-gray-50 border border-gray-200 rounded-2xl p-3 text-sm"
+                    [ngModel]="threshold()"
+                    (ngModelChange)="threshold.set(+$event || 0)" />
+                </div>
+
+                <div class="flex flex-wrap items-end gap-2">
+                  <button
+                    type="button"
+                    (click)="selectVisibleByThreshold('gte')"
+                    class="px-4 py-3 rounded-2xl bg-blue-50 border border-blue-200 text-blue-800 text-sm font-medium">
+                    تحديد >= الدرجة
+                  </button>
+                  <button
+                    type="button"
+                    (click)="selectVisibleByThreshold('lt')"
+                    class="px-4 py-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 text-sm font-medium">
+                    تحديد &lt; الدرجة
+                  </button>
+                  <button
+                    type="button"
+                    (click)="selectVisibleByThreshold('missing')"
+                    class="px-4 py-3 rounded-2xl bg-gray-100 border border-gray-200 text-gray-800 text-sm font-medium">
+                    تحديد بدون درجات
+                  </button>
+                  <button
+                    type="button"
+                    (click)="toggleAllVisibleCandidates(true)"
+                    class="px-4 py-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm font-medium">
+                    تحديد الكل
+                  </button>
+                  <button
+                    type="button"
+                    (click)="clearSelection()"
+                    class="px-4 py-3 rounded-2xl bg-white border border-gray-200 text-gray-800 text-sm font-medium">
+                    إلغاء الكل
+                  </button>
+                </div>
+              </div>
+
+              <div class="flex flex-wrap gap-2">
+                <button type="button" (click)="applyPreset(50, 'gte')" class="px-3 py-2 rounded-full bg-blue-50 border border-blue-200 text-blue-800 text-sm">
+                  >= 50
+                </button>
+                <button type="button" (click)="applyPreset(60, 'gte')" class="px-3 py-2 rounded-full bg-blue-50 border border-blue-200 text-blue-800 text-sm">
+                  >= 60
+                </button>
+                <button type="button" (click)="applyPreset(70, 'gte')" class="px-3 py-2 rounded-full bg-blue-50 border border-blue-200 text-blue-800 text-sm">
+                  >= 70
+                </button>
+                <button type="button" (click)="applyPreset(50, 'lt')" class="px-3 py-2 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-sm">
+                  &lt; 50
+                </button>
+              </div>
+            </div>
+
+            <div class="bg-white rounded-2xl border border-gray-100 shadow-lg overflow-hidden">
+              <div class="p-5 border-b border-gray-100 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                <div>
+                  <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-indigo-600">groups</span>
+                    قائمة الطلاب المرشحين
+                  </h3>
+                  <p class="text-sm text-gray-500 mt-1">
+                    يمكنك اختيار جزء من الطلاب وترك الباقي لمعالجة دفعة لاحقة.
+                  </p>
+                </div>
+
+                <div class="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+                  المحدد من النتائج المعروضة:
+                  <strong class="text-gray-900">{{ selectedVisibleCount() }}</strong>
+                </div>
+              </div>
+
+              <div class="overflow-x-auto">
+                <table class="w-full text-sm text-right text-gray-600">
+                  <thead class="bg-gray-50 text-xs uppercase text-gray-700 border-b border-gray-100">
+                    <tr>
+                      <th class="px-4 py-4 text-center">
+                        <input
+                          type="checkbox"
+                          [checked]="allVisibleSelected()"
+                          (change)="toggleAllVisibleCandidates($any($event.target).checked)" />
+                      </th>
+                      <th class="px-4 py-4">الطالب</th>
+                      <th class="px-4 py-4">الفصل الحالي</th>
+                      <th class="px-4 py-4">الحساب</th>
+                      <th class="px-4 py-4">الدرجة النهائية</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    <tr
+                      *ngFor="let candidate of filteredCandidates(); trackBy: trackByEnrollmentId"
+                      class="border-b border-gray-100 hover:bg-blue-50 transition-colors">
+                      <td class="px-4 py-4 text-center">
+                        <input
+                          type="checkbox"
+                          [checked]="isCandidateSelected(candidate.enrollmentId)"
+                          (change)="toggleCandidateSelection(candidate.enrollmentId, $any($event.target).checked)" />
+                      </td>
+                      <td class="px-4 py-4">
+                        <div class="font-semibold text-gray-900">{{ candidate.studentName }}</div>
+                        <div class="text-xs text-gray-500">{{ candidate.currentGradeLevelName }}</div>
+                      </td>
+                      <td class="px-4 py-4">
+                        <span class="inline-flex items-center rounded-full px-3 py-1 border bg-gray-50 text-gray-800 border-gray-200">
+                          {{ candidate.currentClassName }}
+                        </span>
+                      </td>
+                      <td class="px-4 py-4">
+                        <span
+                          class="inline-flex items-center rounded-full px-3 py-1 border text-xs font-medium"
+                          [class.bg-emerald-50]="candidate.hasStudentAccount"
+                          [class.text-emerald-800]="candidate.hasStudentAccount"
+                          [class.border-emerald-200]="candidate.hasStudentAccount"
+                          [class.bg-gray-100]="!candidate.hasStudentAccount"
+                          [class.text-gray-700]="!candidate.hasStudentAccount"
+                          [class.border-gray-200]="!candidate.hasStudentAccount">
+                          {{ candidate.hasStudentAccount ? 'له حساب' : 'بدون حساب' }}
+                        </span>
+                      </td>
+                      <td class="px-4 py-4">
+                        <span
+                          class="inline-flex items-center rounded-full px-3 py-1 border text-xs font-medium"
+                          [ngClass]="getFinalGradeBadgeClass(candidate)">
+                          {{ getFinalGradeStatus(candidate) }}
+                        </span>
+                      </td>
+                    </tr>
+
+                    <tr *ngIf="!filteredCandidates().length">
+                      <td colspan="5" class="px-6 py-14 text-center">
+                        <div class="flex flex-col items-center justify-center text-gray-500">
+                          <span class="material-symbols-outlined text-5xl mb-3 text-gray-400">school</span>
+                          <p class="text-base font-semibold text-gray-900 mb-1">لا توجد نتائج معروضة</p>
+                          <p class="text-sm">حمّل المرشحين أولاً أو غيّر الفلاتر الحالية.</p>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <section *ngIf="lastResult()" class="bg-white rounded-2xl border border-gray-100 shadow-lg p-5 space-y-5">
+              <div>
+                <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <span class="material-symbols-outlined text-indigo-600">summarize</span>
+                  ملخص آخر تنفيذ
+                </h3>
+              </div>
+
+              <div class="grid grid-cols-2 lg:grid-cols-5 gap-3">
+                <div class="rounded-2xl border border-gray-200 bg-gray-50 p-4 text-center">
+                  <span class="block text-xs text-gray-500 mb-1">إجمالي الطلب</span>
+                  <strong class="text-xl text-gray-900">{{ lastResult()!.totalRequested }}</strong>
+                </div>
+                <div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-center">
+                  <span class="block text-xs text-emerald-700 mb-1">نجاح</span>
+                  <strong class="text-xl text-emerald-900">{{ lastResult()!.successCount }}</strong>
+                </div>
+                <div class="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-center">
+                  <span class="block text-xs text-blue-700 mb-1">تمت ترقيتهم</span>
+                  <strong class="text-xl text-blue-900">{{ lastResult()!.promotedCount }}</strong>
+                </div>
+                <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-center">
+                  <span class="block text-xs text-amber-700 mb-1">تم إبقاؤهم</span>
+                  <strong class="text-xl text-amber-900">{{ lastResult()!.retainedCount }}</strong>
+                </div>
+                <div class="rounded-2xl border border-teal-200 bg-teal-50 p-4 text-center">
+                  <span class="block text-xs text-teal-700 mb-1">تم تخريجهم</span>
+                  <strong class="text-xl text-teal-900">{{ lastResult()!.graduatedCount }}</strong>
+                </div>
+              </div>
+
+              <div *ngIf="lastResult()!.failureCount > 0" class="space-y-3">
+                <div class="p-4 rounded-2xl bg-red-50 border border-red-200 text-red-800 text-sm">
+                  بقي في الجدول فقط الطلاب الذين فشلت معالجتهم، وتم الإبقاء على تحديدهم لتسهيل إعادة المحاولة.
+                </div>
+
+                <div class="overflow-x-auto rounded-2xl border border-red-100">
+                  <table class="w-full text-sm text-right">
+                    <thead class="bg-red-50 text-red-900">
+                      <tr>
+                        <th class="px-4 py-3">الطالب</th>
+                        <th class="px-4 py-3">سبب الفشل</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr *ngFor="let failure of lastResult()!.failures" class="border-t border-red-100">
+                        <td class="px-4 py-3 font-medium">{{ failure.studentName }}</td>
+                        <td class="px-4 py-3">{{ failure.reason }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4" *ngIf="lastResult()!.deactivatedStudents.length || lastResult()!.deactivatedParents.length">
+                <div class="rounded-2xl border border-gray-200 bg-gray-50 p-4">
+                  <h4 class="font-semibold text-gray-900 mb-3">الطلاب الذين تم تعطيلهم</h4>
+                  <div *ngIf="lastResult()!.deactivatedStudents.length; else noStudents" class="flex flex-wrap gap-2">
+                    <span *ngFor="let name of lastResult()!.deactivatedStudents" class="px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm">
+                      {{ name }}
+                    </span>
+                  </div>
+                  <ng-template #noStudents>
+                    <p class="text-sm text-gray-500">لا يوجد طلاب تم تعطيلهم في آخر تنفيذ.</p>
+                  </ng-template>
+                </div>
+
+                <div class="rounded-2xl border border-gray-200 bg-gray-50 p-4">
+                  <h4 class="font-semibold text-gray-900 mb-3">أولياء الأمور الذين تم تعطيلهم</h4>
+                  <div *ngIf="lastResult()!.deactivatedParents.length; else noParents" class="flex flex-wrap gap-2">
+                    <span *ngFor="let name of lastResult()!.deactivatedParents" class="px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-800 text-sm">
+                      {{ name }}
+                    </span>
+                  </div>
+                  <ng-template #noParents>
+                    <p class="text-sm text-gray-500">لا يوجد أولياء أمور تم تعطيلهم في آخر تنفيذ.</p>
+                  </ng-template>
+                </div>
+              </div>
+            </section>
+          </section>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>

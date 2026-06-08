@@ -7,7 +7,13 @@ import { Sidebar } from '../../layouts/sidebar/sidebar';
 import { Topbar } from '../../layouts/topbar/topbar';
 import { ParentStudentLink, ParentStudentService, RelationshipType } from '../../core/services/parent-student.service';
 import { Student, StudentService } from '../../core/services/student.service';
-import { User, UserService } from '../../core/services/user.service';
+import {
+  GenerateBulkStudentAccountsResult,
+  GenerateStudentAccountResult,
+  StudentAccountCandidate,
+  User,
+  UserService
+} from '../../core/services/user.service';
 
 type AccountTab = 'all' | 'admins' | 'parents' | 'students';
 type ManagedRole = 'Admin' | 'Parent' | 'Student';
@@ -28,22 +34,36 @@ export class UserManagement implements OnInit {
   sidebarOpen = signal(false);
   activeTab = signal<AccountTab>('all');
   searchQuery = signal('');
+  candidateSearchQuery = signal('');
   currentPage = signal(1);
   itemsPerPage = signal(10);
   users = signal<User[]>([]);
+  students = signal<Student[]>([]);
+  studentCandidates = signal<StudentAccountCandidate[]>([]);
+  parentLinkedStudents = signal<Array<{ student: Student; link: ParentStudentLink | null }>>([]);
+  parentChildSearchResults = signal<Student[]>([]);
+  selectedChildren = signal<Array<{ student: Student; relationship: RelationshipType }>>([]);
+
   isLoading = signal(false);
+  isGenerating = signal(false);
+  isSearchingStudents = signal(false);
+
   errorMessage = signal<string | null>(null);
   successMessage = signal<string | null>(null);
 
   showCreateModal = signal(false);
   showEditModal = signal(false);
   showParentLinksModal = signal(false);
+  showCredentialsModal = signal(false);
+  showBulkResultModal = signal(false);
+
   editingUserId = signal<number | null>(null);
   managingParent = signal<User | null>(null);
-  students = signal<Student[]>([]);
-  parentLinkedStudents = signal<Array<{ student: Student; link: ParentStudentLink | null }>>([]);
   selectedStudentToLink = signal<number | null>(null);
   selectedRelationship = signal<RelationshipType>(1);
+  lastGeneratedCred = signal<GenerateStudentAccountResult | null>(null);
+  bulkResult = signal<GenerateBulkStudentAccountsResult | null>(null);
+  parentChildSearch = signal('');
 
   formName = signal('');
   formEmail = signal('');
@@ -73,24 +93,43 @@ export class UserManagement implements OnInit {
     });
   });
 
+  filteredCandidates = computed(() => {
+    const query = this.candidateSearchQuery().trim().toLowerCase();
+    if (!query) {
+      return this.studentCandidates();
+    }
+
+    return this.studentCandidates().filter(candidate =>
+      candidate.fullName.toLowerCase().includes(query) ||
+      (candidate.nationalId ?? '').toLowerCase().includes(query)
+    );
+  });
+
   paginatedUsers = computed(() => {
     const start = (this.currentPage() - 1) * this.itemsPerPage();
     return this.filteredUsers().slice(start, start + this.itemsPerPage());
   });
 
-  totalPages = computed(() => {
-    return Math.max(1, Math.ceil(this.filteredUsers().length / this.itemsPerPage()));
-  });
+  totalPages = computed(() => Math.max(1, Math.ceil(this.filteredUsers().length / this.itemsPerPage())));
+  totalCount = computed(() => this.users().length);
+  adminCount = computed(() => this.users().filter(user => user.role.toLowerCase() === 'admin').length);
+  parentCount = computed(() => this.users().filter(user => user.role.toLowerCase() === 'parent').length);
+  studentCount = computed(() => this.users().filter(user => user.role.toLowerCase() === 'student').length);
+  activeCount = computed(() => this.users().filter(user => user.isActive).length);
+  studentCandidatesCount = computed(() => this.studentCandidates().length);
+  linkedStudentIdsForManagingParent = computed(() => new Set(this.parentLinkedStudents().map(item => item.student.id)));
+  availableStudentsForParent = computed(() => this.students().filter(student => !this.linkedStudentIdsForManagingParent().has(student.id)));
+  managedParentChildrenCount = computed(() => this.parentLinkedStudents().length);
 
   nextPage() {
     if (this.currentPage() < this.totalPages()) {
-      this.currentPage.update(p => p + 1);
+      this.currentPage.update(page => page + 1);
     }
   }
 
   prevPage() {
     if (this.currentPage() > 1) {
-      this.currentPage.update(p => p - 1);
+      this.currentPage.update(page => page - 1);
     }
   }
 
@@ -98,22 +137,10 @@ export class UserManagement implements OnInit {
     this.currentPage.set(page);
   }
 
-  totalCount = computed(() => this.users().length);
-  adminCount = computed(() => this.users().filter(user => user.role.toLowerCase() === 'admin').length);
-  parentCount = computed(() => this.users().filter(user => user.role.toLowerCase() === 'parent').length);
-  studentCount = computed(() => this.users().filter(user => user.role.toLowerCase() === 'student').length);
-  activeCount = computed(() => this.users().filter(user => user.isActive).length);
-  linkedStudentIdsForManagingParent = computed(() =>
-    new Set(this.parentLinkedStudents().map(item => item.student.id))
-  );
-  availableStudentsForParent = computed(() =>
-    this.students().filter(student => !this.linkedStudentIdsForManagingParent().has(student.id))
-  );
-  managedParentChildrenCount = computed(() => this.parentLinkedStudents().length);
-
   ngOnInit() {
     this.loadUsers();
     this.loadStudents();
+    this.loadStudentCandidates();
   }
 
   loadUsers() {
@@ -125,8 +152,7 @@ export class UserManagement implements OnInit {
         this.isLoading.set(false);
       },
       error: err => {
-        const msg = err?.error?.message || 'تعذر تحميل الحسابات';
-        this.showError(msg);
+        this.showError(this.extractErrorMessage(err, 'تعذر تحميل الحسابات'));
         this.isLoading.set(false);
       }
     });
@@ -134,18 +160,22 @@ export class UserManagement implements OnInit {
 
   loadStudents() {
     this.studentService.getAll().subscribe({
-      next: students => this.students.set(students.data ?? []),
-      error: err => {
-        const msg = err?.error?.message || 'تعذر تحميل قائمة الطلاب';
-        this.showError(msg);
-      }
+      next: result => this.students.set(result.data ?? result),
+      error: err => this.showError(this.extractErrorMessage(err, 'تعذر تحميل قائمة الطلاب'))
+    });
+  }
+
+  loadStudentCandidates() {
+    this.userService.getStudentAccountCandidates().subscribe({
+      next: res => this.studentCandidates.set(res.data ?? []),
+      error: err => this.showError(this.extractErrorMessage(err, 'تعذر تحميل الطلاب بدون حسابات'))
     });
   }
 
   openCreateModal(role?: ManagedRole) {
     this.resetForm();
     if (role) {
-      this.formRole.set(role);
+      this.setFormRole(role);
     }
     this.showCreateModal.set(true);
   }
@@ -163,7 +193,11 @@ export class UserManagement implements OnInit {
   closeModals() {
     this.showCreateModal.set(false);
     this.showEditModal.set(false);
+    this.showCredentialsModal.set(false);
+    this.showBulkResultModal.set(false);
     this.editingUserId.set(null);
+    this.lastGeneratedCred.set(null);
+    this.bulkResult.set(null);
     this.resetForm();
   }
 
@@ -191,68 +225,140 @@ export class UserManagement implements OnInit {
     this.isLoading.set(true);
 
     this.parentStudentService.getStudentsByParent(parentId).subscribe({
-      next: students => {
-        if ((students.data ?? students).length === 0) {
+      next: result => {
+        const students = result.data ?? result;
+        if (students.length === 0) {
           this.parentLinkedStudents.set([]);
           this.isLoading.set(false);
           return;
         }
 
         forkJoin(
-          students.map((student: any) =>
+          students.map((student: Student) =>
             this.parentStudentService.getParentsByStudent(student.id).pipe(
               map((links: any) => ({
                 student,
-                link: (links.data ?? links).find((link: any) => link.parentId === parentId) ?? null
+                link: (links.data ?? links).find((link: ParentStudentLink) => link.parentId === parentId) ?? null
               })),
               catchError(() => of({ student, link: null }))
             )
           )
         ).subscribe({
-          next: (rows: any) => {
-            this.parentLinkedStudents.set(rows);
+          next: rows => {
+            this.parentLinkedStudents.set(rows as Array<{ student: Student; link: ParentStudentLink | null }>);
             this.isLoading.set(false);
           },
           error: err => {
-            const msg = err?.error?.message || 'تعذر تحميل أبناء ولي الأمر';
-            this.showError(msg);
+            this.showError(this.extractErrorMessage(err, 'تعذر تحميل أبناء ولي الأمر'));
             this.isLoading.set(false);
           }
         });
       },
       error: err => {
-        const msg = err?.error?.message || 'تعذر تحميل أبناء ولي الأمر';
-        this.showError(msg);
+        this.showError(this.extractErrorMessage(err, 'تعذر تحميل أبناء ولي الأمر'));
         this.isLoading.set(false);
       }
     });
   }
 
-  saveAccount() {
-    if (!this.formName() || !this.formEmail() || !this.formPassword()) {
-      this.showError('يرجى إدخال الاسم والبريد الإلكتروني وكلمة المرور');
+  generateSingleStudentAccount(candidate: StudentAccountCandidate) {
+    if (this.isGenerating()) {
       return;
     }
 
-    this.isLoading.set(true);
-    this.userService.createUser({
-      fullName: this.formName(),
-      email: this.formEmail(),
-      password: this.formPassword(),
-      phone: this.formPhone() || undefined,
-      role: this.formRole()
-    }).subscribe({
-      next: () => {
-        this.showSuccess('تم إنشاء الحساب بنجاح');
-        this.closeModals();
+    this.isGenerating.set(true);
+    this.userService.generateStudentAccount(candidate.studentId).subscribe({
+      next: res => {
+        this.lastGeneratedCred.set(res.data ?? null);
+        this.showCredentialsModal.set(true);
+        this.loadStudentCandidates();
         this.loadUsers();
+        this.loadStudents();
+        this.isGenerating.set(false);
       },
       error: err => {
-        const msg = err?.error?.message || 'تعذر إنشاء الحساب';
-        this.showError(msg);
-        this.isLoading.set(false);
+        this.showError(this.extractErrorMessage(err, 'تعذر إنشاء الحساب'));
+        this.isGenerating.set(false);
       }
     });
+  }
+
+  generateAllStudentAccounts() {
+    const allIds = this.filteredCandidates().map(candidate => candidate.studentId);
+    if (allIds.length === 0) {
+      return;
+    }
+
+    if (!confirm(`هل تريد إنشاء حسابات لـ ${allIds.length} طالب؟`)) {
+      return;
+    }
+
+    this.isGenerating.set(true);
+    this.userService.generateBulkStudentAccounts(allIds).subscribe({
+      next: res => {
+        this.bulkResult.set(res.data ?? null);
+        this.showBulkResultModal.set(true);
+        this.loadStudentCandidates();
+        this.loadUsers();
+        this.loadStudents();
+        this.isGenerating.set(false);
+      },
+      error: err => {
+        this.showError(this.extractErrorMessage(err, 'تعذر إنشاء الحسابات'));
+        this.isGenerating.set(false);
+      }
+    });
+  }
+
+  searchStudentsForParent(query: string) {
+    this.parentChildSearch.set(query);
+    if (query.trim().length < 2) {
+      this.parentChildSearchResults.set([]);
+      return;
+    }
+
+    this.isSearchingStudents.set(true);
+    this.studentService.search({ searchTerm: query, isActive: true }).subscribe({
+      next: res => {
+        const all: Student[] = res.data ?? res;
+        const selectedIds = new Set(this.selectedChildren().map(child => child.student.id));
+        this.parentChildSearchResults.set(all.filter(student => !selectedIds.has(student.id)));
+        this.isSearchingStudents.set(false);
+      },
+      error: () => {
+        this.parentChildSearchResults.set([]);
+        this.isSearchingStudents.set(false);
+      }
+    });
+  }
+
+  addChildToParent(student: Student) {
+    if (!this.selectedChildren().some(child => child.student.id === student.id)) {
+      this.selectedChildren.update(children => [...children, { student, relationship: 1 }]);
+    }
+
+    this.parentChildSearch.set('');
+    this.parentChildSearchResults.set([]);
+  }
+
+  removeChildFromParent(studentId: number) {
+    this.selectedChildren.update(children => children.filter(child => child.student.id !== studentId));
+  }
+
+  updateChildRelationship(studentId: number, value: string) {
+    const relationship = Number(value) as RelationshipType;
+    this.selectedChildren.update(children =>
+      children.map(child => child.student.id === studentId ? { ...child, relationship } : child)
+    );
+  }
+
+  saveAccount() {
+    if (this.formRole() === 'Parent' && this.selectedChildren().length > 0) {
+      this.saveParentWithStudents();
+      return;
+    }
+
+    this.saveAccountBasic();
   }
 
   updateAccount() {
@@ -273,8 +379,7 @@ export class UserManagement implements OnInit {
         this.loadUsers();
       },
       error: err => {
-        const msg = err?.error?.message || 'تعذر تحديث الحساب';
-        this.showError(msg);
+        this.showError(this.extractErrorMessage(err, 'تعذر تحديث الحساب'));
         this.isLoading.set(false);
       }
     });
@@ -290,8 +395,7 @@ export class UserManagement implements OnInit {
         this.loadUsers();
       },
       error: err => {
-        const msg = err?.error?.message || 'تعذر تغيير حالة الحساب';
-        this.showError(msg);
+        this.showError(this.extractErrorMessage(err, 'تعذر تغيير حالة الحساب'));
         this.isLoading.set(false);
       }
     });
@@ -309,8 +413,7 @@ export class UserManagement implements OnInit {
         this.loadUsers();
       },
       error: err => {
-        const msg = err?.error?.message || 'تعذر حذف الحساب';
-        this.showError(msg);
+        this.showError(this.extractErrorMessage(err, 'تعذر حذف الحساب'));
         this.isLoading.set(false);
       }
     });
@@ -341,8 +444,7 @@ export class UserManagement implements OnInit {
         this.loadParentChildren(parent.id);
       },
       error: err => {
-        const msg = err?.error?.message || 'تعذر ربط الطالب بولي الأمر';
-        this.showError(msg);
+        this.showError(this.extractErrorMessage(err, 'تعذر ربط الطالب بولي الأمر'));
         this.isLoading.set(false);
       }
     });
@@ -365,8 +467,7 @@ export class UserManagement implements OnInit {
         this.loadParentChildren(parent.id);
       },
       error: err => {
-        const msg = err?.error?.message || 'تعذر فك الربط';
-        this.showError(msg);
+        this.showError(this.extractErrorMessage(err, 'تعذر فك الربط'));
         this.isLoading.set(false);
       }
     });
@@ -386,8 +487,7 @@ export class UserManagement implements OnInit {
         this.loadParentChildren(parent.id);
       },
       error: err => {
-        const msg = err?.error?.message || 'تعذر تحديث صلة القرابة';
-        this.showError(msg);
+        this.showError(this.extractErrorMessage(err, 'تعذر تحديث صلة القرابة'));
         this.isLoading.set(false);
       }
     });
@@ -395,6 +495,105 @@ export class UserManagement implements OnInit {
 
   setSelectedRelationshipFromValue(value: string) {
     this.selectedRelationship.set(Number(value) as RelationshipType);
+  }
+
+  setFormRole(value: string) {
+    this.formRole.set(value as ManagedRole);
+    if (value !== 'Parent') {
+      this.selectedChildren.set([]);
+      this.parentChildSearch.set('');
+      this.parentChildSearchResults.set([]);
+    }
+  }
+
+  copyToClipboard(text: string) {
+    navigator.clipboard.writeText(text)
+      .then(() => this.showSuccess('تم النسخ'))
+      .catch(() => this.showError('تعذر النسخ إلى الحافظة'));
+  }
+
+  printSingleCredentials() {
+    const credential = this.lastGeneratedCred();
+    if (!credential) {
+      return;
+    }
+
+    const html = `
+      <html lang="ar" dir="rtl">
+        <head>
+          <title>بيانات دخول الطالب</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 24px; direction: rtl; }
+            .card { border: 1px solid #e5e7eb; border-radius: 16px; padding: 24px; max-width: 520px; margin: 0 auto; }
+            h1 { margin-top: 0; color: #111827; }
+            .row { margin-bottom: 12px; }
+            .label { color: #6b7280; font-size: 13px; margin-bottom: 4px; }
+            .value { font-size: 18px; color: #111827; font-weight: 700; }
+          </style>
+        </head>
+        <body>
+          <div class="card">
+            <h1>بيانات دخول الطالب</h1>
+            <div class="row"><div class="label">اسم الطالب</div><div class="value">${this.escapeHtml(credential.studentName)}</div></div>
+            <div class="row"><div class="label">البريد الإلكتروني</div><div class="value">${this.escapeHtml(credential.generatedEmail)}</div></div>
+            <div class="row"><div class="label">كلمة المرور</div><div class="value">${this.escapeHtml(credential.plainPassword)}</div></div>
+          </div>
+        </body>
+      </html>`;
+
+    this.printHtmlDocument(html);
+  }
+
+  printBulkCredentials() {
+    const bulk = this.bulkResult();
+    if (!bulk) {
+      return;
+    }
+
+    const rows = bulk.results.map(result => `
+      <tr>
+        <td>${this.escapeHtml(result.studentName || 'غير معروف')}</td>
+        <td>${this.escapeHtml(result.generatedEmail || '—')}</td>
+        <td>${this.escapeHtml(result.plainPassword || '—')}</td>
+        <td>${result.success ? 'تم' : this.escapeHtml(result.errorMessage || 'فشل')}</td>
+      </tr>
+    `).join('');
+
+    const html = `
+      <html lang="ar" dir="rtl">
+        <head>
+          <title>تقرير بيانات الدخول</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 24px; direction: rtl; }
+            table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+            th, td { border: 1px solid #e5e7eb; padding: 10px; text-align: right; }
+            th { background: #f9fafb; }
+            h1 { margin-top: 0; color: #111827; }
+            .summary { display: flex; gap: 16px; margin-top: 16px; }
+          </style>
+        </head>
+        <body>
+          <h1>تقرير توليد حسابات الطلاب</h1>
+          <div class="summary">
+            <div>إجمالي: ${bulk.totalRequested}</div>
+            <div>نجح: ${bulk.successCount}</div>
+            <div>فشل: ${bulk.failureCount}</div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>الطالب</th>
+                <th>بريد الدخول</th>
+                <th>كلمة المرور</th>
+                <th>الحالة</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </body>
+      </html>`;
+
+    this.printHtmlDocument(html);
   }
 
   getRoleLabel(role: string): string {
@@ -437,12 +636,76 @@ export class UserManagement implements OnInit {
     return !!this.formName() && !this.isLoading();
   }
 
+  private saveAccountBasic() {
+    if (!this.formName() || !this.formEmail() || !this.formPassword()) {
+      this.showError('يرجى إدخال الاسم والبريد الإلكتروني وكلمة المرور');
+      return;
+    }
+
+    this.isLoading.set(true);
+    this.userService.createUser({
+      fullName: this.formName(),
+      email: this.formEmail(),
+      password: this.formPassword(),
+      phone: this.formPhone() || undefined,
+      role: this.formRole()
+    }).subscribe({
+      next: () => {
+        this.showSuccess('تم إنشاء الحساب بنجاح');
+        this.closeModals();
+        this.loadUsers();
+      },
+      error: err => {
+        this.showError(this.extractErrorMessage(err, 'تعذر إنشاء الحساب'));
+        this.isLoading.set(false);
+      }
+    });
+  }
+
+  private saveParentWithStudents() {
+    if (!this.formName() || !this.formEmail() || !this.formPassword()) {
+      this.showError('يرجى إدخال جميع البيانات المطلوبة');
+      return;
+    }
+
+    this.isLoading.set(true);
+    this.userService.createParentWithStudents({
+      fullName: this.formName(),
+      email: this.formEmail(),
+      password: this.formPassword(),
+      phone: this.formPhone() || undefined,
+      children: this.selectedChildren().map(child => ({
+        studentId: child.student.id,
+        relationship: child.relationship
+      }))
+    }).subscribe({
+      next: res => {
+        const data = res.data;
+        const message = data && data.failedCount > 0
+          ? `تم إنشاء الحساب، ربط ${data.linkedCount} طالب، وفشل ${data.failedCount}`
+          : `تم إنشاء الحساب وربط ${data?.linkedCount ?? 0} طالب بنجاح`;
+
+        this.isLoading.set(false);
+        this.showSuccess(message);
+        this.closeModals();
+        this.loadUsers();
+      },
+      error: err => {
+        this.showError(this.extractErrorMessage(err, 'تعذر إنشاء الحساب'));
+        this.isLoading.set(false);
+      }
+    });
+  }
+
   private resetForm() {
     this.formName.set('');
     this.formEmail.set('');
     this.formPassword.set('');
     this.formPhone.set('');
     this.formRole.set('Parent');
+    this.selectedChildren.set([]);
+    this.parentChildSearch.set('');
+    this.parentChildSearchResults.set([]);
   }
 
   private toManagedRole(role: string): ManagedRole {
@@ -454,6 +717,34 @@ export class UserManagement implements OnInit {
       default:
         return 'Parent';
     }
+  }
+
+  private extractErrorMessage(err: unknown, fallback: string): string {
+    const error = err as { message?: string };
+    return error?.message || fallback;
+  }
+
+  private escapeHtml(value: string): string {
+    return value
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
+  }
+
+  private printHtmlDocument(html: string) {
+    const printWindow = window.open('', '_blank', 'width=900,height=700');
+    if (!printWindow) {
+      this.showError('تعذر فتح نافذة الطباعة');
+      return;
+    }
+
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
   }
 
   private showError(message: string) {

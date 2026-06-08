@@ -3,7 +3,6 @@ import { authGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
   // Login pages
-  { path: 'login', loadComponent: () => import('./pages/login/login').then(c => c.Login) },
   { path: 'login-staff', loadComponent: () => import('./pages/login-staff/login-staff').then(c => c.LoginStaff) },
   { path: 'login-admin', loadComponent: () => import('./pages/login-admin/login-admin').then(c => c.LoginAdmin) },
   { path: 'login-guardian', loadComponent: () => import('./pages/login-guardian/login-guardian').then(c => c.LoginGuardian) },
@@ -41,6 +40,7 @@ export const routes: Routes = [
   { path: 'add-teacher', canActivate: [authGuard], data: { roles: ['admin'] }, loadComponent: () => import('./features/add-teacher/add-teacher').then(c => c.AddTeacher) },
   { path: 'student-management', canActivate: [authGuard], data: { roles: ['admin'] }, loadComponent: () => import('./features/student-management/student-management').then(c => c.StudentManagement) },
   { path: 'transfer-student', canActivate: [authGuard], data: { roles: ['admin'] }, loadComponent: () => import('./features/transfer-student/transfer-student').then(c => c.TransferStudent) },
+  { path: 'student-progression', canActivate: [authGuard], data: { roles: ['admin'] }, loadComponent: () => import('./features/student-progression/student-progression').then(c => c.StudentProgression) },
   { path: 'settings', canActivate: [authGuard], data: { roles: ['admin'] }, loadComponent: () => import('./features/settings/settings').then(c => c.Settings) },
   { path: 'grade-monitor', canActivate: [authGuard], loadComponent: () => import('./features/grade-monitor/grade-monitor').then(c => c.GradeMonitor) },
   { path: 'child-progress', canActivate: [authGuard], loadComponent: () => import('./features/child-progress/child-progress').then(c => c.ChildProgress) },

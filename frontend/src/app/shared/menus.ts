@@ -24,6 +24,7 @@ export const ADMIN_MENU: SidebarMenuItem[] = [
   { label: 'إدارة الطلاب', icon: 'school', route: '/student-management' },
   { label: 'استيراد الطلاب', icon: 'file_upload', route: '/import-students' },
   { label: 'نقل طالب', icon: 'transfer_within_a_station', route: '/transfer-student' },
+  { label: 'إدارة نهاية العام', icon: 'school', route: '/student-progression' },
   { label: 'الإشعارات', icon: 'notifications', route: '/notifications' },
   { label: 'الإعدادات', icon: 'settings', route: '/settings' },
 ];

@@ -24,4 +24,6 @@ Thumbs.db
 docs/platform.md
 /chat.txt
 obj/Project.DAL.EntityFrameworkCore.targets
-account-generation-plan.md
+account-generation-plan-v3.md
+grade-promotion-plan-v2.md
+tailwind-flowbite-guidelines.md

@@ -13,8 +13,6 @@ import { RoomService, Room } from '../../core/services/room.service';
   styleUrl: './room-management.css',
 })
 export class RoomManagement implements OnInit {
-  readonly otherRoomTypeValue = 'Other';
-
   sidebarOpen = signal(false);
   displayUserName = localStorage.getItem('fullName') || localStorage.getItem('username') || 'المشرف';
 
@@ -50,32 +48,21 @@ export class RoomManagement implements OnInit {
     this.currentPage.set(page);
   }
 
-  predefinedRoomTypes = [
+  roomTypes = [
     { value: 'Classroom',   label: 'قاعة دراسية' },
     { value: 'ScienceLab',  label: 'معمل علوم'   },
     { value: 'ComputerLab', label: 'معمل حاسب'   },
     { value: 'LanguageLab', label: 'معمل لغات'   },
     { value: 'Library',     label: 'مكتبة'        },
-    { value: 'Playground',  label: 'ملعب'         }
+    { value: 'Playground',  label: 'ملعب'         },
+    { value: 'Other',       label: 'أخرى'         }
   ];
 
-  roomTypeOptions = computed(() => [
-    ...this.predefinedRoomTypes,
-    { value: this.otherRoomTypeValue, label: 'أخرى' }
-  ]);
-
-  availableRoomTypes = computed(() => {
-    const customTypes = this.rooms()
-      .map(room => room.type?.trim())
-      .filter((type): type is string => !!type && this.isCustomType(type))
-      .filter((type, index, list) => list.indexOf(type) === index)
-      .sort((a, b) => a.localeCompare(b, 'ar'));
-
-    return [
-      ...this.predefinedRoomTypes,
-      ...customTypes.map(type => ({ value: type, label: this.getRoomTypeLabel(type) }))
-    ];
-  });
+  otherRoomTypeValue = 'Other';
+  selectedRoomType = 'Classroom';
+  customRoomType = '';
+  roomTypeOptions = computed(() => this.roomTypes);
+  availableRoomTypes = computed(() => this.roomTypes);
 
   // plain property (not signal) — [(ngModel)] doesn't work with signals
   selectedTypeFilter = '';
@@ -86,8 +73,6 @@ export class RoomManagement implements OnInit {
   successMessage = signal('');
 
   newRoom: Partial<Room> = { name: '', capacity: 30, type: 'Classroom' };
-  selectedRoomType = 'Classroom';
-  customRoomType = '';
 
   ngOnInit() {
     this.loadRooms();
@@ -125,6 +110,9 @@ export class RoomManagement implements OnInit {
 
   editRoom(room: Room) {
     this.editingRoomId.set(room.id);
+    const hasKnownType = this.roomTypes.some(type => type.value === room.type);
+    this.selectedRoomType = hasKnownType ? room.type : this.otherRoomTypeValue;
+    this.customRoomType = hasKnownType ? '' : room.type;
     this.newRoom = {
       name:     room.name,
       // FIX: Backend Capacity is int? — null-coalesce to 30 so the number
@@ -133,27 +121,18 @@ export class RoomManagement implements OnInit {
       capacity: room.capacity ?? 30,
       type:     room.type
     };
-
-    if (room.type === this.otherRoomTypeValue) {
-      this.selectedRoomType = this.otherRoomTypeValue;
-      this.customRoomType = '';
-    } else if (this.isCustomType(room.type)) {
-      this.selectedRoomType = this.otherRoomTypeValue;
-      this.customRoomType = room.type;
-    } else {
-      this.selectedRoomType = room.type;
-      this.customRoomType = '';
-    }
   }
 
   cancelEdit() {
     this.editingRoomId.set(null);
-    this.resetForm();
+    this.selectedRoomType = 'Classroom';
+    this.customRoomType = '';
+    this.newRoom = { name: '', capacity: 30, type: 'Classroom' };
   }
 
   onRoomTypeChange() {
     if (this.selectedRoomType === this.otherRoomTypeValue) {
-      this.newRoom.type = '';
+      this.newRoom.type = this.customRoomType.trim();
       return;
     }
 
@@ -166,18 +145,10 @@ export class RoomManagement implements OnInit {
       ? this.customRoomType.trim()
       : this.selectedRoomType;
 
-    if (!this.newRoom.name?.trim()) return;
-    if (!resolvedType) {
-      this.showError('اكتب نوع القاعة الجديد بدل اختيار "أخرى" فقط.');
+    if (!this.newRoom.name?.trim() || !resolvedType) {
+      this.showError('أدخل اسم القاعة ونوعها قبل الحفظ.');
       return;
     }
-
-    if (this.selectedRoomType === this.otherRoomTypeValue && this.isDuplicateCustomType(resolvedType)) {
-      this.showError('نوع القاعة الذي كتبته موجود بالفعل، اختره من القائمة بدلاً من تكراره.');
-      return;
-    }
-
-    this.newRoom.type = resolvedType;
 
     // Explicit cast — ngModel with type="number" can return a string
     const capacity = Number(this.newRoom.capacity);
@@ -187,9 +158,9 @@ export class RoomManagement implements OnInit {
     }
 
     if (this.editingRoomId()) {
-      const { name, type } = this.newRoom;
+      const { name } = this.newRoom;
       // room.service.ts now injects `id` into the PUT body automatically
-      this.roomService.update(this.editingRoomId()!, { name, capacity, type }).subscribe({
+      this.roomService.update(this.editingRoomId()!, { name, capacity, type: resolvedType }).subscribe({
         next: () => {
           this.loadRooms();
           this.cancelEdit();
@@ -202,7 +173,7 @@ export class RoomManagement implements OnInit {
         }
       });
     } else {
-      this.roomService.create({ name: this.newRoom.name, capacity, type: this.newRoom.type }).subscribe({
+      this.roomService.create({ name: this.newRoom.name, capacity, type: resolvedType }).subscribe({
         next: () => {
           this.loadRooms();
           this.cancelEdit();
@@ -233,34 +204,7 @@ export class RoomManagement implements OnInit {
   }
 
   getRoomTypeLabel(value: string): string {
-    if (value === this.otherRoomTypeValue) {
-      return 'أخرى';
-    }
-
-    return this.predefinedRoomTypes.find(t => t.value === value)?.label ?? value;
-  }
-
-  private isCustomType(type?: string | null): boolean {
-    if (!type) return false;
-    return !this.predefinedRoomTypes.some(roomType => roomType.value === type);
-  }
-
-  private isDuplicateCustomType(type: string): boolean {
-    const normalizedType = type.trim().toLowerCase();
-
-    return this.rooms().some(room => {
-      if (this.editingRoomId() && room.id === this.editingRoomId()) {
-        return false;
-      }
-
-      return room.type.trim().toLowerCase() === normalizedType;
-    });
-  }
-
-  private resetForm() {
-    this.selectedRoomType = 'Classroom';
-    this.customRoomType = '';
-    this.newRoom = { name: '', capacity: 30, type: 'Classroom' };
+    return this.roomTypes.find(t => t.value === value)?.label ?? value;
   }
 
   private showError(msg: string) {
