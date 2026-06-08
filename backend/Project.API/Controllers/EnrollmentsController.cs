@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Project.BLL.DTOs.Common;
 using Project.BLL.DTOs.Enrollments;
 using Project.BLL.Interfaces;
 
@@ -44,6 +45,15 @@ public class EnrollmentsController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPost("transfer/bulk")]
+    public async Task<IActionResult> BulkTransfer([FromBody] BulkTransferStudentsRequest request)
+    {
+        var result = await _enrollmentService.BulkTransferStudentsAsync(request);
+        if (!result.IsSuccess)
+            return BadRequest(result);
+        return Ok(result);
+    }
+
     [HttpGet("by-student/{studentId:int}")]
     public async Task<IActionResult> GetByStudent(int studentId)
     {
@@ -71,10 +81,28 @@ public class EnrollmentsController : ControllerBase
         return Ok(result);
     }
 
-    [HttpGet("transfers-history")]
-    public async Task<IActionResult> GetTransferHistory([FromQuery] int academicYearId)
+    [HttpGet("by-class/{classId:int}/paged")]
+    public async Task<IActionResult> GetByClassPaged(
+        int classId,
+        [FromQuery] int academicYearId,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] bool activeOnly = true,
+        [FromQuery] string? searchTerm = null)
     {
-        var result = await _enrollmentService.GetTransferHistoryAsync(academicYearId);
+        var result = await _enrollmentService.GetEnrollmentsByClassPagedAsync(classId, academicYearId, page, pageSize, activeOnly, searchTerm);
+        if (!result.IsSuccess)
+            return result.StatusCode == 404 ? NotFound(result) : BadRequest(result);
+        return Ok(result);
+    }
+
+    [HttpGet("transfers-history")]
+    public async Task<IActionResult> GetTransferHistory(
+        [FromQuery] int academicYearId,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
+    {
+        var result = await _enrollmentService.GetTransferHistoryAsync(academicYearId, page, pageSize);
         if (!result.IsSuccess)
             return BadRequest(result);
         return Ok(result);

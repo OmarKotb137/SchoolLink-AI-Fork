@@ -1,5 +1,6 @@
 using AutoMapper;
 using Common.Results;
+using Project.BLL.DTOs.Common;
 using Project.BLL.DTOs.Enrollments;
 using Project.BLL.Interfaces;
 using Project.DAL.Interfaces;
@@ -50,7 +51,7 @@ public class StudentEnrollmentService : IStudentEnrollmentService
 
     public async Task<OperationResult<EnrollmentDto>> TransferStudentAsync(TransferStudentRequest request)
     {
-        var currentEnrollment = await _unitOfWork.StudentEnrollments.GetByIdAsync(request.CurrentEnrollmentId);
+        var currentEnrollment = await _unitOfWork.StudentEnrollments.GetByIdWithDetailsAsync(request.CurrentEnrollmentId);
         if (currentEnrollment == null || currentEnrollment.IsDeleted)
             return OperationResult<EnrollmentDto>.Failure("التسجيل الحالي غير موجود");
 
@@ -61,12 +62,40 @@ public class StudentEnrollmentService : IStudentEnrollmentService
         if (newClass == null || newClass.IsDeleted)
             return OperationResult<EnrollmentDto>.Failure("الفصل الجديد غير موجود");
 
+        // Validation: Same Academic Year
+        if (newClass.AcademicYearId != currentEnrollment.AcademicYearId)
+            return OperationResult<EnrollmentDto>.Failure("لا يمكن نقل الطالب لسنة دراسية مختلفة. النقل يتم داخل نفس السنة الدراسية فقط.");
+
+        // Validation: Same Grade Level
+        var currentClass = currentEnrollment.Class;
+        if (currentClass == null || currentClass.IsDeleted)
+            return OperationResult<EnrollmentDto>.Failure("الفصل الحالي غير موجود");
+
+        if (newClass.GradeLevelId != currentClass.GradeLevelId)
+            return OperationResult<EnrollmentDto>.Failure("لا يمكن نقل الطالب لصف دراسي مختلف. النقل يتم داخل نفس الصف الدراسي فقط.");
+
+        // Validation: TransferDate
+        var transferDate = request.TransferDate;
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        if (transferDate > today)
+            return OperationResult<EnrollmentDto>.Failure("تاريخ النقل لا يمكن أن يكون في المستقبل.");
+
+        if (transferDate < currentEnrollment.EnrolledAt)
+            return OperationResult<EnrollmentDto>.Failure("تاريخ النقل لا يمكن أن يكون قبل تاريخ التسجيل الحالي في الفصل.");
+
+        var academicYear = await _unitOfWork.AcademicYears.GetByIdAsync(currentEnrollment.AcademicYearId);
+        if (academicYear != null && transferDate > academicYear.EndDate)
+            return OperationResult<EnrollmentDto>.Failure("تاريخ النقل خارج نطاق السنة الدراسية الحالية.");
+
+        // Check if student already enrolled in target class
         var existingEnrollments = await _unitOfWork.StudentEnrollments.GetHistoryByStudentAsync(currentEnrollment.StudentId);
         if (existingEnrollments.Any(e => !e.IsDeleted && e.LeftAt == null
             && e.ClassId == request.NewClassId && e.AcademicYearId == currentEnrollment.AcademicYearId))
             return OperationResult<EnrollmentDto>.Failure("الطالب مسجل بالفعل في الفصل الجديد");
 
-        currentEnrollment.LeftAt = request.TransferDate;
+        // Perform transfer
+        currentEnrollment.LeftAt = transferDate;
         currentEnrollment.TransferReason = request.TransferReason;
         _unitOfWork.StudentEnrollments.Update(currentEnrollment);
 
@@ -75,7 +104,7 @@ public class StudentEnrollmentService : IStudentEnrollmentService
             StudentId = currentEnrollment.StudentId,
             ClassId = request.NewClassId,
             AcademicYearId = currentEnrollment.AcademicYearId,
-            EnrolledAt = request.TransferDate
+            EnrolledAt = transferDate
         };
 
         await _unitOfWork.StudentEnrollments.AddAsync(newEnrollment);
@@ -131,6 +160,63 @@ public class StudentEnrollmentService : IStudentEnrollmentService
         return OperationResult<IEnumerable<EnrollmentDto>>.Success(dtos);
     }
 
+    public async Task<OperationResult<PagedResult<EnrollmentDto>>> GetEnrollmentsByClassPagedAsync(int classId, int academicYearId, int page, int pageSize, bool activeOnly = true, string? searchTerm = null)
+    {
+        var classEntity = await _unitOfWork.Classes.GetByIdAsync(classId);
+        if (classEntity == null || classEntity.IsDeleted)
+            return OperationResult<PagedResult<EnrollmentDto>>.Failure("الفصل غير موجود", 404);
+
+        var year = await _unitOfWork.AcademicYears.GetByIdAsync(academicYearId);
+        if (year == null || year.IsDeleted)
+            return OperationResult<PagedResult<EnrollmentDto>>.Failure("السنة الدراسية غير موجودة", 404);
+
+        page = page < 1 ? 1 : page;
+        pageSize = pageSize <= 0 ? 20 : Math.Min(pageSize, 100);
+
+        var enrollments = await _unitOfWork.StudentEnrollments.GetByClassWithStudentAsync(classId, academicYearId);
+
+        var query = enrollments
+            .Where(e => !e.IsDeleted && e.Student != null && !e.Student.IsDeleted);
+
+        if (activeOnly)
+            query = query.Where(e => e.LeftAt == null);
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+            query = query.Where(e => e.Student!.FullName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase));
+
+        var totalCount = query.Count();
+        var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+
+        var pagedItems = query
+            .OrderBy(e => e.Student!.FullName)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(e => new EnrollmentDto
+            {
+                Id = e.Id,
+                StudentId = e.StudentId,
+                StudentName = e.Student!.FullName,
+                ClassId = e.ClassId,
+                ClassName = classEntity.Name,
+                AcademicYearId = e.AcademicYearId,
+                AcademicYearName = year.Name,
+                EnrolledAt = e.EnrolledAt,
+                LeftAt = e.LeftAt,
+                TransferReason = e.TransferReason
+            })
+            .ToList();
+
+        var result = new PagedResult<EnrollmentDto>
+        {
+            Items = pagedItems,
+            TotalCount = totalCount,
+            Page = page,
+            PageSize = pageSize
+        };
+
+        return OperationResult<PagedResult<EnrollmentDto>>.Success(result, "تم جلب الطلاب بنجاح");
+    }
+
     public async Task<OperationResult<EnrollmentDto>> GetActiveEnrollmentByStudentAsync(int studentId, int academicYearId)
     {
         var student = await _unitOfWork.Students.GetByIdAsync(studentId);
@@ -152,40 +238,46 @@ public class StudentEnrollmentService : IStudentEnrollmentService
         return OperationResult<EnrollmentDto>.Success(dto);
     }
 
-    public async Task<OperationResult<IEnumerable<TransferHistoryDto>>> GetTransferHistoryAsync(int academicYearId)
+    public async Task<OperationResult<PagedResult<TransferHistoryDto>>> GetTransferHistoryAsync(int academicYearId, int page = 1, int pageSize = 20)
     {
-        var transfers = await _unitOfWork.StudentEnrollments.GetTransfersHistoryAsync(academicYearId);
-        
-        var dtos = transfers.Select(e => new TransferHistoryDto
-        {
-            Id = e.Id,
-            StudentName = e.Student?.FullName ?? string.Empty,
-            FromClass = e.Class?.Name ?? string.Empty,
-            // To find the "ToClass", we'd need to look at the next enrollment for the same student.
-            // But since the current enrollment tracks the destination class? Wait.
-            // In TransferStudentAsync: 
-            // currentEnrollment.LeftAt = request.TransferDate; currentEnrollment.TransferReason = request.TransferReason; _unitOfWork.Update(currentEnrollment);
-            // var newEnrollment = new StudentEnrollment { ClassId = request.NewClassId ... }
-            // This means `e.Class.Name` is the OLD class. We don't have the NEW class directly on the closed enrollment.
-            // A quick way is to set ToClass = "تم النقل", or we fetch their active enrollment.
-            // Let's resolve the next enrollment.
-        }).ToList();
+        page = page < 1 ? 1 : page;
+        pageSize = pageSize <= 0 ? 20 : Math.Min(pageSize, 100);
 
-        // Let's properly fill ToClass by looking up their next active enrollment for this year.
-        foreach (var dto in dtos)
-        {
-            var nextEnrollment = await _unitOfWork.StudentEnrollments.GetActiveByStudentAndYearAsync(transfers.First(t => t.Id == dto.Id).StudentId, academicYearId);
-            if (nextEnrollment != null)
+        var transfers = await _unitOfWork.StudentEnrollments.GetTransfersHistoryAsync(academicYearId, page, pageSize);
+
+        // Fetch all active enrollments for this year in one query (avoid N+1)
+        var activeEnrollments = await _unitOfWork.StudentEnrollments.GetActiveEnrollmentsByYearAsync(academicYearId);
+
+        var activeEnrollmentLookup = activeEnrollments
+            .Where(e => !e.IsDeleted && e.Student != null && !e.Student.IsDeleted)
+            .ToDictionary(e => e.StudentId, e => e.Class?.Name ?? "غير معروف");
+
+        var dtos = transfers
+            .Where(t => !t.IsDeleted && t.Student != null && !t.Student.IsDeleted)
+            .Select(t => new TransferHistoryDto
             {
-                var nextClass = await _unitOfWork.Classes.GetByIdAsync(nextEnrollment.ClassId);
-                dto.ToClass = nextClass?.Name ?? "غير معروف";
-            }
-            var original = transfers.First(t => t.Id == dto.Id);
-            dto.TransferDate = original.LeftAt;
-            dto.Reason = original.TransferReason;
-        }
+                Id = t.Id,
+                StudentName = t.Student!.FullName,
+                FromClass = t.Class?.Name ?? string.Empty,
+                ToClass = activeEnrollmentLookup.TryGetValue(t.StudentId, out var className) ? className : "غير معروف",
+                TransferDate = t.LeftAt,
+                Reason = t.TransferReason
+            })
+            .ToList();
 
-        return OperationResult<IEnumerable<TransferHistoryDto>>.Success(dtos);
+        // Get total count for pagination (separate query)
+        var totalCount = await _unitOfWork.StudentEnrollments.GetTransfersCountAsync(academicYearId);
+        var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+
+        var result = new PagedResult<TransferHistoryDto>
+        {
+            Items = dtos,
+            TotalCount = totalCount,
+            Page = page,
+            PageSize = pageSize
+        };
+
+        return OperationResult<PagedResult<TransferHistoryDto>>.Success(result, "تم جلب سجل النقل بنجاح");
     }
 
     public async Task<OperationResult<BulkEnrollResultDto>> BulkEnrollStudentsAsync(BulkEnrollStudentsRequest request)
@@ -250,5 +342,157 @@ public class StudentEnrollmentService : IStudentEnrollmentService
         await _unitOfWork.SaveChangesAsync();
         return OperationResult<BulkEnrollResultDto>.Success(result,
             $"تم تسجيل {result.SuccessCount} من {result.TotalRequested} طالب بنجاح");
+    }
+
+    public async Task<OperationResult<BulkTransferResultDto>> BulkTransferStudentsAsync(BulkTransferStudentsRequest request)
+    {
+        if (request.EnrollmentIds == null || request.EnrollmentIds.Count == 0)
+            return OperationResult<BulkTransferResultDto>.Failure("يجب اختيار طالب واحد على الأقل");
+
+        var newClass = await _unitOfWork.Classes.GetByIdAsync(request.NewClassId);
+        if (newClass == null || newClass.IsDeleted)
+            return OperationResult<BulkTransferResultDto>.Failure("الفصل الهدف غير موجود");
+
+        var transferDate = request.TransferDate;
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        if (transferDate > today)
+            return OperationResult<BulkTransferResultDto>.Failure("تاريخ النقل لا يمكن أن يكون في المستقبل.");
+
+        var result = new BulkTransferResultDto { TotalRequested = request.EnrollmentIds.Count };
+
+        // Load all enrollments first
+        var enrollments = await _unitOfWork.StudentEnrollments.GetByIdsWithDetailsAsync(request.EnrollmentIds);
+        var enrollmentDict = enrollments.ToDictionary(e => e.Id);
+
+        foreach (var enrollmentId in request.EnrollmentIds)
+        {
+            if (!enrollmentDict.TryGetValue(enrollmentId, out var currentEnrollment))
+            {
+                result.FailureCount++;
+                result.Failures.Add(new BulkTransferFailureDto
+                {
+                    EnrollmentId = enrollmentId,
+                    StudentName = "غير معروف",
+                    Reason = "التسجيل غير موجود"
+                });
+                continue;
+            }
+
+            if (currentEnrollment.IsDeleted)
+            {
+                result.FailureCount++;
+                result.Failures.Add(new BulkTransferFailureDto
+                {
+                    EnrollmentId = enrollmentId,
+                    StudentName = currentEnrollment.Student?.FullName ?? "غير معروف",
+                    Reason = "التسجيل محذوف"
+                });
+                continue;
+            }
+
+            if (currentEnrollment.LeftAt != null)
+            {
+                result.FailureCount++;
+                result.Failures.Add(new BulkTransferFailureDto
+                {
+                    EnrollmentId = enrollmentId,
+                    StudentName = currentEnrollment.Student?.FullName ?? "غير معروف",
+                    Reason = "التسجيل الحالي مغلق بالفعل"
+                });
+                continue;
+            }
+
+            var currentClass = currentEnrollment.Class;
+            if (currentClass == null || currentClass.IsDeleted)
+            {
+                result.FailureCount++;
+                result.Failures.Add(new BulkTransferFailureDto
+                {
+                    EnrollmentId = enrollmentId,
+                    StudentName = currentEnrollment.Student?.FullName ?? "غير معروف",
+                    Reason = "الفصل الحالي غير موجود"
+                });
+                continue;
+            }
+
+            // Validation: Same Academic Year
+            if (newClass.AcademicYearId != currentEnrollment.AcademicYearId)
+            {
+                result.FailureCount++;
+                result.Failures.Add(new BulkTransferFailureDto
+                {
+                    EnrollmentId = enrollmentId,
+                    StudentName = currentEnrollment.Student?.FullName ?? "غير معروف",
+                    Reason = "لا يمكن النقل لسنة دراسية مختلفة"
+                });
+                continue;
+            }
+
+            // Validation: Same Grade Level
+            if (newClass.GradeLevelId != currentClass.GradeLevelId)
+            {
+                result.FailureCount++;
+                result.Failures.Add(new BulkTransferFailureDto
+                {
+                    EnrollmentId = enrollmentId,
+                    StudentName = currentEnrollment.Student?.FullName ?? "غير معروف",
+                    Reason = "لا يمكن النقل لصف دراسي مختلف"
+                });
+                continue;
+            }
+
+            // Validation: TransferDate >= EnrolledAt
+            if (transferDate < currentEnrollment.EnrolledAt)
+            {
+                result.FailureCount++;
+                result.Failures.Add(new BulkTransferFailureDto
+                {
+                    EnrollmentId = enrollmentId,
+                    StudentName = currentEnrollment.Student?.FullName ?? "غير معروف",
+                    Reason = "تاريخ النقل قبل تاريخ التسجيل الحالي"
+                });
+                continue;
+            }
+
+            // Check if student already enrolled in target class
+            var existingEnrollments = await _unitOfWork.StudentEnrollments.GetHistoryByStudentAsync(currentEnrollment.StudentId);
+            if (existingEnrollments.Any(e => !e.IsDeleted && e.LeftAt == null
+                && e.ClassId == request.NewClassId && e.AcademicYearId == currentEnrollment.AcademicYearId))
+            {
+                result.FailureCount++;
+                result.Failures.Add(new BulkTransferFailureDto
+                {
+                    EnrollmentId = enrollmentId,
+                    StudentName = currentEnrollment.Student?.FullName ?? "غير معروف",
+                    Reason = "الطالب مسجل بالفعل في الفصل الهدف"
+                });
+                continue;
+            }
+
+            // Perform transfer
+            currentEnrollment.LeftAt = transferDate;
+            currentEnrollment.TransferReason = request.TransferReason;
+            _unitOfWork.StudentEnrollments.Update(currentEnrollment);
+
+            var newEnrollment = new StudentEnrollment
+            {
+                StudentId = currentEnrollment.StudentId,
+                ClassId = request.NewClassId,
+                AcademicYearId = currentEnrollment.AcademicYearId,
+                EnrolledAt = transferDate
+            };
+
+            await _unitOfWork.StudentEnrollments.AddAsync(newEnrollment);
+            result.SuccessCount++;
+        }
+
+        await _unitOfWork.SaveChangesAsync();
+
+        var message = result.FailureCount == 0
+            ? $"تم نقل {result.SuccessCount} طالب بنجاح"
+            : $"تم نقل {result.SuccessCount} من {result.TotalRequested} طالب، وفشل {result.FailureCount}";
+
+        return OperationResult<BulkTransferResultDto>.Success(result, message);
     }
 }

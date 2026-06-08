@@ -1,158 +1,394 @@
 import { Component, signal, computed, inject, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { finalize, forkJoin } from 'rxjs';
+import { AcademicYear, AcademicYearService } from '../../core/services/academic-year.service';
+import { ClassEntity, ClassService } from '../../core/services/class.service';
+import { GradeLevel, GradeLevelService } from '../../core/services/grade-level.service';
+import { EnrollmentService, Enrollment, TransferHistory, GetEnrollmentsFilter } from '../../core/services/enrollment.service';
+import { PagedResult } from '../../core/models/api.model';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
 import { Topbar } from '../../layouts/topbar/topbar';
-import { EnrollmentService, Enrollment, TransferHistory } from '../../core/services/enrollment.service';
-import { ClassService, ClassEntity } from '../../core/services/class.service';
-import { AcademicYearService } from '../../core/services/academic-year.service';
-import { finalize } from 'rxjs/operators';
 
 @Component({
   selector: 'app-transfer-student',
-  imports: [Sidebar, Topbar],
+  standalone: true,
+  imports: [CommonModule, FormsModule, Sidebar, Topbar],
   templateUrl: './transfer-student.html',
   styleUrl: './transfer-student.css'
 })
 export class TransferStudent implements OnInit {
   sidebarOpen = signal(false);
-  
+  displayUserName = localStorage.getItem('fullName') || localStorage.getItem('username') || 'المشرف';
+
   private enrollmentService = inject(EnrollmentService);
   private classService = inject(ClassService);
   private academicYearService = inject(AcademicYearService);
-
-  searchQuery = signal('');
-  selectedSourceClassId = signal<number | null>(null);
-  selectedStudent = signal<Enrollment | null>(null);
-  targetClassId = signal<number | null>(null);
-  transferReason = signal('');
-  
-  showError = signal(false);
-  showSuccess = signal(false);
-  isLoadingStudents = signal(false);
-  isTransferring = signal(false);
-
-  lastTransfer = signal<{ fromClass: string; toClass: string } | null>(null);
+  private gradeLevelService = inject(GradeLevelService);
 
   allClasses = signal<ClassEntity[]>([]);
-  students = signal<Enrollment[]>([]);
+  academicYears = signal<AcademicYear[]>([]);
+  gradeLevels = signal<GradeLevel[]>([]);
+  enrollments = signal<Enrollment[]>([]);
+  totalCount = signal(0);
+  totalPages = signal(1);
   transferHistory = signal<TransferHistory[]>([]);
-  currentAcademicYearId = signal<number | null>(null);
 
-  filteredStudents = computed(() => {
-    const q = this.searchQuery().trim().toLowerCase();
-    if (!q) return this.students();
-    return this.students().filter(s => s.studentName?.toLowerCase().includes(q));
+  selectedSourceGradeLevelId = signal<number | null>(null);
+  selectedSourceClassId = signal<number | null>(null);
+  selectedTargetClassId = signal<number | null>(null);
+  transferReason = signal('');
+  searchQuery = signal('');
+
+  currentPage = signal(1);
+  pageSize = signal(20);
+
+  historyPage = signal(1);
+  historyPageSize = signal(10);
+  historyTotalCount = signal(0);
+  historyTotalPages = signal(1);
+
+  selectedEnrollmentIds = signal<number[]>([]);
+  selectAllCurrentPage = signal(false);
+
+  isBootstrapping = signal(false);
+  isLoadingEnrollments = signal(false);
+  isTransferring = signal(false);
+  errorMessage = signal('');
+  successMessage = signal('');
+  lastTransfer = signal<{ count: number; fromClass: string; toClass: string } | null>(null);
+
+  currentAcademicYear = computed(() =>
+    this.academicYears().find(y => y.isCurrent) ?? this.academicYears()[0] ?? null
+  );
+
+  sourceClass = computed(() =>
+    this.allClasses().find(c => c.id === this.selectedSourceClassId()) ?? null
+  );
+
+  filteredSourceClasses = computed(() => {
+    const yearId = this.currentAcademicYear()?.id;
+    const gradeId = this.selectedSourceGradeLevelId();
+    if (!yearId || !gradeId) return [];
+    return this.allClasses()
+      .filter(c => c.academicYearId === yearId && c.gradeLevelId === gradeId)
+      .sort((a, b) => a.name.localeCompare(b.name, 'ar'));
   });
 
   availableTargetClasses = computed(() => {
-    const sourceClassId = this.selectedSourceClassId();
-    return this.allClasses().filter(c => c.id !== sourceClassId);
+    const sc = this.sourceClass();
+    if (!sc) return [];
+    return this.allClasses()
+      .filter(c => c.id !== sc.id && c.academicYearId === sc.academicYearId && c.gradeLevelId === sc.gradeLevelId)
+      .sort((a, b) => a.name.localeCompare(b.name, 'ar'));
   });
 
+  hasSelection = computed(() => this.selectedEnrollmentIds().length > 0);
+  selectedCount = computed(() => this.selectedEnrollmentIds().length);
+
+  canTransfer = computed(() =>
+    this.hasSelection() &&
+    !!this.selectedTargetClassId() &&
+    this.selectedTargetClassId() !== this.selectedSourceClassId() &&
+    !this.isTransferring()
+  );
+
   ngOnInit() {
-    this.academicYearService.getAll().subscribe((years: any[]) => {
-      const currentYear = years.find((y: any) => y.isCurrent);
-      if (currentYear) {
-        this.currentAcademicYearId.set(currentYear.id);
-        this.loadClasses();
-        this.loadTransferHistory(currentYear.id);
-      }
+    this.loadPageData();
+  }
+
+  loadPageData() {
+    this.isBootstrapping.set(true);
+    this.clearMessages();
+
+    forkJoin({
+      years: this.academicYearService.getAll(),
+      grades: this.gradeLevelService.getAll(),
+      classes: this.classService.getAll()
+    }).pipe(finalize(() => this.isBootstrapping.set(false)))
+    .subscribe({
+      next: ({ years, grades, classes }) => {
+        const unwrappedYears = this.unwrapData<AcademicYear[]>(years) ?? [];
+        const unwrappedGrades = this.unwrapData<GradeLevel[]>(grades) ?? [];
+        const unwrappedClasses = this.unwrapData<ClassEntity[]>(classes) ?? [];
+
+        this.academicYears.set(unwrappedYears);
+        this.gradeLevels.set(unwrappedGrades);
+        this.allClasses.set(unwrappedClasses);
+
+        const yearId = this.currentAcademicYear()?.id;
+        if (yearId) this.loadTransferHistory();
+      },
+      error: err => this.showError(this.extractError(err, 'تعذر تحميل بيانات الصفحة'))
     });
   }
 
-  loadClasses() {
-    this.classService.getAll().subscribe(classes => {
-      this.allClasses.set(classes);
-    });
+  onSourceGradeLevelChange() {
+    this.selectedSourceClassId.set(null);
+    this.resetSelection();
+    this.enrollments.set([]);
   }
 
-  loadTransferHistory(academicYearId: number) {
-    this.enrollmentService.getTransferHistory(academicYearId).subscribe(history => {
-      this.transferHistory.set(history);
-    });
+  onSourceClassChange() {
+    this.resetSelection();
+    this.currentPage.set(1);
+    this.loadEnrollments();
   }
 
-  onSourceClassChange(classIdStr: string) {
-    const classId = parseInt(classIdStr, 10);
-    if (isNaN(classId)) {
-      this.selectedSourceClassId.set(null);
-      this.students.set([]);
-      this.cancelTransfer();
-      return;
-    }
+  loadEnrollments() {
+    const classId = this.selectedSourceClassId();
+    const yearId = this.currentAcademicYear()?.id;
 
-    this.selectedSourceClassId.set(classId);
-    this.cancelTransfer();
-    
-    const yearId = this.currentAcademicYearId();
-    if (!yearId) return;
+    if (!classId || !yearId) return;
 
-    this.isLoadingStudents.set(true);
-    this.enrollmentService.getByClass(classId, yearId, true)
-      .pipe(finalize(() => this.isLoadingStudents.set(false)))
-      .subscribe(enrollments => {
-        this.students.set(enrollments);
+    this.isLoadingEnrollments.set(true);
+    this.clearMessages();
+
+    const filter: GetEnrollmentsFilter & { classId: number } = {
+      classId,
+      academicYearId: yearId,
+      page: this.currentPage(),
+      pageSize: this.pageSize(),
+      activeOnly: true,
+      searchTerm: this.searchQuery().trim() || undefined
+    };
+
+    this.enrollmentService.getByClassPaged(filter)
+      .pipe(finalize(() => this.isLoadingEnrollments.set(false)))
+      .subscribe({
+        next: (res) => {
+          const result = this.unwrapData<PagedResult<Enrollment>>(res);
+          if (result) {
+            this.enrollments.set(result.items);
+            this.totalCount.set(result.totalCount);
+            this.totalPages.set(result.totalPages ?? 1);
+          }
+          this.updateSelectAllState();
+        },
+        error: err => this.showError(this.extractError(err, 'تعذر تحميل الطلاب'))
       });
   }
 
-  selectStudent(s: Enrollment) {
-    this.selectedStudent.set(s);
-    this.targetClassId.set(null);
-    this.transferReason.set('');
-    this.showError.set(false);
+  onSearchChange() {
+    this.currentPage.set(1);
+    this.loadEnrollments();
   }
 
-  cancelTransfer() {
-    this.selectedStudent.set(null);
-    this.targetClassId.set(null);
+  onPageChange(page: number) {
+    if (page >= 1 && page <= this.totalPages() && page !== this.currentPage()) {
+      this.currentPage.set(page);
+      this.loadEnrollments();
+    }
+  }
+
+  onPageSizeChange() {
+    this.currentPage.set(1);
+    this.loadEnrollments();
+  }
+
+  toggleSelection(enrollmentId: number, checked: boolean) {
+    const selected = new Set(this.selectedEnrollmentIds());
+    if (checked) selected.add(enrollmentId);
+    else selected.delete(enrollmentId);
+    this.selectedEnrollmentIds.set(Array.from(selected));
+  }
+
+  toggleSelectAllCurrentPage(checked: boolean) {
+    const ids = this.enrollments().map(e => e.id);
+    const selected = new Set(this.selectedEnrollmentIds());
+    if (checked) ids.forEach(id => selected.add(id));
+    else ids.forEach(id => selected.delete(id));
+    this.selectedEnrollmentIds.set(Array.from(selected));
+    this.selectAllCurrentPage.set(checked);
+  }
+
+  private updateSelectAllState() {
+    const currentIds = new Set(this.enrollments().map(e => e.id));
+    const selectedIds = new Set(this.selectedEnrollmentIds());
+    this.selectAllCurrentPage.set(currentIds.size > 0 && [...currentIds].every(id => selectedIds.has(id)));
+  }
+
+  private resetSelection() {
+    this.selectedEnrollmentIds.set([]);
+    this.selectAllCurrentPage.set(false);
+    this.selectedTargetClassId.set(null);
     this.transferReason.set('');
-    this.showError.set(false);
+    this.lastTransfer.set(null);
   }
 
   confirmTransfer() {
-    const student = this.selectedStudent();
-    const targetId = this.targetClassId();
-    const yearId = this.currentAcademicYearId();
-
-    if (!student || !targetId || !yearId) {
-      this.showError.set(true);
+    if (!this.canTransfer()) {
+      this.showError('يرجى تحديد طالب/طلاب واختيار الفصل الهدف');
       return;
     }
 
-    this.showError.set(false);
+    const sourceClassName = this.sourceClass()?.name || '';
+    const targetClassName = this.allClasses().find(c => c.id === this.selectedTargetClassId())?.name || '';
+    const enrollmentIds = this.selectedEnrollmentIds();
+    const yearId = this.currentAcademicYear()!.id;
+
     this.isTransferring.set(true);
+    this.clearMessages();
 
-    const fromClassName = this.allClasses().find(c => c.id === this.selectedSourceClassId())?.name || '';
-    const targetClassName = this.allClasses().find(c => c.id === targetId)?.name || '';
+    if (enrollmentIds.length === 1) {
+      this.enrollmentService.transferStudent({
+        currentEnrollmentId: enrollmentIds[0],
+        newClassId: this.selectedTargetClassId()!,
+        transferDate: new Date().toISOString().split('T')[0],
+        transferReason: this.transferReason().trim() || undefined
+      }).pipe(finalize(() => this.isTransferring.set(false)))
+      .subscribe({
+        next: (res) => {
+          if (res && (res as any).isSuccess === false) {
+            this.showError((res as any).message || 'فشل في عملية النقل');
+            return;
+          }
+          this.onTransferSuccess(1, sourceClassName, targetClassName, yearId);
+        },
+        error: (err) => this.handleTransferError(err)
+      });
+    } else {
+      this.enrollmentService.bulkTransfer({
+        enrollmentIds,
+        newClassId: this.selectedTargetClassId()!,
+        transferDate: new Date().toISOString().split('T')[0],
+        transferReason: this.transferReason().trim() || undefined
+      }).pipe(finalize(() => this.isTransferring.set(false)))
+      .subscribe({
+        next: (res) => {
+          const data = this.unwrapData<any>(res);
+          if (res && (res as any).isSuccess === false) {
+            this.showError((res as any).message || 'فشل في عملية النقل الجماعي');
+            return;
+          }
+          const successCount = data?.successCount ?? this.selectedCount();
+          this.onTransferSuccess(successCount, sourceClassName, targetClassName, yearId);
+          if (data?.failureCount > 0) {
+            this.showError(`تم نقل ${successCount} طالب، وفشل ${data.failureCount} طالب`);
+          }
+        },
+        error: (err) => this.handleTransferError(err)
+      });
+    }
+  }
 
-    this.enrollmentService.transferStudent({
-      currentEnrollmentId: student.id,
-      newClassId: targetId,
-      transferDate: new Date().toISOString().split('T')[0],
-      transferReason: this.transferReason() || undefined
-    })
-    .pipe(finalize(() => this.isTransferring.set(false)))
-    .subscribe({
-      next: () => {
-        // Remove student from the current list
-        this.students.update(list => list.filter(s => s.id !== student.id));
-        
-        // Update history
-        this.loadTransferHistory(yearId);
+  private onTransferSuccess(count: number, fromClass: string, toClass: string, yearId: number) {
+    this.lastTransfer.set({ count, fromClass, toClass });
+    this.successMessage.set(`تم نقل ${count} طالب بنجاح من "${fromClass}" إلى "${toClass}"`);
+    this.loadEnrollments();
+    this.historyPage.set(1);
+    this.loadTransferHistory();
+    this.resetSelection();
+    setTimeout(() => {
+      this.successMessage.set('');
+      this.lastTransfer.set(null);
+    }, 4000);
+  }
 
-        this.lastTransfer.set({ fromClass: fromClassName, toClass: targetClassName });
-        this.showSuccess.set(true);
-        this.selectedStudent.set(null);
-        this.targetClassId.set(null);
-        this.transferReason.set('');
+  private handleTransferError(err: any) {
+    const msg = err?.error?.message || err?.message || 'حدث خطأ أثناء النقل. حاول مرة أخرى.';
+    this.showError(msg);
+  }
 
-        setTimeout(() => {
-          this.showSuccess.set(false);
-          this.lastTransfer.set(null);
-        }, 3000);
+  loadTransferHistory() {
+    const yearId = this.currentAcademicYear()?.id;
+    if (!yearId) return;
+
+    this.enrollmentService.getTransferHistory(yearId, this.historyPage(), this.historyPageSize()).subscribe({
+      next: res => {
+        const paged = this.unwrapData<PagedResult<TransferHistory>>(res);
+        if (paged) {
+          this.transferHistory.set(paged.items);
+          this.historyTotalCount.set(paged.totalCount);
+          this.historyTotalPages.set(paged.totalPages ?? 1);
+        } else {
+          const flat = this.unwrapData<TransferHistory[]>(res);
+          this.transferHistory.set(flat ?? []);
+        }
       },
-      error: () => {
-        // Handle error (e.g., show notification)
-      }
+      error: err => console.error('Failed to load transfer history', err)
     });
+  }
+
+  onHistoryPageChange(page: number) {
+    if (page >= 1 && page <= this.historyTotalPages() && page !== this.historyPage()) {
+      this.historyPage.set(page);
+      this.loadTransferHistory();
+    }
+  }
+
+  isEnrollmentSelected(id: number): boolean {
+    return this.selectedEnrollmentIds().includes(id);
+  }
+
+  trackById(_: number, item: Enrollment): number {
+    return item.id;
+  }
+
+  trackByPageIndex(index: number, item: number | string): string {
+    return typeof item === 'string' ? `ellipsis-${index}` : `page-${item}`;
+  }
+
+  trackByHistoryId(_: number, item: TransferHistory): number {
+    return item.id;
+  }
+
+  getPages(): (number | string)[] {
+    const total = this.totalPages();
+    const current = this.currentPage();
+    const pages: (number | string)[] = [];
+    if (total <= 7) {
+      for (let i = 1; i <= total; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (current > 3) pages.push('...');
+      for (let i = Math.max(2, current - 1); i <= Math.min(total - 1, current + 1); i++) pages.push(i);
+      if (current < total - 2) pages.push('...');
+      pages.push(total);
+    }
+    return pages;
+  }
+
+  getHistoryPages(): (number | string)[] {
+    const total = this.historyTotalPages();
+    const current = this.historyPage();
+    const pages: (number | string)[] = [];
+    if (total <= 7) {
+      for (let i = 1; i <= total; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (current > 3) pages.push('...');
+      for (let i = Math.max(2, current - 1); i <= Math.min(total - 1, current + 1); i++) pages.push(i);
+      if (current < total - 2) pages.push('...');
+      pages.push(total);
+    }
+    return pages;
+  }
+
+  getRangeStart(): number {
+    return this.totalCount() === 0 ? 0 : (this.currentPage() - 1) * this.pageSize() + 1;
+  }
+
+  getRangeEnd(): number {
+    return Math.min(this.currentPage() * this.pageSize(), this.totalCount());
+  }
+
+  private unwrapData<T>(response: any): T | null {
+    if (!response) return null;
+    return (response.data ?? response) as T;
+  }
+
+  private extractError(err: any, fallback: string): string {
+    return err?.error?.message || err?.message || fallback;
+  }
+
+  private showError(msg: string) {
+    this.errorMessage.set(msg);
+    this.successMessage.set('');
+  }
+
+  private clearMessages() {
+    this.errorMessage.set('');
+    this.successMessage.set('');
   }
 }

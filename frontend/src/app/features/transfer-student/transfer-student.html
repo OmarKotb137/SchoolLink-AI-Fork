@@ -1,183 +1,391 @@
 <app-sidebar [(isOpen)]="sidebarOpen" />
 <div class="main-content">
-  <app-topbar userName="أحمد" />
-  <main class="p-gutter-desktop">
-    <div class="max-w-4xl mx-auto flex flex-col gap-stack-lg">
+  <app-topbar [userName]="displayUserName" />
+  <main class="pt-16 min-h-screen bg-gray-50">
+    <div class="p-4 md:p-6 lg:p-8">
+      <div class="max-w-7xl mx-auto space-y-6 pb-10">
 
-      <div>
-        <h1 class="font-headline-lg text-headline-lg" style="font-weight:800;background:linear-gradient(135deg,#00236f,#6b7280);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">نقل طالب بين الفصول</h1>
-        <p class="font-body-md text-body-md text-outline">نقل الطالب من فصله الحالي إلى فصل آخر مع تسجيل سجل النقل</p>
-      </div>
+        <!-- Header -->
+        <section class="bg-white rounded-2xl border border-gray-100 shadow-lg overflow-hidden">
+          <div class="p-6 bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-600 text-white">
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div>
+                <span class="text-sm font-medium text-blue-100 block mb-1">Student Transfer</span>
+                <h2 class="text-2xl md:text-3xl font-bold mb-2">نقل الطلاب بين الفصول</h2>
+                <p class="text-sm md:text-base text-blue-50 max-w-3xl">
+                  نقل طالب أو مجموعة طلاب داخل نفس السنة والصف الدراسي مع تسجيل سبب النقل
+                </p>
+              </div>
+              <div class="grid grid-cols-3 gap-3 min-w-[300px]">
+                <div class="bg-white/10 border border-white/20 rounded-2xl p-4 text-center">
+                  <span class="block text-xs text-blue-100 mb-1">إجمالي الطلاب</span>
+                  <strong class="text-2xl font-bold">{{ totalCount() }}</strong>
+                </div>
+                <div class="bg-white/10 border border-white/20 rounded-2xl p-4 text-center">
+                  <span class="block text-xs text-blue-100 mb-1">المحددون</span>
+                  <strong class="text-2xl font-bold">{{ selectedCount() }}</strong>
+                </div>
+                <div class="bg-white/10 border border-white/20 rounded-2xl p-4 text-center">
+                  <span class="block text-xs text-blue-100 mb-1">الصفحة</span>
+                  <strong class="text-2xl font-bold">{{ currentPage() }} / {{ totalPages() }}</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
 
-      <div class="glass-card" style="padding:24px;">
-        <h2 class="font-headline-md text-headline-md mb-4" style="font-weight:700;">
-          <span class="gradient-icon-box gradient-secondary" style="width:32px;height:32px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:16px;margin-left:8px;vertical-align:middle;">
-            <span class="material-symbols-outlined" style="font-size:18px;">person_search</span>
-          </span>
-          الخطوة 1: اختر الفصل ثم الطالب
-        </h2>
-
-        <div class="flex flex-col gap-1 mb-4">
-          <label class="font-label-md text-label-md" style="font-weight:600;">الفصل الحالي (المصدر)</label>
-          <select class="glass-select" (change)="onSourceClassChange($any($event.target).value)">
-            <option value="">اختر الفصل المصدر لجلب الطلاب...</option>
-            @for (c of allClasses(); track c.id) {
-              <option [value]="c.id">{{ c.name }}</option>
-            }
-          </select>
+        <!-- Messages -->
+        <div class="space-y-3">
+          <div *ngIf="errorMessage()" class="flex items-center gap-3 p-4 rounded-2xl bg-red-50 border border-red-200 text-red-800">
+            <span class="material-symbols-outlined">error</span>
+            <span>{{ errorMessage() }}</span>
+          </div>
+          <div *ngIf="successMessage()" class="flex items-center gap-3 p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800">
+            <span class="material-symbols-outlined">check_circle</span>
+            <span>{{ successMessage() }}</span>
+          </div>
         </div>
 
-        @if (selectedSourceClassId()) {
-          <div class="relative mb-4">
-            <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline">search</span>
-            <input class="glass-input w-full" style="padding:10px 40px 10px 16px;" placeholder="ابحث عن طالب بالاسم..." type="text" [value]="searchQuery()" (input)="searchQuery.set($any($event.target).value)" />
-          </div>
+        <div class="grid grid-cols-1 xl:grid-cols-12 gap-6">
+          <!-- Sidebar Panel -->
+          <section class="xl:col-span-4 bg-white rounded-2xl border border-gray-100 shadow-lg p-5 space-y-5 h-fit">
+            <div>
+              <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+                <span class="material-symbols-outlined text-indigo-600">filter_alt</span>
+                اختيار المصدر
+              </h3>
+              <p class="text-sm text-gray-500 mt-1">اختر السنة والصف والفصل المصدر لجلب الطلاب</p>
+            </div>
 
-          <div class="glass-table-container relative">
-            @if (isLoadingStudents()) {
-              <div class="absolute inset-0 bg-white/50 backdrop-blur-sm z-10 flex items-center justify-center">
-                <span class="material-symbols-outlined animate-spin text-[32px] text-primary">autorenew</span>
+            <div class="space-y-4">
+              <!-- Year (display only) -->
+              <div>
+                <label class="block mb-2 text-sm font-medium text-gray-900">السنة الدراسية</label>
+                <div class="w-full bg-gray-100 border border-gray-200 rounded-2xl p-3 text-sm text-gray-700 flex items-center gap-2">
+                  <span class="material-symbols-outlined text-indigo-600 text-base">calendar_today</span>
+                  {{ currentAcademicYear().name || '—' }}
+                  <span class="mr-auto inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-800 border border-emerald-200">الحالية</span>
+                </div>
               </div>
-            }
-            
-            <div class="overflow-x-auto">
-              <table class="w-full">
-                <thead>
-                  <tr>
-                    <th class="text-center p-3 font-label-md text-outline" style="width:50px;"></th>
-                    <th class="text-right p-3 font-label-md text-outline">اسم الطالب</th>
-                    <th class="text-right p-3 font-label-md text-outline">الفصل الحالي</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (s of filteredStudents(); track s.id) {
-                    <tr class="cursor-pointer transition-all"
-                      [class.bg-primary/5]="selectedStudent()?.id === s.id"
-                      (click)="selectStudent(s)">
-                      <td class="p-3 text-center">
-                        <div class="w-5 h-5 rounded-full border-2 mx-auto transition-all"
-                          [class.border-primary]="selectedStudent()?.id === s.id"
-                          [class.border-outline-variant]="selectedStudent()?.id !== s.id"
-                          [style.background]="selectedStudent()?.id === s.id ? '#00236f' : 'transparent'">
+
+              <!-- Grade Level -->
+              <div>
+                <label class="block mb-2 text-sm font-medium text-gray-900">الصف الدراسي</label>
+                <select class="w-full bg-gray-50 border border-gray-200 rounded-2xl p-3 text-sm"
+                        [ngModel]="selectedSourceGradeLevelId()"
+                        (ngModelChange)="selectedSourceGradeLevelId.set($event); onSourceGradeLevelChange()">
+                  <option [ngValue]="null">-- اختر الصف --</option>
+                  <option *ngFor="let g of gradeLevels()" [ngValue]="g.id">{{ g.name }}</option>
+                </select>
+              </div>
+
+              <!-- Class (filtered by grade level) -->
+              <div>
+                <label class="block mb-2 text-sm font-medium text-gray-900">الفصل الدراسي (المصدر)</label>
+                <select class="w-full bg-gray-50 border border-gray-200 rounded-2xl p-3 text-sm"
+                        [ngModel]="selectedSourceClassId()"
+                        (ngModelChange)="selectedSourceClassId.set($event); onSourceClassChange()"
+                        [disabled]="!selectedSourceGradeLevelId()">
+                  <option [ngValue]="null">-- {{ selectedSourceGradeLevelId() ? 'اختر الفصل' : 'اختر الصف أولاً' }} --</option>
+                  <option *ngFor="let c of filteredSourceClasses()" [ngValue]="c.id">{{ c.name }}</option>
+                </select>
+              </div>
+
+              <div *ngIf="sourceClass()" class="rounded-2xl border border-gray-200 bg-gray-50 p-4 space-y-2 text-sm">
+                <div class="flex items-center justify-between">
+                  <span class="text-gray-500">الصف الدراسي</span>
+                  <strong class="text-gray-900">{{ sourceClass()?.gradeLevelName || 'غير محدد' }}</strong>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-gray-500">السنة الدراسية</span>
+                  <strong class="text-gray-900">{{ currentAcademicYear().name || 'غير محدد' }}</strong>
+                </div>
+              </div>
+
+              <button (click)="loadEnrollments()"
+                      [disabled]="isBootstrapping() || isLoadingEnrollments() || !selectedSourceClassId()"
+                      class="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-2xl text-white bg-gradient-to-r from-blue-600 to-indigo-600 disabled:opacity-60 disabled:cursor-not-allowed hover:shadow-lg transition-all">
+                <span class="material-symbols-outlined text-lg">
+                  {{ isLoadingEnrollments() ? 'hourglass_top' : 'group_search' }}
+                </span>
+                {{ isLoadingEnrollments() ? 'جارٍ التحميل...' : 'جلب الطلاب' }}
+              </button>
+            </div>
+
+            <div class="border-t border-gray-100 pt-5 space-y-4">
+              <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+                <span class="material-symbols-outlined text-indigo-600">swap_horiz</span>
+                إعداد النقل
+              </h3>
+
+              <div>
+                <label class="block mb-2 text-sm font-medium text-gray-900">الفصل الهدف</label>
+                <select class="w-full bg-gray-50 border border-gray-200 rounded-2xl p-3 text-sm"
+                        [ngModel]="selectedTargetClassId()"
+                        (ngModelChange)="selectedTargetClassId.set($event)">
+                  <option [ngValue]="null">-- اختر الفصل الهدف --</option>
+                  <option *ngFor="let c of availableTargetClasses()" [ngValue]="c.id">{{ c.name }}</option>
+                  <option *ngIf="availableTargetClasses().length === 0 && sourceClass()" disabled class="text-gray-400">لا توجد فصول أخرى في نفس الصف والسنة</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block mb-2 text-sm font-medium text-gray-900">سبب النقل (اختياري)</label>
+                <textarea rows="3" class="w-full bg-gray-50 border border-gray-200 rounded-2xl p-3 text-sm resize-none"
+                          placeholder="مثال: بناءً على طلب ولي الأمر، توازن أعداد الفصول..."
+                          [ngModel]="transferReason()"
+                          (ngModelChange)="transferReason.set($event)"></textarea>
+              </div>
+
+              <div class="rounded-2xl border border-gray-200 bg-gray-50 p-4 space-y-2 text-sm">
+                <div class="flex items-center justify-between">
+                  <span class="text-gray-500">عدد المحددين</span>
+                  <strong class="text-gray-900">{{ selectedCount() }}</strong>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-gray-500">الفصل المصدر</span>
+                  <strong class="text-gray-900">{{ sourceClass()?.name || '—' }}</strong>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-gray-500">الفصل الهدف</span>
+                  <strong class="text-gray-900">{{ allClasses().find(c => c.id === selectedTargetClassId())?.name || '—' }}</strong>
+                </div>
+              </div>
+
+              <button (click)="confirmTransfer()" [disabled]="!canTransfer()"
+                      class="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-2xl text-white bg-gradient-to-r from-emerald-600 to-teal-600 disabled:opacity-60 disabled:cursor-not-allowed hover:shadow-lg transition-all">
+                <span class="material-symbols-outlined text-lg">
+                  {{ isTransferring() ? 'hourglass_top' : 'swap_horiz' }}
+                </span>
+                {{ isTransferring() ? 'جارٍ النقل...' : (selectedCount() > 1 ? 'نقل المحددين (' + selectedCount() + ')' : 'نقل الطالب') }}
+              </button>
+            </div>
+          </section>
+
+          <!-- Main Panel: Students Table -->
+          <section class="xl:col-span-8 space-y-6">
+            <div class="bg-white rounded-2xl border border-gray-100 shadow-lg p-5 space-y-5">
+              <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                <div>
+                  <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-indigo-600">groups</span>
+                    قائمة الطلاب
+                  </h3>
+                  <p class="text-sm text-gray-500 mt-1">
+                    {{ totalCount() }} طالب إجمالي - صفحة {{ currentPage() }} من {{ totalPages() }}
+                  </p>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                  <select [ngModel]="pageSize()" (ngModelChange)="pageSize.set(+$event); onPageSizeChange()"
+                          class="bg-gray-50 border border-gray-200 rounded-2xl p-2 text-sm w-auto">
+                    <option [value]="10">10 في الصفحة</option>
+                    <option [value]="20">20 في الصفحة</option>
+                    <option [value]="50">50 في الصفحة</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="flex flex-wrap gap-4">
+                <div class="flex-1 min-w-[250px]">
+                  <label class="block mb-2 text-sm font-medium text-gray-900">بحث</label>
+                  <div class="relative">
+                    <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
+                    <input type="text" class="w-full bg-gray-50 border border-gray-200 rounded-2xl p-3 text-sm pr-10"
+                           placeholder="ابحث بالاسم..."
+                           [ngModel]="searchQuery()"
+                           (ngModelChange)="searchQuery.set($event); onSearchChange()" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Students Table -->
+            <div class="bg-white rounded-2xl border border-gray-100 shadow-lg overflow-hidden">
+              <div class="overflow-x-auto">
+                <table class="w-full text-sm text-right text-gray-600">
+                  <thead class="bg-gray-50 text-xs uppercase text-gray-700 border-b border-gray-100">
+                    <tr>
+                      <th class="px-4 py-4 text-center w-12">
+                        <input type="checkbox"
+                               [checked]="selectAllCurrentPage()"
+                               (change)="toggleSelectAllCurrentPage($any($event.target).checked)"
+                               class="w-4 h-4 accent-blue-600 cursor-pointer" />
+                      </th>
+                      <th class="px-4 py-4">الطالب</th>
+                      <th class="px-4 py-4">الفصل</th>
+                      <th class="px-4 py-4">الحالة</th>
+                      <th class="px-4 py-4">تاريخ التسجيل</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr *ngFor="let e of enrollments(); trackBy: trackById"
+                        class="border-b border-gray-100 hover:bg-blue-50 transition-colors"
+                        [class.bg-blue-50]="isEnrollmentSelected(e.id)">
+                      <td class="px-4 py-4 text-center">
+                        <input type="checkbox"
+                               [checked]="isEnrollmentSelected(e.id)"
+                               (change)="toggleSelection(e.id, $any($event.target).checked)"
+                               class="w-4 h-4 accent-blue-600 cursor-pointer" />
+                      </td>
+                      <td class="px-4 py-4">
+                        <div class="font-semibold text-gray-900">{{ e.studentName }}</div>
+                      </td>
+                      <td class="px-4 py-4">
+                        <span class="inline-flex items-center rounded-full px-3 py-1 border bg-blue-50 text-blue-800 border-blue-200 text-xs font-medium">
+                          {{ e.className }}
+                        </span>
+                      </td>
+                      <td class="px-4 py-4">
+                        <span class="inline-flex items-center rounded-full px-3 py-1 border text-xs font-medium"
+                              [class.bg-emerald-50]="!e.leftAt"
+                              [class.text-emerald-800]="!e.leftAt"
+                              [class.border-emerald-200]="!e.leftAt"
+                              [class.bg-gray-100]="!!e.leftAt"
+                              [class.text-gray-700]="!!e.leftAt"
+                              [class.border-gray-200]="!!e.leftAt">
+                          {{ !e.leftAt ? 'نشط' : 'منقول' }}
+                        </span>
+                      </td>
+                      <td class="px-4 py-4 text-gray-700">{{ e.enrolledAt }}</td>
+                    </tr>
+
+                    <tr *ngIf="!enrollments().length && !isLoadingEnrollments()">
+                      <td colspan="5" class="px-6 py-14 text-center">
+                        <div class="flex flex-col items-center justify-center text-gray-500">
+                          <span class="material-symbols-outlined text-5xl mb-3 text-gray-400">group_off</span>
+                          <p class="text-base font-semibold text-gray-900 mb-1">لا يوجد طلاب</p>
+                          <p class="text-sm">اختر فصلاً مصدراً واضغط "جلب الطلاب"</p>
                         </div>
                       </td>
-                      <td class="p-3 font-body-md" style="font-weight:600;">{{ s.studentName }}</td>
-                      <td class="p-3"><span class="px-3 py-1 bg-white/40 backdrop-blur-sm rounded-lg text-label-sm font-semibold">{{ s.className }}</span></td>
                     </tr>
-                  } @empty {
-                    <tr>
-                      <td colspan="3" class="p-6 text-center text-outline font-body-md">لا يوجد طلاب نشطين في هذا الفصل</td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Pagination -->
+              <div *ngIf="totalPages() > 1" class="flex flex-col sm:flex-row items-center justify-between p-4 bg-gray-50 border-t border-gray-100 gap-4">
+                <span class="text-sm text-gray-700">
+                  إظهار {{ getRangeStart() }} إلى {{ getRangeEnd() }} من أصل {{ totalCount() }} طالب
+                </span>
+                <div class="flex items-center gap-1">
+                  <button (click)="onPageChange(currentPage() - 1)"
+                          [disabled]="currentPage() === 1 || isLoadingEnrollments()"
+                          class="px-3 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1">
+                    <span class="material-symbols-outlined text-sm">chevron_right</span>
+                    السابق
+                  </button>
+                  <ng-container *ngFor="let p of getPages(); trackBy: trackByPageIndex">
+                    <span *ngIf="p === '...'" class="px-3 py-2 text-sm font-medium text-gray-500">...</span>
+                    <button *ngIf="p !== '...'"
+                            (click)="onPageChange(+p)"
+                            [disabled]="isLoadingEnrollments()"
+                            class="w-8 h-8 text-sm font-medium rounded-2xl transition-colors border flex items-center justify-center"
+                            [class.bg-blue-600]="currentPage() === +p"
+                            [class.text-white]="currentPage() === +p"
+                            [class.border-blue-600]="currentPage() === +p"
+                            [class.bg-white]="currentPage() !== +p"
+                            [class.text-gray-900]="currentPage() !== +p"
+                            [class.border-gray-200]="currentPage() !== +p"
+                            [class.hover:bg-gray-50]="currentPage() !== +p">
+                      {{ p }}
+                    </button>
+                  </ng-container>
+                  <button (click)="onPageChange(currentPage() + 1)"
+                          [disabled]="currentPage() === totalPages() || isLoadingEnrollments()"
+                          class="px-3 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1">
+                    التالي
+                    <span class="material-symbols-outlined text-sm">chevron_left</span>
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
-        }
-      </div>
-
-      @if (selectedStudent(); as student) {
-        <div class="glass-card" style="padding:24px;">
-          <h2 class="font-headline-md text-headline-md mb-4" style="font-weight:700;">
-            <span class="gradient-icon-box gradient-tertiary" style="width:32px;height:32px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:16px;margin-left:8px;vertical-align:middle;">
-              <span class="material-symbols-outlined" style="font-size:18px;">swap_horiz</span>
-            </span>
-            الخطوة 2: تأكيد النقل
-          </h2>
-
-          <div class="bg-white/40 backdrop-blur-sm rounded-2xl p-4 flex items-center gap-4 mb-4">
-            <div class="gradient-icon-box gradient-secondary" style="width:48px;height:48px;border-radius:12px;">
-              <span class="material-symbols-outlined">person</span>
-            </div>
-            <div>
-              <p class="font-headline-md text-headline-md" style="font-weight:700;">{{ student.studentName }}</p>
-              <p class="font-body-md text-body-md text-outline">الفصل الحالي: <span class="font-semibold" style="color:#00236f;">{{ student.className }}</span></p>
-            </div>
-          </div>
-
-          <div class="flex flex-col gap-1 mb-4">
-            <label class="font-label-md text-label-md" style="font-weight:600;">الفصل الجديد</label>
-            <select class="glass-select" [value]="targetClassId() || ''" (change)="targetClassId.set($any($event.target).value)">
-              <option value="">اختر الفصل الجديد...</option>
-              @for (c of availableTargetClasses(); track c.id) {
-                <option [value]="c.id">{{ c.name }}</option>
-              }
-            </select>
-          </div>
-
-          <div class="flex flex-col gap-1 mb-4">
-            <label class="font-label-md text-label-md" style="font-weight:600;">سبب النقل (اختياري)</label>
-            <textarea class="glass-input w-full resize-none" rows="2" placeholder="مثال: بناءً على طلب ولي الأمر..." [value]="transferReason()" (input)="transferReason.set($any($event.target).value)"></textarea>
-          </div>
-
-          @if (showError()) {
-            <div class="bg-error/10 backdrop-blur-sm border border-error/30 rounded-xl p-3 flex items-center gap-2 mb-4">
-              <span class="material-symbols-outlined text-error text-[18px]" style="font-variation-settings:'FILL'1;">error</span>
-              <span class="text-label-sm text-error font-semibold">يرجى اختيار الفصل الجديد</span>
-            </div>
-          }
-
-          <div class="flex justify-end gap-3 pt-4" style="border-top:1px solid rgba(0,0,0,0.06);">
-            <button class="secondary-btn-glass" (click)="cancelTransfer()" [disabled]="isTransferring()">إلغاء</button>
-            <button class="gradient-btn" (click)="confirmTransfer()" [disabled]="isTransferring()">
-              @if (isTransferring()) {
-                <span class="material-symbols-outlined animate-spin">autorenew</span>
-                جاري النقل...
-              } @else {
-                <span class="material-symbols-outlined">check_circle</span>
-                تأكيد النقل
-              }
-            </button>
-          </div>
+          </section>
         </div>
-      }
 
-      <div class="glass-card" style="padding:24px;">
-        <h3 class="font-headline-md text-headline-md mb-4" style="font-weight:700;">
-          <span class="material-symbols-outlined" style="vertical-align:middle;margin-left:6px;">history</span>
-          سجل عمليات النقل
-        </h3>
-        <div class="glass-table-container">
+        <!-- Transfer History -->
+        <section class="bg-white rounded-2xl border border-gray-100 shadow-lg p-5 space-y-5">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+              <span class="material-symbols-outlined text-indigo-600">history</span>
+              سجل عمليات النقل
+            </h3>
+            <span *ngIf="historyTotalCount() > 0" class="text-sm text-gray-500">{{ historyTotalCount() }} عملية نقل</span>
+          </div>
           <div class="overflow-x-auto">
-            <table class="w-full">
-              <thead>
+            <table class="w-full text-sm text-right text-gray-600">
+              <thead class="bg-gray-50 text-xs uppercase text-gray-700 border-b border-gray-100">
                 <tr>
-                  <th class="text-right p-3 font-label-md text-outline">الطالب</th>
-                  <th class="text-right p-3 font-label-md text-outline">من فصل</th>
-                  <th class="text-right p-3 font-label-md text-outline">إلى فصل</th>
-                  <th class="text-right p-3 font-label-md text-outline">التاريخ</th>
-                  <th class="text-right p-3 font-label-md text-outline">السبب</th>
+                  <th class="px-4 py-4">الطالب</th>
+                  <th class="px-4 py-4">من فصل</th>
+                  <th class="px-4 py-4">إلى فصل</th>
+                  <th class="px-4 py-4">التاريخ</th>
+                  <th class="px-4 py-4">السبب</th>
                 </tr>
               </thead>
               <tbody>
-                @for (h of transferHistory(); track h.id) {
-                  <tr>
-                    <td class="p-3 font-body-md" style="font-weight:600;">{{ h.studentName }}</td>
-                    <td class="p-3"><span class="px-2 py-0.5 bg-white/40 rounded text-label-sm">{{ h.fromClass }}</span></td>
-                    <td class="p-3"><span class="px-2 py-0.5 bg-secondary/10 text-secondary rounded text-label-sm font-semibold">{{ h.toClass }}</span></td>
-                    <td class="p-3 text-outline text-label-sm">{{ h.transferDate }}</td>
-                    <td class="p-3 text-outline text-label-sm">{{ h.reason || '—' }}</td>
-                  </tr>
-                } @empty {
-                  <tr>
-                    <td colspan="5" class="p-6 text-center text-outline font-body-md">لا توجد عمليات نقل في هذه السنة الدراسية</td>
-                  </tr>
-                }
+                <tr *ngFor="let h of transferHistory(); trackBy: trackByHistoryId" class="border-b border-gray-100 hover:bg-gray-50">
+                  <td class="px-4 py-4 font-medium text-gray-900">{{ h.studentName }}</td>
+                  <td class="px-4 py-4"><span class="px-2 py-0.5 bg-gray-100 rounded text-xs">{{ h.fromClass }}</span></td>
+                  <td class="px-4 py-4"><span class="px-2 py-0.5 bg-blue-50 text-blue-800 rounded text-xs font-medium">{{ h.toClass }}</span></td>
+                  <td class="px-4 py-4 text-gray-500 text-xs">{{ h.transferDate }}</td>
+                  <td class="px-4 py-4 text-gray-500 text-xs">
+                    <span class="block truncate max-w-[200px]" [title]="h.reason || ''">{{ h.reason || '—' }}</span>
+                  </td>
+                </tr>
+                <tr *ngIf="!transferHistory().length">
+                  <td colspan="5" class="px-6 py-12 text-center text-gray-500">
+                    لا توجد عمليات نقل في هذه السنة الدراسية
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
-        </div>
-      </div>
 
+          <!-- History Pagination -->
+          <div *ngIf="historyTotalPages() > 1" class="flex flex-col sm:flex-row items-center justify-between pt-4 border-t border-gray-100 gap-4">
+            <span class="text-sm text-gray-700">
+              صفحة {{ historyPage() }} من {{ historyTotalPages() }}
+            </span>
+            <div class="flex items-center gap-1">
+              <button (click)="onHistoryPageChange(historyPage() - 1)"
+                      [disabled]="historyPage() === 1"
+                      class="px-3 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1">
+                <span class="material-symbols-outlined text-sm">chevron_right</span>
+                السابق
+              </button>
+              <ng-container *ngFor="let p of getHistoryPages(); trackBy: trackByPageIndex">
+                <span *ngIf="p === '...'" class="px-3 py-2 text-sm font-medium text-gray-500">...</span>
+                <button *ngIf="p !== '...'"
+                        (click)="onHistoryPageChange(+p)"
+                        class="w-8 h-8 text-sm font-medium rounded-2xl transition-colors border flex items-center justify-center"
+                        [class.bg-blue-600]="historyPage() === +p"
+                        [class.text-white]="historyPage() === +p"
+                        [class.border-blue-600]="historyPage() === +p"
+                        [class.bg-white]="historyPage() !== +p"
+                        [class.text-gray-900]="historyPage() !== +p"
+                        [class.border-gray-200]="historyPage() !== +p"
+                        [class.hover:bg-gray-50]="historyPage() !== +p">
+                  {{ p }}
+                </button>
+              </ng-container>
+              <button (click)="onHistoryPageChange(historyPage() + 1)"
+                      [disabled]="historyPage() === historyTotalPages()"
+                      class="px-3 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1">
+                التالي
+                <span class="material-symbols-outlined text-sm">chevron_left</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+      </div>
     </div>
   </main>
 </div>
 
-@if (showSuccess()) {
-  <div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 text-white px-6 py-3 rounded-2xl shadow-lg flex items-center gap-3 backdrop-blur-sm" style="background:linear-gradient(135deg,#0d7a5f,#0f9b7a);">
-    <span class="material-symbols-outlined" style="font-variation-settings:'FILL'1;">check_circle</span>
-    @if (lastTransfer(); as lt) {
-      تم نقل الطالب بنجاح من {{ lt.fromClass }} إلى {{ lt.toClass }}
-    }
-  </div>
-}
+<!-- Success Toast -->
+<div *ngIf="lastTransfer(); let lt" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 text-white px-6 py-3 rounded-2xl shadow-lg flex items-center gap-3 backdrop-blur-sm"
+     style="background:linear-gradient(135deg,#0d7a5f,#0f9b7a);">
+  <span class="material-symbols-outlined" style="font-variation-settings:'FILL'1;">check_circle</span>
+  تم نقل {{ lt.count }} طالب بنجاح من "{{ lt.fromClass }}" إلى "{{ lt.toClass }}"
+</div>

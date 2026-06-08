@@ -74,13 +74,16 @@ public class StudentEnrollmentRepository : Repository<StudentEnrollment>, IStude
 
     public async Task<IReadOnlyList<StudentEnrollment>> GetTransfersHistoryAsync(
         int academicYearId,
+        int page = 1,
+        int pageSize = 20,
         CancellationToken ct = default)
         => await _context.StudentEnrollments
-            .Where(e => e.AcademicYearId == academicYearId && e.LeftAt != null && e.TransferReason != null)
+            .Where(e => e.AcademicYearId == academicYearId && e.LeftAt != null)
             .Include(e => e.Student)
             .Include(e => e.Class)
             .OrderByDescending(e => e.LeftAt)
-            .Take(50) // Limit to 50 recent transfers
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync(ct);
 
 
@@ -164,6 +167,29 @@ public class StudentEnrollmentRepository : Repository<StudentEnrollment>, IStude
                 e.ClassId == classId &&
                 e.AcademicYearId == academicYearId &&
                 e.LeftAt == null, ct);
+
+    public async Task<IReadOnlyList<StudentEnrollment>> GetActiveEnrollmentsByYearAsync(
+        int academicYearId,
+        CancellationToken ct = default)
+        => await _context.StudentEnrollments
+            .Where(e =>
+                e.AcademicYearId == academicYearId &&
+                e.LeftAt == null &&
+                !e.IsDeleted &&
+                e.Student != null &&
+                !e.Student.IsDeleted)
+            .Include(e => e.Student)
+            .Include(e => e.Class)
+            .OrderBy(e => e.Student.FullName)
+            .ToListAsync(ct);
+
+    public async Task<int> GetTransfersCountAsync(
+        int academicYearId,
+        CancellationToken ct = default)
+        => await _context.StudentEnrollments
+            .CountAsync(e =>
+                e.AcademicYearId == academicYearId &&
+                e.LeftAt != null, ct);
 }
 
 
