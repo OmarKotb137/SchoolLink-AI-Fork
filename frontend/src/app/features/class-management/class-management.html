@@ -198,38 +198,31 @@
             @if (totalPages() > 1) {
               <div class="flex flex-col sm:flex-row items-center justify-between p-4 bg-gray-50 border-t border-gray-100 gap-4">
                 <span class="text-sm text-gray-700">
-                  إظهار <span class="font-semibold text-gray-900">{{ (currentPage() - 1) * itemsPerPage() + 1 }}</span> إلى <span class="font-semibold text-gray-900">{{ (currentPage() * itemsPerPage()) > classes().length ? classes().length : (currentPage() * itemsPerPage()) }}</span> من أصل <span class="font-semibold text-gray-900">{{ classes().length }}</span> فصل
+                  إظهار <span class="font-semibold text-gray-900">{{ rangeStart() }}</span> إلى <span class="font-semibold text-gray-900">{{ rangeEnd() }}</span> من أصل <span class="font-semibold text-gray-900">{{ classes().length }}</span> فصل
                 </span>
-                
+
                 <div class="flex items-center gap-2">
                   <button class="flex items-center justify-center px-3 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed" [disabled]="currentPage() === 1" (click)="prevPage()">
                     <span class="material-symbols-outlined text-sm mr-1">chevron_right</span>
                     السابق
                   </button>
-                  
+
                   <div class="hidden sm:flex items-center gap-1">
-                    @for (p of [].constructor(totalPages()); track $index) {
-                      @if (
-                        $index + 1 === 1 ||
-                        $index + 1 === totalPages() ||
-                        ($index + 1 >= currentPage() - 1 && $index + 1 <= currentPage() + 1)
-                      ) {
-                        <button class="flex items-center justify-center w-8 h-8 text-sm font-medium rounded-2xl transition-colors border" 
-                                [class.bg-blue-600]="( $index + 1 ) === currentPage()"
-                                [class.text-white]="( $index + 1 ) === currentPage()"
-                                [class.border-blue-600]="( $index + 1 ) === currentPage()"
-                                [class.bg-white]="( $index + 1 ) !== currentPage()"
-                                [class.text-gray-900]="( $index + 1 ) !== currentPage()"
-                                [class.border-gray-200]="( $index + 1 ) !== currentPage()"
-                                [class.hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5]="( $index + 1 ) !== currentPage()"
-                                (click)="goToPage($index + 1)">
-                          {{ $index + 1 }}
+                    @for (p of pages(); track trackByPageIndex($index, p)) {
+                      @if (p === '...') {
+                        <span class="flex items-center justify-center w-8 h-8 text-sm font-medium text-gray-400">…</span>
+                      } @else {
+                        <button class="flex items-center justify-center w-8 h-8 text-sm font-medium rounded-2xl transition-colors border"
+                                [class.bg-blue-600]="p === currentPage()"
+                                [class.text-white]="p === currentPage()"
+                                [class.border-blue-600]="p === currentPage()"
+                                [class.bg-white]="p !== currentPage()"
+                                [class.text-gray-900]="p !== currentPage()"
+                                [class.border-gray-200]="p !== currentPage()"
+                                [class.hover:bg-gray-50]="p !== currentPage()"
+                                (click)="goToPage(+p)">
+                          {{ p }}
                         </button>
-                      } @else if (
-                        ($index + 1 === currentPage() - 2 && currentPage() > 3) ||
-                        ($index + 1 === currentPage() + 2 && currentPage() < totalPages() - 2)
-                      ) {
-                        <span class="flex items-center justify-center w-8 h-8 text-sm font-medium text-gray-500">...</span>
                       }
                     }
                   </div>
@@ -342,7 +335,7 @@
             <div>
               <h4 class="text-base font-bold text-gray-900">قائمة الطلاب</h4>
               <p class="text-sm text-gray-500">
-                عرض {{ getStudentsRangeStart() }} إلى {{ getStudentsRangeEnd() }} من أصل {{ getStudentsFilteredCount() }} طالب
+                عرض {{ studentRangeStart() }} إلى {{ studentRangeEnd() }} من أصل {{ studentFilteredCount() }} طالب
               </p>
             </div>
 
@@ -409,7 +402,7 @@
 
       <div class="px-6 py-4 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-4 bg-gray-50">
         <span class="text-sm text-gray-700">
-          إظهار {{ getStudentsRangeStart() }} إلى {{ getStudentsRangeEnd() }} من أصل {{ getStudentsFilteredCount() }} طالب
+          إظهار {{ studentRangeStart() }} إلى {{ studentRangeEnd() }} من أصل {{ studentFilteredCount() }} طالب
         </span>
 
         <div class="flex items-center gap-2">
@@ -423,33 +416,24 @@
           </button>
 
           <div class="hidden sm:flex items-center gap-1">
-            @for (p of [].constructor(totalStudentPages()); track $index) {
-              @if (
-                $index + 1 === 1 ||
-                $index + 1 === totalStudentPages() ||
-                ($index + 1 >= studentsCurrentPage() - 1 && $index + 1 <= studentsCurrentPage() + 1)
-              ) {
+            @for (p of studentPages(); track studentTrackByPageIndex($index, p)) {
+              @if (p === '...') {
+                <span class="flex items-center justify-center w-8 h-8 text-sm font-medium text-gray-400">…</span>
+              } @else {
                 <button
                   type="button"
                   class="flex items-center justify-center w-8 h-8 text-sm font-medium rounded-2xl transition-colors border"
-                  [class.bg-blue-600]="($index + 1) === studentsCurrentPage()"
-                  [class.text-white]="($index + 1) === studentsCurrentPage()"
-                  [class.border-blue-600]="($index + 1) === studentsCurrentPage()"
-                  [class.bg-white]="($index + 1) !== studentsCurrentPage()"
-                  [class.text-gray-900]="($index + 1) !== studentsCurrentPage()"
-                  [class.border-gray-200]="($index + 1) !== studentsCurrentPage()"
-                  [class.hover:bg-gray-50]="($index + 1) !== studentsCurrentPage()"
-                  [class.hover:shadow-md]="($index + 1) !== studentsCurrentPage()"
-                  [class.hover:-translate-y-0.5]="($index + 1) !== studentsCurrentPage()"
+                  [class.bg-blue-600]="p === studentsCurrentPage()"
+                  [class.text-white]="p === studentsCurrentPage()"
+                  [class.border-blue-600]="p === studentsCurrentPage()"
+                  [class.bg-white]="p !== studentsCurrentPage()"
+                  [class.text-gray-900]="p !== studentsCurrentPage()"
+                  [class.border-gray-200]="p !== studentsCurrentPage()"
+                  [class.hover:bg-gray-50]="p !== studentsCurrentPage()"
                   [disabled]="studentsModalLoading()"
-                  (click)="goToStudentsPage($index + 1)">
-                  {{ $index + 1 }}
+                  (click)="goToStudentsPage(+p)">
+                  {{ p }}
                 </button>
-              } @else if (
-                ($index + 1 === studentsCurrentPage() - 2 && studentsCurrentPage() > 3) ||
-                ($index + 1 === studentsCurrentPage() + 2 && studentsCurrentPage() < totalStudentPages() - 2)
-              ) {
-                <span class="flex items-center justify-center w-8 h-8 text-sm font-medium text-gray-500">...</span>
               }
             }
           </div>

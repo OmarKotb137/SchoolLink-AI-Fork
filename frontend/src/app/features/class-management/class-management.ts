@@ -44,6 +44,34 @@ export class ClassManagement implements OnInit {
     return Math.max(1, Math.ceil(this.classes().length / this.itemsPerPage()));
   });
 
+  rangeStart = computed(() => {
+    if (this.classes().length === 0) return 0;
+    return (this.currentPage() - 1) * this.itemsPerPage() + 1;
+  });
+
+  rangeEnd = computed(() => {
+    return Math.min(this.currentPage() * this.itemsPerPage(), this.classes().length);
+  });
+
+  pages = computed<(number | string)[]>(() => {
+    const total = this.totalPages();
+    const current = this.currentPage();
+    const result: (number | string)[] = [];
+
+    result.push(1);
+    if (current > 3) result.push('...');
+    for (let i = Math.max(2, current - 1); i <= Math.min(total - 1, current + 1); i++) {
+      result.push(i);
+    }
+    if (current < total - 2) result.push('...');
+    if (total > 1) result.push(total);
+
+    return result;
+  });
+
+  trackByPageIndex = (_: number, item: number | string) =>
+    typeof item === 'string' ? `dot-${_}` : `page-${item}`;
+
   nextPage() {
     if (this.currentPage() < this.totalPages()) {
       this.currentPage.update(p => p + 1);
@@ -86,6 +114,38 @@ export class ClassManagement implements OnInit {
   totalStudentPages = computed(() => {
     return Math.max(1, this.studentsBrowserResult()?.students.totalPages ?? 1);
   });
+
+  studentRangeStart = computed(() => {
+    const totalCount = this.studentsBrowserResult()?.students.totalCount ?? 0;
+    if (totalCount === 0) return 0;
+    return (this.studentsCurrentPage() - 1) * this.studentsItemsPerPage() + 1;
+  });
+
+  studentRangeEnd = computed(() => {
+    const totalCount = this.studentsBrowserResult()?.students.totalCount ?? 0;
+    return Math.min(this.studentsCurrentPage() * this.studentsItemsPerPage(), totalCount);
+  });
+
+  studentFilteredCount = computed(() => this.studentsBrowserResult()?.filteredStudentsCount ?? 0);
+
+  studentPages = computed<(number | string)[]>(() => {
+    const total = this.totalStudentPages();
+    const current = this.studentsCurrentPage();
+    const result: (number | string)[] = [];
+
+    result.push(1);
+    if (current > 3) result.push('...');
+    for (let i = Math.max(2, current - 1); i <= Math.min(total - 1, current + 1); i++) {
+      result.push(i);
+    }
+    if (current < total - 2) result.push('...');
+    if (total > 1) result.push(total);
+
+    return result;
+  });
+
+  studentTrackByPageIndex = (_: number, item: number | string) =>
+    typeof item === 'string' ? `dot-${_}` : `page-${item}`;
 
   ngOnInit() {
     this.loadAcademicYears();

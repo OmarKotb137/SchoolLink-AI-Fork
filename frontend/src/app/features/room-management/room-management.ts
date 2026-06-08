@@ -32,6 +32,34 @@ export class RoomManagement implements OnInit {
     return Math.max(1, Math.ceil(this.rooms().length / this.itemsPerPage()));
   });
 
+  rangeStart = computed(() => {
+    if (this.rooms().length === 0) return 0;
+    return (this.currentPage() - 1) * this.itemsPerPage() + 1;
+  });
+
+  rangeEnd = computed(() => {
+    return Math.min(this.currentPage() * this.itemsPerPage(), this.rooms().length);
+  });
+
+  pages = computed<(number | string)[]>(() => {
+    const total = this.totalPages();
+    const current = this.currentPage();
+    const result: (number | string)[] = [];
+
+    result.push(1);
+    if (current > 3) result.push('...');
+    for (let i = Math.max(2, current - 1); i <= Math.min(total - 1, current + 1); i++) {
+      result.push(i);
+    }
+    if (current < total - 2) result.push('...');
+    if (total > 1) result.push(total);
+
+    return result;
+  });
+
+  trackByPageIndex = (_: number, item: number | string) =>
+    typeof item === 'string' ? `dot-${_}` : `page-${item}`;
+
   nextPage() {
     if (this.currentPage() < this.totalPages()) {
       this.currentPage.update(p => p + 1);

@@ -328,8 +328,15 @@
                   <td class="px-4 py-4"><span class="px-2 py-0.5 bg-gray-100 rounded text-xs">{{ h.fromClass }}</span></td>
                   <td class="px-4 py-4"><span class="px-2 py-0.5 bg-blue-50 text-blue-800 rounded text-xs font-medium">{{ h.toClass }}</span></td>
                   <td class="px-4 py-4 text-gray-500 text-xs">{{ h.transferDate }}</td>
-                  <td class="px-4 py-4 text-gray-500 text-xs">
-                    <span class="block truncate max-w-[200px]" [title]="h.reason || ''">{{ h.reason || '—' }}</span>
+                  <td class="px-4 py-4 text-xs">
+                    <ng-container *ngIf="h.reason">
+                      <button (click)="selectedReason.set(h.reason)"
+                              class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 transition-colors font-medium text-sm">
+                        <span class="material-symbols-outlined" style="font-size:16px;">visibility</span>
+                        عرض السبب
+                      </button>
+                    </ng-container>
+                    <span *ngIf="!h.reason" class="text-gray-400">—</span>
                   </td>
                 </tr>
                 <tr *ngIf="!transferHistory().length">
@@ -381,6 +388,25 @@
       </div>
     </div>
   </main>
+</div>
+
+<!-- Reason Modal -->
+<div *ngIf="selectedReason()" class="fixed inset-0 z-50 flex items-center justify-center glass-overlay p-4"
+     (click)="selectedReason.set(null)">
+  <div class="glass-modal max-w-lg w-full max-h-[70vh] overflow-y-auto" (click)="$event.stopPropagation()">
+    <div class="glass-modal-header flex items-center justify-between">
+      <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+        <span class="material-symbols-outlined text-indigo-600">info</span>
+        سبب النقل
+      </h3>
+      <button (click)="selectedReason.set(null)" class="p-1.5 rounded-xl hover:bg-gray-100 transition-colors text-gray-500">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <div class="p-6">
+      <p class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{{ selectedReason() }}</p>
+    </div>
+  </div>
 </div>
 
 <!-- Success Toast -->

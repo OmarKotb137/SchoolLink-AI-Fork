@@ -57,6 +57,7 @@ export class TransferStudent implements OnInit {
   errorMessage = signal('');
   successMessage = signal('');
   lastTransfer = signal<{ count: number; fromClass: string; toClass: string } | null>(null);
+  selectedReason = signal<string | null>(null);
 
   currentAcademicYear = computed(() =>
     this.academicYears().find(y => y.isCurrent) ?? this.academicYears()[0] ?? null
