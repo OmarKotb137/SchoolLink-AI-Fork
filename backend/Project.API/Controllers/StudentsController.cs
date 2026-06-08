@@ -7,7 +7,7 @@ namespace Project.API.Controllers;
 
 [ApiController]
 [Route("api/students")]
-[Authorize(Roles = "Admin,Teacher")]
+[Authorize(Roles = "Admin,Teacher,Student,Parent")]
 public class StudentsController : ControllerBase
 {
     private readonly IStudentService _studentService;
@@ -18,6 +18,7 @@ public class StudentsController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize(Roles = "Admin,Teacher")]
     public async Task<IActionResult> GetAll()
     {
         var result = await _studentService.GetAllStudentsAsync();
@@ -43,6 +44,7 @@ public class StudentsController : ControllerBase
     }
 
     [HttpGet("search")]
+    [Authorize(Roles = "Admin,Teacher")]
     public async Task<IActionResult> Search([FromQuery] StudentSearchFilter filter)
     {
         var result = await _studentService.SearchStudentsAsync(filter);
@@ -52,6 +54,7 @@ public class StudentsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "Admin,Teacher")]
     public async Task<IActionResult> Create([FromBody] CreateStudentRequest request)
     {
         var result = await _studentService.CreateStudentAsync(request);
@@ -61,6 +64,7 @@ public class StudentsController : ControllerBase
     }
 
     [HttpPost("bulk")]
+    [Authorize(Roles = "Admin,Teacher")]
     public async Task<IActionResult> BulkCreate([FromBody] BulkCreateStudentsRequest request)
     {
         var result = await _studentService.BulkCreateStudentsAsync(request);
@@ -70,6 +74,7 @@ public class StudentsController : ControllerBase
     }
 
     [HttpPut("{id:int}")]
+    [Authorize(Roles = "Admin,Teacher")]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateStudentRequest request)
     {
         if (id != request.Id)
@@ -82,6 +87,7 @@ public class StudentsController : ControllerBase
     }
 
     [HttpDelete("{id:int}")]
+    [Authorize(Roles = "Admin,Teacher")]
     public async Task<IActionResult> Delete(int id)
     {
         var result = await _studentService.DeleteStudentAsync(id);
@@ -91,6 +97,7 @@ public class StudentsController : ControllerBase
     }
 
     [HttpPost("link-user")]
+    [Authorize(Roles = "Admin,Teacher")]
     public async Task<IActionResult> LinkUser([FromBody] LinkStudentUserRequest request)
     {
         var result = await _studentService.LinkUserAccountAsync(request);

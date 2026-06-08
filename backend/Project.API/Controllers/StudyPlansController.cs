@@ -83,6 +83,24 @@ public class StudyPlansController : ControllerBase
         return Ok(result);
     }
 
+    [HttpDelete("sessions/{itemId:int}")]
+    public async Task<IActionResult> DeleteSession(int itemId, [FromQuery] int enrollmentId)
+    {
+        var result = await _studyPlanService.DeleteSessionAsync(itemId, enrollmentId);
+        if (!result.IsSuccess)
+            return BadRequest(result);
+        return Ok(result);
+    }
+
+    [HttpPatch("{planId:int}/rest-day")]
+    public async Task<IActionResult> UpdateRestDay(int planId, [FromBody] UpdateRestDayRequest request)
+    {
+        var result = await _studyPlanService.UpdateRestDayAsync(planId, request.RestDay);
+        if (!result.IsSuccess)
+            return BadRequest(result);
+        return Ok(result);
+    }
+
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Deactivate(int id)
     {

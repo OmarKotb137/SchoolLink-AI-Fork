@@ -9,6 +9,7 @@ public class StudyPlanDto
     public DateOnly StartDate { get; set; }
     public DateOnly EndDate { get; set; }
     public bool IsActive { get; set; }
+    public int? RestDay { get; set; }
     public List<StudyPlanItemDto> Items { get; set; } = new();
     public DateTime CreatedAt { get; set; }
 }

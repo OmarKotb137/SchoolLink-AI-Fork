@@ -8,6 +8,7 @@
         public DateOnly StartDate { get; set; }
         public DateOnly EndDate { get; set; }
         public bool IsActive { get; set; } = true;
+        public int? RestDay { get; set; }
 
         // Navigation Properties
         public StudentEnrollment Enrollment { get; set; } = null!;

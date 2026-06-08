@@ -7,7 +7,7 @@ namespace Project.API.Controllers;
 
 [ApiController]
 [Route("api/enrollments")]
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "Admin,Teacher,Student,Parent")]
 public class EnrollmentsController : ControllerBase
 {
     private readonly IStudentEnrollmentService _enrollmentService;
@@ -18,6 +18,7 @@ public class EnrollmentsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "Admin,Teacher")]
     public async Task<IActionResult> Enroll([FromBody] EnrollStudentRequest request)
     {
         var result = await _enrollmentService.EnrollStudentAsync(request);
@@ -27,6 +28,7 @@ public class EnrollmentsController : ControllerBase
     }
 
     [HttpPost("bulk")]
+    [Authorize(Roles = "Admin,Teacher")]
     public async Task<IActionResult> BulkEnroll([FromBody] BulkEnrollStudentsRequest request)
     {
         var result = await _enrollmentService.BulkEnrollStudentsAsync(request);
@@ -36,6 +38,7 @@ public class EnrollmentsController : ControllerBase
     }
 
     [HttpPut("transfer")]
+    [Authorize(Roles = "Admin,Teacher")]
     public async Task<IActionResult> Transfer([FromBody] TransferStudentRequest request)
     {
         var result = await _enrollmentService.TransferStudentAsync(request);
@@ -63,6 +66,7 @@ public class EnrollmentsController : ControllerBase
     }
 
     [HttpGet("by-class/{classId:int}")]
+    [Authorize(Roles = "Admin,Teacher")]
     public async Task<IActionResult> GetByClass(int classId, [FromQuery] int academicYearId, [FromQuery] bool activeOnly = true)
     {
         var result = await _enrollmentService.GetEnrollmentsByClassAsync(classId, academicYearId, activeOnly);
@@ -72,6 +76,7 @@ public class EnrollmentsController : ControllerBase
     }
 
     [HttpGet("transfers-history")]
+    [Authorize(Roles = "Admin,Teacher")]
     public async Task<IActionResult> GetTransferHistory([FromQuery] int academicYearId)
     {
         var result = await _enrollmentService.GetTransferHistoryAsync(academicYearId);
