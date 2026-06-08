@@ -264,6 +264,14 @@
   font-weight: 700;
 }
 
+.hide-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 .parent-links-modal {
   max-width: 1100px;
 }
