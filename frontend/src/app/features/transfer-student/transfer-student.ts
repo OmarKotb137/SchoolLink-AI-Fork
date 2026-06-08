@@ -1,4 +1,4 @@
-import { Component, signal, computed, inject, OnInit } from '@angular/core';
+import { Component, signal, computed, inject, OnInit, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { finalize, forkJoin } from 'rxjs';
@@ -58,6 +58,15 @@ export class TransferStudent implements OnInit {
   successMessage = signal('');
   lastTransfer = signal<{ count: number; fromClass: string; toClass: string } | null>(null);
   selectedReason = signal<string | null>(null);
+  showHistory = signal(false);
+
+  private historyLoadEffect = effect(() => {
+    const show = this.showHistory();
+    const yearId = this.currentAcademicYear()?.id;
+    if (show && yearId) {
+      this.loadTransferHistory();
+    }
+  });
 
   currentAcademicYear = computed(() =>
     this.academicYears().find(y => y.isCurrent) ?? this.academicYears()[0] ?? null
@@ -116,9 +125,6 @@ export class TransferStudent implements OnInit {
         this.academicYears.set(unwrappedYears);
         this.gradeLevels.set(unwrappedGrades);
         this.allClasses.set(unwrappedClasses);
-
-        const yearId = this.currentAcademicYear()?.id;
-        if (yearId) this.loadTransferHistory();
       },
       error: err => this.showError(this.extractError(err, 'تعذر تحميل بيانات الصفحة'))
     });
@@ -278,7 +284,9 @@ export class TransferStudent implements OnInit {
     this.successMessage.set(`تم نقل ${count} طالب بنجاح من "${fromClass}" إلى "${toClass}"`);
     this.loadEnrollments();
     this.historyPage.set(1);
-    this.loadTransferHistory();
+    if (this.showHistory()) {
+      this.loadTransferHistory();
+    }
     this.resetSelection();
     setTimeout(() => {
       this.successMessage.set('');
@@ -322,57 +330,55 @@ export class TransferStudent implements OnInit {
     return this.selectedEnrollmentIds().includes(id);
   }
 
-  trackById(_: number, item: Enrollment): number {
-    return item.id;
-  }
-
-  trackByPageIndex(index: number, item: number | string): string {
-    return typeof item === 'string' ? `ellipsis-${index}` : `page-${item}`;
-  }
+  trackByPageIndex = (_: number, item: number | string) =>
+    typeof item === 'string' ? `dot-${_}` : `page-${item}`;
 
   trackByHistoryId(_: number, item: TransferHistory): number {
     return item.id;
   }
 
-  getPages(): (number | string)[] {
+  trackById = (_: number, item: Enrollment): number => item.id;
+
+  pages = computed<(number | string)[]>(() => {
     const total = this.totalPages();
     const current = this.currentPage();
-    const pages: (number | string)[] = [];
-    if (total <= 7) {
-      for (let i = 1; i <= total; i++) pages.push(i);
-    } else {
-      pages.push(1);
-      if (current > 3) pages.push('...');
-      for (let i = Math.max(2, current - 1); i <= Math.min(total - 1, current + 1); i++) pages.push(i);
-      if (current < total - 2) pages.push('...');
-      pages.push(total);
-    }
-    return pages;
-  }
+    const result: (number | string)[] = [];
 
-  getHistoryPages(): (number | string)[] {
+    result.push(1);
+    if (current > 3) result.push('...');
+    for (let i = Math.max(2, current - 1); i <= Math.min(total - 1, current + 1); i++) {
+      result.push(i);
+    }
+    if (current < total - 2) result.push('...');
+    if (total > 1) result.push(total);
+
+    return result;
+  });
+
+  historyPages = computed<(number | string)[]>(() => {
     const total = this.historyTotalPages();
     const current = this.historyPage();
-    const pages: (number | string)[] = [];
-    if (total <= 7) {
-      for (let i = 1; i <= total; i++) pages.push(i);
-    } else {
-      pages.push(1);
-      if (current > 3) pages.push('...');
-      for (let i = Math.max(2, current - 1); i <= Math.min(total - 1, current + 1); i++) pages.push(i);
-      if (current < total - 2) pages.push('...');
-      pages.push(total);
+    const result: (number | string)[] = [];
+
+    result.push(1);
+    if (current > 3) result.push('...');
+    for (let i = Math.max(2, current - 1); i <= Math.min(total - 1, current + 1); i++) {
+      result.push(i);
     }
-    return pages;
-  }
+    if (current < total - 2) result.push('...');
+    if (total > 1) result.push(total);
 
-  getRangeStart(): number {
-    return this.totalCount() === 0 ? 0 : (this.currentPage() - 1) * this.pageSize() + 1;
-  }
+    return result;
+  });
 
-  getRangeEnd(): number {
+  rangeStart = computed(() => {
+    if (this.totalCount() === 0) return 0;
+    return (this.currentPage() - 1) * this.pageSize() + 1;
+  });
+
+  rangeEnd = computed(() => {
     return Math.min(this.currentPage() * this.pageSize(), this.totalCount());
-  }
+  });
 
   private unwrapData<T>(response: any): T | null {
     if (!response) return null;

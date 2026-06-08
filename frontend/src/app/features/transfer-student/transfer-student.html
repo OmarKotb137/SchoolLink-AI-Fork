@@ -263,127 +263,148 @@
               </div>
 
               <!-- Pagination -->
-              <div *ngIf="totalPages() > 1" class="flex flex-col sm:flex-row items-center justify-between p-4 bg-gray-50 border-t border-gray-100 gap-4">
+              @if (totalPages() > 1) {
+                <div class="flex flex-col sm:flex-row items-center justify-between p-4 bg-gray-50 border-t border-gray-100 gap-4">
+                  <span class="text-sm text-gray-700">
+                    إظهار {{ rangeStart() }} إلى {{ rangeEnd() }} من أصل {{ totalCount() }} طالب
+                  </span>
+                  <div class="flex items-center gap-1">
+                    <button (click)="onPageChange(currentPage() - 1)"
+                            [disabled]="currentPage() === 1 || isLoadingEnrollments()"
+                            class="px-3 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1">
+                      <span class="material-symbols-outlined text-sm">chevron_right</span>
+                      السابق
+                    </button>
+                    @for (p of pages(); track trackByPageIndex($index, p)) {
+                      @if (p === '...') {
+                        <span class="px-3 py-2 text-sm font-medium text-gray-500">…</span>
+                      } @else {
+                        <button (click)="onPageChange(+p)"
+                                [disabled]="isLoadingEnrollments()"
+                                class="w-8 h-8 text-sm font-medium rounded-2xl transition-colors border flex items-center justify-center"
+                                [class.bg-blue-600]="currentPage() === +p"
+                                [class.text-white]="currentPage() === +p"
+                                [class.border-blue-600]="currentPage() === +p"
+                                [class.bg-white]="currentPage() !== +p"
+                                [class.text-gray-900]="currentPage() !== +p"
+                                [class.border-gray-200]="currentPage() !== +p"
+                                [class.hover:bg-gray-50]="currentPage() !== +p">
+                          {{ p }}
+                        </button>
+                      }
+                    }
+                    <button (click)="onPageChange(currentPage() + 1)"
+                            [disabled]="currentPage() === totalPages() || isLoadingEnrollments()"
+                            class="px-3 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1">
+                      التالي
+                      <span class="material-symbols-outlined text-sm">chevron_left</span>
+                    </button>
+                  </div>
+                </div>
+              }
+            </div>
+          </section>
+        </div>
+
+        <!-- Transfer History Toggle -->
+        <button (click)="showHistory.set(!showHistory())"
+                class="w-full flex items-center justify-between p-4 bg-white rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-all duration-300 group">
+          <div class="flex items-center gap-3">
+            <span class="material-symbols-outlined text-indigo-600 text-2xl group-hover:scale-110 transition-transform">history</span>
+            <div class="text-right">
+              <h3 class="text-lg font-bold text-gray-900">سجل عمليات النقل</h3>
+              <p class="text-sm text-gray-500">{{ historyTotalCount() }} عملية نقل</p>
+            </div>
+          </div>
+          <span class="material-symbols-outlined text-gray-400 transition-transform duration-300"
+                [class.rotate-180]="showHistory()">
+            expand_more
+          </span>
+        </button>
+
+        @if (showHistory()) {
+          <section class="bg-white rounded-2xl border border-gray-100 shadow-lg p-5 space-y-5">
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm text-right text-gray-600">
+                <thead class="bg-gray-50 text-xs uppercase text-gray-700 border-b border-gray-100">
+                  <tr>
+                    <th class="px-4 py-4">الطالب</th>
+                    <th class="px-4 py-4">من فصل</th>
+                    <th class="px-4 py-4">إلى فصل</th>
+                    <th class="px-4 py-4">التاريخ</th>
+                    <th class="px-4 py-4">السبب</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (h of transferHistory(); track trackByHistoryId($index, h)) {
+                    <tr class="border-b border-gray-100 hover:bg-gray-50">
+                      <td class="px-4 py-4 font-medium text-gray-900">{{ h.studentName }}</td>
+                      <td class="px-4 py-4"><span class="px-2 py-0.5 bg-gray-100 rounded text-xs">{{ h.fromClass }}</span></td>
+                      <td class="px-4 py-4"><span class="px-2 py-0.5 bg-blue-50 text-blue-800 rounded text-xs font-medium">{{ h.toClass }}</span></td>
+                      <td class="px-4 py-4 text-gray-500 text-xs">{{ h.transferDate }}</td>
+                      <td class="px-4 py-4 text-xs">
+                        @if (h.reason) {
+                          <button (click)="selectedReason.set(h.reason)"
+                                  class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 transition-colors font-medium text-sm">
+                            <span class="material-symbols-outlined" style="font-size:16px;">visibility</span>
+                            عرض السبب
+                          </button>
+                        } @else {
+                          <span class="text-gray-400">—</span>
+                        }
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td colspan="5" class="px-6 py-12 text-center text-gray-500">
+                        لا توجد عمليات نقل في هذه السنة الدراسية
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+
+            @if (historyTotalPages() > 1) {
+              <div class="flex flex-col sm:flex-row items-center justify-between pt-4 border-t border-gray-100 gap-4">
                 <span class="text-sm text-gray-700">
-                  إظهار {{ getRangeStart() }} إلى {{ getRangeEnd() }} من أصل {{ totalCount() }} طالب
+                  صفحة {{ historyPage() }} من {{ historyTotalPages() }}
                 </span>
                 <div class="flex items-center gap-1">
-                  <button (click)="onPageChange(currentPage() - 1)"
-                          [disabled]="currentPage() === 1 || isLoadingEnrollments()"
+                  <button (click)="onHistoryPageChange(historyPage() - 1)"
+                          [disabled]="historyPage() === 1"
                           class="px-3 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1">
                     <span class="material-symbols-outlined text-sm">chevron_right</span>
                     السابق
                   </button>
-                  <ng-container *ngFor="let p of getPages(); trackBy: trackByPageIndex">
-                    <span *ngIf="p === '...'" class="px-3 py-2 text-sm font-medium text-gray-500">...</span>
-                    <button *ngIf="p !== '...'"
-                            (click)="onPageChange(+p)"
-                            [disabled]="isLoadingEnrollments()"
-                            class="w-8 h-8 text-sm font-medium rounded-2xl transition-colors border flex items-center justify-center"
-                            [class.bg-blue-600]="currentPage() === +p"
-                            [class.text-white]="currentPage() === +p"
-                            [class.border-blue-600]="currentPage() === +p"
-                            [class.bg-white]="currentPage() !== +p"
-                            [class.text-gray-900]="currentPage() !== +p"
-                            [class.border-gray-200]="currentPage() !== +p"
-                            [class.hover:bg-gray-50]="currentPage() !== +p">
-                      {{ p }}
-                    </button>
-                  </ng-container>
-                  <button (click)="onPageChange(currentPage() + 1)"
-                          [disabled]="currentPage() === totalPages() || isLoadingEnrollments()"
+                  @for (p of historyPages(); track trackByPageIndex($index, p)) {
+                    @if (p === '...') {
+                      <span class="px-3 py-2 text-sm font-medium text-gray-500">…</span>
+                    } @else {
+                      <button (click)="onHistoryPageChange(+p)"
+                              class="w-8 h-8 text-sm font-medium rounded-2xl transition-colors border flex items-center justify-center"
+                              [class.bg-blue-600]="historyPage() === +p"
+                              [class.text-white]="historyPage() === +p"
+                              [class.border-blue-600]="historyPage() === +p"
+                              [class.bg-white]="historyPage() !== +p"
+                              [class.text-gray-900]="historyPage() !== +p"
+                              [class.border-gray-200]="historyPage() !== +p"
+                              [class.hover:bg-gray-50]="historyPage() !== +p">
+                        {{ p }}
+                      </button>
+                    }
+                  }
+                  <button (click)="onHistoryPageChange(historyPage() + 1)"
+                          [disabled]="historyPage() === historyTotalPages()"
                           class="px-3 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1">
                     التالي
                     <span class="material-symbols-outlined text-sm">chevron_left</span>
                   </button>
                 </div>
               </div>
-            </div>
+            }
           </section>
-        </div>
-
-        <!-- Transfer History -->
-        <section class="bg-white rounded-2xl border border-gray-100 shadow-lg p-5 space-y-5">
-          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
-              <span class="material-symbols-outlined text-indigo-600">history</span>
-              سجل عمليات النقل
-            </h3>
-            <span *ngIf="historyTotalCount() > 0" class="text-sm text-gray-500">{{ historyTotalCount() }} عملية نقل</span>
-          </div>
-          <div class="overflow-x-auto">
-            <table class="w-full text-sm text-right text-gray-600">
-              <thead class="bg-gray-50 text-xs uppercase text-gray-700 border-b border-gray-100">
-                <tr>
-                  <th class="px-4 py-4">الطالب</th>
-                  <th class="px-4 py-4">من فصل</th>
-                  <th class="px-4 py-4">إلى فصل</th>
-                  <th class="px-4 py-4">التاريخ</th>
-                  <th class="px-4 py-4">السبب</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr *ngFor="let h of transferHistory(); trackBy: trackByHistoryId" class="border-b border-gray-100 hover:bg-gray-50">
-                  <td class="px-4 py-4 font-medium text-gray-900">{{ h.studentName }}</td>
-                  <td class="px-4 py-4"><span class="px-2 py-0.5 bg-gray-100 rounded text-xs">{{ h.fromClass }}</span></td>
-                  <td class="px-4 py-4"><span class="px-2 py-0.5 bg-blue-50 text-blue-800 rounded text-xs font-medium">{{ h.toClass }}</span></td>
-                  <td class="px-4 py-4 text-gray-500 text-xs">{{ h.transferDate }}</td>
-                  <td class="px-4 py-4 text-xs">
-                    <ng-container *ngIf="h.reason">
-                      <button (click)="selectedReason.set(h.reason)"
-                              class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 transition-colors font-medium text-sm">
-                        <span class="material-symbols-outlined" style="font-size:16px;">visibility</span>
-                        عرض السبب
-                      </button>
-                    </ng-container>
-                    <span *ngIf="!h.reason" class="text-gray-400">—</span>
-                  </td>
-                </tr>
-                <tr *ngIf="!transferHistory().length">
-                  <td colspan="5" class="px-6 py-12 text-center text-gray-500">
-                    لا توجد عمليات نقل في هذه السنة الدراسية
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <!-- History Pagination -->
-          <div *ngIf="historyTotalPages() > 1" class="flex flex-col sm:flex-row items-center justify-between pt-4 border-t border-gray-100 gap-4">
-            <span class="text-sm text-gray-700">
-              صفحة {{ historyPage() }} من {{ historyTotalPages() }}
-            </span>
-            <div class="flex items-center gap-1">
-              <button (click)="onHistoryPageChange(historyPage() - 1)"
-                      [disabled]="historyPage() === 1"
-                      class="px-3 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1">
-                <span class="material-symbols-outlined text-sm">chevron_right</span>
-                السابق
-              </button>
-              <ng-container *ngFor="let p of getHistoryPages(); trackBy: trackByPageIndex">
-                <span *ngIf="p === '...'" class="px-3 py-2 text-sm font-medium text-gray-500">...</span>
-                <button *ngIf="p !== '...'"
-                        (click)="onHistoryPageChange(+p)"
-                        class="w-8 h-8 text-sm font-medium rounded-2xl transition-colors border flex items-center justify-center"
-                        [class.bg-blue-600]="historyPage() === +p"
-                        [class.text-white]="historyPage() === +p"
-                        [class.border-blue-600]="historyPage() === +p"
-                        [class.bg-white]="historyPage() !== +p"
-                        [class.text-gray-900]="historyPage() !== +p"
-                        [class.border-gray-200]="historyPage() !== +p"
-                        [class.hover:bg-gray-50]="historyPage() !== +p">
-                  {{ p }}
-                </button>
-              </ng-container>
-              <button (click)="onHistoryPageChange(historyPage() + 1)"
-                      [disabled]="historyPage() === historyTotalPages()"
-                      class="px-3 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1">
-                التالي
-                <span class="material-symbols-outlined text-sm">chevron_left</span>
-              </button>
-            </div>
-          </div>
-        </section>
+        }
 
       </div>
     </div>
