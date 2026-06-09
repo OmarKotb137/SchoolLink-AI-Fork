@@ -7,7 +7,7 @@ namespace Project.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "Admin,Teacher")]
+[Authorize(Roles = "Admin,Teacher,Student,Parent")]
 public class PeriodAveragesController : ControllerBase
 {
     private readonly IPeriodAverageService _service;

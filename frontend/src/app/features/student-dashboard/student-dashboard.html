@@ -1,27 +1,29 @@
     <app-sidebar [(isOpen)]="sidebarOpen" />
     <div class="main-content">
-      <app-topbar userName="أحمد" />
+      <app-topbar [userName]="auth.user()?.fullName || ''" />
       <main class="p-gutter-desktop">
         <div class="flex flex-col gap-gutter-desktop">
+          @if (loading()) {
+            <div class="text-center py-16 text-outline font-headline-md">جاري تحميل البيانات...</div>
+          } @else if (data(); as d) {
           <!-- Hero Section -->
           <section class="bg-surface-container-lowest rounded-3xl p-widget-padding shadow-sm flex flex-col items-center text-center">
-            <h1 class="font-headline-lg text-headline-lg text-on-surface mb-2">مرحباً بك، أحمد! 👋</h1>
+            <h1 class="font-headline-lg text-headline-lg text-on-surface mb-2">مرحباً بك، {{ studentName() }}! 👋</h1>
             <p class="text-on-surface-variant font-body-md text-body-md mb-8">أداؤك الأكاديمي في تحسن مستمر. إليك نظرة سريعة على تقدمك.</p>
             <div class="relative w-64 h-64 mb-6">
               <svg class="w-full h-full -rotate-90" viewBox="0 0 36 36">
                 <circle class="stroke-surface-container-high" cx="18" cy="18" fill="none" r="15.9155" stroke-width="2.5"></circle>
-                <circle class="stroke-primary" cx="18" cy="18" fill="none" r="15.9155" stroke-dasharray="88, 100" stroke-linecap="round" stroke-width="2.5"></circle>
+                <circle class="stroke-primary" cx="18" cy="18" fill="none" r="15.9155" [attr.stroke-dasharray]="d.overallPercentage + ', 100'" stroke-linecap="round" stroke-width="2.5"></circle>
               </svg>
               <div class="absolute inset-0 flex flex-col items-center justify-center">
-                <span class="text-6xl font-bold text-primary">88%</span>
-                <span class="text-on-surface-variant font-headline-md">مستوى ممتاز</span>
-                <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-label-sm font-bold mt-2">+12% تحسن</span>
+                <span class="text-6xl font-bold text-primary">{{ d.overallPercentage }}%</span>
+                <span class="text-on-surface-variant font-headline-md">{{ levelText }}</span>
               </div>
             </div>
             <div class="grid grid-cols-3 gap-8 w-full max-w-2xl border-t border-outline-variant/30 pt-6">
-              <div><p class="text-on-surface-variant font-label-sm">ترتيب الفصل</p><p class="font-headline-md text-primary">#4</p></div>
-              <div><p class="text-on-surface-variant font-label-sm">ساعات الدراسة</p><p class="font-headline-md text-primary">24.5</p></div>
-              <div><p class="text-on-surface-variant font-label-sm">المهام المكتملة</p><p class="font-headline-md text-primary">92%</p></div>
+              <div><p class="text-on-surface-variant font-label-sm">المهام المكتملة</p><p class="font-headline-md text-primary">{{ d.completedTasksPercent }}%</p></div>
+              <div><p class="text-on-surface-variant font-label-sm">عدد الفترات</p><p class="font-headline-md text-primary">{{ d.periodAverages.length }}</p></div>
+              <div><p class="text-on-surface-variant font-label-sm">الغياب</p><p class="font-headline-md text-primary">{{ d.absencesCount }}</p></div>
             </div>
           </section>
 
@@ -29,14 +31,19 @@
             <!-- Left Column -->
             <div class="lg:col-span-8 flex flex-col gap-6">
               <div class="bg-surface-container-lowest border border-outline-variant/30 rounded-3xl p-widget-padding shadow-sm">
-                <h3 class="font-headline-md mb-6">اتجاهات التقدم (آخر 3 أشهر)</h3>
+                <h3 class="font-headline-md mb-6">نظرة عامة على متوسطات الفترات</h3>
                 <div class="h-64 flex items-end justify-between gap-2 px-2">
-                  <div class="flex-1 bg-surface-container-low h-[40%] rounded-t-lg relative group"></div>
-                  <div class="flex-1 bg-surface-container-low h-[65%] rounded-t-lg relative group"></div>
-                  <div class="flex-1 bg-primary h-[88%] rounded-t-lg relative group"></div>
+                  @for (pa of d.periodAverages; track pa.avgScore) {
+                    <div class="flex-1 bg-primary rounded-t-lg relative group"
+                         [style.height.%]="pa.maxScore > 0 ? (pa.avgScore / pa.maxScore) * 100 : 0">
+                      <span class="absolute -top-6 left-1/2 -translate-x-1/2 text-label-sm font-bold text-primary whitespace-nowrap">{{ pa.maxScore > 0 ? ((pa.avgScore / pa.maxScore) * 100).toFixed(0) + '%' : '0%' }}</span>
+                    </div>
+                  } @empty {
+                    <div class="w-full text-center text-outline py-8">لا توجد بيانات متوسطات بعد</div>
+                  }
                 </div>
               </div>
-              <!-- AI Insights -->
+              <!-- AI Insights (left as-is) -->
               <div class="bg-inverse-surface text-inverse-on-surface rounded-3xl p-widget-padding shadow-xl">
                 <div class="flex items-center gap-3 mb-6">
                   <span class="material-symbols-outlined text-secondary-fixed-dim" style="font-variation-settings:'FILL'1">auto_awesome</span>
@@ -65,27 +72,49 @@
               <div class="bg-surface-container-lowest border border-outline-variant/30 rounded-3xl p-widget-padding">
                 <h3 class="font-label-md font-bold mb-4 flex items-center gap-2"><span class="material-symbols-outlined text-secondary text-sm">task_alt</span> خطة اليوم</h3>
                 <div class="space-y-3">
-                  <div class="flex items-center justify-between p-3 bg-surface-container-low rounded-xl">
-                    <div><p class="font-label-md">مراجعة قوانين نيوتن</p><p class="text-[10px] text-outline">20 دقيقة • فيزياء</p></div>
-                    <span class="material-symbols-outlined text-outline">radio_button_unchecked</span>
-                  </div>
-                  <div class="flex items-center justify-between p-3 bg-surface-container-low rounded-xl">
-                    <div><p class="font-label-md">حل مسائل التكامل</p><p class="text-[10px] text-outline">45 دقيقة • رياضيات</p></div>
-                    <span class="material-symbols-outlined text-outline">radio_button_unchecked</span>
-                  </div>
+                  @if (d.sessions.length > 0) {
+                    @for (s of d.sessions; track s.id) {
+                      <div class="flex items-center justify-between p-3 bg-surface-container-low rounded-xl">
+                        <div><p class="font-label-md">{{ s.title }}</p><p class="text-[10px] text-outline">{{ s.duration }} دقيقة • {{ s.subject }}</p></div>
+                        <span class="material-symbols-outlined" [class.text-primary]="s.isCompleted" [class.text-outline]="!s.isCompleted">{{ s.isCompleted ? 'check_circle' : 'radio_button_unchecked' }}</span>
+                      </div>
+                    }
+                  } @else {
+                    <div class="text-center text-outline py-4 text-label-sm">لا توجد جلسات مخططة اليوم</div>
+                  }
                 </div>
               </div>
               <div class="bg-surface-container-lowest border border-outline-variant/30 rounded-3xl p-widget-padding">
-                <h3 class="font-label-md font-bold mb-4 flex items-center gap-2"><span class="material-symbols-outlined text-primary text-sm">assignment</span> الواجبات المستحقة</h3>
+                <h3 class="font-label-md font-bold mb-4 flex items-center gap-2"><span class="material-symbols-outlined text-primary text-sm">assignment</span> الواجبات</h3>
                 <div class="space-y-3">
-                  <div class="p-3 border-r-2 border-error bg-error/5 rounded-lg">
-                    <p class="font-label-sm font-bold">تقرير المختبر: الكيمياء</p>
-                    <p class="text-[10px] text-error">ينتهي غداً • 10:00 م</p>
-                  </div>
-                  <div class="p-3 border-r-2 border-secondary bg-secondary/5 rounded-lg">
-                    <p class="font-label-sm font-bold">تطبيق النحو: الاستثناء</p>
-                    <p class="text-[10px] text-outline">الخميس القادم • 08:00 ص</p>
-                  </div>
+                  @for (a of d.assignments; track a.id) {
+                    <div class="p-3 rounded-lg"
+                      [class.border-r-2]="true"
+                      [class.border-error]="a.status === 'late'"
+                      [class.bg-error/5]="a.status === 'late'"
+                      [class.border-tertiary]="a.status === 'submitted'"
+                      [class.bg-tertiary/5]="a.status === 'submitted'"
+                      [class.border-secondary]="a.status === 'not-submitted'"
+                      [class.bg-secondary/5]="a.status === 'not-submitted'">
+                      <div class="flex justify-between items-start">
+                        <div>
+                          <p class="font-label-sm font-bold">{{ a.title }}</p>
+                          <p class="text-[10px] text-outline">{{ a.subject }}@if (a.dueDate) { • {{ a.dueDate.slice(0,10) }} }</p>
+                        </div>
+                        <span class="text-label-sm font-bold"
+                          [class.text-error]="a.status === 'late'"
+                          [class.text-tertiary]="a.status === 'submitted'"
+                          [class.text-secondary]="a.status === 'not-submitted'">
+                          @if (a.status === 'submitted' && a.score !== undefined) { {{ a.score }}/{{ a.maxScore }} }
+                          @else if (a.status === 'late') { متأخر }
+                          @else if (a.status === 'submitted') { تم }
+                          @else { مستحق }
+                        </span>
+                      </div>
+                    </div>
+                  } @empty {
+                    <div class="text-center text-outline py-4 text-label-sm">لا توجد واجبات</div>
+                  }
                 </div>
               </div>
               <div class="bg-primary text-on-primary rounded-3xl p-6">
@@ -95,6 +124,7 @@
               </div>
             </div>
           </div>
+          }
         </div>
       </main>
     </div>

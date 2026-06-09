@@ -119,6 +119,13 @@ public class AssignmentsController : ControllerBase
         return Ok(result);
     }
 
+    [HttpGet("by-enrollment/{enrollmentId:int}")]
+    public async Task<IActionResult> GetByEnrollment(int enrollmentId)
+    {
+        var result = await _service.GetByEnrollmentAsync(enrollmentId);
+        return Ok(result);
+    }
+
     [HttpGet("by-teacher/{teacherId:int}")]
     public async Task<IActionResult> GetByTeacher(int teacherId, [FromQuery] int academicYearId)
     {

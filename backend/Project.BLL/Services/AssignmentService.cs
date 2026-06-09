@@ -245,5 +245,61 @@ namespace Project.BLL.Services
             var dto = _mapper.Map<AssignmentDto>(assignment);
             return OperationResult<AssignmentDto>.Success(dto, "تم إنشاء الواجب بنجاح");
         }
+
+        public async Task<OperationResult<List<AssignmentWithSubmissionDto>>> GetByEnrollmentAsync(int enrollmentId)
+        {
+            var enrollment = await _unitOfWork.StudentEnrollments.GetByIdAsync(enrollmentId);
+            if (enrollment == null || enrollment.IsDeleted)
+                return OperationResult<List<AssignmentWithSubmissionDto>>.Failure("التسجيل غير موجود");
+
+            var csts = await _unitOfWork.ClassSubjectTeachers
+                .FindAsync(c => c.ClassId == enrollment.ClassId && c.AcademicYearId == enrollment.AcademicYearId && !c.IsDeleted);
+
+            var cstIds = csts.Select(c => c.Id).ToList();
+
+            var assignments = await _unitOfWork.Assignments
+                .FindAsync(a => cstIds.Contains(a.ClassSubjectTeacherId) && !a.IsDeleted && a.IsPublished);
+
+            var submissions = await _unitOfWork.StudentAssignmentSubmissions.GetByEnrollmentIdAsync(enrollmentId);
+            var submissionMap = submissions.ToDictionary(s => s.AssignmentId);
+
+            var result = assignments.Select(a =>
+            {
+                var cst = csts.FirstOrDefault(c => c.Id == a.ClassSubjectTeacherId);
+                var subject = cst?.Subject?.Name ?? "";
+
+                string status;
+                decimal? score;
+
+                if (submissionMap.TryGetValue(a.Id, out var sub))
+                {
+                    score = sub.IsGraded && sub.Score.HasValue ? sub.Score : null;
+                    status = "submitted";
+                }
+                else if (a.DueDate.HasValue && a.DueDate.Value < DateTime.UtcNow)
+                {
+                    score = null;
+                    status = "late";
+                }
+                else
+                {
+                    score = null;
+                    status = "not-submitted";
+                }
+
+                return new AssignmentWithSubmissionDto
+                {
+                    Id = a.Id,
+                    Subject = subject,
+                    Title = a.Title,
+                    DueDate = a.DueDate,
+                    MaxScore = a.MaxScore,
+                    Score = score,
+                    Status = status,
+                };
+            }).ToList();
+
+            return OperationResult<List<AssignmentWithSubmissionDto>>.Success(result, "تم جلب الواجبات بنجاح");
+        }
     }
 }

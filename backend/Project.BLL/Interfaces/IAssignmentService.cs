@@ -20,5 +20,6 @@ namespace Project.BLL.Interfaces
         Task<OperationResult<List<AssignmentDto>>> GetByTeacherAsync(int teacherId, int academicYearId);
         Task<OperationResult<IEnumerable<AssignmentSummaryDto>>> GetAssignmentsByClassSubjectTeacherAsync(int classSubjectTeacherId, EvaluationCategory? category = null);
         Task<OperationResult<AssignmentDto>> GenerateAssignmentWithAIAsync(GenerateAssignmentRequest request);
+        Task<OperationResult<List<AssignmentWithSubmissionDto>>> GetByEnrollmentAsync(int enrollmentId);
     }
 }
