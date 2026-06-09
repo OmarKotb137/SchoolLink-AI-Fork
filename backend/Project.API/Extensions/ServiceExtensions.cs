@@ -179,6 +179,10 @@ public static class ServiceExtensions
         services.AddScoped<IAgentChatStore, AgentChatStore>();
         services.AddScoped<AgentToolRegistry>();
         services.AddScoped<ExamAgentService>();
+
+
+        services.AddScoped<IClassEnrollmentPickerService, ClassEnrollmentPickerService>();
+
     }
 }
 

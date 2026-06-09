@@ -190,7 +190,53 @@ public class StudentEnrollmentRepository : Repository<StudentEnrollment>, IStude
             .CountAsync(e =>
                 e.AcademicYearId == academicYearId &&
                 e.LeftAt != null, ct);
+
+    public async Task<(IReadOnlyList<Domain.Entities.Student> Students, int TotalCount)> GetUnenrolledStudentsAsync(
+        string? searchTerm,
+        DateOnly? birthDateFrom,
+        DateOnly? birthDateTo,
+        string? sortBy,
+        bool sortDescending,
+        int page,
+        int pageSize,
+        CancellationToken ct = default)
+    {
+        var query = _context.Students
+            .Where(s =>
+                !s.IsDeleted &&
+                s.IsActive &&
+                !_context.StudentEnrollments.Any(e =>
+                    e.StudentId == s.Id &&
+                    e.LeftAt == null &&
+                    !e.IsDeleted))
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+            query = query.Where(s => s.FullName.Contains(searchTerm));
+
+        if (birthDateFrom.HasValue)
+            query = query.Where(s => s.BirthDate.HasValue && s.BirthDate.Value >= birthDateFrom.Value);
+
+        if (birthDateTo.HasValue)
+            query = query.Where(s => s.BirthDate.HasValue && s.BirthDate.Value <= birthDateTo.Value);
+
+        var totalCount = await query.CountAsync(ct);
+
+        query = sortBy?.ToLower() switch
+        {
+            "birthdate" => sortDescending
+                ? query.OrderByDescending(s => s.BirthDate)
+                : query.OrderBy(s => s.BirthDate),
+            _ => sortDescending
+                ? query.OrderByDescending(s => s.FullName)
+                : query.OrderBy(s => s.FullName)
+        };
+
+        var students = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(ct);
+
+        return (students, totalCount);
+    }
 }
-
-
-

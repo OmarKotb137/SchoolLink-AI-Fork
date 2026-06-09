@@ -166,6 +166,13 @@
                           طلاب الفصل
                         </button>
                         <button
+                          (click)="openPickerModal(cls)"
+                          class="px-4 py-2 text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-2xl hover:bg-emerald-100 hover:shadow-md transition-all hover:-translate-y-0.5 flex items-center gap-2"
+                          title="إضافة طلاب جدد لهذا الفصل">
+                          <span class="material-symbols-outlined text-sm">person_add</span>
+                          إضافة طلاب
+                        </button>
+                        <button
                           (click)="editClass(cls)"
                           class="p-2 text-blue-600 hover:bg-blue-50 rounded-2xl transition-colors"
                           title="تعديل">
@@ -445,6 +452,321 @@
             (click)="nextStudentsPage()">
             التالي
             <span class="material-symbols-outlined text-sm ml-1">chevron_left</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+}
+
+@if (showPickerModal()) {
+  <div class="fixed inset-0 lg:right-[280px] z-[60] flex items-center justify-center bg-gray-900/50 backdrop-blur-sm p-4">
+    <div class="bg-white rounded-3xl shadow-xl w-full max-w-6xl max-h-[90vh] flex flex-col overflow-hidden">
+
+      <!-- Header -->
+      <div class="px-6 py-4 border-b border-gray-200 flex items-start justify-between gap-4 bg-gray-50">
+        <div class="space-y-2 min-w-0">
+          <p class="text-sm font-medium text-emerald-600">إضافة طلاب للفصل</p>
+          <h3 class="text-xl font-bold text-gray-900">
+            {{ selectedClassForPicker()?.name || 'الفصل الدراسي' }}
+          </h3>
+          <div class="flex flex-wrap items-center gap-2 text-xs">
+            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border bg-blue-50 text-blue-700 border-blue-200">
+              {{ selectedClassForPicker()?.gradeLevelName || 'المرحلة غير محددة' }}
+            </span>
+            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border bg-gray-100 text-gray-700 border-gray-200">
+              {{ selectedClassForPicker()?.academicYearName || 'السنة الدراسية' }}
+            </span>
+            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border bg-emerald-50 text-emerald-700 border-emerald-200">
+              متاح للتسجيل: {{ availableTotal() }}
+            </span>
+            @if (selectedStudentIds().size > 0) {
+              <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border bg-indigo-50 text-indigo-700 border-indigo-200">
+                محدد: {{ selectedStudentIds().size }}
+              </span>
+            }
+          </div>
+        </div>
+        <button
+          type="button"
+          (click)="closePickerModal()"
+          class="w-10 h-10 flex items-center justify-center rounded-2xl border border-gray-200 bg-white text-gray-500 hover:bg-gray-100 transition-colors"
+          title="إغلاق">
+          <span class="material-symbols-outlined text-lg">close</span>
+        </button>
+      </div>
+
+      <div class="p-6 overflow-y-auto flex-1 space-y-5">
+
+        <!-- Filter Bar -->
+        <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+
+          <!-- Row 1: Search + Sort -->
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-end">
+            <div class="lg:col-span-6">
+              <label class="block mb-2 text-sm font-medium text-gray-900">بحث باسم الطالب</label>
+              <input
+                type="text"
+                [(ngModel)]="pickerSearchTerm"
+                (keyup.enter)="applyPickerSearch()"
+                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-2xl focus:ring-emerald-500 focus:border-emerald-500 block w-full p-2.5"
+                placeholder="اكتب اسم الطالب ثم اضغط Enter"/>
+            </div>
+
+            <div class="lg:col-span-3">
+              <label class="block mb-2 text-sm font-medium text-gray-900">ترتيب</label>
+              <div class="flex gap-2">
+                <button
+                  type="button"
+                  (click)="changeSortBy('name')"
+                  class="flex-1 px-3 py-2 text-xs font-medium rounded-2xl border transition-all flex items-center justify-center gap-1"
+                  [class.bg-emerald-600]="sortBy() === 'name'"
+                  [class.text-white]="sortBy() === 'name'"
+                  [class.border-emerald-600]="sortBy() === 'name'"
+                  [class.bg-white]="sortBy() !== 'name'"
+                  [class.text-gray-700]="sortBy() !== 'name'"
+                  [class.border-gray-200]="sortBy() !== 'name'">
+                  <span class="material-symbols-outlined text-sm">sort_by_alpha</span>
+                  الاسم
+                  @if (sortBy() === 'name') {
+                    <span class="material-symbols-outlined text-xs">
+                      {{ sortDescending() ? 'arrow_downward' : 'arrow_upward' }}
+                    </span>
+                  }
+                </button>
+                <button
+                  type="button"
+                  (click)="changeSortBy('birthdate')"
+                  class="flex-1 px-3 py-2 text-xs font-medium rounded-2xl border transition-all flex items-center justify-center gap-1"
+                  [class.bg-emerald-600]="sortBy() === 'birthdate'"
+                  [class.text-white]="sortBy() === 'birthdate'"
+                  [class.border-emerald-600]="sortBy() === 'birthdate'"
+                  [class.bg-white]="sortBy() !== 'birthdate'"
+                  [class.text-gray-700]="sortBy() !== 'birthdate'"
+                  [class.border-gray-200]="sortBy() !== 'birthdate'">
+                  <span class="material-symbols-outlined text-sm">cake</span>
+                  الميلاد
+                  @if (sortBy() === 'birthdate') {
+                    <span class="material-symbols-outlined text-xs">
+                      {{ sortDescending() ? 'arrow_downward' : 'arrow_upward' }}
+                    </span>
+                  }
+                </button>
+              </div>
+            </div>
+
+            <div class="lg:col-span-3 flex gap-2">
+              <button
+                type="button"
+                (click)="applyPickerSearch()"
+                class="flex-1 px-4 py-2 text-sm font-medium text-white rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-md hover:shadow-lg transform transition-all hover:-translate-y-0.5 flex items-center justify-center gap-2">
+                <span class="material-symbols-outlined text-sm">search</span>
+                بحث
+              </button>
+              <button
+                type="button"
+                (click)="clearPickerSearch()"
+                class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 flex items-center justify-center gap-2">
+                <span class="material-symbols-outlined text-sm">refresh</span>
+                مسح
+              </button>
+            </div>
+          </div>
+
+          <!-- Row 2: Birth Date Filter -->
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-end border-t border-gray-100 pt-4">
+            <div class="lg:col-span-3">
+              <label class="block mb-2 text-sm font-medium text-gray-900">تاريخ الميلاد من</label>
+              <input
+                type="date"
+                [ngModel]="birthDateFrom()"
+                (ngModelChange)="birthDateFrom.set($event)"
+                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-2xl focus:ring-emerald-500 focus:border-emerald-500 block w-full p-2.5"/>
+            </div>
+            <div class="lg:col-span-3">
+              <label class="block mb-2 text-sm font-medium text-gray-900">تاريخ الميلاد إلى</label>
+              <input
+                type="date"
+                [ngModel]="birthDateTo()"
+                (ngModelChange)="birthDateTo.set($event)"
+                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-2xl focus:ring-emerald-500 focus:border-emerald-500 block w-full p-2.5"/>
+            </div>
+            <div class="lg:col-span-3 flex gap-2">
+              <button
+                type="button"
+                (click)="applyPickerDateFilter()"
+                class="flex-1 px-4 py-2 text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-2xl hover:bg-emerald-100 transition-all flex items-center justify-center gap-2">
+                <span class="material-symbols-outlined text-sm">filter_alt</span>
+                تطبيق
+              </button>
+              <button
+                type="button"
+                (click)="clearPickerDateFilter()"
+                class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 transition-all flex items-center justify-center gap-2">
+                <span class="material-symbols-outlined text-sm">filter_alt_off</span>
+                مسح
+              </button>
+            </div>
+            <div class="lg:col-span-3 flex gap-2">
+              <button
+                type="button"
+                (click)="selectAllVisible()"
+                [disabled]="availableStudents().length === 0"
+                class="flex-1 px-3 py-2 text-xs font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-2xl hover:bg-indigo-100 transition-all flex items-center justify-center gap-1 disabled:opacity-50">
+                <span class="material-symbols-outlined text-sm">select_all</span>
+                تحديد الكل
+              </button>
+              <button
+                type="button"
+                (click)="clearSelection()"
+                [disabled]="selectedStudentIds().size === 0"
+                class="flex-1 px-3 py-2 text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded-2xl hover:bg-red-100 transition-all flex items-center justify-center gap-1 disabled:opacity-50">
+                <span class="material-symbols-outlined text-sm">deselect</span>
+                إلغاء
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Feedback Messages -->
+        <div *ngIf="pickerError()" class="flex items-center gap-3 p-4 text-sm text-red-800 rounded-2xl bg-red-50 border border-red-200">
+          <span class="material-symbols-outlined text-lg">error</span>
+          <span class="font-medium">{{ pickerError() }}</span>
+        </div>
+        <div *ngIf="enrollError()" class="flex items-center gap-3 p-4 text-sm text-red-800 rounded-2xl bg-red-50 border border-red-200">
+          <span class="material-symbols-outlined text-lg">warning</span>
+          <span class="font-medium">{{ enrollError() }}</span>
+        </div>
+        <div *ngIf="enrollSuccess()" class="flex items-center gap-3 p-4 text-sm text-emerald-800 rounded-2xl bg-emerald-50 border border-emerald-200">
+          <span class="material-symbols-outlined text-lg">check_circle</span>
+          <span class="font-medium">{{ enrollSuccess() }}</span>
+        </div>
+
+        <!-- Students Table -->
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div class="px-5 py-4 border-b border-gray-100 bg-gray-50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div>
+              <h4 class="text-base font-bold text-gray-900">الطلاب المتاحون للتسجيل</h4>
+              <p class="text-sm text-gray-500">
+                عرض {{ pickerRangeStart() }} إلى {{ pickerRangeEnd() }} من أصل {{ availableTotal() }} طالب
+              </p>
+            </div>
+            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border bg-gray-100 text-gray-700 border-gray-200">
+              الصفحة {{ availablePage() }} من {{ availableTotalPages() }}
+            </span>
+          </div>
+
+          <!-- Loading -->
+          <div *ngIf="pickerLoading()" class="p-10 flex flex-col items-center justify-center gap-3 text-gray-500">
+            <span class="material-symbols-outlined text-4xl animate-pulse text-emerald-600">progress_activity</span>
+            <p class="text-sm font-medium">جارى تحميل الطلاب...</p>
+          </div>
+
+          <!-- Table -->
+          <div *ngIf="!pickerLoading()" class="overflow-x-auto">
+            <table class="w-full text-sm text-right text-gray-500">
+              <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th scope="col" class="px-4 py-4 w-12"></th>
+                  <th scope="col" class="px-6 py-4">اسم الطالب</th>
+                  <th scope="col" class="px-6 py-4">الرقم القومي</th>
+                  <th scope="col" class="px-6 py-4">النوع</th>
+                  <th scope="col" class="px-6 py-4">تاريخ الميلاد</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  *ngFor="let student of availableStudents()"
+                  (click)="toggleStudentSelection(student.id)"
+                  class="bg-white border-b border-gray-100 hover:bg-emerald-50 transition-colors cursor-pointer"
+                  [class.bg-emerald-50]="isStudentSelected(student.id)"
+                  [class.border-emerald-200]="isStudentSelected(student.id)">
+                  <td class="px-4 py-4">
+                    <input
+                      type="checkbox"
+                      [checked]="isStudentSelected(student.id)"
+                      (change)="toggleStudentSelection(student.id)"
+                      (click)="$event.stopPropagation()"
+                      class="w-4 h-4 text-emerald-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500"/>
+                  </td>
+                  <td class="px-6 py-4 font-bold text-gray-900">{{ student.fullName }}</td>
+                  <td class="px-6 py-4 text-gray-600">{{ student.nationalId || '—' }}</td>
+                  <td class="px-6 py-4">{{ getGenderLabel(student.gender) }}</td>
+                  <td class="px-6 py-4 text-gray-700">{{ formatDisplayDate(student.birthDate) }}</td>
+                </tr>
+
+                <tr *ngIf="availableStudents().length === 0">
+                  <td colspan="5" class="px-6 py-12 text-center">
+                    <div class="flex flex-col items-center justify-center text-gray-500">
+                      <span class="material-symbols-outlined text-4xl mb-3 text-gray-400">person_search</span>
+                      <p class="text-base font-medium text-gray-900 mb-1">لا يوجد طلاب متاحون</p>
+                      <p class="text-sm">جميع الطلاب مسجلون بالفعل أو جرّب تغيير الفلتر.</p>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Pagination -->
+        @if (availableTotalPages() > 1) {
+          <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <span class="text-sm text-gray-700">
+              إظهار <span class="font-semibold text-gray-900">{{ pickerRangeStart() }}</span> إلى <span class="font-semibold text-gray-900">{{ pickerRangeEnd() }}</span> من أصل <span class="font-semibold text-gray-900">{{ availableTotal() }}</span> طالب
+            </span>
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                class="flex items-center justify-center px-3 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                [disabled]="availablePage() === 1 || pickerLoading()"
+                (click)="prevPickerPage()">
+                <span class="material-symbols-outlined text-sm mr-1">chevron_right</span>
+                السابق
+              </button>
+              <span class="text-sm text-gray-600 font-medium">
+                {{ availablePage() }} / {{ availableTotalPages() }}
+              </span>
+              <button
+                type="button"
+                class="flex items-center justify-center px-3 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                [disabled]="availablePage() === availableTotalPages() || pickerLoading()"
+                (click)="nextPickerPage()">
+                التالي
+                <span class="material-symbols-outlined text-sm ml-1">chevron_left</span>
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- Footer: Enroll Date + Confirm -->
+      <div class="px-6 py-4 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-4 bg-gray-50">
+        <div class="flex items-center gap-3">
+          <label class="text-sm font-medium text-gray-900 whitespace-nowrap">تاريخ التسجيل:</label>
+          <input
+            type="date"
+            [(ngModel)]="enrollDate"
+            class="bg-white border border-gray-300 text-gray-900 text-sm rounded-2xl focus:ring-emerald-500 focus:border-emerald-500 p-2"/>
+        </div>
+        <div class="flex items-center gap-3">
+          <span class="text-sm text-gray-600">
+            <span class="font-semibold text-indigo-700">{{ selectedStudentIds().size }}</span> طالب محدد
+          </span>
+          <button
+            type="button"
+            (click)="closePickerModal()"
+            class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 transition-all">
+            إغلاق
+          </button>
+          <button
+            type="button"
+            (click)="confirmBulkEnroll()"
+            [disabled]="selectedStudentIds().size === 0 || enrolling() || !enrollDate"
+            class="px-6 py-2 text-sm font-medium text-white rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-md hover:shadow-lg transform transition-all hover:-translate-y-0.5 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
+            <span *ngIf="enrolling()" class="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+            <span *ngIf="!enrolling()" class="material-symbols-outlined text-sm">how_to_reg</span>
+            {{ enrolling() ? 'جارى التسجيل...' : 'تسجيل الطلاب' }}
           </button>
         </div>
       </div>

@@ -9,6 +9,10 @@ import {
 } from '../../core/services/class-students-browser.service';
 import { ClassEntity, ClassService } from '../../core/services/class.service';
 import { GradeLevel, GradeLevelService } from '../../core/services/grade-level.service';
+import {
+  ClassEnrollmentPickerService,
+  ClassPickerStudent
+} from '../../core/services/class-enrollment-picker.service';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
 import { Topbar } from '../../layouts/topbar/topbar';
 
@@ -27,6 +31,7 @@ export class ClassManagement implements OnInit {
   private classStudentsBrowserService = inject(ClassStudentsBrowserService);
   private gradeLevelService = inject(GradeLevelService);
   private academicYearService = inject(AcademicYearService);
+  private pickerService = inject(ClassEnrollmentPickerService);
 
   classes = signal<ClassEntity[]>([]);
   gradeLevels = signal<GradeLevel[]>([]);
@@ -407,5 +412,218 @@ export class ClassManagement implements OnInit {
     this.successMessage.set(msg);
     this.errorMessage.set('');
     setTimeout(() => this.successMessage.set(''), 3000);
+  }
+
+  // ─── Class Enrollment Picker ─────────────────────────────────────────────────
+
+  showPickerModal          = signal(false);
+  pickerLoading            = signal(false);
+  pickerError              = signal('');
+  selectedClassForPicker   = signal<ClassEntity | null>(null);
+
+  availableStudents        = signal<ClassPickerStudent[]>([]);
+  availableTotal           = signal(0);
+  availablePage            = signal(1);
+  availablePageSize        = signal(20);
+
+  pickerSearchTerm         = '';
+  birthDateFrom            = signal('');
+  birthDateTo              = signal('');
+  sortBy                   = signal('name');
+  sortDescending           = signal(false);
+
+  selectedStudentIds       = signal<Set<number>>(new Set());
+  enrollDate               = '';
+  enrolling                = signal(false);
+  enrollError              = signal('');
+  enrollSuccess            = signal('');
+
+  availableTotalPages = computed(() =>
+    Math.max(1, Math.ceil(this.availableTotal() / this.availablePageSize()))
+  );
+
+  pickerRangeStart = computed(() => {
+    if (this.availableTotal() === 0) return 0;
+    return (this.availablePage() - 1) * this.availablePageSize() + 1;
+  });
+
+  pickerRangeEnd = computed(() =>
+    Math.min(this.availablePage() * this.availablePageSize(), this.availableTotal())
+  );
+
+  openPickerModal(cls: ClassEntity): void {
+    this.selectedClassForPicker.set(cls);
+    this.showPickerModal.set(true);
+    this.pickerError.set('');
+    this.enrollError.set('');
+    this.enrollSuccess.set('');
+    this.availableStudents.set([]);
+    this.availableTotal.set(0);
+    this.availablePage.set(1);
+    this.pickerSearchTerm = '';
+    this.birthDateFrom.set('');
+    this.birthDateTo.set('');
+    this.sortBy.set('name');
+    this.sortDescending.set(false);
+    this.selectedStudentIds.set(new Set());
+    const today = new Date();
+    this.enrollDate = today.toISOString().split('T')[0];
+    this.loadAvailableStudents();
+  }
+
+  closePickerModal(): void {
+    this.showPickerModal.set(false);
+    this.pickerLoading.set(false);
+    this.pickerError.set('');
+    this.enrollError.set('');
+    this.enrollSuccess.set('');
+    this.selectedClassForPicker.set(null);
+    this.availableStudents.set([]);
+    this.selectedStudentIds.set(new Set());
+  }
+
+  loadAvailableStudents(): void {
+    const cls = this.selectedClassForPicker();
+    if (!cls) return;
+
+    this.pickerLoading.set(true);
+    this.pickerError.set('');
+
+    this.pickerService.getAvailableStudents(cls.id, {
+      page:           this.availablePage(),
+      pageSize:       this.availablePageSize(),
+      searchTerm:     this.pickerSearchTerm || undefined,
+      birthDateFrom:  this.birthDateFrom() || undefined,
+      birthDateTo:    this.birthDateTo()   || undefined,
+      sortBy:         this.sortBy(),
+      sortDescending: this.sortDescending()
+    }).subscribe({
+      next: (res) => {
+        this.availableStudents.set(res.data?.items as ClassPickerStudent[] ?? []);
+        this.availableTotal.set(res.data?.totalCount ?? 0);
+        this.availablePage.set(res.data?.page ?? 1);
+        this.pickerLoading.set(false);
+      },
+      error: () => {
+        this.pickerError.set('فشل في تحميل الطلاب المتاحين. حاول مرة أخرى.');
+        this.pickerLoading.set(false);
+      }
+    });
+  }
+
+  applyPickerSearch(): void {
+    this.availablePage.set(1);
+    this.loadAvailableStudents();
+  }
+
+  clearPickerSearch(): void {
+    this.pickerSearchTerm = '';
+    this.availablePage.set(1);
+    this.loadAvailableStudents();
+  }
+
+  applyPickerDateFilter(): void {
+    this.availablePage.set(1);
+    this.loadAvailableStudents();
+  }
+
+  clearPickerDateFilter(): void {
+    this.birthDateFrom.set('');
+    this.birthDateTo.set('');
+    this.availablePage.set(1);
+    this.loadAvailableStudents();
+  }
+
+  changeSortBy(value: string): void {
+    if (this.sortBy() === value) {
+      this.sortDescending.update(d => !d);
+    } else {
+      this.sortBy.set(value);
+      this.sortDescending.set(false);
+    }
+    this.availablePage.set(1);
+    this.loadAvailableStudents();
+  }
+
+  toggleStudentSelection(id: number): void {
+    this.selectedStudentIds.update(set => {
+      const next = new Set(set);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  isStudentSelected(id: number): boolean {
+    return this.selectedStudentIds().has(id);
+  }
+
+  selectAllVisible(): void {
+    this.selectedStudentIds.update(set => {
+      const next = new Set(set);
+      this.availableStudents().forEach(s => next.add(s.id));
+      return next;
+    });
+  }
+
+  clearSelection(): void {
+    this.selectedStudentIds.set(new Set());
+  }
+
+  nextPickerPage(): void {
+    if (this.availablePage() < this.availableTotalPages()) {
+      this.availablePage.update(p => p + 1);
+      this.loadAvailableStudents();
+    }
+  }
+
+  prevPickerPage(): void {
+    if (this.availablePage() > 1) {
+      this.availablePage.update(p => p - 1);
+      this.loadAvailableStudents();
+    }
+  }
+
+  confirmBulkEnroll(): void {
+    const ids = Array.from(this.selectedStudentIds());
+    if (ids.length === 0) {
+      this.enrollError.set('الرجاء اختيار طالب واحد على الأقل.');
+      return;
+    }
+    if (!this.enrollDate) {
+      this.enrollError.set('الرجاء تحديد تاريخ التسجيل.');
+      return;
+    }
+
+    const cls = this.selectedClassForPicker();
+    if (!cls) return;
+
+    this.enrolling.set(true);
+    this.enrollError.set('');
+    this.enrollSuccess.set('');
+
+    this.pickerService.bulkEnroll({
+      classId:    cls.id,
+      studentIds: ids,
+      enrolledAt: this.enrollDate
+    }).subscribe({
+      next: (res) => {
+        this.enrolling.set(false);
+        const d = res.data;
+        if (d && d.failureCount > 0) {
+          this.enrollError.set(
+            `تم تسجيل ${d.successCount} طالب. فشل ${d.failureCount} طالب.`
+          );
+        } else {
+          this.enrollSuccess.set(res.message ?? 'تم التسجيل بنجاح.');
+        }
+        this.selectedStudentIds.set(new Set());
+        this.availablePage.set(1);
+        this.loadAvailableStudents();
+      },
+      error: () => {
+        this.enrolling.set(false);
+        this.enrollError.set('فشل في تسجيل الطلاب. حاول مرة أخرى.');
+      }
+    });
   }
 }
