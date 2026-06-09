@@ -243,7 +243,7 @@ public class AccountGenerationService : IAccountGenerationService
             var bytes = new byte[6];
             RandomNumberGenerator.Fill(bytes);
             var suffix = new string(bytes.Select(b => EmailChars[b % EmailChars.Length]).ToArray());
-            var email = $"s{suffix}@students.schoollink.local";
+            var email = $"s{suffix}@schoollink.com";
 
             var existing = await _unitOfWork.Users.GetByEmailAsync(email);
             if (existing == null)
