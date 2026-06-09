@@ -16,6 +16,13 @@ public class UnitsController : ControllerBase
         _unitService = unitService;
     }
 
+    [HttpGet("api/subjects/{subjectId}/units-with-lessons")]
+    public async Task<IActionResult> GetUnitsWithLessons(int subjectId)
+    {
+        var result = await _unitService.GetUnitsWithLessonsBySubjectAsync(subjectId);
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
+    }
+
     [HttpGet("api/subjects/{subjectId}/units")]
     public async Task<IActionResult> GetBySubject(int subjectId)
     {

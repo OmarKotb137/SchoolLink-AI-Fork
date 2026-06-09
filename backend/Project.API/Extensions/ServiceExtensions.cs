@@ -146,6 +146,7 @@ public static class ServiceExtensions
         services.AddScoped<IParentAssistantAgent, ParentAssistantAgent>();
 
         services.AddScoped<IExamGeneratorService, ExamGeneratorService>();
+        services.AddScoped<IAiExamGeneratorService, AiExamGeneratorService>();
         services.AddScoped<IEvaluationReportService, EvaluationReportService>();
         services.AddScoped<IStudyScheduleOptimizerService, StudyScheduleOptimizerService>();
         services.AddScoped<IStudentImportService, StudentImportService>();

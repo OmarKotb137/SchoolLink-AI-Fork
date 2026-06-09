@@ -36,6 +36,24 @@ namespace Project.BLL.Services
             return OperationResult<List<ExamSummaryDto>>.Success(dtos);
         }
 
+        public async Task<OperationResult<List<ExamSummaryDto>>> GetAiExamHistoryByTeacherAsync(int teacherId)
+        {
+            var csts = await _unitOfWork.ClassSubjectTeachers
+                .FindAsync(cst => cst.TeacherId == teacherId && !cst.IsDeleted, CancellationToken.None);
+
+            if (csts.Count == 0)
+                return OperationResult<List<ExamSummaryDto>>.Success(new List<ExamSummaryDto>());
+
+            var cstIds = csts.Select(c => c.Id).ToList();
+            var allExams = await _unitOfWork.Exams
+                .FindAsync(e => cstIds.Contains(e.ClassSubjectTeacherId) && e.IsAIGenerated && !e.IsDeleted,
+                    CancellationToken.None);
+
+            var ordered = allExams.OrderByDescending(e => e.CreatedAt).ToList();
+            var dtos = _mapper.Map<List<ExamSummaryDto>>(ordered);
+            return OperationResult<List<ExamSummaryDto>>.Success(dtos, "تم جلب سجل الامتحانات بنجاح");
+        }
+
         public async Task<OperationResult<GetExamDto>> GetByIdAsync(int id)
         {
             var exam = await _unitOfWork.Exams.GetWithQuestionsAsync(id, CancellationToken.None);
