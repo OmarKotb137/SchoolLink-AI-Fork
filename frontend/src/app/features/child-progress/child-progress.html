@@ -1,6 +1,6 @@
 <app-sidebar [(isOpen)]="sidebarOpen" />
 <div class="main-content">
-  <app-topbar userName="أحمد" />
+  <app-topbar [userName]="'ولي أمر ' + (student()?.name || '')" />
   <main class="p-gutter-desktop">
     <div class="max-w-4xl mx-auto flex flex-col gap-stack-lg">
 
@@ -18,16 +18,20 @@
             </div>
           </div>
           <div class="flex-1">
-            <h2 class="font-headline-lg text-headline-lg" style="font-weight:700;">{{ student.name }}</h2>
-            <p class="font-body-md text-body-md text-outline">{{ student.class }}</p>
+            @if (loading()) {
+              <h2 class="font-headline-lg text-headline-lg" style="font-weight:700;">جاري التحميل...</h2>
+            } @else {
+              <h2 class="font-headline-lg text-headline-lg" style="font-weight:700;">{{ student()?.name }}</h2>
+              <p class="font-body-md text-body-md text-outline">{{ student()?.class }}</p>
+            }
           </div>
           <div class="grid grid-cols-2 gap-4">
             <div class="glass-card" style="padding:16px;text-align:center;border-radius:16px;">
-              <p class="font-headline-md text-headline-md" style="font-weight:800;background:linear-gradient(135deg,#f59e0b,#d97706);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">{{ student.avgScore }}%</p>
+              <p class="font-headline-md text-headline-md" style="font-weight:800;background:linear-gradient(135deg,#f59e0b,#d97706);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">{{ student()?.avgScore ?? 0 }}%</p>
               <p class="font-label-sm text-label-sm text-outline">متوسط الدرجات</p>
             </div>
             <div class="glass-card" style="padding:16px;text-align:center;border-radius:16px;">
-              <p class="font-headline-md text-headline-md" style="font-weight:800;background:linear-gradient(135deg,#0d7a5f,#0f9b7a);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">{{ student.attendance }}%</p>
+              <p class="font-headline-md text-headline-md" style="font-weight:800;background:linear-gradient(135deg,#0d7a5f,#0f9b7a);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">{{ student()?.attendance ?? 0 }}%</p>
               <p class="font-label-sm text-label-sm text-outline">نسبة الحضور</p>
             </div>
           </div>
