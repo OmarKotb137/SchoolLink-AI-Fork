@@ -119,6 +119,14 @@ export class BookParserService {
     return this.http.post<any>(`${this.parserBase}/subjects/${subjectId}/units`, dto);
   }
 
+  deleteUnit(unitId: number): Observable<any> {
+    return this.http.delete<any>(`${this.parserBase}/units/${unitId}`);
+  }
+
+  deleteLesson(lessonId: number): Observable<any> {
+    return this.http.delete<any>(`${this.parserBase}/lessons/${lessonId}`);
+  }
+
   getGradeLevels(): Observable<any> {
     return this.http.get(buildApiUrl('grade-levels'));
   }

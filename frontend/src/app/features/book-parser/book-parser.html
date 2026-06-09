@@ -542,6 +542,7 @@
                                   </div>
                                 }
                                 <button (click)="addSavedLesson(unit.id)" class="text-primary hover:bg-primary-fixed rounded-full p-1" title="إضافة درس"><span class="material-symbols-outlined text-[18px]">add</span></button>
+                                <button (click)="deleteSavedUnit(unit.id)" class="text-error hover:bg-error-container rounded-full p-1" title="حذف الوحدة"><span class="material-symbols-outlined text-[18px]">delete</span></button>
                               </div>
                               @if (unit.lessons && unit.lessons.length > 0) {
                                 <div class="flex flex-wrap gap-2">
@@ -554,6 +555,7 @@
                                                autofocus>
                                         <button (click)="saveSavedLessonName(lesson.id)" class="text-primary"><span class="material-symbols-outlined text-[14px]">check</span></button>
                                         <button (click)="cancelEditSavedLesson()" class="text-on-surface-variant"><span class="material-symbols-outlined text-[14px]">close</span></button>
+                                        <button (click)="deleteSavedLesson(lesson.id)" class="text-error"><span class="material-symbols-outlined text-[14px]">delete</span></button>
                                       } @else {
                                         <button (click)="openSavedLesson(lesson)"
                                                 class="text-on-surface text-label-sm cursor-pointer text-right">
@@ -563,6 +565,7 @@
                                           }
                                         </button>
                                         <button (click)="startEditSavedLesson(lesson.id, lesson.title)" class="text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity"><span class="material-symbols-outlined text-[14px]">edit</span></button>
+                                        <button (click)="deleteSavedLesson(lesson.id)" class="text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity hover:text-error"><span class="material-symbols-outlined text-[14px]">delete</span></button>
                                       }
                                     </div>
                                   }

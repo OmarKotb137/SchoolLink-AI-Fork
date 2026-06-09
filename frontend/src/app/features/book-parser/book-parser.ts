@@ -204,6 +204,32 @@ export class BookParser {
     });
   }
 
+  deleteSavedUnit(unitId: number) {
+    if (!confirm('هل أنت متأكد من حذف هذه الوحدة وجميع دروسها؟')) return;
+    this.service.deleteUnit(unitId).subscribe({
+      next: () => {
+        this.subjectUnits.set(this.subjectUnits().filter(u => u.id !== unitId));
+        this.showToast('تم حذف الوحدة', 'success');
+      },
+      error: () => this.showToast('فشل حذف الوحدة', 'error')
+    });
+  }
+
+  deleteSavedLesson(lessonId: number) {
+    if (!confirm('هل أنت متأكد من حذف هذا الدرس؟')) return;
+    this.service.deleteLesson(lessonId).subscribe({
+      next: () => {
+        const units = this.subjectUnits().map(u => ({
+          ...u,
+          lessons: u.lessons?.filter((l: any) => l.id !== lessonId)
+        }));
+        this.subjectUnits.set(units);
+        this.showToast('تم حذف الدرس', 'success');
+      },
+      error: () => this.showToast('فشل حذف الدرس', 'error')
+    });
+  }
+
   toggleSubject(subjectId: number) {
     if (this.expandedSubjectId() === subjectId) {
       this.expandedSubjectId.set(null);

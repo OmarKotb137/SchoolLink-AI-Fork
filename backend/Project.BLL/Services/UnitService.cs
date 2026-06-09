@@ -245,6 +245,21 @@ public class UnitService : IUnitService
         return OperationResult.Success("تم حذف الوحدة بنجاح");
     }
 
+    public async Task<OperationResult> DeleteLessonAsync(int lessonId)
+    {
+        var lesson = await _unitOfWork.Lessons.GetByIdAsync(lessonId);
+        if (lesson == null || lesson.IsDeleted)
+            return OperationResult.Failure("الدرس غير موجود", 404);
+
+        lesson.IsDeleted = true;
+        lesson.UpdatedAt = DateTime.UtcNow;
+
+        await _unitOfWork.SaveChangesAsync();
+        _logger.LogInformation("Deleted lesson {LessonId}", lessonId);
+
+        return OperationResult.Success("تم حذف الدرس بنجاح");
+    }
+
     private static UnitDto Map(Unit u) => new()
     {
         Id = u.Id,

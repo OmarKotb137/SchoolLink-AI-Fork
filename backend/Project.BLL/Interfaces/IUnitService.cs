@@ -15,4 +15,5 @@ public interface IUnitService
     Task<OperationResult<LessonDto>> UpdateLessonAsync(int id, string title, string? content = null, int? pageStart = null, int? pageEnd = null);
     Task<OperationResult<LessonDto>> CreateLessonAsync(int unitId, CreateLessonDto dto);
     Task<OperationResult> DeleteUnitAsync(int unitId);
+    Task<OperationResult> DeleteLessonAsync(int lessonId);
 }

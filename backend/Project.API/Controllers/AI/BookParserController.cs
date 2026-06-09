@@ -14,7 +14,9 @@ public class BookParserController : ControllerBase
     private readonly IBookParserService _bookParserService;
     private readonly IUnitService _unitService;
 
-    public BookParserController(IBookParserService bookParserService, IUnitService unitService)
+    public BookParserController(
+        IBookParserService bookParserService,
+        IUnitService unitService)
     {
         _bookParserService = bookParserService;
         _unitService = unitService;
@@ -134,6 +136,20 @@ public class BookParserController : ControllerBase
 
         var result = await _bookParserService.ReExtractUnitContentAsync(
             request.PreviewId, request.UnitName ?? "Unit", request.PageStart, request.PageEnd);
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
+    }
+
+    [HttpDelete("units/{unitId}")]
+    public async Task<IActionResult> DeleteUnit(int unitId)
+    {
+        var result = await _unitService.DeleteUnitAsync(unitId);
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
+    }
+
+    [HttpDelete("lessons/{lessonId}")]
+    public async Task<IActionResult> DeleteLesson(int lessonId)
+    {
+        var result = await _unitService.DeleteLessonAsync(lessonId);
         return result.IsSuccess ? Ok(result) : BadRequest(result);
     }
 }
