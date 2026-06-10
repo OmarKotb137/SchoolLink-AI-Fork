@@ -1,9 +1,9 @@
 using Microsoft.EntityFrameworkCore;
-using Project.BLL.AI.ExamAgent.Interfaces;
-using Project.BLL.AI.ExamAgent.Models;
+using Project.BLL.AI.Interfaces;
+using Project.BLL.AI.Models;
 using Project.DAL.Context;
 
-namespace Project.BLL.AI.ExamAgent.Infrastructure;
+namespace Project.BLL.AI.Infrastructure;
 
 public class DbLessonRepository : ILessonRepository
 {

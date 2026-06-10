@@ -12,6 +12,7 @@ public class OpenCodeAILlmClient : ILlmClient
     private readonly HttpClient _http;
     private readonly string _model;
     private readonly string _baseUrl;
+    private readonly int _maxTokens;
 
     public OpenCodeAILlmClient(HttpClient http, IConfiguration config)
     {
@@ -20,6 +21,7 @@ public class OpenCodeAILlmClient : ILlmClient
                  ?? "deepseek-v4-flash-free";
         _baseUrl = config["LlmSettings:OpenCodeAI:BaseUrl"]
                    ?? "https://opencode.ai/zen/v1";
+        _maxTokens = int.TryParse(config["LlmSettings:OpenCodeAI:MaxTokens"], out var mt) ? mt : 16384;
     }
 
     public async Task<LlmResponse> ChatAsync(
@@ -73,7 +75,7 @@ public class OpenCodeAILlmClient : ILlmClient
             ["model"] = _model,
             ["messages"] = msgsArray,
             ["stream"] = false,
-            ["max_tokens"] = 4096
+            ["max_tokens"] = _maxTokens
         };
 
         if (tools.Any())

@@ -9,6 +9,12 @@ namespace Project.BLL.Mapping
     {
         public ExamMappingProfile()
         {
+            CreateMap<Exam, ExamSummaryDto>()
+                .ForMember(d => d.SubjectName, o => o.MapFrom(s => s.ClassSubjectTeacher.Subject.Name))
+                .ForMember(d => d.QuestionsCount, o => o.MapFrom(s =>
+                    s.Questions.Count(q => !q.IsDeleted) +
+                    s.Groups.Sum(g => g.Questions.Count(q => !q.IsDeleted))));
+
             CreateMap<Exam, GetExamDto>()
                 .ForMember(d => d.SubjectName, o => o.MapFrom(s => s.ClassSubjectTeacher.Subject.Name))
                 .ForMember(d => d.ClassName, o => o.MapFrom(s => s.ClassSubjectTeacher.Class.Name))

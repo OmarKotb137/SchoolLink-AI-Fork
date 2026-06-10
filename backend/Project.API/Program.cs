@@ -35,6 +35,7 @@ try
         });
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen();
+    builder.Services.AddSignalR();
     builder.Services.AddApplicationServices(builder.Configuration);
 
     var jwtSettings = builder.Configuration.GetSection("Jwt");
@@ -56,6 +57,17 @@ try
             ValidIssuer = jwtSettings["Issuer"],
             ValidAudience = jwtSettings["Audience"],
             IssuerSigningKey = new SymmetricSecurityKey(key)
+        };
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                    context.Token = accessToken;
+                return Task.CompletedTask;
+            }
         };
     });
 
@@ -88,6 +100,7 @@ try
 
     app.UseAuthorization();
     app.MapControllers();
+    app.MapHub<Project.API.Hubs.ChatHub>("/hubs/chat");
 
     Log.Information("SchoolLink API is ready");
     app.Run();

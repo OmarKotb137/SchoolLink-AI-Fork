@@ -183,6 +183,71 @@ public class ConversationService : IConversationService
         return OperationResult<ConversationDto>.Success(dto, "تم إنشاء المحادثة الجماعية للمادة بنجاح");
     }
 
+    public async Task<OperationResult<ConversationDto>> CreateClassGroupConversationAsync(CreateClassGroupConversationRequest request)
+    {
+        var creator = await _unitOfWork.Users.GetByIdAsync(request.CreatorUserId);
+        if (creator == null || creator.IsDeleted || !creator.IsActive)
+            return OperationResult<ConversationDto>.Failure("المنشئ غير موجود أو غير نشط");
+
+        if (creator.Role != UserRole.Admin && creator.Role != UserRole.Teacher)
+            return OperationResult<ConversationDto>.Failure("يمكن للمشرفين والمعلمين فقط إنشاء محادثات جماعية");
+
+        var schoolClass = await _unitOfWork.Classes.GetByIdAsync(request.ClassId);
+        if (schoolClass == null || schoolClass.IsDeleted)
+            return OperationResult<ConversationDto>.Failure("الفصل غير موجود");
+
+        var enrollments = await _unitOfWork.StudentEnrollments.GetActiveByClassAsync(
+            request.ClassId, request.AcademicYearId);
+
+        var studentUserIds = enrollments
+            .Select(e => e.Student.UserId)
+            .Where(id => id.HasValue)
+            .Cast<int>()
+            .ToList();
+
+        var csts = await _unitOfWork.ClassSubjectTeachers.GetByClassWithTeacherAsync(
+            request.ClassId, request.AcademicYearId);
+
+        var teacherUserIds = csts
+            .Select(cst => cst.TeacherId)
+            .Distinct()
+            .ToList();
+
+        var allUserIds = new List<int>();
+        allUserIds.AddRange(studentUserIds);
+        allUserIds.AddRange(teacherUserIds);
+
+        if (!allUserIds.Contains(request.CreatorUserId))
+            allUserIds.Add(request.CreatorUserId);
+
+        allUserIds = allUserIds.Distinct().ToList();
+
+        var title = request.Title ?? $"مجموعة {schoolClass.Name}";
+
+        var conversation = new Conversation
+        {
+            Title = title,
+            Type = ConversationType.Group,
+            LastMessageAt = DateTime.UtcNow
+        };
+
+        await _unitOfWork.Conversations.AddAsync(conversation);
+        await _unitOfWork.SaveChangesAsync();
+
+        var participants = allUserIds.Select(userId => new ConversationParticipant
+        {
+            ConversationId = conversation.Id,
+            UserId = userId,
+            JoinedAt = DateTime.UtcNow
+        }).ToList();
+
+        await _unitOfWork.ConversationParticipants.AddRangeAsync(participants);
+        await _unitOfWork.SaveChangesAsync();
+
+        var dto = await MapConversationWithParticipantsAsync(conversation);
+        return OperationResult<ConversationDto>.Success(dto, "تم إنشاء مجموعة الفصل بنجاح");
+    }
+
     public async Task<OperationResult> DeleteConversationAsync(int conversationId, int userId)
     {
         var conversation = await _unitOfWork.Conversations.GetByIdAsync(conversationId);
@@ -402,6 +467,22 @@ public class ConversationService : IConversationService
         if (string.IsNullOrWhiteSpace(request.Content))
             return OperationResult<MessageDto>.Failure("محتوى الرسالة لا يمكن أن يكون فارغا");
 
+        var participants = await _unitOfWork.ConversationParticipants
+            .GetByConversationIdAsync(request.ConversationId);
+        var otherParticipants = participants.Where(p => p.UserId != request.SenderId);
+        foreach (var other in otherParticipants)
+        {
+            var blocked = await _unitOfWork.BlockedUsers.IsBlockedAsync(
+                request.SenderId, other.UserId, request.ConversationId);
+            if (blocked)
+                return OperationResult<MessageDto>.Failure("لا يمكنك إرسال رسالة لمستخدم قمت بحظره");
+
+            var blockedByOther = await _unitOfWork.BlockedUsers.IsBlockedAsync(
+                other.UserId, request.SenderId, request.ConversationId);
+            if (blockedByOther)
+                return OperationResult<MessageDto>.Failure("لا يمكنك إرسال رسالة لهذا المستخدم");
+        }
+
         var message = _mapper.Map<Message>(request);
         message.SentAt = DateTime.UtcNow;
 
@@ -417,6 +498,130 @@ public class ConversationService : IConversationService
         dto.SenderName = sender?.FullName ?? "";
 
         return OperationResult<MessageDto>.Success(dto, "تم إرسال الرسالة بنجاح");
+    }
+
+    public async Task<OperationResult<MessageDto>> UpdateMessageAsync(int messageId, int userId, string newContent)
+    {
+        var message = await _unitOfWork.Messages.GetByIdAsync(messageId);
+        if (message == null || message.IsDeleted)
+            return OperationResult<MessageDto>.Failure("الرسالة غير موجودة");
+        if (message.SenderId != userId)
+            return OperationResult<MessageDto>.Failure("لا يمكنك تعديل رسالة شخص آخر");
+
+        if (string.IsNullOrWhiteSpace(newContent))
+            return OperationResult<MessageDto>.Failure("محتوى الرسالة لا يمكن أن يكون فارغا");
+
+        message.Content = newContent;
+        message.IsEdited = true;
+        message.EditedAt = DateTime.UtcNow;
+        _unitOfWork.Messages.Update(message);
+        await _unitOfWork.SaveChangesAsync();
+
+        var sender = await _unitOfWork.Users.GetByIdAsync(message.SenderId);
+        var dto = _mapper.Map<MessageDto>(message);
+        dto.SenderName = sender?.FullName ?? "";
+        return OperationResult<MessageDto>.Success(dto, "تم تعديل الرسالة بنجاح");
+    }
+
+    public async Task<OperationResult<string?>> DeleteMessageAsync(int messageId, int userId)
+    {
+        var message = await _unitOfWork.Messages.GetByIdAsync(messageId);
+        if (message == null || message.IsDeleted)
+            return OperationResult<string?>.Failure("الرسالة غير موجودة");
+        if (message.SenderId != userId)
+            return OperationResult<string?>.Failure("لا يمكنك حذف رسالة شخص آخر");
+
+        message.IsDeleted = true;
+        _unitOfWork.Messages.Update(message);
+        await _unitOfWork.SaveChangesAsync();
+
+        return OperationResult<string?>.Success(message.AttachmentUrl, "تم حذف الرسالة بنجاح");
+    }
+
+    public async Task<OperationResult<MessageDto>> GetMessageByIdAsync(int messageId)
+    {
+        var message = await _unitOfWork.Messages.GetByIdAsync(messageId);
+        if (message == null || message.IsDeleted)
+            return OperationResult<MessageDto>.Failure("الرسالة غير موجودة");
+        var dto = _mapper.Map<MessageDto>(message);
+        return OperationResult<MessageDto>.Success(dto);
+    }
+
+    public async Task<OperationResult<MessageDto>> TranscribeMessageAsync(int messageId, int userId, string voiceText)
+    {
+        var message = await _unitOfWork.Messages.GetByIdAsync(messageId);
+        if (message == null || message.IsDeleted)
+            return OperationResult<MessageDto>.Failure("الرسالة غير موجودة");
+        if (string.IsNullOrWhiteSpace(message.AttachmentUrl) || message.AttachmentType?.StartsWith("audio/") != true)
+            return OperationResult<MessageDto>.Failure("الرسالة ليست رسالة صوتية");
+
+        message.VoiceText = voiceText;
+        _unitOfWork.Messages.Update(message);
+        await _unitOfWork.SaveChangesAsync();
+
+        var sender = await _unitOfWork.Users.GetByIdAsync(message.SenderId);
+        var dto = _mapper.Map<MessageDto>(message);
+        dto.SenderName = sender?.FullName ?? "";
+        return OperationResult<MessageDto>.Success(dto, "تم التعرف على النص بنجاح");
+    }
+
+    public async Task<OperationResult> BlockUserAsync(int conversationId, int blockerId, int blockedUserId)
+    {
+        if (blockerId == blockedUserId)
+            return OperationResult.Failure("لا يمكنك حظر نفسك");
+
+        var blockerUser = await _unitOfWork.Users.GetByIdAsync(blockerId);
+        var blockedUser = await _unitOfWork.Users.GetByIdAsync(blockedUserId);
+        if (blockerUser == null || blockedUser == null)
+            return OperationResult.Failure("المستخدم غير موجود");
+
+        if (blockerUser.Role == UserRole.Parent)
+            return OperationResult.Failure("لا يمكنك حظر المستخدمين");
+
+        if (blockerUser.Role == UserRole.Student && blockedUser.Role != UserRole.Student && blockedUser.Role != UserRole.Parent)
+            return OperationResult.Failure("لا يمكن للطالب حظر هذا المستخدم");
+
+        if (blockerUser.Role == UserRole.Teacher && blockedUser.Role == UserRole.Admin)
+            return OperationResult.Failure("لا يمكن للمدرس حظر مدير");
+
+        var existing = await _unitOfWork.BlockedUsers.GetBlockAsync(blockerId, blockedUserId, conversationId);
+        if (existing != null)
+        {
+            if (!existing.IsDeleted)
+                return OperationResult.Failure("المستخدم محظور بالفعل");
+            existing.IsDeleted = false;
+            _unitOfWork.BlockedUsers.Update(existing);
+        }
+        else
+        {
+            var block = new BlockedUser
+            {
+                BlockerId = blockerId,
+                BlockedUserId = blockedUserId,
+                ConversationId = conversationId
+            };
+            await _unitOfWork.BlockedUsers.AddAsync(block);
+        }
+        await _unitOfWork.SaveChangesAsync();
+        return OperationResult.Success("تم حظر المستخدم بنجاح");
+    }
+
+    public async Task<OperationResult> UnblockUserAsync(int conversationId, int blockerId, int blockedUserId)
+    {
+        var block = await _unitOfWork.BlockedUsers.GetBlockAsync(blockerId, blockedUserId, conversationId);
+        if (block == null)
+            return OperationResult.Failure("المستخدم غير محظور");
+
+        _unitOfWork.BlockedUsers.SoftDelete(block);
+        await _unitOfWork.SaveChangesAsync();
+        return OperationResult.Success("تم إلغاء حظر المستخدم بنجاح");
+    }
+
+    public async Task<OperationResult<bool>> IsUserBlockedAsync(int conversationId, int userId, int otherUserId)
+    {
+        var blocked = await _unitOfWork.BlockedUsers.IsBlockedAsync(userId, otherUserId, conversationId)
+                    || await _unitOfWork.BlockedUsers.IsBlockedAsync(otherUserId, userId, conversationId);
+        return OperationResult<bool>.Success(blocked);
     }
 
     public async Task<OperationResult<PagedResult<MessageDto>>> GetMessagesAsync(
@@ -463,11 +668,13 @@ public class ConversationService : IConversationService
         var userIds = participants.Select(p => p.UserId).Distinct().ToList();
         var users = await _unitOfWork.Users.FindAsync(u => userIds.Contains(u.Id));
         var userDict = users.ToDictionary(u => u.Id, u => u.FullName);
+        var userRoleDict = users.ToDictionary(u => u.Id, u => u.Role.ToString());
 
         dto.Participants = participants.Select(p =>
         {
             var pDto = _mapper.Map<ConversationParticipantDto>(p);
             pDto.UserName = userDict.GetValueOrDefault(p.UserId, "");
+            pDto.Role = userRoleDict.GetValueOrDefault(p.UserId, "");
             return pDto;
         }).ToList();
 

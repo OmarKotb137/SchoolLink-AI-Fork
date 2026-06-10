@@ -58,6 +58,7 @@ public interface IUnitOfWork : IDisposable, IAsyncDisposable
     IConversationRepository                Conversations                { get; }
     IConversationParticipantRepository     ConversationParticipants     { get; }
     IMessageRepository                     Messages                     { get; }
+    IBlockedUserRepository                 BlockedUsers                 { get; }
     INotificationRepository                Notifications                { get; }
     IAnnouncementRepository                Announcements                { get; }
 

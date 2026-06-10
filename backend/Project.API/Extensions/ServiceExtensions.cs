@@ -1,11 +1,7 @@
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
+using Project.API.Services;
 using Project.BLL.AI.Agents;
-using Project.BLL.AI.Infrastructure;
-using Project.BLL.AI.ExamAgent.Infrastructure;
-using Project.BLL.AI.ExamAgent.Interfaces;
-using Project.BLL.AI.ExamAgent.Services;
-using Project.BLL.AI.ExamAgent.Tools;
 using Project.BLL.AI.Infrastructure;
 using Project.BLL.AI.Interfaces;
 using Project.BLL.AI.Services;
@@ -90,10 +86,10 @@ public static class ServiceExtensions
         services.AddScoped<IChildProgressService, ChildProgressService>();
         services.AddScoped<ILessonFeedbackService, LessonFeedbackService>();
         services.AddScoped<IUnitService, UnitService>();
+        services.AddScoped<WhisperTranscriptionService>();
 
         // AI Services
         RegisterAiServices(services, config);
-        RegisterExamAgentServices(services, config);
 
         services.AddAutoMapper(cfg => cfg.AddMaps(typeof(MappingProfile).Assembly));
 
@@ -138,6 +134,8 @@ public static class ServiceExtensions
         RegisterProvider<CloudflareAIProvider>(services, null);
         RegisterProvider<OpenCodeAIProvider>(services, null);
 
+        services.RegisterLlmClient(config);
+
         services.AddScoped<IToolRegistry, ToolRegistry>();
         services.AddScoped<ILLMRouter, LLMRouter>();
 
@@ -146,10 +144,16 @@ public static class ServiceExtensions
         services.AddScoped<IParentAssistantAgent, ParentAssistantAgent>();
 
         services.AddScoped<IExamGeneratorService, ExamGeneratorService>();
+        services.AddScoped<IAiExamGeneratorService, AiExamGeneratorService>();
         services.AddScoped<IEvaluationReportService, EvaluationReportService>();
         services.AddScoped<IStudyScheduleOptimizerService, StudyScheduleOptimizerService>();
         services.AddScoped<IStudentImportService, StudentImportService>();
         services.AddScoped<IBookParserService, BookParserService>();
+
+        services.AddScoped<ILessonRepository, DbLessonRepository>();
+        services.AddScoped<IExamGenerator, LlmExamGenerator>();
+        services.AddScoped<IAgentChatStore, AgentChatStore>();
+        services.AddScoped<IClassEnrollmentPickerService, ClassEnrollmentPickerService>();
     }
 
     private static void RegisterProvider<T>(IServiceCollection services, string? httpClientName) where T : class, ILLMProvider
@@ -165,24 +169,6 @@ public static class ServiceExtensions
         services.AddScoped<ILLMProvider>(sp => sp.GetRequiredService<T>());
     }
 
-    private static void RegisterExamAgentServices(IServiceCollection services, IConfiguration config)
-    {
-        services.RegisterLlmClient(config);
 
-        services.AddScoped<BLL.AI.ExamAgent.Interfaces.ILessonRepository, DbLessonRepository>();
-        services.AddScoped<IExamGenerator, LlmExamGenerator>();
-
-        services.AddScoped<IAgentTool, GetLessonsTool>();
-        services.AddScoped<IAgentTool, GetLessonContentTool>();
-        services.AddScoped<IAgentTool, GenerateExamTool>();
-
-        services.AddScoped<IAgentChatStore, AgentChatStore>();
-        services.AddScoped<AgentToolRegistry>();
-        services.AddScoped<ExamAgentService>();
-
-
-        services.AddScoped<IClassEnrollmentPickerService, ClassEnrollmentPickerService>();
-
-    }
 }
 

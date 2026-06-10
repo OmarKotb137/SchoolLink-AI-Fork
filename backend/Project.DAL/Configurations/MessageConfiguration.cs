@@ -18,7 +18,10 @@ namespace Project.DAL.Configurations
                 .HasMaxLength(500);
 
             builder.Property(x => x.AttachmentType)
-                .HasMaxLength(20);
+                .HasMaxLength(200);
+
+            builder.Property(x => x.VoiceText)
+                .HasMaxLength(5000);
 
             builder.HasIndex(x => new { x.ConversationId, x.SentAt });
 

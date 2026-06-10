@@ -1,9 +1,8 @@
 using System.Text.Json;
 using Common.Results;
 using Microsoft.Extensions.Logging;
-using Project.BLL.AI.ExamAgent.Interfaces;
-using Project.BLL.AI.ExamAgent.Models;
 using Project.BLL.AI.Interfaces;
+using Project.BLL.AI.Models;
 using Project.BLL.DTOs.Exam;
 using Project.BLL.Interfaces;
 

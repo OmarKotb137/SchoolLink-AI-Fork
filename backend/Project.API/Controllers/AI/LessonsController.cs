@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using Project.BLL.AI.ExamAgent.Interfaces;
+using Project.BLL.AI.Interfaces;
 
 namespace Project.API.Controllers.AI;
 

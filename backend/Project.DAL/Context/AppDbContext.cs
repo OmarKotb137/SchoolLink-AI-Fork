@@ -44,6 +44,7 @@ public class AppDbContext : DbContext
     public DbSet<Conversation> Conversations => Set<Conversation>();
     public DbSet<ConversationParticipant> ConversationParticipants => Set<ConversationParticipant>();
     public DbSet<Message> Messages => Set<Message>();
+    public DbSet<BlockedUser> BlockedUsers => Set<BlockedUser>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<Announcement> Announcements => Set<Announcement>();
     

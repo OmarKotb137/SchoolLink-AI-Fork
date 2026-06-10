@@ -7,6 +7,7 @@ namespace Project.BLL.Interfaces
     {
         Task<OperationResult<List<ExamSummaryDto>>> GetAllByClassSubjectTeacherAsync(int classSubjectTeacherId);
         Task<OperationResult<GetExamDto>> GetByIdAsync(int id);
+        Task<OperationResult<List<ExamSummaryDto>>> GetAiExamHistoryByTeacherAsync(int teacherId);
         Task<OperationResult<ExamSummaryDto>> CreateAsync(CreateExamDto dto);
         Task<OperationResult<ExamSummaryDto>> UpdateAsync(UpdateExamDto dto);
         Task<OperationResult> DeleteAsync(int id);
