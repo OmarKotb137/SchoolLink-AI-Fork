@@ -24,6 +24,7 @@ export interface MessageDto {
   content: string;
   attachmentUrl: string | null;
   attachmentType: string | null;
+  voiceText?: string;
   sentAt: string;
   isEdited?: boolean;
 }
@@ -169,6 +170,10 @@ export class ConversationService {
     return this.http.delete<ApiResponse<any>>(`${this.baseUrl}/${conversationId}/messages/${messageId}`);
   }
 
+  transcribeMessage(conversationId: number, messageId: number, voiceText: string): Observable<ApiResponse<MessageDto>> {
+    return this.http.put<ApiResponse<MessageDto>>(`${this.baseUrl}/${conversationId}/messages/${messageId}/transcribe`, { voiceText });
+  }
+
   blockUser(conversationId: number, blockedUserId: number): Observable<ApiResponse<any>> {
     return this.http.post<ApiResponse<any>>(`${this.baseUrl}/${conversationId}/block/${blockedUserId}`, {});
   }
@@ -187,8 +192,8 @@ export class ConversationService {
     return this.http.post<any>(`${buildApiUrl('upload')}/chat`, formData);
   }
 
-  sendMessageRest(conversationId: number, content: string, attachmentUrl?: string, attachmentType?: string): Observable<ApiResponse<MessageDto>> {
-    return this.http.post<ApiResponse<MessageDto>>(`${this.baseUrl}/${conversationId}/messages`, { content, attachmentUrl, attachmentType });
+  sendMessageRest(conversationId: number, content: string, attachmentUrl?: string, attachmentType?: string, voiceText?: string): Observable<ApiResponse<MessageDto>> {
+    return this.http.post<ApiResponse<MessageDto>>(`${this.baseUrl}/${conversationId}/messages`, { content, attachmentUrl, attachmentType, voiceText });
   }
 
   markAsReadRest(conversationId: number): Observable<ApiResponse<any>> {

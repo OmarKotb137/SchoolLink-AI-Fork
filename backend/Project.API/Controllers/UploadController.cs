@@ -23,7 +23,7 @@ public class UploadController : ControllerBase
         if (file == null || file.Length == 0)
             return BadRequest(new { isSuccess = false, message = "الملف غير صالح" });
 
-        var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp", ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".txt", ".mp4", ".mov", ".avi" };
+        var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp", ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".txt", ".mp4", ".mov", ".avi", ".webm", ".mp3", ".ogg", ".wav" };
         var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
         if (!allowedExtensions.Contains(ext))
             return BadRequest(new { isSuccess = false, message = "نوع الملف غير مدعوم" });

@@ -11,11 +11,17 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="NAudio" Version="2.3.0" />
     <PackageReference Include="Serilog.AspNetCore" Version="8.0.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
+    <PackageReference Include="Whisper.net" Version="1.9.0" />
+    <PackageReference Include="Whisper.net.Runtime" Version="1.9.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Project.BLL\Project.BLL.csproj" />
     <ProjectReference Include="..\Project.Domain\Project.Domain.csproj" />
   </ItemGroup>
+  <Target Name="CopyAiModel" AfterTargets="Build">
+    <Copy SourceFiles="..\Project.BLL\ai\LocalModel\ggml-base.bin" DestinationFolder="$(OutDir)\ai\LocalModel" SkipUnchangedFiles="true" />
+  </Target>
 </Project>

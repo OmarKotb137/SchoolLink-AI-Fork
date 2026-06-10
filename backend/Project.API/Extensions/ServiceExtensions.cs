@@ -1,5 +1,6 @@
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
+using Project.API.Services;
 using Project.BLL.AI.Agents;
 using Project.BLL.AI.Infrastructure;
 using Project.BLL.AI.Interfaces;
@@ -85,6 +86,7 @@ public static class ServiceExtensions
         services.AddScoped<IChildProgressService, ChildProgressService>();
         services.AddScoped<ILessonFeedbackService, LessonFeedbackService>();
         services.AddScoped<IUnitService, UnitService>();
+        services.AddScoped<WhisperTranscriptionService>();
 
         // AI Services
         RegisterAiServices(services, config);

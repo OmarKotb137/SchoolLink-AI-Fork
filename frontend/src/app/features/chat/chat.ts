@@ -1,7 +1,7 @@
-﻿import { Component, signal, computed, OnInit, OnDestroy, inject } from '@angular/core';
+﻿import { Component, signal, computed, OnInit, OnDestroy, inject, viewChild, ElementRef, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Subscription } from 'rxjs';
+import { Subscription, finalize } from 'rxjs';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
 import { Topbar } from '../../layouts/topbar/topbar';
 import { ConversationService, ConversationDto, MessageDto, ParticipantDto } from '../../core/services/conversation.service';
@@ -24,6 +24,7 @@ interface ChatMessage {
   isEdited: boolean;
   attachmentUrl?: string;
   attachmentType?: string;
+  voiceText?: string;
 }
 
 interface ChatConversation {
@@ -51,6 +52,7 @@ export class Chat implements OnInit, OnDestroy {
   private subjectService = inject(SubjectService);
   private academicYearService = inject(AcademicYearService);
   roleService = inject(RoleService);
+  private cdr = inject(ChangeDetectorRef);
 
   sidebarOpen = signal(false);
   showConvList = signal(true);
@@ -118,11 +120,633 @@ export class Chat implements OnInit, OnDestroy {
   errorMessage = signal<string | null>(null);
   selectedFile = signal<File | null>(null);
   uploadingFile = signal(false);
-  smartSuggestions = signal([
-    'شكراً جزيلاً، هل هناك أي تحديثات أخرى؟',
-    'تم الاستلام، سنتابع مع الطالب',
-    'هل تحتاج منا أي متابعة إضافية؟',
-  ]);
+
+  playingAudioId = signal<number | null>(null);
+  audioProgressMap = new Map<number, number>();
+  currentAudio: HTMLAudioElement | null = null;
+  showTranscriptFor = signal<Set<number>>(new Set());
+
+  messagesContainer = viewChild<ElementRef>('messagesContainer');
+
+  private scrollToBottom(): void {
+    const doScroll = () =>
+      this.messagesContainer()?.nativeElement?.scrollTo({ top: 99999, behavior: 'instant' });
+    setTimeout(doScroll, 50);
+    setTimeout(doScroll, 300);
+  }
+
+  toggleTranscript(msgId: number): void {
+    const currentSet = this.showTranscriptFor();
+    const newSet = new Set(currentSet);
+    
+    if (newSet.has(msgId)) { 
+      console.log('Hiding transcript for message:', msgId);
+      newSet.delete(msgId); 
+    } else { 
+      console.log('Showing transcript for message:', msgId);
+      newSet.add(msgId); 
+    }
+    
+    this.showTranscriptFor.set(newSet);
+    console.log('Current transcript visibility set:', Array.from(newSet));
+  }
+
+  // Auto-show transcript for sent voice messages with text
+  private autoShowTranscriptForSent(msgId: number, isMine: boolean, hasVoiceText: boolean): void {
+    if (isMine && hasVoiceText) {
+      // Automatically show transcript for messages sent by me that have voiceText
+      const set = new Set(this.showTranscriptFor());
+      set.add(msgId);
+      this.showTranscriptFor.set(set);
+      console.log('Auto-showing transcript for sent message:', msgId);
+    }
+  }
+
+  transcribingMsgId = signal<number | null>(null);
+
+  requestTranscription(msg: any): void {
+    // Check if already transcribing
+    if (this.transcribingMsgId() !== null) {
+      console.log('Already transcribing another message');
+      return;
+    }
+    
+    const convId = this.activeConversationId();
+    if (!convId) return;
+
+    this.transcribingMsgId.set(msg.id);
+    console.log('Starting transcription for message:', msg.id);
+
+    // Get the audio file URL
+    const audioUrl = msg.attachmentUrl || msg.content;
+    
+    // Option 1: If backend supports transcription API
+    // Just send the audio URL to backend for transcription
+    this.conversationService.transcribeMessage(convId, msg.id, '').subscribe({
+      next: res => {
+        console.log('Transcription API response:', res);
+        if (res.isSuccess && res.data && res.data.voiceText) {
+          // Backend returned transcription
+          this.conversations.update(list => list.map(c => {
+            if (c.id !== convId) return c;
+            return {
+              ...c,
+              messages: c.messages.map(m => m.id === msg.id
+                ? { ...m, voiceText: res.data!.voiceText }
+                : m),
+            };
+          }));
+          this.showTranscriptFor.set(new Set([...this.showTranscriptFor(), msg.id]));
+          this.transcribingMsgId.set(null);
+        } else {
+          // Backend doesn't support auto-transcription, use browser recognition
+          console.log('Backend does not support auto-transcription, using browser...');
+          this.transcribeUsingBrowser(msg, convId);
+        }
+      },
+      error: (err) => {
+        console.error('Transcription API error:', err);
+        // Fallback to browser recognition
+        console.log('API failed, falling back to browser recognition...');
+        this.transcribeUsingBrowser(msg, convId);
+      }
+    });
+  }
+
+  private transcribeUsingBrowser(msg: any, convId: number): void {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      this.showError('المتصفح لا يدعم التعرف على الصوت');
+      this.transcribingMsgId.set(null);
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'ar-EG';
+    recognition.interimResults = true;
+    recognition.continuous = true;
+    recognition.maxAlternatives = 1;
+
+    let finalTranscript = '';
+    let recognitionStarted = false;
+    let audioEnded = false;
+
+    recognition.onstart = () => {
+      recognitionStarted = true;
+      console.log('Speech recognition started');
+    };
+
+    recognition.onresult = (event: any) => {
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript + ' ';
+        }
+      }
+    };
+
+    recognition.onerror = (event: any) => {
+      console.error('Speech recognition error:', event.error);
+      recognitionStarted = false;
+      try { recognition.stop(); } catch {}
+      
+      if (event.error !== 'aborted' && event.error !== 'no-speech') {
+        this.showError('حدث خطأ في التعرف على الصوت');
+      }
+      this.transcribingMsgId.set(null);
+    };
+
+    recognition.onend = () => {
+      recognitionStarted = false;
+      if (audioEnded) {
+        this.processTranscription(convId, msg.id, finalTranscript);
+      }
+    };
+
+    // Play audio with VERY LOW volume (almost silent but still detectable by recognition)
+    const audio = new Audio(this.uploadUrl(msg.attachmentUrl || msg.content));
+    audio.volume = 0.01; // 1% volume - تقريباً ما يتسمعش بس الـ Recognition يقدر يسمعه
+    
+    audio.onended = () => {
+      audioEnded = true;
+      setTimeout(() => {
+        if (recognitionStarted) {
+          try { recognition.stop(); } catch (e) {
+            this.processTranscription(convId, msg.id, finalTranscript);
+          }
+        } else {
+          this.processTranscription(convId, msg.id, finalTranscript);
+        }
+      }, 500);
+    };
+
+    audio.onerror = () => {
+      if (recognitionStarted) {
+        try { recognition.stop(); } catch {}
+      }
+      this.transcribingMsgId.set(null);
+      this.showError('حدث خطأ في تحميل التسجيل الصوتي');
+    };
+
+    audio.play().then(() => {
+      setTimeout(() => {
+        try { 
+          recognition.start();
+        } catch (e) { 
+          this.transcribingMsgId.set(null);
+          this.showError('فشل بدء التعرف على الصوت');
+        }
+      }, 100);
+    }).catch(() => {
+      this.transcribingMsgId.set(null);
+      this.showError('فشل تحميل التسجيل الصوتي');
+    });
+  }
+
+  private processTranscription(convId: number, msgId: number, transcript: string): void {
+    const text = transcript.trim();
+    console.log('Processing transcription:', text);
+    
+    if (text && text.length > 0) {
+      console.log('Sending transcription to API...');
+      this.conversationService.transcribeMessage(convId, msgId, text).subscribe({
+        next: res => {
+          console.log('Transcription save response:', res);
+          if (res.isSuccess) {
+            this.conversations.update(list => list.map(c => {
+              if (c.id !== convId) return c;
+              return {
+                ...c,
+                messages: c.messages.map(m => m.id === msgId
+                  ? { ...m, voiceText: res.data?.voiceText ?? text }
+                  : m),
+              };
+            }));
+            this.showTranscriptFor.set(new Set([...this.showTranscriptFor(), msgId]));
+            this.transcribingMsgId.set(null);
+          } else {
+            this.showError(res.message || 'حدث خطأ في حفظ النص');
+            this.transcribingMsgId.set(null);
+          }
+        },
+        error: (err) => {
+          console.error('Transcription save error:', err);
+          this.showError('حدث خطأ في حفظ النص');
+          this.transcribingMsgId.set(null);
+        }
+      });
+    } else {
+      console.log('No text recognized');
+      this.transcribingMsgId.set(null);
+      this.showError('لم يتم التعرف على أي نص من التسجيل. جرب تشغيل الرسالة أولاً.');
+    }
+  }
+
+  toggleVoicePlay(msg: any, url: string): void {
+    // If already playing this message, pause it
+    if (this.playingAudioId() === msg.id) {
+      if (this.currentAudio) {
+        this.currentAudio.pause();
+        this.currentAudio = null;
+      }
+      this.playingAudioId.set(null);
+      return;
+    }
+    
+    // Stop any currently playing audio
+    if (this.currentAudio) {
+      this.currentAudio.pause();
+      this.currentAudio = null;
+    }
+    
+    // Create new audio instance
+    const audio = new Audio(url);
+    audio.preload = 'metadata';
+    
+    const updateProgress = () => {
+      if (audio.duration && !isNaN(audio.duration)) {
+        const progress = (audio.currentTime / audio.duration) * 100;
+        this.audioProgressMap.set(msg.id, progress);
+      }
+    };
+    
+    audio.onloadedmetadata = () => {
+      this.audioProgressMap.set(msg.id, 0);
+    };
+    
+    audio.onplay = () => {
+      this.playingAudioId.set(msg.id);
+      updateProgress();
+    };
+    
+    audio.ontimeupdate = () => {
+      updateProgress();
+    };
+    
+    audio.onended = () => {
+      this.playingAudioId.set(null);
+      this.audioProgressMap.set(msg.id, 0);
+      this.currentAudio = null;
+    };
+    
+    audio.onerror = (e) => {
+      console.error('Audio playback error:', e);
+      this.playingAudioId.set(null);
+      this.audioProgressMap.set(msg.id, 0);
+      this.currentAudio = null;
+      this.showError('حدث خطأ في تشغيل التسجيل الصوتي');
+    };
+    
+    audio.play().catch((error) => {
+      console.error('Failed to play audio:', error);
+      this.showError('فشل تشغيل التسجيل الصوتي');
+      this.playingAudioId.set(null);
+    });
+    
+    this.currentAudio = audio;
+  }
+
+  isRecording = signal(false);
+  recordingTimer = signal('00:00');
+  liveTranscript = signal('');
+  pendingVoice = signal<{ blob: Blob; url: string; transcript: string } | null>(null);
+  recordInterval: any = null;
+  mediaRecorder: MediaRecorder | null = null;
+  private mediaStream: MediaStream | null = null;
+  speechRecognition: any = null;
+  audioChunks: Blob[] = [];
+  pendingVoiceTimeout: any = null;
+
+  startVoiceRecording(): void {
+    this.discardPendingVoice();
+    this.audioChunks = [];
+    this.liveTranscript.set('');
+    this.recordingTimer.set('00:00');
+    
+    // Check if browser supports required APIs
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      this.showError('المتصفح لا يدعم التسجيل الصوتي');
+      return;
+    }
+    
+    navigator.mediaDevices.getUserMedia({ 
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+        sampleRate: 44100
+      } 
+    }).then(stream => {
+      this.mediaStream = stream;
+      // Determine best audio format supported by browser
+      let mimeType = 'audio/webm';
+      if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+        mimeType = 'audio/webm;codecs=opus';
+      } else if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) {
+        mimeType = 'audio/ogg;codecs=opus';
+      } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+        mimeType = 'audio/mp4';
+      }
+      
+      try {
+        this.mediaRecorder = new MediaRecorder(stream, { 
+          mimeType,
+          audioBitsPerSecond: 128000
+        });
+      } catch (e) {
+        // Fallback without options if browser doesn't support them
+        this.mediaRecorder = new MediaRecorder(stream);
+      }
+      
+      this.mediaRecorder.ondataavailable = e => { 
+        if (e.data.size > 0) {
+          this.audioChunks.push(e.data); 
+        }
+      };
+      
+      this.mediaRecorder.onstop = () => {
+        // Stop all tracks
+        stream.getTracks().forEach(t => t.stop());
+        
+        // Clear timer
+        if (this.recordInterval) {
+          clearInterval(this.recordInterval);
+          this.recordInterval = null;
+        }
+        
+        this.isRecording.set(false);
+        
+        if (this.audioChunks.length === 0) {
+          this.showError('لم يتم تسجيل أي صوت');
+          return;
+        }
+        
+        const actualMimeType = this.mediaRecorder?.mimeType || mimeType;
+        const blob = new Blob(this.audioChunks, { type: actualMimeType });
+        const url = URL.createObjectURL(blob);
+        this.audioChunks = [];
+        
+        // Stop speech recognition and get final transcript
+        const finalTranscript = this.liveTranscript().trim();
+        if (this.speechRecognition) {
+          try { 
+            this.speechRecognition.continuous = false;
+            this.speechRecognition.abort(); 
+          } catch {}
+          this.speechRecognition = null;
+        }
+        
+        // Wait a bit for any final speech results
+        this.pendingVoiceTimeout = setTimeout(() => {
+          this.pendingVoiceTimeout = null;
+          this.liveTranscript.set('');
+          this.pendingVoice.set({ blob, url, transcript: finalTranscript });
+        }, 800);
+      };
+      
+      this.mediaRecorder.onerror = (event: any) => {
+        console.error('MediaRecorder error:', event);
+        this.showError('حدث خطأ أثناء التسجيل');
+        this.cancelVoiceRecording();
+      };
+      
+      this.mediaRecorder.start(100); // Collect data every 100ms for smoother experience
+      this.isRecording.set(true);
+      this.startLiveTranscription();
+      
+      // Start timer
+      let sec = 0;
+      this.recordInterval = setInterval(() => {
+        sec++;
+        const m = String(Math.floor(sec / 60)).padStart(2, '0');
+        const s = String(sec % 60).padStart(2, '0');
+        this.recordingTimer.set(`${m}:${s}`);
+      }, 1000);
+      
+    }).catch((error) => {
+      console.error('Microphone access error:', error);
+      let errorMsg = 'لا يمكن الوصول إلى الميكروفون';
+      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+        errorMsg = 'تم رفض إذن الوصول للميكروفون. يرجى السماح بالوصول للميكروفون.';
+      } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+        errorMsg = 'لم يتم العثور على ميكروفون متصل بالجهاز';
+      }
+      this.showError(errorMsg);
+    });
+  }
+
+  private startLiveTranscription(): void {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) { 
+      this.liveTranscript.set(''); 
+      return; 
+    }
+    
+    this.speechRecognition = new SpeechRecognition();
+    this.speechRecognition.lang = 'ar-EG';
+    this.speechRecognition.interimResults = true;
+    this.speechRecognition.continuous = true;
+    this.speechRecognition.maxAlternatives = 1;
+    
+    let fullTranscript = '';
+    
+    this.speechRecognition.onresult = (e: any) => {
+      let interimText = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const transcript = e.results[i][0].transcript;
+        if (e.results[i].isFinal) {
+          fullTranscript += transcript + ' ';
+        } else {
+          interimText += transcript;
+        }
+      }
+      this.liveTranscript.set(fullTranscript + interimText);
+    };
+    
+    this.speechRecognition.onerror = (event: any) => {
+      console.error('Speech recognition error during recording:', event.error);
+      if (event.error === 'no-speech') {
+        // Continue silently - user might not be speaking yet
+        return;
+      }
+      if (event.error !== 'aborted') {
+        // Try to restart
+        try {
+          this.speechRecognition?.stop();
+          setTimeout(() => {
+            if (this.isRecording() && this.speechRecognition) {
+              try { this.speechRecognition.start(); } catch {}
+            }
+          }, 100);
+        } catch {}
+      }
+    };
+    
+    this.speechRecognition.onend = () => {
+      // Auto-restart if still recording
+      if (this.isRecording() && this.speechRecognition) {
+        try {
+          this.speechRecognition.start();
+        } catch (e) {
+          console.error('Failed to restart speech recognition:', e);
+        }
+      }
+    };
+    
+    try { 
+      this.speechRecognition.start(); 
+    } catch (e) {
+      console.error('Failed to start speech recognition:', e);
+      this.liveTranscript.set('');
+    }
+  }
+
+  stopVoiceRecording(): void {
+    if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+      this.mediaRecorder.stop();
+    }
+    if (this.speechRecognition) {
+      try { 
+        this.speechRecognition.continuous = false;
+        this.speechRecognition.stop(); 
+      } catch {}
+    }
+  }
+
+  cancelVoiceRecording(): void {
+    // Stop speech recognition first
+    if (this.speechRecognition) {
+      try { 
+        this.speechRecognition.continuous = false;
+        this.speechRecognition.abort(); 
+      } catch {}
+      this.speechRecognition = null;
+    }
+    
+    // Stop media recorder
+    if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+      this.mediaRecorder.onstop = null;
+      this.mediaRecorder.stop();
+      this.mediaRecorder = null;
+    }
+
+    // Release microphone stream
+    if (this.mediaStream) {
+      this.mediaStream.getTracks().forEach(t => t.stop());
+      this.mediaStream = null;
+    }
+    
+    // Clear timer
+    if (this.recordInterval) {
+      clearInterval(this.recordInterval);
+      this.recordInterval = null;
+    }
+    
+    // Clear pending timeout
+    if (this.pendingVoiceTimeout) {
+      clearTimeout(this.pendingVoiceTimeout);
+      this.pendingVoiceTimeout = null;
+    }
+    
+    // Reset state
+    this.isRecording.set(false);
+    this.audioChunks = [];
+    this.liveTranscript.set('');
+    this.recordingTimer.set('00:00');
+  }
+
+  discardPendingVoice(): void {
+    if (this.pendingVoiceTimeout) {
+      clearTimeout(this.pendingVoiceTimeout);
+      this.pendingVoiceTimeout = null;
+    }
+    const pending = this.pendingVoice();
+    if (pending) {
+      URL.revokeObjectURL(pending.url);
+    }
+    this.pendingVoice.set(null);
+  }
+
+  sendPendingVoice(): void {
+    const pending = this.pendingVoice();
+    if (!pending) return;
+    
+    const convId = this.activeConversationId();
+    if (!convId) {
+      this.discardPendingVoice();
+      return;
+    }
+    
+    // Keep the transcript before clearing pending voice
+    const transcript = pending.transcript;
+    const blob = pending.blob;
+    const blobUrl = pending.url;
+    
+    // Clear pending voice immediately to prevent double send
+    this.pendingVoice.set(null);
+    
+    // Determine file extension based on blob type
+    const fileExt = blob.type.includes('webm') ? 'webm' : blob.type.includes('ogg') ? 'ogg' : 'wav';
+    const fileName = `voice_${Date.now()}.${fileExt}`;
+    const file = new File([blob], fileName, { type: blob.type });
+    
+    this.uploadingFile.set(true);
+    
+    this.conversationService.uploadFile(file).subscribe({
+      next: res => {
+        if (res.isSuccess && res.data) {
+          // IMPORTANT: Send both the content (for display) and voiceText (for transcript storage)
+          // If we have transcript, use it as content, otherwise use a default message
+          const messageContent = transcript && transcript.trim() 
+            ? transcript.trim() 
+            : 'تسجيل صوتي';
+          
+          console.log('Sending voice message with transcript:', transcript);
+          
+          // Send message with attachment URL, type, AND voiceText
+          this.conversationService.sendMessageRest(
+            convId, 
+            messageContent,           // The text content (will show if no attachment or as caption)
+            res.data.url,             // The uploaded file URL
+            blob.type,                // MIME type
+            transcript || undefined   // The transcript to save in voiceText field
+          ).subscribe({
+            next: msgRes => {
+              if (msgRes.isSuccess && msgRes.data) {
+                console.log('Voice message sent successfully:', msgRes.data);
+                this.appendMessage(convId, this.toChatMessage(msgRes.data, this.activeConversation()?.participants));
+              } else {
+                this.showError(msgRes.message || 'حدث خطأ أثناء الإرسال');
+              }
+            },
+            error: (err) => {
+              console.error('Send voice message error:', err);
+              this.showError('حدث خطأ أثناء إرسال التسجيل');
+            },
+            complete: () => {
+              this.uploadingFile.set(false);
+              // Clean up the blob URL
+              URL.revokeObjectURL(blobUrl);
+            },
+          });
+        } else {
+          this.uploadingFile.set(false);
+          this.showError(res.message || 'حدث خطأ أثناء رفع التسجيل');
+          URL.revokeObjectURL(blobUrl);
+        }
+      },
+      error: (err) => {
+        console.error('Upload voice file error:', err);
+        this.showError('حدث خطأ أثناء رفع التسجيل');
+        this.uploadingFile.set(false);
+        URL.revokeObjectURL(blobUrl);
+      },
+    });
+  }
+
+  isVoiceMessage(msg: ChatMessage): boolean {
+    return !!msg.attachmentUrl && (msg.attachmentType?.startsWith('audio/') ?? false);
+  }
 
   ngOnInit(): void {
     this.loadConversations();
@@ -142,6 +766,7 @@ export class Chat implements OnInit, OnDestroy {
           unread: c.id !== activeId,
         };
       }));
+      if (activeId === msg.conversationId) this.scrollToBottom();
     });
 
     this.updateSub = this.conversationService.updatedMessage$.subscribe(msg => {
@@ -150,7 +775,7 @@ export class Chat implements OnInit, OnDestroy {
         return {
           ...c,
           messages: c.messages.map(m => m.id === msg.id
-            ? { ...m, content: msg.content, isEdited: true }
+            ? { ...m, content: msg.content, isEdited: msg.isEdited ?? false, voiceText: msg.voiceText }
             : m),
         };
       }));
@@ -165,10 +790,43 @@ export class Chat implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    // Unsubscribe from observables
     this.msgSub?.unsubscribe();
     this.updateSub?.unsubscribe();
     this.deleteSub?.unsubscribe();
+    
+    // Stop SignalR connection
     this.conversationService.stopConnection();
+    
+    // Clean up audio
+    if (this.currentAudio) {
+      this.currentAudio.pause();
+      this.currentAudio = null;
+    }
+    
+    // Clean up voice recording
+    this.cancelVoiceRecording();
+    this.discardPendingVoice();
+    
+    // Clear timeouts
+    if (this.typingTimeout) {
+      clearTimeout(this.typingTimeout);
+      this.typingTimeout = null;
+    }
+    if (this.userSearchTimeout) {
+      clearTimeout(this.userSearchTimeout);
+      this.userSearchTimeout = null;
+    }
+    if (this.searchTimeout) {
+      clearTimeout(this.searchTimeout);
+      this.searchTimeout = null;
+    }
+    
+    // Clear audio progress map
+    this.audioProgressMap.clear();
+
+    // Clean up scroll listener
+    this.scrollCleanup?.();
   }
 
   loadConversations(): void {
@@ -195,6 +853,7 @@ export class Chat implements OnInit, OnDestroy {
   }
 
   selectConversation(id: number): void {
+    this.discardPendingVoice();
     const prev = this.activeConversationId();
     if (prev) this.conversationService.leaveConversation(prev);
     this.activeConversationId.set(id);
@@ -253,16 +912,52 @@ export class Chat implements OnInit, OnDestroy {
             }
             return c;
           }));
+          this.scrollToBottom();
         }
       },
-      complete: () => this.loadingMessages.set(false),
+      error: () => this.loadingMessages.set(false),
+      complete: () => {
+        this.loadingMessages.set(false);
+        setTimeout(() => this.enableScrollToLoad(), 100);
+      },
     });
   }
 
+  private scrollCleanup: (() => void) | null = null;
+  private lastLoadTime = 0;
+
+  private enableScrollToLoad(): void {
+    this.scrollCleanup?.();
+    const el = this.messagesContainer()?.nativeElement;
+    if (!el) {
+      setTimeout(() => this.enableScrollToLoad(), 200);
+      return;
+    }
+
+    const handler = (): void => {
+      if (el.scrollTop < 250) {
+        const now = Date.now();
+        if (now - this.lastLoadTime < 3000) return;
+        this.lastLoadTime = now;
+        const convId = this.activeConversationId();
+        if (convId) this.loadOlderMessages(convId);
+      }
+    };
+    el.addEventListener('scroll', handler, { passive: true });
+    this.scrollCleanup = () => el.removeEventListener('scroll', handler);
+  }
+
+  private previousScrollHeight = 0;
+
   loadOlderMessages(conversationId: number): void {
     if (this.loadingOlder() || !this.hasMoreMessages()) return;
+
     this.loadingOlder.set(true);
+    this.cdr.detectChanges();
     const nextPage = this.messagesPage() + 1;
+    const el = this.messagesContainer()?.nativeElement;
+    this.previousScrollHeight = el?.scrollHeight ?? 0;
+
     this.conversationService.getMessages(conversationId, nextPage, this.pageSize).subscribe({
       next: res => {
         if (res.isSuccess && res.data) {
@@ -270,24 +965,35 @@ export class Chat implements OnInit, OnDestroy {
           this.messagesPage.set(nextPage);
           const participants = this.activeConversation()?.participants ?? [];
           const items = (res.data!.items ?? []).reverse().map(m => this.toChatMessage(m, participants));
+
           this.conversations.update(list => list.map(c => {
             if (c.id === conversationId) {
               return { ...c, messages: [...items, ...c.messages] };
             }
             return c;
           }));
+
+          // Restore scroll position AFTER a delay so user sees the loading indicator
+          setTimeout(() => {
+            if (el) {
+              el.scrollTop = el.scrollHeight - this.previousScrollHeight;
+            }
+            this.loadingOlder.set(false);
+            // Re-attach observer only after scroll position is restored
+            setTimeout(() => this.enableScrollToLoad(), 150);
+          }, 1000);
+        } else {
+          this.loadingOlder.set(false);
+          setTimeout(() => this.enableScrollToLoad(), 150);
         }
       },
-      complete: () => this.loadingOlder.set(false),
+      error: (err) => {
+        console.error('Error loading older messages:', err);
+        this.loadingOlder.set(false);
+        setTimeout(() => this.enableScrollToLoad(), 150);
+      },
+      complete: () => {},
     });
-  }
-
-  onMessagesScroll(event: Event): void {
-    const el = event.target as HTMLElement;
-    if (el.scrollTop < 80) {
-      const convId = this.activeConversationId();
-      if (convId) this.loadOlderMessages(convId);
-    }
   }
 
   sendMessage(): void {
@@ -331,6 +1037,20 @@ export class Chat implements OnInit, OnDestroy {
         lastTime: this.formatTime(msg.sentAt),
       };
     }));
+    
+    // Auto-show transcript for sent voice messages
+    this.autoShowTranscriptForSent(msg.id, msg.isMine, !!msg.voiceText);
+
+    // Scroll to bottom for new messages (both mine and received)
+    this.scrollToBottom();
+    
+    console.log('Message appended:', {
+      id: msg.id,
+      isMine: msg.isMine,
+      hasVoiceText: !!msg.voiceText,
+      voiceText: msg.voiceText,
+      content: msg.content
+    });
   }
 
   onTyping(): void {
@@ -767,7 +1487,8 @@ export class Chat implements OnInit, OnDestroy {
   private toChatMessage(dto: MessageDto, participants?: ParticipantDto[]): ChatMessage {
     const currentUserId = this.authService.user()?.userId;
     const role = participants ? this.getSenderRole(dto.senderId, participants) : '';
-    return {
+    
+    const chatMessage: ChatMessage = {
       id: dto.id,
       senderId: dto.senderId,
       senderName: dto.senderName,
@@ -778,7 +1499,17 @@ export class Chat implements OnInit, OnDestroy {
       isEdited: dto.isEdited ?? false,
       attachmentUrl: dto.attachmentUrl ?? undefined,
       attachmentType: dto.attachmentType ?? undefined,
+      voiceText: dto.voiceText ?? undefined,
     };
+    
+    console.log('Converting DTO to ChatMessage:', {
+      id: dto.id,
+      hasVoiceText: !!dto.voiceText,
+      voiceText: dto.voiceText,
+      attachmentType: dto.attachmentType
+    });
+    
+    return chatMessage;
   }
 
   private formatTime(dateStr: string): string {

@@ -531,10 +531,38 @@ public class ConversationService : IConversationService
         if (message.SenderId != userId)
             return OperationResult<string?>.Failure("لا يمكنك حذف رسالة شخص آخر");
 
-        var attachmentUrl = message.AttachmentUrl;
-        _unitOfWork.Messages.SoftDelete(message);
+        message.IsDeleted = true;
+        _unitOfWork.Messages.Update(message);
         await _unitOfWork.SaveChangesAsync();
-        return OperationResult<string?>.Success(attachmentUrl, "تم حذف الرسالة بنجاح");
+
+        return OperationResult<string?>.Success(message.AttachmentUrl, "تم حذف الرسالة بنجاح");
+    }
+
+    public async Task<OperationResult<MessageDto>> GetMessageByIdAsync(int messageId)
+    {
+        var message = await _unitOfWork.Messages.GetByIdAsync(messageId);
+        if (message == null || message.IsDeleted)
+            return OperationResult<MessageDto>.Failure("الرسالة غير موجودة");
+        var dto = _mapper.Map<MessageDto>(message);
+        return OperationResult<MessageDto>.Success(dto);
+    }
+
+    public async Task<OperationResult<MessageDto>> TranscribeMessageAsync(int messageId, int userId, string voiceText)
+    {
+        var message = await _unitOfWork.Messages.GetByIdAsync(messageId);
+        if (message == null || message.IsDeleted)
+            return OperationResult<MessageDto>.Failure("الرسالة غير موجودة");
+        if (string.IsNullOrWhiteSpace(message.AttachmentUrl) || message.AttachmentType?.StartsWith("audio/") != true)
+            return OperationResult<MessageDto>.Failure("الرسالة ليست رسالة صوتية");
+
+        message.VoiceText = voiceText;
+        _unitOfWork.Messages.Update(message);
+        await _unitOfWork.SaveChangesAsync();
+
+        var sender = await _unitOfWork.Users.GetByIdAsync(message.SenderId);
+        var dto = _mapper.Map<MessageDto>(message);
+        dto.SenderName = sender?.FullName ?? "";
+        return OperationResult<MessageDto>.Success(dto, "تم التعرف على النص بنجاح");
     }
 
     public async Task<OperationResult> BlockUserAsync(int conversationId, int blockerId, int blockedUserId)
