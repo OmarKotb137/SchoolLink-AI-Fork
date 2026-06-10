@@ -1,14 +1,12 @@
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
-using Project.BLL.AI.ExamAgent.Interfaces;
-using Project.BLL.AI.ExamAgent.Models;
 using Project.BLL.AI.Interfaces;
 using Project.BLL.AI.Models;
 using Project.BLL.DTOs.Exam;
 using Project.BLL.Interfaces;
 using Project.Domain.Enums;
 
-namespace Project.BLL.AI.ExamAgent.Services;
+namespace Project.BLL.AI.Services;
 
 public class LlmExamGenerator : IExamGenerator
 {

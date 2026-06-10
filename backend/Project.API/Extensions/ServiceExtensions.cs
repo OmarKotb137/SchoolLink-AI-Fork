@@ -2,11 +2,6 @@ using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Project.BLL.AI.Agents;
 using Project.BLL.AI.Infrastructure;
-using Project.BLL.AI.ExamAgent.Infrastructure;
-using Project.BLL.AI.ExamAgent.Interfaces;
-using Project.BLL.AI.ExamAgent.Services;
-using Project.BLL.AI.ExamAgent.Tools;
-using Project.BLL.AI.Infrastructure;
 using Project.BLL.AI.Interfaces;
 using Project.BLL.AI.Services;
 using Project.BLL.AI.Providers;
@@ -93,7 +88,6 @@ public static class ServiceExtensions
 
         // AI Services
         RegisterAiServices(services, config);
-        RegisterExamAgentServices(services, config);
 
         services.AddAutoMapper(cfg => cfg.AddMaps(typeof(MappingProfile).Assembly));
 
@@ -170,20 +164,10 @@ public static class ServiceExtensions
     {
         services.RegisterLlmClient(config);
 
-        services.AddScoped<BLL.AI.ExamAgent.Interfaces.ILessonRepository, DbLessonRepository>();
+        services.AddScoped<ILessonRepository, DbLessonRepository>();
         services.AddScoped<IExamGenerator, LlmExamGenerator>();
-
-        services.AddScoped<IAgentTool, GetLessonsTool>();
-        services.AddScoped<IAgentTool, GetLessonContentTool>();
-        services.AddScoped<IAgentTool, GenerateExamTool>();
-
         services.AddScoped<IAgentChatStore, AgentChatStore>();
-        services.AddScoped<AgentToolRegistry>();
-        services.AddScoped<ExamAgentService>();
-
-
         services.AddScoped<IClassEnrollmentPickerService, ClassEnrollmentPickerService>();
-
     }
 }
 
