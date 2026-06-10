@@ -117,6 +117,11 @@ export class UserService {
     return this.http.get<any>(`${this.apiUrl}/${id}`);
   }
 
+  search(term: string, pageSize: number = 20): Observable<any> {
+    const params = new HttpParams().set('term', term).set('pageSize', pageSize.toString());
+    return this.http.get<any>(`${this.apiUrl}/search`, { params });
+  }
+
   getByRole(role: string, pageSize: number = 1000): Observable<any> {
     const params = new HttpParams().set('pageSize', pageSize.toString());
     return this.http.get<any>(`${this.apiUrl}/role/${role}`, { params });

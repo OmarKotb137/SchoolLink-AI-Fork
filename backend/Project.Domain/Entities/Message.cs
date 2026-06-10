@@ -8,6 +8,8 @@
         public string? AttachmentUrl { get; set; }
         public string? AttachmentType { get; set; }
         public DateTime SentAt { get; set; } = DateTime.UtcNow;
+        public bool IsEdited { get; set; }
+        public DateTime? EditedAt { get; set; }
 
         // Navigation Properties
         public Conversation Conversation { get; set; } = null!;

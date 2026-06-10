@@ -10,4 +10,6 @@ public class MessageDto
     public string? AttachmentUrl { get; set; }
     public string? AttachmentType { get; set; }
     public DateTime SentAt { get; set; }
+    public bool IsEdited { get; set; }
 }
+

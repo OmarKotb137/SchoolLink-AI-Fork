@@ -9,7 +9,7 @@ using Project.Domain.Enums;
 
 namespace Project.API.Controllers;
 
-[Authorize(Roles = "Admin")]
+[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 public class UsersController : ControllerBase
@@ -31,6 +31,7 @@ public class UsersController : ControllerBase
         return Ok(result);
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpGet]
     public async Task<IActionResult> GetAll([FromQuery] GetUsersFilter filter)
     {
@@ -40,6 +41,7 @@ public class UsersController : ControllerBase
         return Ok(result);
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(int id)
     {
@@ -49,6 +51,7 @@ public class UsersController : ControllerBase
         return Ok(result);
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpGet("role/{role}")]
     public async Task<IActionResult> GetByRole(Project.Domain.Enums.UserRole role, [FromQuery] PaginationFilter filter)
     {
@@ -58,6 +61,7 @@ public class UsersController : ControllerBase
         return Ok(result);
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpGet("stats")]
     public async Task<IActionResult> GetStats()
     {

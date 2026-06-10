@@ -64,6 +64,7 @@ public class UnitOfWork : IUnitOfWork
         IConversationRepository                conversations,
         IConversationParticipantRepository     conversationParticipants,
         IMessageRepository                     messages,
+        IBlockedUserRepository                 blockedUsers,
         INotificationRepository                notifications,
         IAnnouncementRepository                announcements,
 
@@ -127,6 +128,7 @@ public class UnitOfWork : IUnitOfWork
         Conversations                = conversations;
         ConversationParticipants     = conversationParticipants;
         Messages                     = messages;
+        BlockedUsers                 = blockedUsers;
         Notifications                = notifications;
         Announcements                = announcements;
 
@@ -196,6 +198,7 @@ public class UnitOfWork : IUnitOfWork
     public IConversationRepository                Conversations                { get; }
     public IConversationParticipantRepository     ConversationParticipants     { get; }
     public IMessageRepository                     Messages                     { get; }
+    public IBlockedUserRepository                 BlockedUsers                 { get; }
     public INotificationRepository                Notifications                { get; }
     public IAnnouncementRepository                Announcements                { get; }
 
