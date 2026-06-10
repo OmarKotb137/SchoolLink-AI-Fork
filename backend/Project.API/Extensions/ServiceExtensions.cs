@@ -132,6 +132,8 @@ public static class ServiceExtensions
         RegisterProvider<CloudflareAIProvider>(services, null);
         RegisterProvider<OpenCodeAIProvider>(services, null);
 
+        services.RegisterLlmClient(config);
+
         services.AddScoped<IToolRegistry, ToolRegistry>();
         services.AddScoped<ILLMRouter, LLMRouter>();
 
@@ -145,6 +147,11 @@ public static class ServiceExtensions
         services.AddScoped<IStudyScheduleOptimizerService, StudyScheduleOptimizerService>();
         services.AddScoped<IStudentImportService, StudentImportService>();
         services.AddScoped<IBookParserService, BookParserService>();
+
+        services.AddScoped<ILessonRepository, DbLessonRepository>();
+        services.AddScoped<IExamGenerator, LlmExamGenerator>();
+        services.AddScoped<IAgentChatStore, AgentChatStore>();
+        services.AddScoped<IClassEnrollmentPickerService, ClassEnrollmentPickerService>();
     }
 
     private static void RegisterProvider<T>(IServiceCollection services, string? httpClientName) where T : class, ILLMProvider
@@ -160,14 +167,6 @@ public static class ServiceExtensions
         services.AddScoped<ILLMProvider>(sp => sp.GetRequiredService<T>());
     }
 
-    private static void RegisterExamAgentServices(IServiceCollection services, IConfiguration config)
-    {
-        services.RegisterLlmClient(config);
 
-        services.AddScoped<ILessonRepository, DbLessonRepository>();
-        services.AddScoped<IExamGenerator, LlmExamGenerator>();
-        services.AddScoped<IAgentChatStore, AgentChatStore>();
-        services.AddScoped<IClassEnrollmentPickerService, ClassEnrollmentPickerService>();
-    }
 }
 
