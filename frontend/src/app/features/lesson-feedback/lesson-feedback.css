@@ -1,0 +1,17 @@
+.star-filled {
+  color: #f59e0b;
+  text-shadow: 0 0 6px rgba(245, 158, 11, .35), 0 0 20px rgba(245, 158, 11, .12);
+  transition: transform .15s ease;
+}
+.star-empty {
+  color: #c5c5d3;
+  opacity: .5;
+}
+.star-btn:hover .star-filled,
+.star-btn:hover .star-empty {
+  transform: scale(1.25);
+}
+.star-btn:active .star-filled,
+.star-btn:active .star-empty {
+  transform: scale(.9);
+}
