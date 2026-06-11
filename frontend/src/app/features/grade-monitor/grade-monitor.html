@@ -48,7 +48,7 @@
             <div class="p-5 space-y-4">
               <div class="flex flex-col gap-2">
                 <label class="text-label-sm text-on-surface-variant">الفصل</label>
-                <select class="grade-inp">
+                <select class="grade-inp" #quickClass (change)="quickEntryClassId.set(+quickClass.value)">
                   <option value="">-- اختر الفصل --</option>
                   @for (c of classes(); track c.id) {
                     <option [value]="c.id">{{ c.name }} – {{ c.subject }}</option>
@@ -57,11 +57,15 @@
               </div>
               <div class="flex flex-col gap-2">
                 <label class="text-label-sm text-on-surface-variant">الأسبوع</label>
-                <select class="grade-inp">
+                <select class="grade-inp" #quickWeek>
                   <option value="">-- اختر الأسبوع --</option>
+                  @for (w of entryWeeksForQuick(); track w) {
+                    <option [value]="w">{{ weekLabelForQuick(w) }}</option>
+                  }
                 </select>
               </div>
-              <button class="grade-btn-primary w-full" disabled>ابدأ الإدخال</button>
+              <button class="grade-btn-primary w-full" [disabled]="!quickEntryClassId()"
+                (click)="goEntry(quickEntryClassId()!)">ابدأ الإدخال</button>
             </div>
           </div>
           <div class="grade-box">
@@ -98,7 +102,12 @@
             <span class="material-symbols-outlined text-lg">add</span> قالب جديد
           </button>
         </div>
-        @if (templates().length) {
+        @if (loadingTemplates()) {
+          <div class="flex items-center justify-center gap-3 py-10 text-on-surface-variant">
+            <span class="material-symbols-outlined text-2xl text-primary" style="animation: spin 1s linear infinite">progress_activity</span>
+            <span class="text-sm">جاري تحميل القوالب...</span>
+          </div>
+        } @else if (templates().length) {
           <div class="grade-grid">
             @for (t of templates(); track t.id) {
               <div class="grade-card">
@@ -140,7 +149,12 @@
             <span class="material-symbols-outlined text-lg">add</span> فصل جديد
           </button>
         </div>
-        @if (classes().length) {
+        @if (loadingApiClasses()) {
+          <div class="flex items-center justify-center gap-3 py-10 text-on-surface-variant">
+            <span class="material-symbols-outlined text-2xl text-primary" style="animation: spin 1s linear infinite">progress_activity</span>
+            <span class="text-sm">جاري تحميل الفصول...</span>
+          </div>
+        } @else if (classes().length) {
           <div class="grade-grid">
             @for (c of classes(); track c.id) {
               <div class="grade-card">
@@ -160,6 +174,12 @@
                   </button>
                   <button class="grade-btn-primary-sm" (click)="goEntry(c.id)">
                     <span class="material-symbols-outlined text-sm">edit_note</span> درجات
+                  </button>
+                  <button class="grade-btn-outline-sm" (click)="loadTopStudents(c.id)" [disabled]="loadingTopStudents()">
+                    <span class="material-symbols-outlined text-sm">star</span>
+                  </button>
+                  <button class="grade-btn-outline-sm" (click)="loadNeedingSupport(c.id)" [disabled]="loadingNeedingSupport()">
+                    <span class="material-symbols-outlined text-sm">warning</span>
                   </button>
                   <button class="grade-btn-outline-sm" (click)="goExp(c.id)">
                     <span class="material-symbols-outlined text-sm">file_download</span>
@@ -185,7 +205,7 @@
             <div class="flex flex-wrap gap-4">
               <div class="flex-1 min-w-[200px]">
                 <label class="text-label-sm text-on-surface-variant block mb-1">الفصل</label>
-                <select class="grade-inp" [ngModel]="entryClassId()" (ngModelChange)="entryClassId.set($event); onClassOrWeekChange()">
+                <select class="grade-inp" [ngModel]="entryClassId()" (ngModelChange)="entryClassId.set($event); entryTemplateId.set(null); onClassOrWeekChange()">
                   <option [ngValue]="null">-- اختر الفصل --</option>
                   @for (c of classes(); track c.id) {
                     <option [ngValue]="c.id">{{ c.name }} – {{ c.subject }}</option>
@@ -387,7 +407,14 @@
                                    (ngModelChange)="onFinalChange(st.id, 'fe', $event)"
                                    min="0" max="30" />
                           </td>
-                          <td class="grade-total bg-primary/5 text-primary font-bold">{{ finalTotal(st.id) }}</td>
+                           <td class="grade-total bg-primary/5 text-primary font-bold">
+                             @if (isFinalComplete(st.id)) {
+                               {{ finalTotal(st.id) }}
+                             } @else {
+                               {{ finalTotal(st.id) }} / {{ finalMaxTotal(st.id) }}
+                               <span class="material-symbols-outlined text-warning text-sm ml-1" title="بعض الدرجات لم تضف بعد">warning</span>
+                             }
+                           </td>
                         </tr>
                       }
                     </tbody>
@@ -431,7 +458,7 @@
               </div>
               <div class="flex-1 min-w-[200px]">
                 <label class="text-label-sm text-on-surface-variant block mb-1">نوع التصدير</label>
-                <select class="grade-inp" [(ngModel)]="exportType">
+                <select class="grade-inp" [ngModel]="exportType()" (ngModelChange)="exportType.set($event)">
                   <option value="weekly">درجات أسبوعية</option>
                   <option value="attendance">غياب أسبوعي</option>
                   <option value="summary">السجل المجمع</option>
@@ -480,9 +507,13 @@
                         <td>{{ i + 1 }}</td>
                         <td class="text-right font-medium">{{ st.name }}</td>
                         @for (mg of exportTmpl()?.month_groups; track mg.name) {
-                          <td>—</td>
+                          <td class="text-center text-on-surface-variant">
+                            {{ getExportMonthAverage(st.id, mg) }}
+                          </td>
                         }
-                        <td class="font-bold text-success">—</td>
+                        <td class="font-bold text-success text-center">
+                          {{ getExportTotalAverage(st.id) }}
+                        </td>
                       </tr>
                     }
                   </tbody>
@@ -677,10 +708,6 @@
       </div>
 
       @if (!editClsId()) {
-        <div style="background:#e8f4fd;border-radius:8px;padding:12px 14px;font-size:13px;color:#1565c0;display:flex;gap:8px;align-items:flex-start;margin:0 24px">
-          <span class="material-symbols-outlined" style="font-size:18px;margin-top:1px">info</span>
-          <span>اختر فصلاً من النظام وحدّد له القالب المناسب لعرض تقييماته.</span>
-        </div>
       }
 
       <div class="mb">
@@ -757,6 +784,118 @@
           <span class="material-symbols-outlined text-sm">link</span>
           ربط بالقالب
         </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Top Students Modal -->
+@if (topStudentsModalOpen()) {
+  <div class="grade-mo" (click)="topStudentsModalOpen.set(false)">
+    <div class="grade-md" (click)="$event.stopPropagation()" style="max-width:500px">
+      <div class="mh">
+        <h3>
+          <span class="material-symbols-outlined text-primary">star</span>
+          أفضل الطلاب
+        </h3>
+        <button class="grade-xb" (click)="topStudentsModalOpen.set(false)">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <div class="mb">
+        @if (loadingTopStudents()) {
+          <div class="flex items-center justify-center gap-3 py-10 text-on-surface-variant">
+            <span class="material-symbols-outlined text-2xl text-primary" style="animation: spin 1s linear infinite">progress_activity</span>
+            <span class="text-sm">جاري التحميل...</span>
+          </div>
+        } @else if (topStudentsData().length) {
+          <table class="grade-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th class="text-right">الطالب</th>
+                <th class="text-center">المجموع</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (st of topStudentsData(); track st.id ?? $index; let i = $index) {
+                <tr>
+                  <td>{{ i + 1 }}</td>
+                  <td class="text-right font-medium">{{ st.studentName ?? st.name ?? '—' }}</td>
+                  <td class="text-center font-bold text-primary">
+                    @if (st.isComplete !== false) {
+                      {{ st.total ?? st.totalScore ?? '—' }}
+                    } @else {
+                      {{ st.total ?? st.totalScore ?? '—' }} / {{ st.maxTotal ?? 100 }}
+                      <span class="material-symbols-outlined text-warning text-sm ml-1" title="بعض الدرجات لم تضف بعد">warning</span>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        } @else {
+          <div class="text-center py-12 text-on-surface-variant">لا توجد بيانات متاحة</div>
+        }
+      </div>
+      <div class="mf">
+        <button class="grade-btn-primary-sm" (click)="topStudentsModalOpen.set(false)">إغلاق</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Needing Support Modal -->
+@if (needingSupportModalOpen()) {
+  <div class="grade-mo" (click)="needingSupportModalOpen.set(false)">
+    <div class="grade-md" (click)="$event.stopPropagation()" style="max-width:500px">
+      <div class="mh">
+        <h3 style="color:var(--danger)">
+          <span class="material-symbols-outlined" style="color:var(--danger)">warning</span>
+          الطلاب المحتاجون للدعم
+        </h3>
+        <button class="grade-xb" (click)="needingSupportModalOpen.set(false)">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <div class="mb">
+        @if (loadingNeedingSupport()) {
+          <div class="flex items-center justify-center gap-3 py-10 text-on-surface-variant">
+            <span class="material-symbols-outlined text-2xl text-primary" style="animation: spin 1s linear infinite">progress_activity</span>
+            <span class="text-sm">جاري التحميل...</span>
+          </div>
+        } @else if (needingSupportData().length) {
+          <table class="grade-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th class="text-right">الطالب</th>
+                <th class="text-center">المجموع</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (st of needingSupportData(); track st.id ?? $index; let i = $index) {
+                <tr>
+                  <td>{{ i + 1 }}</td>
+                  <td class="text-right font-medium">{{ st.studentName ?? st.name ?? '—' }}</td>
+                  <td class="text-center font-bold" style="color:var(--danger)">
+                    @if (st.isComplete !== false) {
+                      {{ st.total ?? st.totalScore ?? '—' }}
+                    } @else {
+                      {{ st.total ?? st.totalScore ?? '—' }} / {{ st.maxTotal ?? 100 }}
+                      <span class="material-symbols-outlined text-warning text-sm ml-1" title="بعض الدرجات لم تضف بعد">warning</span>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        } @else {
+          <div class="text-center py-12 text-on-surface-variant">لا توجد بيانات متاحة</div>
+        }
+      </div>
+      <div class="mf">
+        <button class="grade-btn-primary-sm" (click)="needingSupportModalOpen.set(false)">إغلاق</button>
       </div>
     </div>
   </div>

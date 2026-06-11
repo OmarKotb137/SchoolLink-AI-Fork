@@ -9,7 +9,9 @@
         public decimal WrittenTotal { get; set; }
         public decimal FinalExamScore { get; set; }
         public decimal Total { get; set; }
+        public decimal MaxTotal { get; set; }
         public bool IsPublished { get; set; } = false;
+        public bool IsComplete { get; set; }
 
         // Navigation Properties
         public StudentEnrollment Enrollment { get; set; } = null!;

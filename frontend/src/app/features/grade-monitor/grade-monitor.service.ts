@@ -117,6 +117,15 @@ export class GradeMonitorService {
   private http = inject(HttpClient);
   private base = buildApiUrl();
 
+  // ─── Academic Year ─────────────────────────────────────
+  getAcademicYears() {
+    return this.http.get<any>(`${this.base}/academic-years`);
+  }
+
+  getCurrentAcademicYear() {
+    return this.http.get<any>(`${this.base}/academic-years/current`);
+  }
+
   // ─── School Profile ─────────────────────────────────────
   getSchoolProfile() {
     return this.http.get<any>(`${this.base}/SchoolProfile`);
@@ -127,9 +136,25 @@ export class GradeMonitorService {
     return this.http.get<any>(`${this.base}/Subjects`);
   }
 
+  getMySubjectsCurrentYear() {
+    return this.http.get<any>(`${this.base}/subjects/my-subjects/current-year`);
+  }
+
+  getMySubjects(academicYearId: number) {
+    return this.http.get<any>(`${this.base}/subjects/my-subjects?academicYearId=${academicYearId}`);
+  }
+
   // ─── Evaluation Templates ──────────────────────────────
   getTemplatesByGradeLevel(gradeLevelId: number, academicYearId: number) {
     return this.http.get<any>(`${this.base}/EvaluationTemplates/by-grade-level?gradeLevelId=${gradeLevelId}&academicYearId=${academicYearId}`);
+  }
+
+  getAllTemplates() {
+    return this.http.get<any>(`${this.base}/EvaluationTemplates`);
+  }
+
+  getTemplatesBySubject(subjectId: number, academicYearId: number) {
+    return this.http.get<any>(`${this.base}/EvaluationTemplates/by-subject/${subjectId}?academicYearId=${academicYearId}`);
   }
 
   getTemplateById(id: number) {
@@ -146,6 +171,14 @@ export class GradeMonitorService {
 
   deleteTemplate(id: number) {
     return this.http.delete<any>(`${this.base}/EvaluationTemplates/${id}`);
+  }
+
+  toggleTemplateActive(id: number) {
+    return this.http.patch<any>(`${this.base}/EvaluationTemplates/${id}/toggle-active`, {});
+  }
+
+  duplicateTemplate(id: number) {
+    return this.http.post<any>(`${this.base}/EvaluationTemplates/${id}/duplicate`, {});
   }
 
   // ─── Evaluation Items ──────────────────────────────────
@@ -231,8 +264,17 @@ export class GradeMonitorService {
     return this.http.post<any>(`${this.base}/PeriodicAssessments`, data);
   }
 
+  updateAssessment(data: any) {
+    return this.http.put<any>(`${this.base}/PeriodicAssessments`, data);
+  }
+
   getAssessmentsByEnrollment(enrollmentId: number) {
     return this.http.get<any>(`${this.base}/PeriodicAssessments/by-enrollment/${enrollmentId}`);
+  }
+
+  /** جلب تقييمات الامتحانات الشهرية لكل طلاب الفصل دفعة واحدة */
+  getAssessmentsByClass(classId: number) {
+    return this.http.get<any>(`${this.base}/PeriodicAssessments/by-class/${classId}`);
   }
 
   // ─── Period Averages ──────────────────────────────────
@@ -240,9 +282,45 @@ export class GradeMonitorService {
     return this.http.post<any>(`${this.base}/PeriodAverages/calculate`, data);
   }
 
+  calculateAllPeriodAverages(classId: number, periodId: number) {
+    return this.http.post<any>(`${this.base}/PeriodAverages/calculate-all/${classId}?periodId=${periodId}`, {});
+  }
+
+  getPeriodAveragesByClassPeriod(classId: number, periodId: number) {
+    return this.http.get<any>(`${this.base}/PeriodAverages/by-class-period?classId=${classId}&periodId=${periodId}`);
+  }
+
   // ─── Final Grades ──────────────────────────────────────
   calculateFinalGrade(enrollmentId: number) {
     return this.http.post<any>(`${this.base}/FinalGrades/calculate/${enrollmentId}`, {});
+  }
+
+  calculateAllFinalGrades(classId: number) {
+    return this.http.post<any>(`${this.base}/FinalGrades/calculate-all/${classId}`, {});
+  }
+
+  calculateFullFinalGrades(classId: number, request: { students: { enrollmentId: number; monthlyExam1Score?: number | null; monthlyExam2Score?: number | null; semesterExamScore?: number | null }[] }) {
+    return this.http.post<any>(`${this.base}/FinalGrades/calculate-full/${classId}`, request);
+  }
+
+  recalculateFinalGrades(classId: number) {
+    return this.http.post<any>(`${this.base}/FinalGrades/recalculate/${classId}`, {});
+  }
+
+  getFinalGradeByEnrollment(enrollmentId: number) {
+    return this.http.get<any>(`${this.base}/FinalGrades/by-enrollment/${enrollmentId}`);
+  }
+
+  getFinalGradesByClass(classId: number) {
+    return this.http.get<any>(`${this.base}/FinalGrades/by-class/${classId}`);
+  }
+
+  getTopStudents(classId: number, count: number = 10) {
+    return this.http.get<any>(`${this.base}/FinalGrades/top-students/${classId}?count=${count}`);
+  }
+
+  getStudentsNeedingSupport(classId: number, threshold: number = 50) {
+    return this.http.get<any>(`${this.base}/FinalGrades/needing-support/${classId}?threshold=${threshold}`);
   }
 
   publishGrades(data: any) {
@@ -252,6 +330,18 @@ export class GradeMonitorService {
   // ─── Real Classes (for dropdown picker) ──────────────
   getClasses() {
     return this.http.get<any>(`${this.base}/class-management`);
+  }
+
+  getMyClassesCurrentYear() {
+    return this.http.get<any>(`${this.base}/class-management/my-classes/current-year`);
+  }
+
+  getMyClasses(academicYearId: number) {
+    return this.http.get<any>(`${this.base}/class-management/my-classes?academicYearId=${academicYearId}`);
+  }
+
+  getClassWithStudents(classId: number) {
+    return this.http.get<any>(`${this.base}/class-management/${classId}/students`);
   }
 
   // ─── Student count ──────────────────────────────────

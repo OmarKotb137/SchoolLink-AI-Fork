@@ -1,10 +1,12 @@
 using AutoMapper;
 using Common.Results;
+using Project.BLL.AI.Interfaces;
 using Project.BLL.DTOs.StudyPlans;
 using Project.BLL.Interfaces;
 using Project.DAL.Interfaces;
 using Project.Domain.Entities;
 using Project.Domain.Enums;
+using System.Text.Json;
 
 namespace Project.BLL.Services;
 
@@ -12,11 +14,13 @@ public class StudyPlanService : IStudyPlanService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper _mapper;
+    private readonly ILLMRouter _llmRouter;
 
-    public StudyPlanService(IUnitOfWork unitOfWork, IMapper mapper)
+    public StudyPlanService(IUnitOfWork unitOfWork, IMapper mapper, ILLMRouter llmRouter)
     {
         _unitOfWork = unitOfWork;
         _mapper = mapper;
+        _llmRouter = llmRouter;
     }
 
     public async Task<OperationResult<StudyPlanDto>> GenerateStudyPlanWithAIAsync(GenerateStudyPlanRequest request)
@@ -31,37 +35,109 @@ public class StudyPlanService : IStudyPlanService
         if (request.StartDate < DateOnly.FromDateTime(DateTime.UtcNow))
             return OperationResult<StudyPlanDto>.Failure("تاريخ البداية لا يمكن أن يكون في الماضي");
 
+        var student = enrollment.Student ?? await _unitOfWork.Students.GetByIdAsync(enrollment.StudentId);
         var evaluations = await _unitOfWork.StudentEvaluations.GetByEnrollmentIdAsync(request.EnrollmentId);
         var periodAverages = await _unitOfWork.PeriodAverages.GetByEnrollmentIdAsync(request.EnrollmentId);
         var timetable = await _unitOfWork.Timetables.GetActiveByClassAndYearAsync(enrollment.ClassId, enrollment.AcademicYearId);
         var assignments = await _unitOfWork.Assignments.GetByClassIdAsync(enrollment.ClassId, enrollment.AcademicYearId);
-
         var subjects = await _unitOfWork.Subjects.GetAllAsync();
         var validSubjects = subjects.Where(s => !s.IsDeleted).ToList();
 
-        var random = new Random();
-        var items = new List<StudyPlanItem>();
-        var totalDays = request.StartDate.DayNumber - request.EndDate.DayNumber;
-        var sessionDays = Math.Min(Math.Abs(totalDays) * 2, 20);
-
-        for (int i = 0; i < sessionDays && validSubjects.Count > 0; i++)
+        // Build evaluation summary
+        var evalSummary = "";
+        if (periodAverages.Any())
         {
-            var subject = validSubjects[random.Next(validSubjects.Count)];
-            var dayOffset = (i % Math.Max(Math.Abs(totalDays), 1));
-            var currentDate = request.StartDate.AddDays(dayOffset);
+            var avg = periodAverages.Average(a => a.AvgScore);
+            evalSummary = $"\n- متوسط أداء الطالب في أعمال السنة: {avg:F1}%";
+            var lowPeriods = periodAverages.Where(a => a.AvgScore < 50).ToList();
+            if (lowPeriods.Any())
+                evalSummary += $"\n- فترات ضعيفة (أقل من 50%): {string.Join(", ", lowPeriods.Select(p => $"فترة #{p.PeriodId}"))}";
+        }
 
-            var startHour = 9 + random.Next(1, 8);
-            var duration = random.Next(1, 4);
-            items.Add(new StudyPlanItem
+        var assignmentsSummary = "";
+        if (assignments.Any())
+        {
+            var pending = assignments.Where(a => !a.IsDeleted && a.DueDate.HasValue && a.DueDate.Value.Date >= DateTime.UtcNow.Date).ToList();
+            if (pending.Any())
+                assignmentsSummary = $"\n- مهام قادمة: {string.Join(", ", pending.Take(5).Select(a => $"{a.Title} (استحقاق: {a.DueDate})"))}";
+        }
+
+        var sessionCount = Math.Min(Math.Abs((request.EndDate.DayNumber - request.StartDate.DayNumber)) * 2, 20);
+        var systemPrompt = "أنت مستشار تعليمي متخصص في إنشاء جداول دراسية أسبوعية للطلاب. قم بتحليل أداء الطالب وتقديم خطة أسبوعية متوازنة.";
+        var userPrompt = $"ضع خطة دراسية أسبوعية للطالب {student?.FullName ?? ""} من {request.StartDate} إلى {request.EndDate}.\n" +
+            $"المواد المتاحة: {string.Join(", ", validSubjects.Select(s => s.Name))}\n" +
+            $"{evalSummary}\n{assignmentsSummary}\n" +
+            $"قم بتوزيع {sessionCount} جلسة دراسية على مدار الأسبوع.\n" +
+            "الرجاء الرد بتنسيق JSON فقط (بدون علامات Markdown) بالهيكل التالي:\n" +
+            "{\n  \"sessions\": [\n    {\n      \"dayOfWeek\": 0,\n      \"subjectName\": \"اسم المادة\",\n      \"startHour\": 9,\n      \"durationHours\": 2,\n      \"topic\": \"عنوان الجلسة\",\n      \"notes\": \"ملاحظات\"\n    }\n  ]\n}\n" +
+            "حيث dayOfWeek: 0=السبت, 1=الأحد, 2=الإثنين, 3=الثلاثاء, 4=الأربعاء, 5=الخميس, 6=الجمعة.\n" +
+            "startHour من 8 إلى 22. durationHours من 1 إلى 3.\n" +
+            "خصص وقتاً أكبر للمواد التي يحتاج الطالب تحسينها بناءً على التقييمات.";
+
+        var items = new List<StudyPlanItem>();
+        try
+        {
+            var llmResult = await _llmRouter.GenerateAsync(systemPrompt, userPrompt, preferredProvider: "OpenCodeAI");
+            var json = llmResult.Trim();
+            if (json.StartsWith("```json")) json = json[7..];
+            if (json.EndsWith("```")) json = json[..^3];
+            json = json.Trim();
+
+            var parsed = JsonSerializer.Deserialize<LLMPlanResponse>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            if (parsed?.Sessions != null)
             {
-                SubjectId = subject.Id,
-                DayOfWeek = ((int)currentDate.DayOfWeek + 1) % 7,
-                StartTime = new TimeOnly(startHour, 0),
-                EndTime = new TimeOnly(startHour + duration, 0),
-                Topic = $"مراجعة {subject.Name}",
-                Notes = "جلسة دراسية مقترحة من الذكاء الاصطناعي",
-                IsCompleted = false
-            });
+                foreach (var s in parsed.Sessions)
+                {
+                    var subject = validSubjects.FirstOrDefault(sub => sub.Name == s.SubjectName);
+                    if (subject == null) continue;
+                    if (s.DayOfWeek < 0 || s.DayOfWeek > 6) continue;
+                    if (s.StartHour < 8 || s.StartHour > 22) continue;
+                    if (s.DurationHours < 1 || s.DurationHours > 3) continue;
+
+                    items.Add(new StudyPlanItem
+                    {
+                        SubjectId = subject.Id,
+                        DayOfWeek = s.DayOfWeek,
+                        StartTime = new TimeOnly(s.StartHour, 0),
+                        EndTime = new TimeOnly(Math.Min(s.StartHour + s.DurationHours, 23), 0),
+                        Topic = s.Topic ?? $"دراسة {subject.Name}",
+                        Notes = s.Notes ?? "جلسة مقترحة من الذكاء الاصطناعي",
+                        IsCompleted = false
+                    });
+                }
+            }
+        }
+        catch
+        {
+            // LLM response parsing failed, fall back to random
+        }
+
+        // Fallback to random if LLM didn't produce valid sessions
+        if (!items.Any())
+        {
+            var random = new Random();
+            var totalDays = request.StartDate.DayNumber - request.EndDate.DayNumber;
+            var sessionDays = Math.Min(Math.Abs(totalDays) * 2, 20);
+
+            for (int i = 0; i < sessionDays && validSubjects.Count > 0; i++)
+            {
+                var subject = validSubjects[random.Next(validSubjects.Count)];
+                var dayOffset = (i % Math.Max(Math.Abs(totalDays), 1));
+                var currentDate = request.StartDate.AddDays(dayOffset);
+
+                var startHour = 9 + random.Next(1, 8);
+                var duration = random.Next(1, 4);
+                items.Add(new StudyPlanItem
+                {
+                    SubjectId = subject.Id,
+                    DayOfWeek = ((int)currentDate.DayOfWeek + 1) % 7,
+                    StartTime = new TimeOnly(startHour, 0),
+                    EndTime = new TimeOnly(startHour + duration, 0),
+                    Topic = $"مراجعة {subject.Name}",
+                    Notes = "جلسة دراسية مقترحة من الذكاء الاصطناعي",
+                    IsCompleted = false
+                });
+            }
         }
 
         var activePlan = await _unitOfWork.StudyPlans.GetActiveByEnrollmentIdAsync(request.EnrollmentId);
@@ -87,6 +163,21 @@ public class StudyPlanService : IStudyPlanService
 
         var dto = MapToDto(plan);
         return OperationResult<StudyPlanDto>.Success(dto, "تم إنشاء خطة الدراسة بالذكاء الاصطناعي بنجاح");
+    }
+
+    private class LLMPlanResponse
+    {
+        public List<LLMSession> Sessions { get; set; } = new();
+    }
+
+    private class LLMSession
+    {
+        public int DayOfWeek { get; set; }
+        public string SubjectName { get; set; } = "";
+        public int StartHour { get; set; }
+        public int DurationHours { get; set; }
+        public string? Topic { get; set; }
+        public string? Notes { get; set; }
     }
 
     public async Task<OperationResult<StudyPlanDto>> CreateManualStudyPlanAsync(CreateStudyPlanRequest request)

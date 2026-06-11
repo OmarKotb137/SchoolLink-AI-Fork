@@ -29,10 +29,20 @@ public class FinalGradeService : IFinalGradeService
         if (classEntity is null || classEntity.IsDeleted)
             return OperationResult<FinalGradeDto>.Failure("الفصل غير موجود");
 
-        var templates = await _unitOfWork.EvaluationTemplates.GetByGradeLevelAndYearAsync(
-            classEntity.GradeLevelId, enrollment.AcademicYearId);
-        if (!templates.Any())
+        var template = (await _unitOfWork.EvaluationTemplates.GetByGradeLevelAndYearAsync(
+            classEntity.GradeLevelId, enrollment.AcademicYearId)).FirstOrDefault();
+        if (template is null)
             return OperationResult<FinalGradeDto>.Failure("لم يتم العثور على قالب تقييم لهذا الصف");
+
+        var templateWithItems = await _unitOfWork.EvaluationTemplates.GetWithItemsAsync(template.Id);
+        if (templateWithItems is null)
+            return OperationResult<FinalGradeDto>.Failure("لم يتم العثور على عناصر القالب");
+
+        var yearWorkMax = templateWithItems.Items
+            .Where(i => !i.IsDeleted)
+            .Sum(i => i.MaxScore * i.Weight);
+        if (yearWorkMax == 0)
+            return OperationResult<FinalGradeDto>.Failure("مجموع درجات القالب يساوي صفر");
 
         var periodAverages = await _unitOfWork.PeriodAverages.GetByEnrollmentIdAsync(enrollmentId);
         if (!periodAverages.Any())
@@ -40,15 +50,22 @@ public class FinalGradeService : IFinalGradeService
 
         var assessments = await _unitOfWork.PeriodicAssessments.GetByEnrollmentIdAsync(enrollmentId);
 
-        var periodAvgScore = periodAverages.Average(a => a.AvgScore);
+        var avgPercentage = periodAverages.Average(a => a.AvgScore);
+        var periodAvgScore = RoundGrade(avgPercentage * yearWorkMax / 100m);
         var assessment1 = assessments.FirstOrDefault(a => a.AssessmentType == PeriodicAssessmentType.MonthlyExam1
                                                        || a.AssessmentType == PeriodicAssessmentType.InitialAssessment);
         var assessment2 = assessments.FirstOrDefault(a => a.AssessmentType == PeriodicAssessmentType.MonthlyExam2
                                                        || a.AssessmentType == PeriodicAssessmentType.FinalAssessment);
 
-        var writtenTotal = periodAvgScore + (assessment1?.Score ?? 0) + (assessment2?.Score ?? 0);
-        var finalExamScore = assessments.FirstOrDefault(a => a.AssessmentType == PeriodicAssessmentType.SemesterExam)?.Score ?? 0;
-        var total = writtenTotal + finalExamScore;
+        var finalExamAssessment = assessments.FirstOrDefault(a => a.AssessmentType == PeriodicAssessmentType.SemesterExam);
+        var finalExamScore = finalExamAssessment?.Score ?? 0;
+        var writtenTotal = RoundGrade(periodAvgScore + (assessment1?.Score ?? 0) + (assessment2?.Score ?? 0));
+        var total = RoundGrade(writtenTotal + finalExamScore);
+        var isComplete = (assessment1?.Score ?? 0) > 0 && (assessment2?.Score ?? 0) > 0 && (finalExamAssessment?.Score ?? 0) > 0;
+        var maxTotal = yearWorkMax;
+        if ((assessment1?.Score ?? 0) > 0) maxTotal += assessment1!.MaxScore;
+        if ((assessment2?.Score ?? 0) > 0) maxTotal += assessment2!.MaxScore;
+        if ((finalExamAssessment?.Score ?? 0) > 0) maxTotal += finalExamAssessment!.MaxScore;
 
         var existing = await _unitOfWork.FinalGrades.GetByEnrollmentIdAsync(enrollmentId);
         if (existing is not null && !existing.IsDeleted)
@@ -59,6 +76,8 @@ public class FinalGradeService : IFinalGradeService
             existing.WrittenTotal = writtenTotal;
             existing.FinalExamScore = finalExamScore;
             existing.Total = total;
+            existing.MaxTotal = maxTotal;
+            existing.IsComplete = isComplete;
             _unitOfWork.FinalGrades.Update(existing);
         }
         else
@@ -72,7 +91,9 @@ public class FinalGradeService : IFinalGradeService
                 WrittenTotal = writtenTotal,
                 FinalExamScore = finalExamScore,
                 Total = total,
-                IsPublished = false
+                MaxTotal = maxTotal,
+                IsPublished = false,
+                IsComplete = isComplete
             };
             await _unitOfWork.FinalGrades.AddAsync(existing);
         }
@@ -185,6 +206,121 @@ public class FinalGradeService : IFinalGradeService
         return OperationResult<int>.Success(calculated, $"تم حساب الدرجة النهائية لـ {calculated} طالب بنجاح");
     }
 
+    public async Task<OperationResult<IEnumerable<FinalGradeDto>>> CalculateFullForClassAsync(int classId, CalculateFullFinalGradesRequest request)
+    {
+        var classEntity = await _unitOfWork.Classes.GetByIdAsync(classId);
+        if (classEntity is null || classEntity.IsDeleted)
+            return OperationResult<IEnumerable<FinalGradeDto>>.Failure("الفصل غير موجود");
+
+        var assessments = new List<PeriodicAssessment>();
+        foreach (var s in request.Students)
+        {
+            if ((s.MonthlyExam1Score ?? 0) > 0)
+                assessments.Add(new PeriodicAssessment
+                {
+                    EnrollmentId = s.EnrollmentId,
+                    AssessmentType = PeriodicAssessmentType.MonthlyExam1,
+                    Score = s.MonthlyExam1Score.Value,
+                    MaxScore = 15,
+                    AssessmentDate = DateOnly.FromDateTime(DateTime.UtcNow)
+                });
+            if ((s.MonthlyExam2Score ?? 0) > 0)
+                assessments.Add(new PeriodicAssessment
+                {
+                    EnrollmentId = s.EnrollmentId,
+                    AssessmentType = PeriodicAssessmentType.MonthlyExam2,
+                    Score = s.MonthlyExam2Score.Value,
+                    MaxScore = 15,
+                    AssessmentDate = DateOnly.FromDateTime(DateTime.UtcNow)
+                });
+            if ((s.SemesterExamScore ?? 0) > 0)
+                assessments.Add(new PeriodicAssessment
+                {
+                    EnrollmentId = s.EnrollmentId,
+                    AssessmentType = PeriodicAssessmentType.SemesterExam,
+                    Score = s.SemesterExamScore.Value,
+                    MaxScore = 30,
+                    AssessmentDate = DateOnly.FromDateTime(DateTime.UtcNow)
+                });
+        }
+
+        if (assessments.Any())
+            await _unitOfWork.PeriodicAssessments.BulkUpsertAsync(assessments);
+
+        await _unitOfWork.SaveChangesAsync();
+
+        return await RecalculateAllAsync(classId);
+    }
+
+    public async Task<OperationResult<IEnumerable<FinalGradeDto>>> RecalculateForClassAsync(int classId)
+    {
+        var classEntity = await _unitOfWork.Classes.GetByIdAsync(classId);
+        if (classEntity is null || classEntity.IsDeleted)
+            return OperationResult<IEnumerable<FinalGradeDto>>.Failure("الفصل غير موجود");
+
+        return await RecalculateAllAsync(classId);
+    }
+
+    private async Task<OperationResult<IEnumerable<FinalGradeDto>>> RecalculateAllAsync(int classId)
+    {
+        var classEntity = await _unitOfWork.Classes.GetByIdAsync(classId);
+        var weeklyPeriods = await _unitOfWork.EvaluationPeriods.GetWeeksByYearAsync(classEntity.AcademicYearId);
+        var enrollments = await _unitOfWork.StudentEnrollments.GetActiveByClassAsync(classId, classEntity.AcademicYearId);
+
+        if (!enrollments.Any())
+            return OperationResult<IEnumerable<FinalGradeDto>>.Success(Array.Empty<FinalGradeDto>(), "لا يوجد طلاب في هذا الفصل");
+
+        foreach (var period in weeklyPeriods)
+        {
+            foreach (var enrollment in enrollments)
+            {
+                var evaluations = await _unitOfWork.StudentEvaluations.GetByEnrollmentAndPeriodAsync(enrollment.Id, period.Id);
+                if (!evaluations.Any()) continue;
+
+                var totalScore = evaluations.Sum(e => e.Score ?? 0);
+                var itemIds = evaluations.Select(e => e.EvaluationItemId).Distinct().ToList();
+                var evaluatedItems = await _unitOfWork.EvaluationItems.FindAsync(i => itemIds.Contains(i.Id));
+                var totalMax = evaluatedItems.Where(i => !i.IsDeleted).Sum(i => i.MaxScore * i.Weight);
+                var avgScore = totalMax > 0 ? (totalScore / totalMax) * 100 : 0;
+
+                var existing = await _unitOfWork.PeriodAverages.GetByEnrollmentAndPeriodAsync(enrollment.Id, period.Id);
+                if (existing is not null && !existing.IsDeleted)
+                {
+                    existing.AvgScore = avgScore;
+                    existing.MaxScore = totalMax;
+                    existing.CalculatedAt = DateTime.UtcNow;
+                    _unitOfWork.PeriodAverages.Update(existing);
+                }
+                else
+                {
+                    await _unitOfWork.PeriodAverages.AddAsync(new PeriodAverage
+                    {
+                        EnrollmentId = enrollment.Id,
+                        PeriodId = period.Id,
+                        AvgScore = avgScore,
+                        MaxScore = totalMax,
+                        CalculatedAt = DateTime.UtcNow
+                    });
+                }
+            }
+        }
+
+        await _unitOfWork.SaveChangesAsync();
+
+        var calculated = 0;
+        foreach (var enrollment in enrollments)
+        {
+            var result = await CalculateFinalGradeAsync(enrollment.Id);
+            if (result.IsSuccess)
+                calculated++;
+        }
+
+        var grades = await _unitOfWork.FinalGrades.GetByClassIdAsync(classId);
+        return OperationResult<IEnumerable<FinalGradeDto>>.Success(
+            _mapper.Map<IEnumerable<FinalGradeDto>>(grades),
+            $"تم حساب النتائج النهائية لـ {calculated} طالب");
+    }
+
     public async Task<OperationResult<IEnumerable<FinalGradeDto>>> GetFinalGradesByAcademicYearAsync(int academicYearId)
     {
         var year = await _unitOfWork.AcademicYears.GetByIdAsync(academicYearId);
@@ -204,5 +340,17 @@ public class FinalGradeService : IFinalGradeService
         return OperationResult<IEnumerable<FinalGradeDto>>.Success(
             _mapper.Map<IEnumerable<FinalGradeDto>>(allGrades),
             "تم جلب الدرجات النهائية للسنة الدراسية بنجاح");
+    }
+
+    private static decimal RoundGrade(decimal value)
+    {
+        var integer = Math.Floor(value);
+        var fraction = value - integer;
+
+        if (fraction >= 0.5m)
+            return Math.Ceiling(value);
+        if (fraction > 0)
+            return integer + 0.5m;
+        return integer;
     }
 }
