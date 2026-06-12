@@ -73,14 +73,23 @@ namespace Project.API.Controllers
             return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
 
-        [HttpGet("{id}/html")]
-        public async Task<IActionResult> RenderHtml(int id)
+        [HttpGet("{uid}/html")]
+        [AllowAnonymous]
+        public async Task<IActionResult> RenderHtml(Guid uid)
         {
-            var result = await _examService.RenderHtmlAsync(id);
+            var result = await _examService.RenderHtmlAsync(uid);
             if (!result.IsSuccess)
                 return NotFound(result);
 
             return Content(result.Data, "text/html; charset=utf-8");
+        }
+
+        [HttpPut("{uid}/save")]
+        public async Task<IActionResult> SaveQuestions(Guid uid, [FromBody] SaveExamQuestionsDto dto)
+        {
+            dto.Uid = uid;
+            var result = await _examService.SaveExamQuestionsAsync(dto);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
         }
     }
 }

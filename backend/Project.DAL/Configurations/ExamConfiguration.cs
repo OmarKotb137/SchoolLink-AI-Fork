@@ -14,6 +14,12 @@ namespace Project.DAL.Configurations
                 .IsRequired()
                 .HasMaxLength(300);
 
+            builder.HasIndex(x => x.Uid).IsUnique();
+
+            builder.Property(x => x.Uid)
+                .IsRequired()
+                .HasDefaultValueSql("NEWID()");
+
             builder.Property(x => x.TotalScore)
                 .HasColumnType("decimal(5,2)");
 

@@ -51,6 +51,6 @@ export class Sidebar {
   currentRole = computed(() => this.roleService.currentRole());
 
   onAiConsult() {
-    alert('AI consultation coming soon!');
+    this.navigate('/chat-ai');
   }
 }

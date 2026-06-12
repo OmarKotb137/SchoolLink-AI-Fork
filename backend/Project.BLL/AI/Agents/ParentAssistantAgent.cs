@@ -1,9 +1,9 @@
-using System.Text.Json;
+﻿using System.Text.Json;
+using System.Text.RegularExpressions;
 using Common.Results;
 using Microsoft.Extensions.Logging;
 using Project.BLL.AI.Interfaces;
 using Project.BLL.AI.Models;
-using Project.BLL.AI.Tools;
 using Project.BLL.Interfaces;
 using Project.DAL.Interfaces;
 
@@ -14,43 +14,138 @@ public class ParentAssistantAgent : IParentAssistantAgent
     private readonly ILLMRouter _router;
     private readonly ILlmClient _llmClient;
     private readonly IUnitOfWork _unitOfWork;
-    private readonly IParentStudentService _parentStudentService;
-    private readonly IStudentEvaluationService _evalService;
-    private readonly IPeriodicAssessmentService _periodicService;
-    private readonly IExamService _examService;
-    private readonly IPeriodAverageService _periodAverageService;
+    private readonly IParentToolService _toolService;
     private readonly ILogger<ParentAssistantAgent> _logger;
     private readonly IAgentChatStore _chatStore;
 
-    private const string SystemPrompt =
-        "أنت مساعد ذكي لولي الأمر. قدم تقارير واضحة عن مستوى الطالب الأكاديمي والسلوكي. " +
-        "اقترح أنشطة تعليمية منزلية وحدد نقاط القوة والضعف. كن موضوعياً ومشجعاً. " +
-        "لديك أدوات يمكنك استخدامها لجلب معلومات حقيقية من النظام. استخدمها عند الحاجة.";
+    private const string SystemPrompt = @"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🤖 IDENTITY & ROLE — Parent Assistant Agent
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+أنت مساعد ذكي لولي الأمر (AI Parent Assistant).
+دورك: متابعة الأبناء دراسياً — عرض تقييماتهم، امتحاناتهم، أدائهم، غيابهم، وأي انخفاض في المستوى.
+
+شخصيتك:
+• واضحة، دقيقة، مهتمة.
+• تخاطب ولي الأمر باحترام (أستاذي الفاضل، حضرتك).
+• تعرض المعلومات بشكل منظم وسهل الفهم.
+• تنبه فوراً لو في أي تراجع في مستوى الابن، ولكن بطريقة مهذبة وبناءة.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🌍 LANGUAGE RULE — قاعدة اللغة
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+• اتبع لغة ولي الأمر (عربي / إنجليزي).
+• حافظ على نفس اللغة طول الجلسة.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔧 TOOLS — الأدوات المتاحة
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+────────────────────────────────────
+TOOL 1 — get_my_children
+────────────────────────────────────
+● جلب قائمة أبناء ولي الأمر المسجلين
+● لا يحتاج باراميترز (بيستخدم سياق الجلسة)
+● الاستخدام: أول حاجة — عشان نجيب الأبناء ونعرضهم لولي الأمر
+● ماذا تفعل بعدها: اعرض أسماء الأبناء وخلّي ولي الأمر يختار
+
+────────────────────────────────────
+TOOL 2 — get_child_evaluations
+────────────────────────────────────
+● جلب تقييمات الابن (دراسية: سلوك، تفاعل، واجبات، أعمال سنة + تدريبية: نتائج الامتحانات)
+● Arguments: enrollmentId (int — مطلوب), periodId (int — اختياري)
+● الاستخدام: لما ولي الأمر عاوز يتأكد من مستوى الابن
+● ماذا تفعل بعدها:
+   ✅ حلّل التقييمات وحدد نقاط القوة والضعف
+   ❌ خطأ → اعتذر واطلب المحاولة لاحقاً
+
+────────────────────────────────────
+TOOL 3 — get_child_performance_trend
+────────────────────────────────────
+● جلب مؤشرات الأداء عبر الفترات المختلفة لكشف الانخفاض أو التحسن
+● Arguments: enrollmentId (int) — معرف تسجيل الطالب
+● الاستخدام: لمقارنة أداء الابن بين الفترات الدراسية
+● ماذا تفعل بعدها:
+   ✅ لو في انخفاض → نبّه ولي الأمر فوراً بأسلوب مهذب
+   ✅ لو في تحسن → امدح ولي الأمر على متابعته
+
+────────────────────────────────────
+TOOL 4 — get_child_upcoming_exams
+────────────────────────────────────
+● جلب الامتحانات القادمة للابن
+● Arguments: classId (int) — معرف فصل الطالب
+● الاستخدام: لما ولي الأمر عاوز يتأكد من امتحانات الابن القادمة
+● ماذا تفعل بعدها: اعرض المواعيد وذكّر ولي الأمر يساعد الابن في الاستعداد
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 PROTOCOLS — بروتوكولات التعامل
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PROTOCOL 1 — افتتاح الجلسة
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• استقبل ولي الأمر واسأله: ""أهلاً بيك! عاوز تتابع ابن من الأبناء؟""
+• استخدم get_my_children عشان تجيب القائمة
+• اعرض الأسماء وخلّيه يختار
+
+PROTOCOL 2 — عرض التقرير الكامل للابن
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+بعد اختيار الابن، اعرض ملخص سريع:
+1. get_child_evaluations → التقييمات الأخيرة
+2. get_child_performance_trend → مؤشرات الأداء
+3. get_child_upcoming_exams → الامتحانات القادمة
+
+اعرضهم بشكل منظم وكأنك بتقدم تقرير مع النقاط والتوصيات.
+
+PROTOCOL 3 — متابعة الأداء والتنبيهات
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• استخدم get_child_performance_trend لمقارنة الفترات
+• لو لقيت انخفاض → نبه ولي الأمر فوراً: ""أستاذي الفاضل، لاحظت انخفاض في مستوى الابن في [المادة]...""
+• قدم توصيات عملية لتحسين المستوى
+
+PROTOCOL 4 — متابعة الامتحانات
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• استخدم get_child_upcoming_exams
+• اعرض الامتحانات القادمة + نصائح للتحضير
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⛔ ABSOLUTE RULES — قواعد مطلقة
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. أبداً لا تذكر أسماء الخدمات أو الـ APIs.
+2. أبداً لا تعرض بيانات طالب غير تابع لولي الأمر.
+3. أبداً لا تظهر raw JSON أو أكواد.
+4. لو في انخفاض في الأداء → نبه فوراً ولكن بطريقة مهذبة وبناءة.
+5. لو الأداة فشلت → اعتذر بلطف واقترح بديل.
+6. حافظ على نفس اللغة اللي بدأ بها ولي الأمر.
+7. دايمًا أعد صياغة البيانات بأسلوب واضح ومنظم (جداول بسيطة، نقاط).
+8. لا تسأل عن نفس المعلومة مرتين — خزنها في الجلسة.
+9. أول حاجة اعرض أبناء ولي الأمر باستخدام get_my_children.
+10. ممنوع قطعاً استخدام (# و ** و * و > و --- و ``` و `) في ردودك. هذه رموز ماركداون. استخدم النص العادي فقط.
+11. للتنسيق: استخدم سطور فارغة بين الفقرات، والأسطر العادية. مسموح باستخدام الملصقات (😊🎉✅✅📝📚).
+12. ★ كل خيار أو اختيار عاوز ولي الأمر يضغط عليه → ابدأ السطر بـ 🔹. يشمل: قائمة الإجراءات (🔹 تقرير ابني ✅)، اختيارات (🔹 الامتحانات القادمة ✅)، وأي شيء تريد أن يختاره.
+13. ★ مثال:
+أهلاً بك! ماذا تريد أن تعرف؟
+🔹 عرض تقرير ابني
+🔹 الامتحانات القادمة
+🔹 جدول الحصص
+14. ★ لا تضع 🔹 إلا للسطور التي تريدها أزراراً.";
 
     public ParentAssistantAgent(
         ILLMRouter router,
         ILlmClient llmClient,
-        IToolRegistry toolRegistry,
         IUnitOfWork unitOfWork,
-        IParentStudentService parentStudentService,
-        IStudentEvaluationService evalService,
-        IPeriodicAssessmentService periodicService,
-        IExamService examService,
-        IPeriodAverageService periodAverageService,
+        IParentToolService toolService,
         ILogger<ParentAssistantAgent> logger,
         IAgentChatStore chatStore)
     {
         _router = router;
         _llmClient = llmClient;
         _unitOfWork = unitOfWork;
-        _parentStudentService = parentStudentService;
-        _evalService = evalService;
-        _periodicService = periodicService;
-        _examService = examService;
-        _periodAverageService = periodAverageService;
+        _toolService = toolService;
         _logger = logger;
         _chatStore = chatStore;
-        toolRegistry.RegisterTools(ParentTools.Create(parentStudentService, evalService, periodicService, examService, periodAverageService));
     }
 
     public async Task<OperationResult<AgentResponse>> ChatAsync(string message, string? conversationId = null, UserContext? context = null, CancellationToken ct = default)
@@ -65,21 +160,23 @@ public class ParentAssistantAgent : IParentAssistantAgent
             new(MessageRole.System, SystemPrompt)
         };
 
-        var history = await _chatStore.GetRecentMessagesAsync(conversationId, 10, ct);
+        var history = await _chatStore.GetRecentMessagesAsync(conversationId, 50, ct);
         foreach (var msg in history)
             messages.Add(new LlmChatMessage(
                 msg.Role == "user" ? MessageRole.User : MessageRole.Assistant, msg.Content));
 
         messages.Add(new LlmChatMessage(MessageRole.User, message));
-        await _chatStore.SaveMessageAsync(conversationId, "user", message, "parent", ct);
+        await _chatStore.SaveMessageAsync(conversationId, context.UserId, "user", message, "parent", ct);
 
-        var tools = CreateTools(context);
+        var tools = _toolService.CreateTools(context, ct);
         var toolDefs = tools.Values.Select(t => new FunctionDefinition
         {
             Name = t.Name,
             Description = t.Description,
             InputSchema = t.Parameters ?? System.Text.Json.JsonDocument.Parse("{}").RootElement
         }).ToList();
+
+        var lastToolCalled = "";
 
         for (int step = 0; step < 10; step++)
         {
@@ -89,19 +186,19 @@ public class ParentAssistantAgent : IParentAssistantAgent
 
             if (response.ToolCalls is null || response.ToolCalls.Count == 0)
             {
-                var answer = response.Content ?? "لم يتمكن المساعد من الإجابة.";
-                await _chatStore.SaveMessageAsync(conversationId, "assistant", answer, "parent", ct);
+                var answer = StripMarkdown(response.Content) ?? "لم يتمكن المساعد من الإجابة.";
+                await _chatStore.SaveMessageAsync(conversationId, context.UserId, "assistant", answer, "parent", ct);
                 return OperationResult<AgentResponse>.Success(new AgentResponse
                 {
                     Text = answer,
-                    SuggestedActions = new() { "عرض تقارير سابقة", "جدولة اجتماع", "أنشطة مقترحة" },
+                    SuggestedActions = GetParentDynamicSuggestions(lastToolCalled),
                     AdditionalData = new() { ["conversationId"] = conversationId }
                 });
             }
 
             messages.Add(new LlmChatMessage(
                 MessageRole.Assistant,
-                response.Content ?? "",
+                StripMarkdown(response.Content) ?? "",
                 toolCalls: response.ToolCalls));
 
             foreach (var call in response.ToolCalls)
@@ -117,6 +214,7 @@ public class ParentAssistantAgent : IParentAssistantAgent
 
                 try
                 {
+                    lastToolCalled = call.Name;
                     var result = await tool.ExecuteAsync(call.Arguments);
                     messages.Add(new LlmChatMessage(MessageRole.Tool, result, toolCallId: call.Id));
                 }
@@ -137,6 +235,69 @@ public class ParentAssistantAgent : IParentAssistantAgent
         });
     }
 
+    /// <summary>
+    /// تنظيف الرد من رموز الماركداون
+    /// </summary>
+    private static string? StripMarkdown(string? text)
+    {
+        if (string.IsNullOrEmpty(text)) return text;
+
+        var lines = text.Split('\n');
+        for (int i = 0; i < lines.Length; i++)
+        {
+            var trimmed = lines[i].TrimStart();
+            if (trimmed.StartsWith("### ")) lines[i] = lines[i].Replace("### ", "");
+            else if (trimmed.StartsWith("## ")) lines[i] = lines[i].Replace("## ", "");
+            else if (trimmed.StartsWith("# ")) lines[i] = lines[i].Replace("# ", "");
+            lines[i] = Regex.Replace(lines[i], @"\*\*(.*?)\*\*", "$1");
+            lines[i] = Regex.Replace(lines[i], @"\*(.*?)\*", "$1");
+            if (Regex.IsMatch(lines[i].Trim(), @"^[-*_]{3,}$")) lines[i] = "";
+            lines[i] = Regex.Replace(lines[i], @"^\s*>\s*", "");
+            lines[i] = Regex.Replace(lines[i], @"`+", ""); // إزالة الباكتيك
+            lines[i] = Regex.Replace(lines[i], @"🔗\s*رابط\s*(معاينة\s*)?(الامتحان\s*)?:?\s*", ""); // إزالة رابط معاينة
+        }
+
+        return string.Join("\n", lines.Where(l => l != null)).Trim();
+    }
+
+    private static List<string> GetParentDynamicSuggestions(string lastToolCalled)
+    {
+        return lastToolCalled switch
+        {
+            "get_my_children" => new()
+            {
+                "تقرير ابني",
+                "الامتحانات القادمة",
+                "تقييم ابني"
+            },
+            "get_child_evaluations" => new()
+            {
+                "مؤشرات الأداء",
+                "الامتحانات القادمة",
+                "أنشطة مقترحة"
+            },
+            "get_child_performance_trend" => new()
+            {
+                "تقرير ابني",
+                "نقاط الضعف",
+                "أنشطة مقترحة"
+            },
+            "get_child_upcoming_exams" => new()
+            {
+                "تقرير ابني",
+                "تقييم ابني",
+                "مصادر تعليمية"
+            },
+            _ => new()
+            {
+                "تقرير ابني",
+                "الامتحانات القادمة",
+                "نقاط الضعف",
+                "أنشطة مقترحة"
+            }
+        };
+    }
+
     private async Task ResolveParentContextAsync(UserContext context, CancellationToken ct)
     {
         context.ParentId ??= context.UserId;
@@ -145,111 +306,6 @@ public class ParentAssistantAgent : IParentAssistantAgent
         context.AcademicYearId = activeYear.FirstOrDefault()?.Id;
     }
 
-    private Dictionary<string, AiTool> CreateTools(UserContext context)
-    {
-        var list = new List<AiTool>();
-
-        if (context.ParentId.HasValue)
-        {
-            var pId = context.ParentId.Value;
-            list.Add(new AiTool
-            {
-                Name = "get_my_children",
-                Description = "جلب قائمة أبناء ولي الأمر",
-                Parameters = JsonSerializer.SerializeToElement(new
-                {
-                    type = "object",
-                    properties = new object(),
-                    required = Array.Empty<string>()
-                }),
-                ExecuteAsync = async (args) =>
-                {
-                    var result = await _parentStudentService.GetStudentsByParentAsync(pId);
-                    return JsonSerializer.Serialize(result.Data, new JsonSerializerOptions { WriteIndented = true });
-                }
-            });
-        }
-
-        list.Add(new AiTool
-        {
-            Name = "get_child_evaluations",
-            Description = "جلب تقييمات الابن (دراسية + تدريبية)",
-            Parameters = JsonSerializer.SerializeToElement(new
-            {
-                type = "object",
-                properties = new
-                {
-                    enrollmentId = new { type = "integer", description = "معرف تسجيل الطالب" },
-                    periodId = new { type = "integer", description = "معرف فترة التقييم (اختياري)" }
-                },
-                required = new[] { "enrollmentId" }
-            }),
-            ExecuteAsync = async (args) =>
-            {
-                using var doc = JsonDocument.Parse(args);
-                var eId = doc.RootElement.GetProperty("enrollmentId").GetInt32();
-                var pId = doc.RootElement.TryGetProperty("periodId", out var periodEl) ? periodEl.GetInt32() : 0;
-
-                var academic = await _evalService.GetByEnrollmentAndPeriodAsync(eId, pId);
-                var training = await _periodicService.GetByEnrollmentAsync(eId);
-                return JsonSerializer.Serialize(new
-                {
-                    academicEvaluations = academic.Data,
-                    trainingAssessments = training.Data
-                }, new JsonSerializerOptions { WriteIndented = true });
-            }
-        });
-
-        list.Add(new AiTool
-        {
-            Name = "get_child_performance_trend",
-            Description = "جلب مؤشرات الأداء عبر الفترات لكشف الانخفاض أو التحسن",
-            Parameters = JsonSerializer.SerializeToElement(new
-            {
-                type = "object",
-                properties = new
-                {
-                    enrollmentId = new { type = "integer", description = "معرف تسجيل الطالب" }
-                },
-                required = new[] { "enrollmentId" }
-            }),
-            ExecuteAsync = async (args) =>
-            {
-                using var doc = JsonDocument.Parse(args);
-                var eId = doc.RootElement.GetProperty("enrollmentId").GetInt32();
-                var result = await _periodAverageService.GetByEnrollmentAsync(eId);
-                return JsonSerializer.Serialize(result.Data, new JsonSerializerOptions { WriteIndented = true });
-            }
-        });
-
-        if (context.AcademicYearId.HasValue)
-        {
-            var yId = context.AcademicYearId.Value;
-            list.Add(new AiTool
-            {
-                Name = "get_child_upcoming_exams",
-                Description = "جلب الامتحانات القادمة للابن",
-                Parameters = JsonSerializer.SerializeToElement(new
-                {
-                    type = "object",
-                    properties = new
-                    {
-                        classId = new { type = "integer", description = "معرف الفصل" }
-                    },
-                    required = new[] { "classId" }
-                }),
-                ExecuteAsync = async (args) =>
-                {
-                    using var doc = JsonDocument.Parse(args);
-                    var cId = doc.RootElement.GetProperty("classId").GetInt32();
-                    var result = await _examService.GetUpcomingExamsAsync(cId, yId);
-                    return JsonSerializer.Serialize(result.Data, new JsonSerializerOptions { WriteIndented = true });
-                }
-            });
-        }
-
-        return list.ToDictionary(t => t.Name);
-    }
 
     public async Task<OperationResult<AgentResponse>> GetProgressSummaryAsync(int studentId, CancellationToken ct = default)
     {
@@ -273,7 +329,7 @@ public class ParentAssistantAgent : IParentAssistantAgent
         return OperationResult<AgentResponse>.Success(new AgentResponse
         {
             Text = result,
-            SuggestedActions = new() { "عرض تقارير سابقة", "جدولة اجتماع", "أنشطة مقترحة" }
+            SuggestedActions = new() { "تقرير ابني", "الامتحانات القادمة", "أنشطة مقترحة" }
         });
     }
 

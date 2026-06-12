@@ -11,11 +11,14 @@ public class AgentConversationMessageConfiguration : IEntityTypeConfiguration<Ag
         builder.HasKey(x => x.Id);
 
         builder.Property(x => x.ConversationId).IsRequired().HasMaxLength(100);
+        builder.Property(x => x.UserId).IsRequired();
         builder.Property(x => x.Sender).IsRequired().HasMaxLength(50);
         builder.Property(x => x.Content).IsRequired().HasMaxLength(8000);
         builder.Property(x => x.AgentType).IsRequired().HasMaxLength(50);
 
         builder.HasIndex(x => x.ConversationId);
+        builder.HasIndex(x => x.UserId);
+        builder.HasIndex(x => new { x.UserId, x.ConversationId });
         builder.HasIndex(x => new { x.ConversationId, x.Timestamp });
 
         builder.HasQueryFilter(x => !x.IsDeleted);

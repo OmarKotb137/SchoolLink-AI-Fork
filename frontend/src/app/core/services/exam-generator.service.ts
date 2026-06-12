@@ -17,6 +17,7 @@ export interface AiGenerateExamRequest {
 
 export interface GetExamDto {
   id: number;
+  uid: string;
   title: string;
   durationMinutes: number | null;
   totalScore: number;
@@ -49,6 +50,7 @@ export interface GetExamQuestionDto {
   contentText?: string;
   questionText: string;
   questionType: number;
+  correctAnswer: string | null;
   imageUrl?: string;
   points: number;
   displayOrder: number;
@@ -58,6 +60,7 @@ export interface GetExamQuestionDto {
 export interface GetExamQuestionOptionDto {
   id: number;
   optionText: string;
+  isCorrect: boolean;
   displayOrder: number;
 }
 
@@ -134,5 +137,13 @@ export class ExamGeneratorService {
 
   getExamById(id: number): Observable<any> {
     return this.http.get(`${this.examBase}/${id}`);
+  }
+
+  deleteExamById(id: number): Observable<any> {
+    return this.http.delete(`${this.examBase}/${id}`);
+  }
+
+  saveExistingExam(uid: string, dto: any): Observable<any> {
+    return this.http.put(`${this.examBase}/${uid}/save`, dto);
   }
 }

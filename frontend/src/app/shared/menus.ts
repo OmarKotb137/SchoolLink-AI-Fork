@@ -55,7 +55,6 @@ export const PARENT_MENU: SidebarMenuItem[] = [
   { label: 'متابعة ابني', icon: 'supervisor_account', route: '/child-progress' },
   { label: 'التقارير', icon: 'description', route: '/reports' },
   { label: 'المحادثات', icon: 'chat', route: '/chat' },
-  { label: 'المساعد الذكي', icon: 'auto_awesome', route: '/chat-ai' },
   { label: 'الإشعارات', icon: 'notifications', route: '/notifications' },
 ];
 

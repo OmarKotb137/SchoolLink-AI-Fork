@@ -72,9 +72,16 @@ export class ExamGenerator implements OnInit {
   previewExam = signal<AiExamPreviewDto | null>(null);
   previewQuestions = signal<AiExamPreviewQuestionDto[]>([]);
   savedExamId = signal<number | null>(null);
+  savedExamUid = signal<string | null>(null);
   viewingHistoryId = signal<number | null>(null);
 
   showConfirm = signal(false);
+  showDeleteConfirm = signal(false);
+  deleteTargetId = signal<number | null>(null);
+
+  // Edit Mode
+  editMode = signal(false);
+  editData = signal<{ questionText: string; points: number; correctAnswer: string | null; options: { optionText: string; isCorrect: boolean }[] }[]>([]);
 
   readonly QUESTION_TYPE_LABELS: { value: number; label: string; icon: string }[] = [
     { value: 1, label: 'اختيار من متعدد', icon: 'quiz' },
@@ -214,6 +221,7 @@ export class ExamGenerator implements OnInit {
     this.previewExam.set(null);
     this.previewQuestions.set([]);
     this.savedExamId.set(null);
+    this.savedExamUid.set(null);
     this.showConfirm.set(false);
 
     const body: AiGenerateExamRequest = {
@@ -258,6 +266,8 @@ export class ExamGenerator implements OnInit {
 
     this.saving.set(true);
     this.showConfirm.set(false);
+    this.editMode.set(false);
+    this.editData.set([]);
 
     const saveBody: any = {
       classSubjectTeacherId: this.selectedCstId(),
@@ -284,6 +294,7 @@ export class ExamGenerator implements OnInit {
         const saved = r?.data;
         if (saved?.id) {
           this.savedExamId.set(saved.id);
+          this.savedExamUid.set(saved.uid || null);
         }
         this.saving.set(false);
         this.loadHistory();
@@ -295,6 +306,45 @@ export class ExamGenerator implements OnInit {
     });
   }
 
+  deleteExam(id: number) {
+    this.deleteTargetId.set(id);
+    this.showDeleteConfirm.set(true);
+  }
+
+  confirmDelete() {
+    const id = this.deleteTargetId();
+    if (!id) return;
+
+    this.loading.set(true);
+    this.showDeleteConfirm.set(false);
+    this.genSvc.deleteExamById(id).subscribe({
+      next: () => {
+        this.loading.set(false);
+        this.deleteTargetId.set(null);
+
+        // Clear preview if it was the deleted exam
+        if (this.savedExamId() === id) {
+          this.previewExam.set(null);
+          this.previewQuestions.set([]);
+          this.savedExamId.set(null);
+          this.savedExamUid.set(null);
+        }
+
+        this.loadHistory();
+      },
+      error: (err) => {
+        this.loading.set(false);
+        this.deleteTargetId.set(null);
+        this.errorMsg.set(err?.error?.message || err?.message || 'فشل حذف الامتحان');
+      }
+    });
+  }
+
+  cancelDelete() {
+    this.showDeleteConfirm.set(false);
+    this.deleteTargetId.set(null);
+  }
+
   viewHistoryExam(id: number) {
     this.viewingHistoryId.set(id);
     this.generating.set(false);
@@ -302,7 +352,11 @@ export class ExamGenerator implements OnInit {
     this.previewExam.set(null);
     this.previewQuestions.set([]);
     this.savedExamId.set(null);
+    this.savedExamUid.set(null);
     this.showConfirm.set(false);
+    this.showDeleteConfirm.set(false);
+    this.editMode.set(false);
+    this.editData.set([]);
 
     this.genSvc.getExamById(id).subscribe({
       next: (r: any) => {
@@ -329,10 +383,10 @@ export class ExamGenerator implements OnInit {
                     questionType: q.questionType,
                     options: (q.options || []).map((o: any) => ({
                       optionText: o.optionText,
-                      isCorrect: false,
+                      isCorrect: o.isCorrect || false,
                       displayOrder: o.displayOrder,
                     })),
-                    correctAnswer: null,
+                    correctAnswer: q.correctAnswer || null,
                     points: q.points,
                     displayOrder: q.displayOrder,
                   });
@@ -347,10 +401,10 @@ export class ExamGenerator implements OnInit {
                 questionType: q.questionType,
                 options: (q.options || []).map((o: any) => ({
                   optionText: o.optionText,
-                  isCorrect: false,
+                  isCorrect: o.isCorrect || false,
                   displayOrder: o.displayOrder,
                 })),
-                correctAnswer: null,
+                correctAnswer: q.correctAnswer || null,
                 points: q.points,
                 displayOrder: q.displayOrder,
               });
@@ -361,6 +415,7 @@ export class ExamGenerator implements OnInit {
           this.previewExam.set(mapped);
           this.previewQuestions.set(allQ);
           this.savedExamId.set(saved.id);
+          this.savedExamUid.set(saved.uid || null);
         }
         this.viewingHistoryId.set(null);
       },
@@ -386,10 +441,141 @@ export class ExamGenerator implements OnInit {
     this.previewExam.set(null);
     this.previewQuestions.set([]);
     this.savedExamId.set(null);
+    this.savedExamUid.set(null);
     this.viewingHistoryId.set(null);
     this.showConfirm.set(false);
+    this.showDeleteConfirm.set(false);
+    this.deleteTargetId.set(null);
+    this.editMode.set(false);
+    this.editData.set([]);
     this.errorMsg.set('');
   }
 
   dismissError() { this.errorMsg.set(''); }
+
+  // ── Edit Mode Helpers ──
+
+  getEditPoints(i: number): number {
+    return this.editData()[i]?.points ?? 0;
+  }
+
+  setEditPoints(i: number, val: any) {
+    const data = this.editData();
+    if (data[i]) data[i].points = +val;
+  }
+
+  getEditQuestionText(i: number): string {
+    return this.editData()[i]?.questionText ?? '';
+  }
+
+  setEditQuestionText(i: number, val: string) {
+    const data = this.editData();
+    if (data[i]) data[i].questionText = val;
+  }
+
+  getEditCorrectAnswer(i: number): string {
+    return this.editData()[i]?.correctAnswer ?? '';
+  }
+
+  setEditCorrectAnswer(i: number, val: string) {
+    const data = this.editData();
+    if (data[i]) data[i].correctAnswer = val || null;
+  }
+
+  getEditOptionText(i: number, oi: number): string {
+    return this.editData()[i]?.options[oi]?.optionText ?? '';
+  }
+
+  setEditOptionText(i: number, oi: number, val: string) {
+    const data = this.editData();
+    if (data[i]?.options[oi]) data[i].options[oi].optionText = val;
+  }
+
+  isEditOptCorrect(i: number, oi: number): boolean {
+    return this.editData()[i]?.options[oi]?.isCorrect ?? false;
+  }
+
+  setEditCorrectOption(i: number, oi: number) {
+    const data = this.editData();
+    if (!data[i]?.options) return;
+    data[i].options.forEach((o, idx) => {
+      o.isCorrect = idx === oi;
+    });
+  }
+
+  // ── Edit Mode ──
+
+  toggleEdit() {
+    const next = !this.editMode();
+    this.editMode.set(next);
+    if (next) {
+      this.editData.set(this.previewQuestions().map(q => ({
+        questionText: q.questionText,
+        points: q.points,
+        correctAnswer: q.correctAnswer,
+        options: (q.options || []).map(o => ({
+          optionText: o.optionText,
+          isCorrect: o.isCorrect,
+        })),
+      })));
+    }
+  }
+
+  cancelEdit() {
+    this.editMode.set(false);
+    this.editData.set([]);
+    // Reload from saved/history state
+    const savedId = this.savedExamId();
+    if (savedId) {
+      this.viewHistoryExam(savedId);
+    }
+  }
+
+  saveEdits() {
+    const uid = this.savedExamUid();
+    if (!uid) return;
+
+    const preview = this.previewExam();
+    if (!preview) return;
+
+    const edited = this.editData();
+    const questions = this.previewQuestions().map((q, i) => ({
+      id: 0,
+      questionText: edited[i]?.questionText || q.questionText,
+      points: edited[i]?.points ?? q.points,
+      displayOrder: i + 1,
+      correctAnswer: edited[i]?.correctAnswer ?? q.correctAnswer,
+      options: (edited[i]?.options || q.options || []).map((o, oi) => ({
+        id: 0,
+        optionText: o.optionText,
+        isCorrect: o.isCorrect,
+        displayOrder: oi + 1,
+      })),
+    }));
+
+    const dto = {
+      uid: uid,
+      title: preview.title,
+      durationMinutes: preview.durationMinutes,
+      totalScore: preview.totalScore,
+      questions: questions,
+    };
+
+    this.saving.set(true);
+    this.genSvc.saveExistingExam(uid, dto).subscribe({
+      next: () => {
+        this.saving.set(false);
+        this.editMode.set(false);
+        this.editData.set([]);
+        // Reload
+        const savedId = this.savedExamId();
+        if (savedId) this.viewHistoryExam(savedId);
+        this.errorMsg.set('');
+      },
+      error: (err) => {
+        this.saving.set(false);
+        this.errorMsg.set(err?.error?.message || err?.message || 'فشل حفظ التعديلات');
+      }
+    });
+  }
 }
