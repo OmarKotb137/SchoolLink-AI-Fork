@@ -156,4 +156,21 @@ public class SubjectService : ISubjectService
             _mapper.Map<IEnumerable<SubjectDto>>(matches),
             "تم البحث بنجاح");
     }
+
+    public async Task<OperationResult<IEnumerable<TeacherSubjectAssignmentDto>>> GetAssignmentsByTeacherAsync(int teacherId, int academicYearId)
+    {
+        var csts = await _unitOfWork.ClassSubjectTeachers
+            .GetByTeacherWithAllDetailsAsync(teacherId, academicYearId);
+
+        var list = csts.Where(c => !c.IsDeleted).Select(c => new TeacherSubjectAssignmentDto
+        {
+            ClassSubjectTeacherId = c.Id,
+            SubjectId = c.SubjectId,
+            SubjectName = c.Subject?.Name ?? "",
+            ClassName = c.Class?.Name ?? ""
+        }).OrderBy(c => c.SubjectName).ThenBy(c => c.ClassName).ToList();
+
+        return OperationResult<IEnumerable<TeacherSubjectAssignmentDto>>.Success(list,
+            "تم جلب مواد المعلم مع الفصول بنجاح");
+    }
 }

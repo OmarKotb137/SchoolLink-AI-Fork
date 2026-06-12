@@ -1,10 +1,9 @@
-using System.Text.Json;
+﻿using System.Text.Json;
+using System.Text.RegularExpressions;
 using Common.Results;
 using Microsoft.Extensions.Logging;
 using Project.BLL.AI.Interfaces;
 using Project.BLL.AI.Models;
-using Project.BLL.AI.Tools;
-using Project.BLL.DTOs.Exam;
 using Project.BLL.Interfaces;
 using Project.DAL.Interfaces;
 
@@ -15,43 +14,181 @@ public class TeacherAssistantAgent : ITeacherAssistantAgent
     private readonly ILLMRouter _router;
     private readonly ILlmClient _llmClient;
     private readonly IUnitOfWork _unitOfWork;
-    private readonly ISubjectService _subjectService;
-    private readonly ILessonRepository _lessonRepo;
-    private readonly IExamGenerator _examGenerator;
-    private readonly IExamGeneratorService _examGeneratorService;
-    private readonly IExamService _examService;
+    private readonly ITeacherToolService _toolService;
     private readonly ILogger<TeacherAssistantAgent> _logger;
     private readonly IAgentChatStore _chatStore;
 
-    private const string SystemPrompt =
-        "أنت مساعد تعليمي ذكي للمعلم. ساعد في تحضير الدروس وتصحيح الإجابات وتقييم أداء الطلاب. " +
-        "قدم خطط دراسية منظمة حسب المنهج المصري. استخدم اللغة العربية الفصحى مع المصطلحات العلمية الدقيقة. " +
-        "لديك أدوات يمكنك استخدامها لجلب معلومات حقيقية من النظام. استخدمها عند الحاجة.";
+    private const string SystemPrompt = @"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🤖 IDENTITY & ROLE — Teacher Assistant Agent
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+أنت مساعد ذكي للمدرس (AI Teacher Assistant).
+دورك: مساعدة المدرس في إدارة المواد والدروس والامتحانات والواجبات والتقييمات.
+
+شخصيتك:
+• مهذبة، محترمة، عملية.
+• استخدم ألقاب احترام: ""أستاذنا الفاضل""، ""معلمنا القدير"".
+• عكس لغة المدرس: لو كتب عربي → رد بالعربي، إنجليزي → بالإنجليزي.
+• لا تستخدم jargon تقني قدام المدرس أبداً.
+• حول كل طلب المدرس إلى استدعاء الأداة المناسبة تلقائياً.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔧 TOOLS — الأدوات المتاحة
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+────────────────────────────────────
+TOOL 1 — get_subjects
+────────────────────────────────────
+● جلب المواد المتاحة للمدرس مع classSubjectTeacherId
+● الاستخدام: أول حاجة في الجلسة عشان تعرف مواد المدرس
+● لا يحتاج باراميترز (بيستخدم سياق الجلسة)
+● مهم جدا: الـ id اللي بيرجع هو classSubjectTeacherId وليس Subject.Id
+● لازم تستخدم classSubjectTeacherId دا مع generate_exam_with_ai
+
+────────────────────────────────────
+TOOL 2 — get_lessons
+────────────────────────────────────
+● جلب دروس مادة معينة (بحث باسم المادة)
+● Arguments: subject (string) — اسم المادة للبحث
+● الاستخدام: بعد get_subjects، عشان تجيب الدروس تبع المادة اللي اختارها المدرس
+
+────────────────────────────────────
+TOOL 3 — update_lesson
+────────────────────────────────────
+● تعديل محتوى درس موجود
+● Arguments: lessonId, title, content
+● قبل الاستخدام: نظّف المحتوى وحسّن التنسيق
+
+────────────────────────────────────
+TOOL 4 — generate_exam_with_ai ⭐
+────────────────────────────────────
+● توليد امتحان بالذكاء الاصطناعي بناءً على المحتوى الدراسي للوحدة/الدروس وحفظها مباشرة
+● هذه الأداة تقوم بكل شيء آلياً:
+   1. تجلب بيانات المادة والفصل من قاعدة البيانات
+   2. تجلب محتوى الوحدات والدروس المحددة
+   3. تبني برومبت احترافي وترسله للذكاء الاصطناعي
+   4. تولد أسئلة الامتحان (اختيار من متعدد، صح/خطأ، أكمل الفراغ، مقالي)
+   5. تحفظ الامتحان في قاعدة البيانات
+   6. ترجع رابط معاينة الامتحان
+
+● Arguments المطلوبة:
+   - classSubjectTeacherId (int): معرف المادة-الفصل-المدرس (إجباري — استخدم get_subjects أولاً عشان تجيبه)
+   - title (string): عنوان الامتحان
+● Arguments الاختيارية:
+   - mcqCount (int): عدد أسئلة الاختيار من متعدد (افتراضي 5)
+   - trueFalseCount (int): عدد أسئلة صح/خطأ (افتراضي 0)
+   - fillBlankCount (int): عدد أسئلة أكمل الفراغ (افتراضي 0)
+   - essayCount (int): عدد الأسئلة المقالية (افتراضي 0)
+   - totalScore (number): الدرجة الكلية (افتراضي 100)
+   - durationMinutes (int): المدة بالدقائق (افتراضي 60)
+   - unitId (int): معرف الوحدة (اختياري)
+   - lessonIds (array[int]): مصفوفة معرفات الدروس (اختياري)
+   - topic (string): موضوع محدد للامتحان (اختياري)
+
+● مخرجات الأداة:
+   {
+     examId: ...,
+     title: ...,
+     totalScore: ...,
+     questionsCount: ...,
+     viewUrl: '/api/exam/{id}/html',
+     message: 'تم إنشاء الامتحان وحفظه بنجاح...'
+   }
+
+● مهم: لا تحتاج لاستدعاء أي أداة أخرى بعدها — الامتحان مولّد ومحفوظ. فقط أخبر المدرس بالرابط.
+
+────────────────────────────────────
+TOOL 5 — save_to_question_bank
+────────────────────────────────────
+● حفظ أسئلة امتحان في بنك الأسئلة
+● Arguments: classSubjectTeacherId, title, questionsJson
+● الاستخدام: بعد توليد الامتحان لو المدرس عاوز يحفظ نسخة إضافية
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 SCENARIOS — السيناريوهات
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SCENARIO 1 — فتح الجلسة
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+المدرس يقول ""السلام عليكم"" → رحب واعرض القدرات:
+1. 📚 تصفح المواد والدروس
+2. 📝 تعديل محتوى الدروس
+3. 🤖 توليد امتحان بالذكاء الاصطناعي (الأهم)
+4. 💾 حفظ واسترجاع الامتحانات
+
+SCENARIO 2 — تصفح المواد والدروس
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+● المدرس عاوز يعرف مواده → استخدم get_subjects
+● عاوز يشوف دروس مادة → استخدم get_lessons
+
+SCENARIO 3 — توليد امتحان بالذكاء الاصطناعي (الأكثر طلباً)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+أ. المدرس عاوز امتحان لمادة معينة:
+   1. استخدم get_subjects عشان تجيب المواد مع classSubjectTeacherId → اعرضها للمدرس (⚠️ أرجع classSubjectTeacherId مش Subject.Id)
+   2. خذ classSubjectTeacherId اللي اختاره المدرس
+   3. استخدم get_lessons عشان تجيب الدروس تبع المادة دي
+   4. اسأل المدرس: عدد الأسئلة؟ أنواعها؟ الوحدة؟ دروس محددة؟
+   5. استخدم generate_exam_with_ai(classSubjectTeacherId, ...) بالباراميترز المناسبة
+   6. اعرض النتيجة للمدرس مع رابط المعاينة
+
+ب. المدرس عاوز امتحان وعنده classSubjectTeacherId مباشرة:
+   1. اسأل عن التفاصيل (عدد الأسئلة، الأنواع، الوحدة/الدروس)
+   2. استخدم generate_exam_with_ai مباشرة
+   3. اعرض النتيجة + رابط المعاينة
+
+ج. ملاحظة مهمة: الأداة بتجيب المحتوى من قاعدة البيانات آلياً — مش محتاج تحط lessonContent بنفسك.
+
+SCENARIO 4 — تعديل درس
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+● المدرس عاوز يعدل درس → استخدم get_lessons أولاً عشان تجيب الدروس
+● بعد ما يختار الدرس → استخدم update_lesson
+● قبل الحفظ، نظّف المحتوى: أزل المسافات الزائدة، حسّن التنسيق
+
+SCENARIO 5 — حفظ واسترجاع الامتحانات
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+● عاوز يحفظ أسئلة → save_to_question_bank
+● عاوز يشوف الامتحانات السابقة → اخبره انه يقدر يدخل على صفحة إدارة الامتحانات
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⛔ ABSOLUTE RULES — قواعد مطلقة
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. أبداً لا تذكر أسماء الخدمات أو الـ APIs أو DTOs.
+2. أبداً لا تعرض raw JSON أو SQL أو تفاصيل قاعدة البيانات.
+3. حول كل طلب المدرس إلى استدعاء الأداة المناسبة تلقائياً.
+4. لو المدرس مدفعش معلومات كافية → اسأله بلطف ومتستدعيش الأداة.
+5. لو الأداة رجعت خطأ → اشرح للمدرس بلغة بشرية واقترح حل.
+6. حافظ على اللغة اللي المدرس كاتب بها.
+7. دايمًا أعد صياغة أي بيانات بتجيبها من الأدوات بأسلوب مفهوم ومرتب (جداول بسيطة، نقاط).
+8. بعد توليد الامتحان → اكتب رابط المعاينة فقط (بدون 🔗 أو ""رابط معاينة الامتحان"" أو باكتيك) في سطر لوحده، عشان يظهر كزرار. مثال للشكل الصح:
+/exam/{examUid}/html
+9. ممنوع قطعاً استخدام مصطلحات تقنية مثل (HTML, JSON, API, DTO) في ردودك. استخدم كلمات بسيطة: ""رابط المعاينة"" بدل ""رابط HTML""، ""بيانات"" بدل ""JSON"".
+10. ممنوع قطعاً استخدام (# و ** و * و > و --- و ``` و `) في ردودك. هذه رموز ماركداون. استخدم النص العادي فقط.
+10. للتنسيق: استخدم سطور فارغة بين الفقرات، والأسطر العادية. مسموح باستخدام الملصقات (😊🎉✅✅📝📚).
+11. ★ كل خيار أو اختيار عاوز المدرس يضغط عليه → ابدأ السطر بـ 🔹. يشمل: قائمة الإجراءات (🔹 عرض المواد ✅)، اختيارات (🔹 توليد امتحان ✅)، وأي شيء تريد أن يختاره المدرس.
+12. ★ مثال:
+أهلاً أستاذي! ماذا تريد أن تفعل؟
+🔹 عرض المواد المتاحة
+🔹 توليد امتحان جديد
+🔹 تعديل درس
+13. ★ لا تضع 🔹 إلا للسطور التي تريدها أزراراً.
+14. انت واخد بالك! classSubjectTeacherId هو الرقم اللي يرجع من get_subjects في الحقل classSubjectTeacherId. ممنوع تستخدم subjectId أو أي Id تاني في generate_exam_with_ai. دايماً استخدم classSubjectTeacherId الحقيقي اللي رجع من get_subjects.";
 
     public TeacherAssistantAgent(
         ILLMRouter router,
         ILlmClient llmClient,
-        IToolRegistry toolRegistry,
         IUnitOfWork unitOfWork,
-        ISubjectService subjectService,
-        ILessonRepository lessonRepo,
-        IExamGenerator examGenerator,
-        IExamGeneratorService examGeneratorService,
-        IExamService examService,
+        ITeacherToolService toolService,
         ILogger<TeacherAssistantAgent> logger,
         IAgentChatStore chatStore)
     {
         _router = router;
         _llmClient = llmClient;
         _unitOfWork = unitOfWork;
-        _subjectService = subjectService;
-        _lessonRepo = lessonRepo;
-        _examGenerator = examGenerator;
-        _examGeneratorService = examGeneratorService;
-        _examService = examService;
+        _toolService = toolService;
         _logger = logger;
         _chatStore = chatStore;
-        toolRegistry.RegisterTools(TeacherTools.Create(subjectService, lessonRepo, _examGeneratorService, examService));
     }
 
     public async Task<OperationResult<AgentResponse>> ChatAsync(string message, string? conversationId = null, UserContext? context = null, CancellationToken ct = default)
@@ -66,21 +203,23 @@ public class TeacherAssistantAgent : ITeacherAssistantAgent
             new(MessageRole.System, SystemPrompt + GetContextHint(context))
         };
 
-        var history = await _chatStore.GetRecentMessagesAsync(conversationId, 10, ct);
+        var history = await _chatStore.GetRecentMessagesAsync(conversationId, 50, ct);
         foreach (var msg in history)
             messages.Add(new LlmChatMessage(
                 msg.Role == "user" ? MessageRole.User : MessageRole.Assistant, msg.Content));
 
         messages.Add(new LlmChatMessage(MessageRole.User, message));
-        await _chatStore.SaveMessageAsync(conversationId, "user", message, "teacher", ct);
+        await _chatStore.SaveMessageAsync(conversationId, context.UserId, "user", message, "teacher", ct);
 
-        var tools = CreateTools(context, ct);
+        var tools = _toolService.CreateTools(context, ct);
         var toolDefs = tools.Values.Select(t => new FunctionDefinition
         {
             Name = t.Name,
             Description = t.Description,
             InputSchema = t.Parameters ?? System.Text.Json.JsonDocument.Parse("{}").RootElement
         }).ToList();
+
+        var lastToolCalled = "";
 
         for (int step = 0; step < 10; step++)
         {
@@ -90,19 +229,19 @@ public class TeacherAssistantAgent : ITeacherAssistantAgent
 
             if (response.ToolCalls is null || response.ToolCalls.Count == 0)
             {
-                var answer = response.Content ?? "لم يتمكن المساعد من الإجابة.";
-                await _chatStore.SaveMessageAsync(conversationId, "assistant", answer, "teacher", ct);
+                var answer = StripMarkdown(response.Content) ?? "لم يتمكن المساعد من الإجابة.";
+                await _chatStore.SaveMessageAsync(conversationId, context.UserId, "assistant", answer, "teacher", ct);
                 return OperationResult<AgentResponse>.Success(new AgentResponse
                 {
                     Text = answer,
-                    SuggestedActions = new() { "تعديل الخطة", "إضافة أنشطة", "حفظ كـ PDF" },
+                    SuggestedActions = GetTeacherDynamicSuggestions(lastToolCalled),
                     AdditionalData = new() { ["conversationId"] = conversationId }
                 });
             }
 
             messages.Add(new LlmChatMessage(
                 MessageRole.Assistant,
-                response.Content ?? "",
+                StripMarkdown(response.Content) ?? "",
                 toolCalls: response.ToolCalls));
 
             foreach (var call in response.ToolCalls)
@@ -118,6 +257,7 @@ public class TeacherAssistantAgent : ITeacherAssistantAgent
 
                 try
                 {
+                    lastToolCalled = call.Name;
                     var result = await tool.ExecuteAsync(call.Arguments);
                     messages.Add(new LlmChatMessage(MessageRole.Tool, result, toolCallId: call.Id));
                 }
@@ -138,6 +278,81 @@ public class TeacherAssistantAgent : ITeacherAssistantAgent
         });
     }
 
+    /// <summary>
+    /// تنظيف الرد من رموز الماركداون
+    /// </summary>
+    private static string? StripMarkdown(string? text)
+    {
+        if (string.IsNullOrEmpty(text)) return text;
+
+        var lines = text.Split('\n');
+        for (int i = 0; i < lines.Length; i++)
+        {
+            var trimmed = lines[i].TrimStart();
+            if (trimmed.StartsWith("### ")) lines[i] = lines[i].Replace("### ", "");
+            else if (trimmed.StartsWith("## ")) lines[i] = lines[i].Replace("## ", "");
+            else if (trimmed.StartsWith("# ")) lines[i] = lines[i].Replace("# ", "");
+            lines[i] = Regex.Replace(lines[i], @"\*\*(.*?)\*\*", "$1");
+            lines[i] = Regex.Replace(lines[i], @"\*(.*?)\*", "$1");
+            if (Regex.IsMatch(lines[i].Trim(), @"^[-*_]{3,}$")) lines[i] = "";
+            lines[i] = Regex.Replace(lines[i], @"^\s*>\s*", "");
+            lines[i] = Regex.Replace(lines[i], @"`+", ""); // إزالة الباكتيك
+            lines[i] = Regex.Replace(lines[i], @"🔗\s*رابط\s*(معاينة\s*)?(الامتحان\s*)?:?\s*", ""); // إزالة رابط معاينة
+        }
+
+        return string.Join("\n", lines.Where(l => l != null)).Trim();
+    }
+
+    private static List<string> GetTeacherDynamicSuggestions(string lastToolCalled)
+    {
+        return lastToolCalled switch
+        {
+            "get_subjects" => new()
+            {
+                "اعرض المواد",
+                "جدول حصصي",
+                "توليد امتحان"
+            },
+            "get_lessons" => new()
+            {
+                "اختر درساً",
+                "توليد امتحان",
+                "مادة أخرى"
+            },
+            "get_lesson_content" => new()
+            {
+                "عدّل الدرس",
+                "توليد امتحان",
+                "إضافة أنشطة"
+            },
+            "generate_exam_with_ai" => new()
+            {
+                "معاينة الامتحان",
+                "توليد امتحان آخر",
+                "حفظ في بنك الأسئلة"
+            },
+            "save_to_question_bank" => new()
+            {
+                "توليد امتحان",
+                "مادة أخرى",
+                "خطط الدروس"
+            },
+            "update_lesson" => new()
+            {
+                "عرض التعديلات",
+                "درس آخر",
+                "توليد امتحان"
+            },
+            _ => new()
+            {
+                "موادي",
+                "توليد امتحان",
+                "خطط الدروس",
+                "تقييمات الفصل"
+            }
+        };
+    }
+
     private string GetContextHint(UserContext context)
     {
         if (context.TeacherId.HasValue)
@@ -153,216 +368,6 @@ public class TeacherAssistantAgent : ITeacherAssistantAgent
         context.AcademicYearId = activeYear.FirstOrDefault()?.Id;
     }
 
-    private Dictionary<string, AiTool> CreateTools(UserContext context, CancellationToken ct = default)
-    {
-        var list = new List<AiTool>();
-
-        if (context.TeacherId.HasValue && context.AcademicYearId.HasValue)
-        {
-            var tId = context.TeacherId.Value;
-            var yId = context.AcademicYearId.Value;
-
-            list.Add(new AiTool
-            {
-                Name = "get_subjects",
-                Description = "جلب المواد المتاحة للمدرس",
-                Parameters = JsonSerializer.SerializeToElement(new
-                {
-                    type = "object",
-                    properties = new object(),
-                    required = Array.Empty<string>()
-                }),
-                ExecuteAsync = async (args) =>
-                {
-                    var result = await _subjectService.GetSubjectsByTeacherAsync(tId, yId);
-                    return JsonSerializer.Serialize(result.Data, new JsonSerializerOptions { WriteIndented = true });
-                }
-            });
-        }
-
-        list.Add(new AiTool
-        {
-            Name = "get_lessons",
-            Description = "جلب دروس مادة معينة (بحث باسم المادة)",
-            Parameters = JsonSerializer.SerializeToElement(new
-            {
-                type = "object",
-                properties = new
-                {
-                    subject = new { type = "string", description = "اسم المادة للبحث (مثل: رياضيات)" }
-                },
-                required = new[] { "subject" }
-            }),
-            ExecuteAsync = async (args) =>
-            {
-                using var doc = JsonDocument.Parse(args);
-                var subject = doc.RootElement.GetProperty("subject").GetString() ?? "";
-                var lessons = await _lessonRepo.SearchAsync(subject);
-                return JsonSerializer.Serialize(lessons, new JsonSerializerOptions { WriteIndented = true });
-            }
-        });
-
-        list.Add(new AiTool
-        {
-            Name = "update_lesson",
-            Description = "تعديل محتوى درس موجود",
-            Parameters = JsonSerializer.SerializeToElement(new
-            {
-                type = "object",
-                properties = new
-                {
-                    lessonId = new { type = "integer", description = "معرف الدرس" },
-                    title = new { type = "string", description = "العنوان الجديد" },
-                    content = new { type = "string", description = "المحتوى الجديد" }
-                },
-                required = new[] { "lessonId", "title", "content" }
-            }),
-            ExecuteAsync = async (args) =>
-            {
-                using var doc = JsonDocument.Parse(args);
-                var id = doc.RootElement.GetProperty("lessonId").GetInt32();
-                var title = doc.RootElement.GetProperty("title").GetString() ?? "";
-                var content = doc.RootElement.GetProperty("content").GetString() ?? "";
-                var ok = await _lessonRepo.UpdateAsync(id, title, content);
-                return JsonSerializer.Serialize(new { success = ok });
-            }
-        });
-
-        list.Add(new AiTool
-        {
-            Name = "generate_exam_with_ai",
-            Description = "توليد أسئلة امتحان بالذكاء الاصطناعي بناءً على محتوى الدرس ثم حفظها",
-            Parameters = JsonSerializer.SerializeToElement(new
-            {
-                type = "object",
-                properties = new
-                {
-                    lessonContent = new { type = "string", description = "محتوى الدرس لتوليد أسئلة منه" },
-                    questionCount = new { type = "integer", description = "عدد الأسئلة" },
-                    difficulty = new { type = "string", @enum = new[] { "easy", "medium", "hard" }, description = "مستوى الصعوبة" },
-                    style = new { type = "string", @enum = new[] { "multiple_choice", "true_false", "open_ended" }, description = "نوع الأسئلة" },
-                    title = new { type = "string", description = "عنوان الامتحان (اختياري)" },
-                    totalScore = new { type = "number", description = "الدرجة الكلية (اختياري)" },
-                    classSubjectTeacherId = new { type = "integer", description = "معرف المادة-الفصل (مهم للحفظ)" }
-                },
-                required = new[] { "lessonContent", "questionCount", "difficulty", "style" }
-            }),
-            ExecuteAsync = async (args) =>
-            {
-                using var doc = JsonDocument.Parse(args);
-                var lessonContent = doc.RootElement.GetProperty("lessonContent").GetString() ?? "";
-                var qCount = doc.RootElement.GetProperty("questionCount").GetInt32();
-                var difficulty = doc.RootElement.TryGetProperty("difficulty", out var d) ? d.GetString() ?? "medium" : "medium";
-                var style = doc.RootElement.TryGetProperty("style", out var st) ? st.GetString() ?? "multiple_choice" : "multiple_choice";
-
-                var request = new ExamRequest
-                {
-                    LessonContent = lessonContent,
-                    QuestionCount = qCount,
-                    Difficulty = difficulty,
-                    Style = style
-                };
-
-                var examResp = await _examGenerator.GenerateAsync(request);
-                if (string.IsNullOrEmpty(examResp.Content) || examResp.Content == "لم يتم توليد الامتحان.")
-                    return JsonSerializer.Serialize(new { error = "لم يتم توليد الامتحان." });
-
-                try
-                {
-                    var jsonOpts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-                    var aiDto = JsonSerializer.Deserialize<CreateExamFromAiDto>(examResp.Content, jsonOpts);
-                    if (aiDto is null)
-                        return JsonSerializer.Serialize(new { error = "فشل تحليل JSON المولد." });
-
-                    aiDto.ClassSubjectTeacherId = doc.RootElement.TryGetProperty("classSubjectTeacherId", out var cst)
-                        ? cst.GetInt32() : 0;
-                    aiDto.Title = doc.RootElement.TryGetProperty("title", out var title)
-                        ? title.GetString() ?? "امتحان من AI" : "امتحان من AI";
-                    aiDto.TotalScore = doc.RootElement.TryGetProperty("totalScore", out var ts)
-                        ? ts.GetDecimal() : 100;
-                    aiDto.Category = Domain.Enums.EvaluationCategory.Academic;
-
-                    if (aiDto.ClassSubjectTeacherId == 0)
-                        return JsonSerializer.Serialize(new { error = "مطلوب classSubjectTeacherId لحفظ الامتحان. استخدم get_subjects أولاً لمعرفته." });
-
-                    var saved = await _examService.CreateFromAiAsync(aiDto, ct);
-                    if (!saved.IsSuccess)
-                        return JsonSerializer.Serialize(new { error = $"فشل حفظ الامتحان: {saved.Message}" });
-
-                    var exam = saved.Data;
-                    return JsonSerializer.Serialize(new
-                    {
-                        examId = exam?.Id,
-                        title = exam?.Title,
-                        totalScore = exam?.TotalScore,
-                        questionCount = exam?.QuestionsCount ?? 0,
-                        message = "تم إنشاء الامتحان وحفظه بنجاح"
-                    }, new JsonSerializerOptions { WriteIndented = true });
-                }
-                catch (JsonException ex)
-                {
-                    _logger.LogError(ex, "Failed to parse LLM exam JSON");
-                    return JsonSerializer.Serialize(new { error = $"خطأ في تحليل JSON: {ex.Message}" });
-                }
-            }
-        });
-
-        list.Add(new AiTool
-        {
-            Name = "save_to_question_bank",
-            Description = "حفظ أسئلة امتحان في بنك الأسئلة (استخدمها بعد توليد الامتحان إذا أردت حفظ نسخة إضافية أو تعديل)",
-            Parameters = JsonSerializer.SerializeToElement(new
-            {
-                type = "object",
-                properties = new
-                {
-                    classSubjectTeacherId = new { type = "integer", description = "معرف المادة-الفصل" },
-                    title = new { type = "string", description = "عنوان الامتحان" },
-                    totalScore = new { type = "number", description = "الدرجة الكلية" },
-                    questionsJson = new { type = "string", description = "مصفوفة الأسئلة بصيغة JSON (كل سؤال يحتوي: questionText, questionType, points, displayOrder, options, correctAnswer)" }
-                },
-                required = new[] { "classSubjectTeacherId", "title", "questionsJson" }
-            }),
-            ExecuteAsync = async (args) =>
-            {
-                using var doc = JsonDocument.Parse(args);
-                var cstId = doc.RootElement.GetProperty("classSubjectTeacherId").GetInt32();
-                var title = doc.RootElement.GetProperty("title").GetString() ?? "امتحان";
-                var totalScore = doc.RootElement.TryGetProperty("totalScore", out var ts) ? ts.GetDecimal() : 100;
-                var questionsJson = doc.RootElement.GetProperty("questionsJson").GetString() ?? "[]";
-
-                try
-                {
-                    var questions = JsonSerializer.Deserialize<List<AiQuestionDto>>(questionsJson,
-                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
-                    var dto = new CreateExamFromAiDto
-                    {
-                        ClassSubjectTeacherId = cstId,
-                        Title = title,
-                        TotalScore = totalScore,
-                        Category = Domain.Enums.EvaluationCategory.Academic,
-                        DurationMinutes = 60,
-                        StandaloneQuestions = questions ?? new()
-                    };
-
-                    var result = await _examService.CreateFromAiAsync(dto, ct);
-                    return JsonSerializer.Serialize(new
-                    {
-                        examId = result.Data?.Id,
-                        success = result.IsSuccess,
-                        message = result.IsSuccess ? "تم حفظ الأسئلة بنجاح" : result.Message
-                    }, new JsonSerializerOptions { WriteIndented = true });
-                }
-                catch (JsonException ex)
-                {
-                    return JsonSerializer.Serialize(new { error = $"خطأ في تحليل JSON: {ex.Message}" });
-                }
-            }
-        });
-
-        return list.ToDictionary(t => t.Name);
-    }
 
     public async Task<OperationResult<AgentResponse>> SuggestLessonPlanAsync(LessonPlanRequest request, CancellationToken ct = default)
     {
@@ -374,7 +379,7 @@ public class TeacherAssistantAgent : ITeacherAssistantAgent
         return OperationResult<AgentResponse>.Success(new AgentResponse
         {
             Text = result,
-            SuggestedActions = new() { "تعديل الخطة", "إضافة أنشطة", "حفظ كـ PDF" }
+            SuggestedActions = new() { "موادي", "توليد امتحان", "خطط الدروس" }
         });
     }
 

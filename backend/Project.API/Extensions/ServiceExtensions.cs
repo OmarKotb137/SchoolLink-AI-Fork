@@ -1,9 +1,11 @@
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
+using Project.API.Services;
 using Project.BLL.AI.Agents;
 using Project.BLL.AI.Infrastructure;
 using Project.BLL.AI.Interfaces;
 using Project.BLL.AI.Services;
+using Project.BLL.AI.Tools;
 using Project.BLL.AI.Providers;
 using Project.BLL.Interfaces;
 using Project.BLL.Mapping;
@@ -90,6 +92,7 @@ public static class ServiceExtensions
         services.AddScoped<IChildProgressService, ChildProgressService>();
         services.AddScoped<ILessonFeedbackService, LessonFeedbackService>();
         services.AddScoped<IUnitService, UnitService>();
+        services.AddScoped<WhisperTranscriptionService>();
 
         // AI Services
         RegisterAiServices(services, config);
@@ -139,9 +142,14 @@ public static class ServiceExtensions
 
         services.RegisterLlmClient(config);
 
-        services.AddScoped<IToolRegistry, ToolRegistry>();
         services.AddScoped<ILLMRouter, LLMRouter>();
 
+        // Tool Services
+        services.AddScoped<ITeacherToolService, TeacherToolService>();
+        services.AddScoped<IStudentToolService, StudentToolService>();
+        services.AddScoped<IParentToolService, ParentToolService>();
+
+        // Agents
         services.AddScoped<IStudentAssistantAgent, StudentAssistantAgent>();
         services.AddScoped<ITeacherAssistantAgent, TeacherAssistantAgent>();
         services.AddScoped<IParentAssistantAgent, ParentAssistantAgent>();

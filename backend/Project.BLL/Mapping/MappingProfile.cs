@@ -122,6 +122,10 @@ public class MappingProfile : Profile
         CreateMap<RecordPeriodicAssessmentRequest, PeriodicAssessment>();
 
         // Final Grade
-        CreateMap<FinalGrade, FinalGradeDto>();
+        CreateMap<FinalGrade, FinalGradeDto>()
+            .ForMember(d => d.StudentName,
+                opt => opt.MapFrom(s => s.Enrollment.Student.FullName))
+            .ForMember(d => d.StudentId,
+                opt => opt.MapFrom(s => s.Enrollment.Student.Id));
     }
 }

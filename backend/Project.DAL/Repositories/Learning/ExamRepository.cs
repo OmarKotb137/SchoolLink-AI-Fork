@@ -133,6 +133,18 @@ public class ExamRepository : Repository<Exam>, IExamRepository
                 .ThenInclude(q => q.Options
                     .OrderBy(o => o.DisplayOrder))
             .FirstOrDefaultAsync(e => e.Id == examId, ct);
+
+    public async Task<Exam?> GetByUidAsync(Guid uid, CancellationToken ct = default)
+        => await _context.Exams
+            .FirstOrDefaultAsync(e => e.Uid == uid, ct);
+
+    public async Task<Exam?> GetWithQuestionsByUidAsync(Guid uid, CancellationToken ct = default)
+        => await _context.Exams
+            .Include(e => e.Questions
+                .OrderBy(q => q.DisplayOrder))
+                .ThenInclude(q => q.Options
+                    .OrderBy(o => o.DisplayOrder))
+            .FirstOrDefaultAsync(e => e.Uid == uid, ct);
 }
 
 

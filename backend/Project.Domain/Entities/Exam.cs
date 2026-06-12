@@ -4,6 +4,7 @@ namespace Project.Domain.Entities
 {
     public class Exam : BaseEntity
     {
+        public Guid Uid { get; set; } = Guid.NewGuid();
         public int ClassSubjectTeacherId { get; set; }
         public string Title { get; set; } = string.Empty;
         public DateTime? StartTime { get; set; }

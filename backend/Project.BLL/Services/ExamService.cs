@@ -270,14 +270,123 @@ namespace Project.BLL.Services
             return OperationResult<GetExamDto>.Success(resultDto, "تم إنشاء الامتحان بواسطة AI بنجاح");
         }
 
-        public async Task<OperationResult<string>> RenderHtmlAsync(int examId, CancellationToken ct = default)
+        public async Task<OperationResult<string>> RenderHtmlAsync(Guid uid, CancellationToken ct = default)
         {
-            var exam = await _unitOfWork.Exams.GetByIdAsync(examId);
+            var exam = await _unitOfWork.Exams.GetByUidAsync(uid, ct);
             if (exam == null || exam.IsDeleted)
                 return OperationResult<string>.Failure("الامتحان غير موجود", 404);
 
-            var html = await _htmlRenderer.RenderExamAsync(examId, ct);
+            var html = await _htmlRenderer.RenderExamAsync(exam.Id, ct);
             return OperationResult<string>.Success(html, "تم تجهيز HTML للطباعة");
+        }
+
+        public async Task<OperationResult> SaveExamQuestionsAsync(SaveExamQuestionsDto dto, CancellationToken ct = default)
+        {
+            var exam = await _unitOfWork.Exams.GetByUidAsync(dto.Uid, ct);
+            if (exam == null || exam.IsDeleted)
+                return OperationResult.Failure("الامتحان غير موجود");
+
+            exam.Title = dto.Title;
+            exam.DurationMinutes = dto.DurationMinutes;
+            exam.TotalScore = dto.TotalScore;
+            exam.UpdatedAt = DateTime.UtcNow;
+            _unitOfWork.Exams.Update(exam);
+
+            var existingQuestions = await _unitOfWork.ExamQuestions
+                .GetWithOptionsByExamIdAsync(exam.Id, ct);
+
+            var incomingIds = dto.Questions.Where(q => q.Id > 0).Select(q => q.Id).ToHashSet();
+
+            // Soft-delete removed questions and their options
+            foreach (var q in existingQuestions)
+            {
+                if (!incomingIds.Contains(q.Id))
+                {
+                    foreach (var opt in q.Options.ToList())
+                        _unitOfWork.ExamQuestionOptions.SoftDelete(opt);
+                    _unitOfWork.ExamQuestions.SoftDelete(q);
+                }
+            }
+
+            foreach (var qDto in dto.Questions)
+            {
+                var question = existingQuestions.FirstOrDefault(q => q.Id == qDto.Id && qDto.Id > 0);
+                bool isNew = question == null;
+
+                if (isNew)
+                {
+                    question = new ExamQuestion
+                    {
+                        ExamId = exam.Id,
+                        GroupId = null,
+                        DisplayType = TemplateContentType.None,
+                    };
+                }
+
+                // Determine question type from options
+                if (qDto.Options.Count > 0)
+                {
+                    question.QuestionType = qDto.Options.Any(o => o.IsCorrect)
+                        ? QuestionType.MultipleChoice
+                        : QuestionType.TrueFalse;
+
+                    // Set CorrectAnswer from the correct option text
+                    var correctOpt = qDto.Options.FirstOrDefault(o => o.IsCorrect);
+                    if (correctOpt != null)
+                        question.CorrectAnswer = correctOpt.OptionText;
+                }
+                else
+                {
+                    question.QuestionType = QuestionType.FillBlank;
+                    // For fill-blank/essay, update CorrectAnswer if provided
+                    if (qDto.CorrectAnswer != null)
+                        question.CorrectAnswer = qDto.CorrectAnswer;
+                }
+
+                question.QuestionText = qDto.QuestionText;
+                question.Points = qDto.Points;
+                question.DisplayOrder = qDto.DisplayOrder;
+
+                // Handle options
+                if (qDto.Options.Count > 0)
+                {
+                    var existingOptions = isNew ? new List<ExamQuestionOption>() : question.Options.ToList();
+                    var incomingOptionIds = qDto.Options.Where(o => o.Id > 0).Select(o => o.Id).ToHashSet();
+
+                    foreach (var opt in existingOptions)
+                    {
+                        if (!incomingOptionIds.Contains(opt.Id))
+                            _unitOfWork.ExamQuestionOptions.SoftDelete(opt);
+                    }
+
+                    foreach (var oDto in qDto.Options)
+                    {
+                        var option = existingOptions.FirstOrDefault(o => o.Id == oDto.Id && oDto.Id > 0);
+                        if (option == null)
+                        {
+                            option = new ExamQuestionOption();
+                            question.Options.Add(option);
+                        }
+                        option.OptionText = oDto.OptionText;
+                        option.IsCorrect = oDto.IsCorrect;
+                        option.DisplayOrder = oDto.DisplayOrder;
+                    }
+                }
+                else if (!isNew)
+                {
+                    // Remove all existing options if no options provided
+                    foreach (var opt in question.Options.ToList())
+                        _unitOfWork.ExamQuestionOptions.SoftDelete(opt);
+                }
+
+                if (isNew)
+                    await _unitOfWork.ExamQuestions.AddAsync(question, ct);
+                else
+                    _unitOfWork.ExamQuestions.Update(question);
+            }
+
+            await _unitOfWork.SaveChangesAsync(ct);
+            return OperationResult.Success("تم حفظ التعديلات بنجاح");
         }
 
         private static ExamQuestion MapQuestion(AiQuestionDto dto, int examId, int? groupId, TemplateContentType displayType)

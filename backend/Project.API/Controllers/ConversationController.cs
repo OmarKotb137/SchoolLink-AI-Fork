@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Project.API.Hubs;
+using Project.API.Services;
 using Project.BLL.DTOs.Common;
 using Project.BLL.DTOs.Conversations;
 using Project.BLL.Interfaces;
@@ -17,12 +18,14 @@ public class ConversationController : ControllerBase
     private readonly IConversationService _conversationService;
     private readonly IHubContext<ChatHub> _hubContext;
     private readonly IWebHostEnvironment _env;
+    private readonly WhisperTranscriptionService _whisper;
 
-    public ConversationController(IConversationService conversationService, IHubContext<ChatHub> hubContext, IWebHostEnvironment env)
+    public ConversationController(IConversationService conversationService, IHubContext<ChatHub> hubContext, IWebHostEnvironment env, WhisperTranscriptionService whisper)
     {
         _conversationService = conversationService;
         _hubContext = hubContext;
         _env = env;
+        _whisper = whisper;
     }
 
     [HttpPost("direct")]
@@ -202,6 +205,36 @@ public class ConversationController : ControllerBase
                 System.IO.File.Delete(filePath);
         }
         await _hubContext.Clients.Group($"conv_{conversationId}").SendAsync("MessageDeleted", conversationId, messageId);
+        return Ok(result);
+    }
+
+    [HttpPut("{conversationId}/messages/{messageId}/transcribe")]
+    public async Task<IActionResult> TranscribeMessage(int conversationId, int messageId, [FromBody] TranscribeMessageRequest request)
+    {
+        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+
+        // Auto-transcribe if browser didn't send a transcript
+        var voiceText = request.VoiceText;
+        if (string.IsNullOrWhiteSpace(voiceText))
+        {
+            var msgResult = await _conversationService.GetMessageByIdAsync(messageId);
+            if (!msgResult.IsSuccess || msgResult.Data == null || string.IsNullOrWhiteSpace(msgResult.Data.AttachmentUrl))
+                return BadRequest(new { isSuccess = false, message = "الرسالة الصوتية غير موجودة" });
+
+            var filePath = Path.Combine(_env.WebRootPath, msgResult.Data.AttachmentUrl.TrimStart('/'));
+            if (!System.IO.File.Exists(filePath))
+                return BadRequest(new { isSuccess = false, message = "ملف التسجيل الصوتي غير موجود" });
+
+            voiceText = await _whisper.TranscribeAsync(filePath);
+        }
+
+        var result = await _conversationService.TranscribeMessageAsync(messageId, userId, voiceText);
+        if (!result.IsSuccess)
+            return BadRequest(result);
+        if (result.Data != null)
+        {
+            await _hubContext.Clients.Group($"conv_{conversationId}").SendAsync("MessageUpdated", result.Data);
+        }
         return Ok(result);
     }
 

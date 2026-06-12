@@ -13,6 +13,7 @@ export const ADMIN_MENU: SidebarMenuItem[] = [
   { label: 'إدارة الفصول', icon: 'meeting_room', route: '/class-management' },
   { label: 'إدارة المواد', icon: 'menu_book', route: '/subject-management' },
   { label: 'إدارة القاعات', icon: 'door_open', route: '/room-management' },
+  { label: 'تقييم الحصص', icon: 'feedback', route: '/lesson-feedback' },
   { label: 'التقارير', icon: 'description', route: '/reports' },
   { label: 'التقارير الأكاديمية', icon: 'auto_awesome', route: '/reports-academic' },
   { label: 'التقارير التدريبية', icon: 'model_training', route: '/reports-training' },
@@ -42,6 +43,7 @@ export const TEACHER_MENU: SidebarMenuItem[] = [
   { label: 'إدارة الواجبات', icon: 'assignment_add', route: '/assignment-management' },
   { label: 'الواجبات', icon: 'assignment', route: '/homework' },
   { label: 'المحادثات', icon: 'chat', route: '/chat' },
+  { label: 'تقييم الحصص', icon: 'feedback', route: '/lesson-feedback' },
   { label: 'رصد الدرجات', icon: 'grading', route: '/grade-monitor' },
   { label: 'المكتبة', icon: 'library_books', route: '/digital-library' },
   { label: 'التقارير', icon: 'description', route: '/reports' },
@@ -56,7 +58,6 @@ export const PARENT_MENU: SidebarMenuItem[] = [
   { label: 'متابعة ابني', icon: 'supervisor_account', route: '/child-progress' },
   { label: 'التقارير', icon: 'description', route: '/reports' },
   { label: 'المحادثات', icon: 'chat', route: '/chat' },
-  { label: 'المساعد الذكي', icon: 'auto_awesome', route: '/chat-ai' },
   { label: 'الإشعارات', icon: 'notifications', route: '/notifications' },
 ];
 
@@ -66,6 +67,7 @@ export const STUDENT_MENU: SidebarMenuItem[] = [
   { label: 'الواجبات', icon: 'assignment', route: '/my-assignments' },
   { label: 'امتحاناتي', icon: 'quiz', route: '/my-exams' },
   { label: 'جدولي', icon: 'calendar_month', route: '/class-schedule' },
+  { label: 'تقييم الحصص', icon: 'feedback', route: '/lesson-feedback' },
   { label: 'خطة المذاكرة', icon: 'calendar_view_month', route: '/study-planner' },
   { label: 'المحادثات', icon: 'chat', route: '/chat' },
   { label: 'المكتبة', icon: 'library_books', route: '/digital-library' },

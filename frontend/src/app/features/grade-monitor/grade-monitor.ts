@@ -34,13 +34,21 @@ export class GradeMonitor implements OnInit {
   periods = signal<EvaluationPeriod[]>([]);
   subjects = signal<{ id: number; name: string }[]>([]);
   studentCount = signal(0);
+  academicYearId = signal<number>(1);
+  selectedGradeLevelId = signal<number>(1);
   editTmplId = signal<number | null>(null);
+  loadingTemplates = signal(false);
+  loadingClasses = signal(false);
+  loadingApiClasses = signal(false);
+  loadingGradesState = signal(false);
+  isTeacherMode = signal(false);
   editClsId = signal<number | null>(null);
   private STORAGE_KEY = 'grade_monitor_classes';
 
   entryClassId = signal<number | null>(null);
   entryType = signal<'grades' | 'absence' | 'exams' | 'final'>('grades');
   entryWeek = signal<number>(1);
+  entryTemplateId = signal<number | null>(null); // لاختيار قالب/مادة مختلف
   enrollmentMap = signal<Record<number, number>>({}); // studentId → enrollmentId
   existingEvalMap = signal<Record<string, number>>({}); // key: enrollmentId_evalItemId → evalId
 
@@ -49,6 +57,9 @@ export class GradeMonitor implements OnInit {
   localAbsences: Record<string, boolean> = {};
   localExams: Record<string, any> = {};
   localFinals: Record<string, any> = {};
+  finalCompleteStatus = signal<Record<string, boolean>>({});
+  finalMaxValues = signal<Record<string, number>>({});
+  private finalTouched: Set<string> = new Set();
   private absenceSnapshot: Record<string, boolean> = {};
 
   // ══ Loading indicator for week data ══
@@ -71,6 +82,21 @@ export class GradeMonitor implements OnInit {
   // Loading / status
   saving = signal(false);
   snackbar = signal('');
+  quickEntryClassId = signal<number | null>(null);
+
+  entryWeeksForQuick = computed(() => {
+    const cid = this.quickEntryClassId();
+    if (!cid) return [];
+    const cls = this.classes().find(c => c.id === cid);
+    if (!cls) return [];
+    const tmpl = this.templates().find(t => t.id === cls.template_id);
+    if (!tmpl) return [];
+    return Array.from({ length: tmpl.weeks }, (_, i) => i + 1);
+  });
+
+  weekLabelForQuick(wn: number): string {
+    return 'الأسبوع ' + wn;
+  }
 
   // ══════════════════════════════════════
   //  INIT
@@ -80,6 +106,18 @@ export class GradeMonitor implements OnInit {
     this.loadGrades();
     this.loadApiClasses();
 
+    // Load current academic year first, then use it
+    this.api.getCurrentAcademicYear().subscribe({
+      next: (res) => {
+        const yearId = res?.isSuccess ? res.data?.id : (res?.id ?? 1);
+        this.academicYearId.set(yearId);
+        this.finishInit(yearId);
+      },
+      error: () => this.finishInit(1),
+    });
+  }
+
+  private finishInit(academicYearId: number) {
     Promise.all([
       new Promise<void>(resolve => {
         this.api.getSchoolProfile().subscribe({
@@ -88,7 +126,7 @@ export class GradeMonitor implements OnInit {
         });
       }),
       new Promise<void>(resolve => {
-        this.api.getPeriodsByAcademicYear(1).subscribe(res => {
+        this.api.getPeriodsByAcademicYear(academicYearId).subscribe(res => {
           if (res.isSuccess) this.periods.set(res.data || []);
           resolve();
         });
@@ -100,7 +138,7 @@ export class GradeMonitor implements OnInit {
         });
       }),
       this.loadLinksFromApi(),
-      this.loadTemplatesAsync(),
+      this.loadTemplatesAsync(academicYearId),
       new Promise<void>(resolve => {
         this.api.getStudents().subscribe({
           next: (res) => { this.studentCount.set(Array.isArray(res) ? res.length : (res.data?.length || 0)); resolve(); },
@@ -146,9 +184,12 @@ export class GradeMonitor implements OnInit {
   tAbsentDays = signal<string[]>(['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس']);
   tmplModalOpen = signal(false);
 
-  private async loadTemplatesAsync() {
-    const res = await firstValueFrom(this.api.getTemplatesByGradeLevel(1, 1));
-    if (!res.isSuccess) return;
+  private async loadTemplatesAsync(academicYearId?: number) {
+    this.loadingTemplates.set(true);
+    const ayId = academicYearId ?? this.academicYearId();
+    const gradeLevelId = this.selectedGradeLevelId();
+    const res = await firstValueFrom(this.api.getTemplatesByGradeLevel(gradeLevelId, ayId));
+    if (!res.isSuccess) { this.loadingTemplates.set(false); return; }
     const rawList = res.data as any[];
     if (!rawList?.length) {
       const stored = this.loadRawFromLocalStorage();
@@ -176,6 +217,7 @@ export class GradeMonitor implements OnInit {
       this.templates.update(list => [...list, this.toFrontendTemplate(t, criteria, weeklyMax)]);
     }
     this.saveToLocalStorage();
+    this.loadingTemplates.set(false);
   }
 
   computeMonthGroups(startDateStr: string, totalWeeks: number) {
@@ -449,7 +491,14 @@ export class GradeMonitor implements OnInit {
       });
     } else {
       if (!this.tSubjectId()) { this.showSnackbar('اختر المادة أولاً'); this.saving.set(false); return; }
-      this.api.createTemplate({ gradeLevelId: 1, subjectId: this.tSubjectId(), academicYearId: 1, name: data.name, calculationType: 1, weeks: this.tWeeks() || 12 }).subscribe({
+      this.api.createTemplate({
+        gradeLevelId: this.selectedGradeLevelId(),
+        subjectId: this.tSubjectId(),
+        academicYearId: this.academicYearId(),
+        name: data.name,
+        calculationType: 1,
+        weeks: this.tWeeks() || 12
+      }).subscribe({
         next: (res) => saveItems(res.data.id),
         error: () => saveLocal(),
       });
@@ -571,9 +620,31 @@ export class GradeMonitor implements OnInit {
   }
 
   private loadApiClasses() {
-    this.api.getClasses().subscribe({
+    this.loadingApiClasses.set(true);
+    const obs = this.isTeacherMode()
+      ? this.api.getMyClassesCurrentYear()
+      : this.api.getClasses();
+    obs.subscribe({
       next: (res) => {
         this.apiClasses.set(Array.isArray(res) ? res : (res?.data ?? []));
+        this.loadingApiClasses.set(false);
+      },
+      error: () => this.loadingApiClasses.set(false),
+    });
+  }
+
+  toggleTeacherMode() {
+    this.isTeacherMode.update(v => !v);
+    this.loadApiClasses();
+    this.loadTeacherSubjects();
+  }
+
+  private loadTeacherSubjects() {
+    if (!this.isTeacherMode()) return;
+    this.api.getMySubjectsCurrentYear().subscribe({
+      next: (res) => {
+        const data = Array.isArray(res) ? res : (res?.data ?? []);
+        if (data.length) this.subjects.set(data);
       },
     });
   }
@@ -647,9 +718,7 @@ export class GradeMonitor implements OnInit {
   cStudents = signal('');
   cTmplId   = signal<number | null>(null);
 
-  // Computed: classes NOT yet linked (have no template chosen or came fresh from API)
-  unlinkedApiClasses = computed(() => this.classes());
-
+  // Computed: classes filtered by selected grade
   filteredApiClasses = computed(() => {
     const gradeId = this.linkedApiGradeId();
     if (!gradeId) return [];
@@ -709,7 +778,7 @@ export class GradeMonitor implements OnInit {
 
     const apiClsId = this.linkedApiClsId();
     if (apiClsId == null) return;
-    this.api.createLink({ classId: Number(apiClsId), templateId: this.cTmplId()!, academicYearId: 1 }).subscribe({
+    this.api.createLink({ classId: Number(apiClsId), templateId: this.cTmplId()!, academicYearId: this.academicYearId() }).subscribe({
       next: () => {
         this.loadLinksFromApi();
         this.clsModalOpen.set(false);
@@ -735,6 +804,11 @@ export class GradeMonitor implements OnInit {
   //  COMPUTED
   // ══════════════════════════════════════
   currentTmpl = computed(() => {
+    // إذا تم اختيار قالب يدوي، استخدمه
+    const manualTmplId = this.entryTemplateId();
+    if (manualTmplId) {
+      return this.templates().find(t => t.id === manualTmplId) || null;
+    }
     const cid = this.entryClassId();
     if (!cid) return null;
     const cls = this.classes().find(c => c.id === Number(cid));
@@ -758,11 +832,60 @@ export class GradeMonitor implements OnInit {
   stats = computed(() => ({
     classes: this.apiClasses().length,
     students: this.studentCount(),
-    entries: 0,
+    entries: this.calculateTotalEntries(),
     templates: this.templates().length,
   }));
 
+  private calculateTotalEntries(): number {
+    // Rough count: number of grade entries across all loaded evaluations
+    return Object.keys(this.gradeValues()).length + Object.keys(this.absenceValues()).length;
+  }
+
   recentClasses = computed(() => this.classes().slice(0, 5));
+
+  // ══ Top Students / Needing Support ══
+  topStudentsData = signal<any[]>([]);
+  needingSupportData = signal<any[]>([]);
+  loadingTopStudents = signal(false);
+  loadingNeedingSupport = signal(false);
+  topStudentsModalOpen = signal(false);
+  needingSupportModalOpen = signal(false);
+
+  loadTopStudents(classId: number) {
+    this.loadingTopStudents.set(true);
+    this.api.recalculateFinalGrades(classId).subscribe({
+      next: () => {
+        this.api.getTopStudents(classId).subscribe({
+          next: (res) => {
+            const data = res?.isSuccess ? res.data : (Array.isArray(res) ? res : []);
+            this.topStudentsData.set(data ?? []);
+            this.topStudentsModalOpen.set(true);
+            this.loadingTopStudents.set(false);
+          },
+          error: () => this.loadingTopStudents.set(false),
+        });
+      },
+      error: () => this.loadingTopStudents.set(false),
+    });
+  }
+
+  loadNeedingSupport(classId: number) {
+    this.loadingNeedingSupport.set(true);
+    this.api.recalculateFinalGrades(classId).subscribe({
+      next: () => {
+        this.api.getStudentsNeedingSupport(classId).subscribe({
+          next: (res) => {
+            const data = res?.isSuccess ? res.data : (Array.isArray(res) ? res : []);
+            this.needingSupportData.set(data ?? []);
+            this.needingSupportModalOpen.set(true);
+            this.loadingNeedingSupport.set(false);
+          },
+          error: () => this.loadingNeedingSupport.set(false),
+        });
+      },
+      error: () => this.loadingNeedingSupport.set(false),
+    });
+  }
 
   // ══════════════════════════════════════
   //  NAVIGATION
@@ -780,11 +903,27 @@ export class GradeMonitor implements OnInit {
     this.cancelLoad$.next();
     this.entryClassId.set(+cid);
     this.entryWeek.set(1);
+    this.entryTemplateId.set(null); // إعادة تعيين القالب اليدوي
     this.activeSection.set('entry');
     this.clearGrades();
     if (this.dataReady()) this.loadEvaluations();
     else this.pendingReload.set(true);
   }
+
+  /** القوالب المتاحة للفصل المختار */
+  availableTemplatesForEntry = computed(() => {
+    const cid = this.entryClassId();
+    if (!cid) return [];
+    const cls = this.classes().find(c => c.id === Number(cid));
+    if (!cls) return [];
+    // ابحث عن القالب المرتبط أولاً، ثم كل القوالب التي لها نفس المادة
+    const linked = this.templates().find(t => t.id === cls.template_id);
+    const bySubject = cls.subject
+      ? this.templates().filter(t => t.subjectName === cls.subject)
+      : [];
+    const result = linked ? [linked, ...bySubject.filter(t => t.id !== linked.id)] : bySubject;
+    return result.length ? result : this.templates();
+  });
 
   // ══ يُستدعى من الـ HTML عند تغيير الأسبوع ══
   onWeekChange(event: Event) {
@@ -797,6 +936,11 @@ export class GradeMonitor implements OnInit {
   onClassOrWeekChange() {
     // إلغاء أي طلب HTTP جاري
     this.cancelLoad$.next();
+    // إذا لم يتم اختيار قالب يدوي، اختر أول قالب متاح تلقائياً
+    if (!this.entryTemplateId()) {
+      const avail = this.availableTemplatesForEntry();
+      if (avail.length) this.entryTemplateId.set(avail[0].id);
+    }
     // امسح البيانات القديمة
     this.gradeValues.set({});
     this.absenceValues.set({});
@@ -851,6 +995,34 @@ export class GradeMonitor implements OnInit {
     if (!cid) return null;
     return this.classes().find(c => c.id === Number(cid)) || null;
   });
+
+  getExportMonthAverage(studentId: number, monthGroup: { name: string; weeks: number[] }): string {
+    let total = 0; let count = 0;
+    const tmpl = this.exportTmpl();
+    if (!tmpl) return '—';
+    for (const w of monthGroup.weeks) {
+      for (const c of tmpl.criteria) {
+        const val = this.gradeValues()[studentId + '_' + w + '_' + c.id];
+        if (val != null) { total += val; count++; }
+      }
+    }
+    return count > 0 ? (total / count).toFixed(1) : '—';
+  }
+
+  getExportTotalAverage(studentId: number): string {
+    const tmpl = this.exportTmpl();
+    if (!tmpl) return '—';
+    let total = 0; let count = 0;
+    for (const mg of tmpl.month_groups) {
+      for (const w of mg.weeks) {
+        for (const c of tmpl.criteria) {
+          const val = this.gradeValues()[studentId + '_' + w + '_' + c.id];
+          if (val != null) { total += val; count++; }
+        }
+      }
+    }
+    return count > 0 ? (total / count).toFixed(1) : '—';
+  }
 
   // ══════════════════════════════════════
   //  GRADE / ABSENCE / EXAM ENTRY
@@ -934,6 +1106,14 @@ export class GradeMonitor implements OnInit {
     return this.finalWritten(sid) + this.getFinal(sid, 'fe');
   }
 
+  isFinalComplete(sid: number): boolean {
+    return this.finalCompleteStatus()[sid] !== false;
+  }
+
+  finalMaxTotal(sid: number): number {
+    return this.finalMaxValues()[sid] ?? 100;
+  }
+
   entrySummaryText = computed(() => {
     const type = this.entryType();
     if (type === 'grades') {
@@ -973,29 +1153,50 @@ export class GradeMonitor implements OnInit {
 
     // ① إلغاء أي طلب HTTP سابق (race condition fix)
     this.cancelLoad$.next();
+    this.loadingWeek.set(true);
+
+    const type = this.entryType();
 
     // ② امسح الداتا القديمة
+    this.clearGradesInternal();
+
+    if (type === 'grades') {
+      this.loadWeeklyGrades(cls, tmpl, wn);
+    } else if (type === 'absence') {
+      this.loadWeeklyAbsences(cls, tmpl, wn);
+    } else if (type === 'exams') {
+      this.loadExams(cls, tmpl);
+    } else if (type === 'final') {
+      this.loadFinalGrades(cls);
+    }
+  }
+
+  private clearGradesInternal() {
     this.gradeValues.set({});
     this.absenceValues.set({});
+    this.examValues.set({});
+    this.finalValues.set({});
     this.enrollmentMap.set({});
     this.existingEvalMap.set({});
     this.localGrades = {};
     this.localAbsences = {};
     this.localExams = {};
     this.localFinals = {};
+    this.finalCompleteStatus.set({});
+    this.finalMaxValues.set({});
+    this.finalTouched.clear();
     this.absenceSnapshot = {};
+  }
 
+  private loadWeeklyGrades(cls: ClassItem, tmpl: Template, wn: number) {
     const periodId = this.currentPeriodId();
-    if (!periodId) return;
+    if (!periodId) { this.loadingWeek.set(false); return; }
 
-    // بناء set من الـ item ids للـ template الحالي فقط
     const tmplItemIds = new Set(
       tmpl.criteria
         .map(c => parseInt(c.id.replace('c', '')))
         .filter(n => !isNaN(n))
     );
-
-    this.loadingWeek.set(true);
 
     this.api.getEvaluationsByClassPeriod(cls.id, periodId)
       .pipe(takeUntil(this.cancelLoad$))
@@ -1017,7 +1218,6 @@ export class GradeMonitor implements OnInit {
 
             for (const ev of (ce.evaluations || [])) {
               if (ev.score == null || !st) continue;
-              // ③ فقط الـ items التابعة للـ template الحالي
               if (!tmplItemIds.has(ev.evaluationItemId)) continue;
               const key = st.id + '_' + wn + '_c' + ev.evaluationItemId;
               grades[key] = ev.score;
@@ -1031,6 +1231,143 @@ export class GradeMonitor implements OnInit {
           if (Object.keys(enrollMap).length) this.enrollmentMap.set(enrollMap);
 
           this.loadAbsences(cls, tmpl, wn, periodId, enrollMap);
+        },
+        error: () => { this.loadingWeek.set(false); }
+      });
+  }
+
+  private loadExams(cls: ClassItem, tmpl: Template) {
+    const students = cls.students;
+    if (!students.length) { this.loadingWeek.set(false); return; }
+
+    this.api.getAssessmentsByClass(cls.id)
+      .pipe(takeUntil(this.cancelLoad$))
+      .subscribe({
+        next: (res) => {
+          this.loadingWeek.set(false);
+          if (!res.isSuccess || !res.data?.length) return;
+
+          const assessments = res.data as any[];
+          const exams: Record<string, number> = {};
+
+          for (const a of assessments) {
+            const st = students.find(s =>
+              (s.enrollmentId ?? s.id) === a.enrollmentId
+            );
+            if (!st) continue;
+
+            // assessmentType is a string like "MonthlyExam1", "MonthlyExam2" due to JsonStringEnumConverter
+            const examNum = a.assessmentType === 'MonthlyExam1' ? 1
+                          : a.assessmentType === 'MonthlyExam2' ? 2
+                          : null;
+            if (examNum == null) continue;
+
+            const key = st.id + '_e' + examNum;
+            exams[key] = a.score;
+            this.localExams[st.id + '_e' + examNum] = a.score;
+          }
+
+          if (Object.keys(exams).length) this.examValues.set(exams);
+        },
+        error: () => { this.loadingWeek.set(false); }
+      });
+  }
+
+  private loadFinalGrades(cls: ClassItem) {
+    const students = cls.students;
+    if (!students.length) { this.loadingWeek.set(false); return; }
+
+    // دايمًا نعيد الحساب الأول عشان النتايج تكون محدثة (بدل ما نجيب القديم)
+    this.autoCalcFinalGrades(cls);
+  }
+
+  private autoCalcFinalGrades(cls: ClassItem) {
+    this.api.recalculateFinalGrades(cls.id).subscribe({
+      next: (res) => {
+        this.loadingWeek.set(false);
+        if (res.isSuccess && res.data?.length) {
+          this.processFinalGradesResponse(res.data, cls);
+        }
+      },
+      error: () => { this.loadingWeek.set(false); }
+    });
+  }
+
+  private processFinalGradesResponse(finals: any[], cls: ClassItem) {
+    const students = cls.students;
+    const gradeMap: Record<string, number> = {};
+    const completeMap: Record<string, boolean> = {};
+    const maxMap: Record<string, number> = {};
+
+    for (const f of finals) {
+      const st = students.find(s =>
+        (s.enrollmentId ?? s.id) === f.enrollmentId
+      );
+      if (!st) continue;
+
+      completeMap[st.id] = f.isComplete !== false;
+      maxMap[st.id] = f.maxTotal ?? 100;
+
+      if (f.periodAvgScore > 0 || f.isComplete) {
+        this.localFinals[st.id + '_ma'] = f.periodAvgScore ?? 0;
+        gradeMap[st.id + '_ma'] = f.periodAvgScore ?? 0;
+      }
+      if (f.assessment1Score > 0 || f.isComplete) {
+        this.localFinals[st.id + '_e1'] = f.assessment1Score ?? 0;
+        gradeMap[st.id + '_e1'] = f.assessment1Score ?? 0;
+      }
+      if (f.assessment2Score > 0 || f.isComplete) {
+        this.localFinals[st.id + '_e2'] = f.assessment2Score ?? 0;
+        gradeMap[st.id + '_e2'] = f.assessment2Score ?? 0;
+      }
+      if (f.finalExamScore > 0 || f.isComplete) {
+        this.localFinals[st.id + '_fe'] = f.finalExamScore ?? 0;
+        gradeMap[st.id + '_fe'] = f.finalExamScore ?? 0;
+      }
+    }
+
+    if (Object.keys(gradeMap).length) this.finalValues.set(gradeMap);
+    this.finalCompleteStatus.set(completeMap);
+    this.finalMaxValues.set(maxMap);
+  }
+
+  private loadWeeklyAbsences(cls: ClassItem, tmpl: Template, wn: number) {
+    const periodId = this.currentPeriodId();
+    if (!periodId || tmpl.absent_days.length === 0) { this.loadingWeek.set(false); return; }
+
+    const students = cls.students;
+    const enrollmentIds: number[] = [];
+    const stIdByEnrollment: Record<number, number> = {};
+    for (const st of students) {
+      const enrollmentId = st.enrollmentId ?? st.id;
+      enrollmentIds.push(enrollmentId);
+      stIdByEnrollment[enrollmentId] = st.id;
+    }
+    if (enrollmentIds.length === 0) { this.loadingWeek.set(false); return; }
+
+    const firstDay = this.getDateForDay(wn, tmpl.absent_days[0]);
+    const lastDay = this.getDateForDay(wn, tmpl.absent_days[tmpl.absent_days.length - 1]);
+
+    this.api.getAbsencesByEnrollments(enrollmentIds, firstDay, lastDay)
+      .pipe(takeUntil(this.cancelLoad$))
+      .subscribe({
+        next: (res) => {
+          this.loadingWeek.set(false);
+          if (!res.isSuccess || !res.data?.length) return;
+          const absences: Record<string, boolean> = {};
+          for (const a of (res.data as any[])) {
+            const dayKey = this.getDayKeyForDate(a.absenceDate, tmpl);
+            if (!dayKey) continue;
+            const stId = stIdByEnrollment[a.enrollmentId];
+            if (!stId) continue;
+            const key = stId + '_' + wn + '_' + dayKey;
+            absences[key] = a.isAbsent;
+            this.localAbsences[stId + '_' + dayKey] = a.isAbsent;
+          }
+          if (Object.keys(absences).length) {
+            this.absenceValues.update(m => ({ ...m, ...absences }));
+            this.absenceSnapshot = { ...absences };
+          }
         },
         error: () => { this.loadingWeek.set(false); }
       });
@@ -1128,6 +1465,7 @@ export class GradeMonitor implements OnInit {
 
   onFinalChange(sid: number, field: string, val: any) {
     const key = sid + '_' + field;
+    this.finalTouched.add(key);
     this.localFinals[key] = val;
     if (val === null || val === undefined || val === '') {
       this.finalValues.update(m => {
@@ -1171,7 +1509,7 @@ export class GradeMonitor implements OnInit {
     this.saving.set(true);
     const type = this.entryType();
     const periodId = this.currentPeriodId();
-    if (!periodId) {
+    if (!periodId && (type === 'grades' || type === 'absence')) {
       this.showSnackbar('لم يتم العثور على معرف الفترة');
       this.saving.set(false);
       return;
@@ -1276,10 +1614,132 @@ export class GradeMonitor implements OnInit {
         this.showSnackbar('لا توجد تغييرات للحفظ');
       }
 
-    } else {
-      // exams / final — لا يحتاج API خاص حالياً
-      this.saving.set(false);
-      this.showSnackbar('تم الحفظ محلياً');
+    } else if (type === 'exams') {
+      const students = this.getStudents();
+      const enrollMap = this.enrollmentMap();
+      const classId = cls.id;
+
+      // أولا نجلب التقييمات الموجودة لنعرف ماذا ننشئ وماذا نحدث
+      this.api.getAssessmentsByClass(classId).pipe(takeUntil(this.cancelLoad$)).subscribe({
+        next: (existingRes) => {
+          const existingMap: Record<string, number> = {};
+          if (existingRes.isSuccess && existingRes.data?.length) {
+            for (const a of existingRes.data) {
+              // assessmentType is a string like "MonthlyExam1" due to JsonStringEnumConverter
+              // Normalize to number for consistent key matching
+              const typeNum = a.assessmentType === 'MonthlyExam1' ? 1
+                            : a.assessmentType === 'MonthlyExam2' ? 2
+                            : a.assessmentType === 'InitialAssessment' ? 3
+                            : a.assessmentType === 'FinalAssessment' ? 4
+                            : a.assessmentType === 'SemesterExam' ? 5
+                            : null;
+              if (typeNum == null) continue;
+              existingMap[a.enrollmentId + '_' + typeNum] = a.id;
+            }
+          }
+
+          const requests: any[] = [];
+          for (const st of students) {
+            const enrollmentId = st.enrollmentId ?? enrollMap[st.id] ?? st.id;
+            for (let examNum = 1; examNum <= 2; examNum++) {
+              const key = st.id + '_e' + examNum;
+              const rawScore = this.localExams[key];
+              if (rawScore == null || rawScore === '') continue;
+              const score = this.normalizeHalfGrade(parseFloat(rawScore));
+              if (isNaN(score)) continue;
+
+              const existingId = existingMap[enrollmentId + '_' + examNum];
+              if (existingId) {
+                // موجود → تحديث
+                requests.push(
+                  this.api.updateAssessment({
+                    assessmentId: existingId,
+                    score,
+                  })
+                );
+              } else {
+                // جديد → إنشاء
+                requests.push(
+                  this.api.recordAssessment({
+                    enrollmentId,
+                    assessmentType: examNum,
+                    score,
+                    maxScore: 15,
+                  })
+                );
+              }
+            }
+          }
+
+          if (requests.length) {
+            forkJoin(requests).subscribe({
+              next: () => {
+                this.saving.set(false);
+                this.showSnackbar('تم حفظ الامتحانات بنجاح ✓');
+                this.loadExams(cls, this.currentTmpl()!);
+              },
+              error: () => {
+                this.saving.set(false);
+                this.showSnackbar('حدث خطأ أثناء حفظ الامتحانات');
+              }
+            });
+          } else {
+            this.saving.set(false);
+            this.showSnackbar('لا توجد تغييرات للحفظ');
+          }
+        },
+        error: () => {
+          this.saving.set(false);
+          this.showSnackbar('حدث خطأ أثناء جلب التقييمات الموجودة');
+        }
+      });
+
+    } else if (type === 'final') {
+      const classId = cls.id;
+      const enrollMap = this.enrollmentMap();
+      const students: { enrollmentId: number; monthlyExam1Score?: number | null; monthlyExam2Score?: number | null; semesterExamScore?: number | null }[] = [];
+
+      for (const st of cls.students) {
+        const enrollmentId = st.enrollmentId ?? enrollMap[st.id] ?? st.id;
+        const feRaw = this.localFinals[st.id + '_fe'];
+        const e1Raw = this.localFinals[st.id + '_e1'];
+        const e2Raw = this.localFinals[st.id + '_e2'];
+
+        const entry: any = { enrollmentId };
+
+        if (feRaw != null && feRaw !== '') {
+          const feScore = this.normalizeHalfGrade(parseFloat(feRaw));
+          if (!isNaN(feScore)) entry.semesterExamScore = feScore;
+        }
+        if (e1Raw != null && e1Raw !== '') {
+          const e1Score = this.normalizeHalfGrade(parseFloat(e1Raw));
+          if (!isNaN(e1Score)) entry.monthlyExam1Score = e1Score;
+        }
+        if (e2Raw != null && e2Raw !== '') {
+          const e2Score = this.normalizeHalfGrade(parseFloat(e2Raw));
+          if (!isNaN(e2Score)) entry.monthlyExam2Score = e2Score;
+        }
+
+        students.push(entry);
+      }
+
+      this.api.calculateFullFinalGrades(classId, { students }).subscribe({
+        next: (res) => {
+          this.saving.set(false);
+          if (res.isSuccess) {
+            this.showSnackbar(res.message || 'تم حفظ النتائج النهائية ✓');
+            if (res.data?.length) {
+              this.processFinalGradesResponse(res.data, cls);
+            }
+          } else {
+            this.showSnackbar(res.message || 'حدث خطأ');
+          }
+        },
+        error: () => {
+          this.saving.set(false);
+          this.showSnackbar('حدث خطأ أثناء حفظ النتائج النهائية');
+        }
+      });
     }
   }
 
@@ -1388,6 +1848,32 @@ export class GradeMonitor implements OnInit {
         });
 
       } else {
+        await firstValueFrom(this.api.recalculateFinalGrades(cls.id));
+        const [assessmentsRes, finalsRes] = await Promise.all([
+          firstValueFrom(this.api.getAssessmentsByClass(cls.id)),
+          firstValueFrom(this.api.getFinalGradesByClass(cls.id))
+        ]);
+
+        const examData: Record<number, { exam1: number; exam2: number }> = {};
+        if (assessmentsRes?.isSuccess && assessmentsRes.data) {
+          for (const a of assessmentsRes.data) {
+            const st = cls.students.find(s => (s.enrollmentId ?? s.id) === a.enrollmentId);
+            if (!st) continue;
+            if (!examData[st.id]) examData[st.id] = { exam1: 0, exam2: 0 };
+            if (a.assessmentType === 'MonthlyExam1') examData[st.id].exam1 = a.score;
+            else if (a.assessmentType === 'MonthlyExam2') examData[st.id].exam2 = a.score;
+          }
+        }
+
+        const finalData: Record<number, { written_total: number; final_exam: number; total: number }> = {};
+        if (finalsRes?.isSuccess && finalsRes.data) {
+          for (const f of finalsRes.data) {
+            const st = cls.students.find(s => (s.enrollmentId ?? s.id) === f.enrollmentId);
+            if (!st) continue;
+            finalData[st.id] = { written_total: f.writtenTotal ?? 0, final_exam: f.finalExamScore ?? 0, total: f.total ?? 0 };
+          }
+        }
+
         const gradeData: Record<string, any> = {};
         const allWeeks = await this.loadAllWeeksGrades(cls, tmpl);
         for (const st of cls.students) {
@@ -1399,10 +1885,25 @@ export class GradeMonitor implements OnInit {
             gradeData[`${wn}_${st.id}`] = { total };
           }
         }
+
+        const monthAverages: Record<number, Record<string, number>> = {};
+        for (const st of cls.students) {
+          const avgs: Record<string, number> = {};
+          for (const mg of tmpl.month_groups) {
+            let sum = 0, count = 0;
+            for (const wn of mg.weeks) {
+              const g = gradeData[`${wn}_${st.id}`];
+              if (g?.total != null) { sum += g.total; count++; }
+            }
+            if (count) avgs[mg.name] = Math.round(sum / count);
+          }
+          monthAverages[st.id] = avgs;
+        }
+
         blob = await this.wg.generateSummaryGrades({
           schoolInfo, title: 'السجل المجمع', subject: cls.subject, classRoom: cls.name,
           students: cls.students, gradeColumns: tmpl.summary_columns.map(c => ({ id: c.id, label: c.name, max: c.max })),
-          monthAverages: {}, examData: {}, finalData: {},
+          monthAverages, examData, finalData,
           monthGroups: tmpl.month_groups, gradeData,
         });
       }
@@ -1449,8 +1950,10 @@ export class GradeMonitor implements OnInit {
   // ══════════════════════════════════════
   //  SNACKBAR
   // ══════════════════════════════════════
+  private snackbarTimer: any = null;
   private showSnackbar(msg: string) {
     this.snackbar.set(msg);
-    setTimeout(() => this.snackbar.set(''), 3000);
+    if (this.snackbarTimer) clearTimeout(this.snackbarTimer);
+    this.snackbarTimer = setTimeout(() => this.snackbar.set(''), 3000);
   }
 }

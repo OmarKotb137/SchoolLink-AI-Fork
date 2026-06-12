@@ -19,6 +19,8 @@ public interface IExamRepository : IRepository<Exam>
     Task<IReadOnlyList<Exam>> GetByAcademicYearAsync(int academicYearId, CancellationToken ct = default);
 
     Task<Exam?> GetWithQuestionsAsync(int examId, CancellationToken ct = default);
+    Task<Exam?> GetByUidAsync(Guid uid, CancellationToken ct = default);
+    Task<Exam?> GetWithQuestionsByUidAsync(Guid uid, CancellationToken ct = default);
 }
 
 

@@ -51,6 +51,7 @@ export const routes: Routes = [
   { path: 'room-management', canActivate: [authGuard], data: { roles: ['admin'] }, loadComponent: () => import('./features/room-management/room-management').then(c => c.RoomManagement) },
   { path: 'class-management', canActivate: [authGuard], data: { roles: ['admin'] }, loadComponent: () => import('./features/class-management/class-management').then(c => c.ClassManagement) },
   { path: 'subject-management', canActivate: [authGuard], data: { roles: ['admin'] }, loadComponent: () => import('./features/subject-management/subject-management').then(c => c.SubjectManagement) },
+  { path: 'lesson-feedback', canActivate: [authGuard], data: { roles: ['admin', 'teacher', 'student'] }, loadComponent: () => import('./features/lesson-feedback/lesson-feedback').then(c => c.LessonFeedback) },
   { path: 'book-parser', canActivate: [authGuard], data: { roles: ['admin', 'teacher'] }, loadComponent: () => import('./features/book-parser/book-parser').then(c => c.BookParser) },
   { path: 'index', loadComponent: () => import('./features/landing/landing').then(c => c.Landing) },
 

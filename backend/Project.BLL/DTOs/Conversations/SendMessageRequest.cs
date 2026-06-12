@@ -13,4 +13,5 @@ public class SendMessageRequest
 
     public string? AttachmentUrl { get; set; }
     public string? AttachmentType { get; set; }
+    public string? VoiceText { get; set; }
 }

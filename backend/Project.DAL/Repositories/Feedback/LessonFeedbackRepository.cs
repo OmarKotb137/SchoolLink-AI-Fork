@@ -57,6 +57,8 @@ public class LessonFeedbackRepository : Repository<LessonFeedback>, ILessonFeedb
             .Where(lf => lf.EnrollmentId == enrollmentId)
             .Include(lf => lf.ClassSubjectTeacher)
                 .ThenInclude(cst => cst.Subject)
+            .Include(lf => lf.ClassSubjectTeacher)
+                .ThenInclude(cst => cst.Teacher)
             .OrderByDescending(lf => lf.LessonDate)
             .ToListAsync(ct);
 

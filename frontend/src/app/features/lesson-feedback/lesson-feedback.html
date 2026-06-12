@@ -1,0 +1,526 @@
+<app-sidebar [isOpen]="sidebarOpen()" (isOpenChange)="sidebarOpen.set($event)" />
+<div class="main-content">
+  <app-topbar title="تقييم الحصص" [userName]="auth.user()?.fullName ?? 'أحمد'" (menuToggle)="sidebarOpen.set(!sidebarOpen())" />
+  <main class="p-gutter-desktop">
+
+  @if (loading()) {
+    <div class="flex items-center justify-center py-20">
+      <span class="material-symbols-outlined animate-spin text-4xl text-primary">sync</span>
+      <span class="mr-3 font-body-lg text-body-lg text-on-surface-variant">جاري التحميل...</span>
+    </div>
+  } @else if (error()) {
+    <div class="bg-error-container text-on-error-container p-4 rounded-xl flex items-center gap-3">
+      <span class="material-symbols-outlined">error</span>
+      <span>{{ error() }}</span>
+    </div>
+  } @else {
+
+    <!-- ============================================================ -->
+    <!-- STUDENT VIEW -->
+    <!-- ============================================================ -->
+    @if (role() === 'student') {
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Right: Subject cards -->
+        <div class="lg:col-span-2">
+          <h2 class="font-headline-sm text-headline-sm text-primary font-bold mb-4">موادي الدراسية</h2>
+
+          @if (subjects().length === 0) {
+            <div class="bg-surface-container-low rounded-xl p-8 text-center text-on-surface-variant">
+              <span class="material-symbols-outlined text-5xl mb-3">school</span>
+              <p>لا توجد مواد مسجلة</p>
+            </div>
+          }
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            @for (sub of subjects(); track sub.id) {
+              <div class="bg-surface-container-low rounded-xl p-4 border-2 cursor-pointer transition-all"
+                   [class.border-primary]="selectedSubjectId() === sub.id"
+                   [class.border-transparent]="selectedSubjectId() !== sub.id"
+                   (click)="onSubjectSelect(sub.id)">
+                <div class="flex items-center gap-3 mb-2">
+                  <span class="material-symbols-outlined text-primary">menu_book</span>
+                  <span class="font-headline-sm text-headline-sm font-bold">{{ sub.subjectName }}</span>
+                </div>
+                <div class="text-body-sm text-on-surface-variant flex items-center gap-2">
+                  <span class="material-symbols-outlined text-sm">person</span>
+                  <span>{{ sub.teacherName }}</span>
+                </div>
+                <div class="text-body-sm text-on-surface-variant flex items-center gap-2">
+                  <span class="material-symbols-outlined text-sm">meeting_room</span>
+                  <span>{{ sub.className }}</span>
+                </div>
+
+                <!-- Existing feedbacks for this subject -->
+                @if (feedbackHistory().filter(f => f.classSubjectTeacherId === sub.id).length > 0) {
+                  <div class="mt-3 pt-3 border-t border-outline-variant/30">
+                    <span class="text-body-sm font-bold text-primary">تقييمات سابقة:</span>
+                    <div class="mt-1 space-y-1">
+                      @for (fb of feedbackHistory().filter(f => f.classSubjectTeacherId === sub.id).slice(0, 3); track fb.id) {
+                        <div class="flex items-center justify-between text-body-xs text-on-surface-variant">
+                          <span>{{ fb.lessonDate }}</span>
+                          <span class="flex items-center gap-1">
+                            @for (s of [1,2,3,4,5]; track s) {
+                              <span class="material-symbols-outlined text-sm"
+                                    [class.star-filled]="s <= fb.rating"
+                                    [class.star-empty]="s > fb.rating"
+                                    style="font-variation-settings: 'FILL' 1;">star</span>
+                            }
+                          </span>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Left: Feedback form -->
+        <div>
+          <h2 class="font-headline-sm text-headline-sm text-primary font-bold mb-4">تقييم حصة</h2>
+
+          @if (!selectedSubjectId()) {
+            <div class="bg-surface-container-low rounded-xl p-8 text-center text-on-surface-variant">
+              <span class="material-symbols-outlined text-5xl mb-3">touch_app</span>
+              <p>اختر مادة من القائمة</p>
+            </div>
+          } @else {
+            <div class="bg-surface-container-low rounded-xl p-5 space-y-4">
+
+              @if (submitSuccess()) {
+                <div class="bg-tertiary-container text-on-tertiary-container p-3 rounded-lg text-sm flex items-center gap-2">
+                  <span class="material-symbols-outlined">check_circle</span>
+                  <span>{{ submitSuccess() }}</span>
+                </div>
+              }
+
+              <div>
+                <label class="block text-body-sm font-bold text-on-surface mb-1">تاريخ الحصة</label>
+                <input type="date" [max]="todayString()" [(ngModel)]="lessonDate"
+                       (change)="onDateChange()"
+                       class="w-full p-2 rounded-lg bg-surface-container-high border border-outline text-on-surface">
+              </div>
+
+              @if (existingLessonFeedback()) {
+                <div class="bg-secondary-container text-on-secondary-container p-4 rounded-lg">
+                  <p class="font-bold mb-2">تم التقييم مسبقاً</p>
+                  <div class="flex items-center gap-1 mb-1">
+                    @for (s of [1,2,3,4,5]; track s) {
+                      <span class="material-symbols-outlined text-lg"
+                            [class.star-filled]="s <= existingLessonFeedback()!.rating"
+                            [class.star-empty]="s > existingLessonFeedback()!.rating"
+                            style="font-variation-settings: 'FILL' 1;">star</span>
+                    }
+                  </div>
+                  <p class="text-body-sm">الفهم: {{ understandingLabel(existingLessonFeedback()!.understanding) }}</p>
+                  @if (existingLessonFeedback()!.comment) {
+                    <p class="text-body-sm mt-1">{{ existingLessonFeedback()!.comment }}</p>
+                  }
+                </div>
+              } @else if (lessonDate()) {
+                <!-- Rating -->
+                <div>
+                  <label class="block text-body-sm font-bold text-on-surface mb-1">التقييم</label>
+                  <div class="flex gap-1">
+                    @for (s of [1,2,3,4,5]; track s) {
+                      <button type="button" (click)="feedbackRating.set(s)"
+                              class="p-1 rounded-lg star-btn transition-all">
+                        <span class="material-symbols-outlined text-3xl"
+                              [class.star-filled]="s <= feedbackRating()"
+                              [class.star-empty]="s > feedbackRating()"
+                              style="font-variation-settings: 'FILL' 1;">star</span>
+                      </button>
+                    }
+                  </div>
+                </div>
+
+                <!-- Understanding -->
+                <div>
+                  <label class="block text-body-sm font-bold text-on-surface mb-1">مستوى الفهم</label>
+                  <div class="flex gap-2">
+                    @for (opt of [{v:1,l:'نعم'},{v:2,l:'جزئياً'},{v:3,l:'لا'}]; track opt.v) {
+                      <button type="button" (click)="onUnderstandingClick(opt.v)"
+                              class="flex-1 p-2 rounded-lg border text-sm font-bold transition-all"
+                              [class.bg-primary]="feedbackUnderstanding() === opt.v"
+                              [class.text-on-primary]="feedbackUnderstanding() === opt.v"
+                              [class.bg-surface-container-high]="feedbackUnderstanding() !== opt.v"
+                              [class.text-on-surface]="feedbackUnderstanding() !== opt.v"
+                              [class.border-primary]="feedbackUnderstanding() === opt.v"
+                              [class.border-outline]="feedbackUnderstanding() !== opt.v">
+                        {{ opt.l }}
+                      </button>
+                    }
+                  </div>
+                </div>
+
+                <!-- Comment -->
+                <div>
+                  <label class="block text-body-sm font-bold text-on-surface mb-1">ملاحظات (اختياري)</label>
+                  <textarea [(ngModel)]="feedbackComment" rows="3"
+                            class="w-full p-2 rounded-lg bg-surface-container-high border border-outline text-on-surface resize-none"></textarea>
+                </div>
+
+                <button type="button" (click)="onSubmit()" [disabled]="submitLoading()"
+                        class="w-full p-3 rounded-xl bg-primary text-on-primary font-bold flex items-center justify-center gap-2 transition-all disabled:opacity-50">
+                  @if (submitLoading()) {
+                    <span class="material-symbols-outlined animate-spin">sync</span>
+                  }
+                  <span>إرسال التقييم</span>
+                </button>
+              }
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Feedback history table -->
+      @if (feedbackHistory().length > 0) {
+        <div class="mt-8">
+          <h3 class="font-headline-sm text-headline-sm text-primary font-bold mb-3">جميع تقييماتي</h3>
+          <div class="bg-surface-container-low rounded-xl overflow-hidden">
+            <table class="w-full text-right">
+              <thead class="bg-surface-container-high text-on-surface-variant text-body-sm">
+                <tr>
+                  <th class="p-3">المادة</th>
+                  <th class="p-3">المعلم</th>
+                  <th class="p-3">التاريخ</th>
+                  <th class="p-3">التقييم</th>
+                  <th class="p-3">ملاحظات</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-outline-variant/20">
+                @for (fb of feedbackHistory(); track fb.id) {
+                  <tr class="hover:bg-surface-container-high transition-colors">
+                    <td class="p-3 font-bold">{{ fb.subjectName }}</td>
+                    <td class="p-3 text-on-surface-variant">{{ fb.teacherName }}</td>
+                    <td class="p-3 text-on-surface-variant">{{ fb.lessonDate }}</td>
+                    <td class="p-3">
+                      <div class="flex items-center gap-0.5">
+                        @for (s of [1,2,3,4,5]; track s) {
+                          <span class="material-symbols-outlined text-sm"
+                                [class.star-filled]="s <= fb.rating"
+                                [class.star-empty]="s > fb.rating"
+                                style="font-variation-settings: 'FILL' 1;">star</span>
+                        }
+                      </div>
+                    </td>
+                    <td class="p-3 text-on-surface-variant max-w-xs truncate">{{ fb.comment || '—' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      }
+    }
+
+    <!-- ============================================================ -->
+    <!-- TEACHER VIEW -->
+    <!-- ============================================================ -->
+    @if (role() === 'teacher') {
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="font-headline-sm text-headline-sm text-primary font-bold">تقييمات المواد التي أدرسها</h2>
+        <div class="flex items-center gap-2 bg-surface-container-low rounded-xl px-4 py-2">
+          <span class="material-symbols-outlined text-primary">person</span>
+          <span class="font-bold text-on-surface">{{ auth.user()?.fullName }}</span>
+        </div>
+      </div>
+
+      @if (teacherSubjects().length === 0) {
+        <div class="bg-surface-container-low rounded-xl p-8 text-center text-on-surface-variant">
+          <span class="material-symbols-outlined text-5xl mb-3">school</span>
+          <p>لا توجد مواد مسجلة لك هذا العام</p>
+        </div>
+      }
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        @for (sub of teacherSubjects(); track sub.id) {
+          <div class="bg-surface-container-low rounded-xl p-5">
+            <div class="flex items-center justify-between mb-3">
+              <div>
+                <h3 class="font-headline-sm text-headline-sm font-bold">{{ sub.subjectName }}</h3>
+                <p class="text-body-sm text-on-surface-variant">{{ sub.className }}</p>
+              </div>
+              <button type="button" (click)="onToggleExpand(sub.id)"
+                      class="p-2 rounded-full hover:bg-surface-container-high transition-colors">
+                <span class="material-symbols-outlined">
+                  {{ expandedCst() === sub.id ? 'expand_less' : 'expand_more' }}
+                </span>
+              </button>
+            </div>
+
+            @if (summaries()[sub.id]; as summary) {
+              <div class="space-y-3">
+                <div class="flex items-center justify-between">
+                  <span class="text-body-sm text-on-surface-variant">عدد التقييمات</span>
+                  <span class="font-bold">{{ summary.totalResponses }}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-body-sm text-on-surface-variant">متوسط التقييم</span>
+                  <div class="flex items-center gap-1">
+                    <span class="font-bold text-lg">{{ summary.averageRating }}</span>
+                    <span class="material-symbols-outlined star-filled" style="font-variation-settings:'FILL'1;">star</span>
+                          </div>
+                        </div>
+
+                        <!-- Understanding bar -->
+                <div>
+                  <span class="text-body-sm text-on-surface-variant block mb-1">مستوى الفهم</span>
+                  @if (summary.totalResponses > 0) {
+                    @let total = summary.understandingBreakdown.yesCount + summary.understandingBreakdown.partialCount + summary.understandingBreakdown.noCount;
+                    @let yesPct = total > 0 ? (summary.understandingBreakdown.yesCount / total) * 100 : 0;
+                    @let partialPct = total > 0 ? (summary.understandingBreakdown.partialCount / total) * 100 : 0;
+                    @let noPct = total > 0 ? (summary.understandingBreakdown.noCount / total) * 100 : 0;
+                    <div class="h-3 rounded-full bg-surface-container-high flex overflow-hidden">
+                      <div class="h-full bg-green-500 transition-all" [style.width.%]="yesPct" title="نعم: {{ summary.understandingBreakdown.yesCount }}"></div>
+                      <div class="h-full bg-warning transition-all" [style.width.%]="partialPct" title="جزئياً: {{ summary.understandingBreakdown.partialCount }}"></div>
+                      <div class="h-full bg-error transition-all" [style.width.%]="noPct" title="لا: {{ summary.understandingBreakdown.noCount }}"></div>
+                    </div>
+                    <div class="flex justify-between text-body-xs text-on-surface-variant mt-1">
+                      <span>نعم ({{ summary.understandingBreakdown.yesCount }})</span>
+                      <span>جزئياً ({{ summary.understandingBreakdown.partialCount }})</span>
+                      <span>لا ({{ summary.understandingBreakdown.noCount }})</span>
+                    </div>
+                  } @else {
+                    <p class="text-body-sm text-on-surface-variant">لا توجد بيانات</p>
+                  }
+                </div>
+              </div>
+
+              @if ((teacherRawFeedback()[sub.id] || []).length > 0) {
+                <div class="mt-4 pt-4 border-t border-outline-variant/30">
+                  <span class="font-bold text-body-sm block mb-2">أحدث التعليقات</span>
+                  <div class="space-y-2">
+                    @for (fb of teacherRawFeedback()[sub.id].slice(0, 3); track fb.id) {
+                      <div class="bg-surface-container-high rounded-lg p-3 text-body-sm">
+                        <div class="flex items-center justify-between mb-1">
+                          <span class="text-on-surface-variant text-body-xs">{{ fb.lessonDate }}</span>
+                          <div class="flex items-center gap-0.5">
+                            @for (s of [1,2,3,4,5]; track s) {
+                              <span class="material-symbols-outlined text-xs"
+                                    [class.star-filled]="s <= fb.rating"
+                                    [class.star-empty]="s > fb.rating"
+                                    style="font-variation-settings:'FILL'1;">star</span>
+                            }
+                          </div>
+                        </div>
+                        <p class="text-body-xs text-on-surface-variant">
+                          ملاحظات: {{ understandingLabel(fb.understanding) }}
+                          @if (fb.comment) { — {{ fb.comment }} }
+                        </p>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+
+              @if (expandedCst() === sub.id) {
+                <div class="mt-4 pt-4 border-t border-outline-variant/30 space-y-4">
+                  <div>
+                    <span class="font-bold text-body-sm block mb-2">اتجاه التقييم</span>
+                    @if (summary.ratingTrend.length > 0) {
+                      <div class="space-y-2">
+                        @for (trend of summary.ratingTrend; track trend.date) {
+                          <div class="flex items-center justify-between text-body-sm">
+                            <span class="text-on-surface-variant">{{ trend.date }}</span>
+                            <div class="flex items-center gap-2">
+                              <span class="font-bold">{{ trend.averageRating }}</span>
+                              <span class="material-symbols-outlined star-filled text-sm" style="font-variation-settings:'FILL'1;">star</span>
+                              <span class="text-body-xs text-on-surface-variant">({{ trend.responseCount }})</span>
+                            </div>
+                          </div>
+                        }
+                      </div>
+                    } @else {
+                      <p class="text-body-sm text-on-surface-variant">لا توجد بيانات كافية</p>
+                    }
+                  </div>
+                  @if ((teacherRawFeedback()[sub.id] || []).length > 3) {
+                    <div>
+                      <span class="font-bold text-body-sm block mb-2">جميع التعليقات</span>
+                      <div class="space-y-2 max-h-60 overflow-y-auto">
+                        @for (fb of teacherRawFeedback()[sub.id].slice(3); track fb.id) {
+                          <div class="bg-surface-container-high rounded-lg p-3 text-body-sm">
+                            <div class="flex items-center justify-between mb-1">
+                              <span class="text-on-surface-variant text-body-xs">{{ fb.lessonDate }}</span>
+                              <div class="flex items-center gap-0.5">
+                                @for (s of [1,2,3,4,5]; track s) {
+                                  <span class="material-symbols-outlined text-xs"
+                                        [class.star-filled]="s <= fb.rating"
+                                        [class.star-empty]="s > fb.rating"
+                                        style="font-variation-settings:'FILL'1;">star</span>
+                                }
+                              </div>
+                            </div>
+                            <p class="text-body-xs text-on-surface-variant">
+                              ملاحظات: {{ understandingLabel(fb.understanding) }}
+                              @if (fb.comment) { — {{ fb.comment }} }
+                            </p>
+                          </div>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+            } @else {
+              <div class="flex items-center gap-2 text-on-surface-variant py-4">
+                <span class="material-symbols-outlined">info</span>
+                <span class="text-body-sm">لا توجد تقييمات بعد</span>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+
+    <!-- ============================================================ -->
+    <!-- ADMIN VIEW -->
+    <!-- ============================================================ -->
+    @if (role() === 'admin') {
+      <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+
+        <!-- Left: Teacher list -->
+        <div>
+          <h2 class="font-headline-sm text-headline-sm text-primary font-bold mb-4">المعلمون</h2>
+          <div class="bg-surface-container-low rounded-xl overflow-hidden">
+            @if (teachers().length === 0) {
+              <div class="p-4 text-center text-on-surface-variant text-body-sm">
+                لا يوجد معلمون
+              </div>
+            }
+            @for (t of teachers(); track t.id) {
+              <button type="button" (click)="onTeacherSelect(t.id)"
+                      class="w-full text-right p-3 flex items-center gap-3 transition-colors hover:bg-surface-container-high"
+                      [class.bg-primary-container]="selectedTeacherId() === t.id"
+                      [class.text-on-primary-container]="selectedTeacherId() === t.id">
+                <span class="material-symbols-outlined">person</span>
+                <div>
+                  <span class="font-bold block text-body-sm">{{ t.fullName }}</span>
+                  <span class="text-body-xs text-on-surface-variant">{{ t.email }}</span>
+                </div>
+              </button>
+            }
+          </div>
+        </div>
+
+        <!-- Right: Subject cards -->
+        <div class="lg:col-span-3">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="font-headline-sm text-headline-sm text-primary font-bold">
+              @if (selectedTeacherId()) {
+                <span>المواد — {{ teachers().find(t => t.id === selectedTeacherId())?.fullName }}</span>
+              } @else {
+                <span>تقييمات المواد</span>
+              }
+            </h2>
+            @if (selectedTeacherId() && adminSubjects().length > 0) {
+              <button type="button" (click)="toggleAdminView()"
+                      class="px-4 py-2 rounded-lg border border-outline text-body-sm font-bold transition-colors hover:bg-surface-container-high">
+                {{ adminRawMode() ? 'عرض الملخص' : 'عرض التفاصيل' }}
+              </button>
+            }
+          </div>
+
+          @if (!selectedTeacherId()) {
+            <div class="bg-surface-container-low rounded-xl p-8 text-center text-on-surface-variant">
+              <span class="material-symbols-outlined text-5xl mb-3">touch_app</span>
+              <p>اختر معلماً من القائمة</p>
+            </div>
+          } @else if (adminSubjects().length === 0) {
+            <div class="bg-surface-container-low rounded-xl p-8 text-center text-on-surface-variant">
+              <span class="material-symbols-outlined text-5xl mb-3">school</span>
+              <p>لا توجد مواد لهذا المعلم</p>
+            </div>
+          } @else {
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              @for (sub of adminSubjects(); track sub.id) {
+                <div class="bg-surface-container-low rounded-xl p-5">
+                  <div class="flex items-center gap-3 mb-3">
+                    <span class="material-symbols-outlined text-primary">menu_book</span>
+                    <div>
+                      <h3 class="font-headline-sm text-headline-sm font-bold">{{ sub.subjectName }}</h3>
+                      <p class="text-body-sm text-on-surface-variant">{{ sub.className }}</p>
+                    </div>
+                  </div>
+
+                  @if (adminRawMode()) {
+                    <!-- Raw data -->
+                    @if ((rawFeedback()[sub.id] || []).length > 0) {
+                      <div class="space-y-2 max-h-64 overflow-y-auto">
+                        @for (fb of rawFeedback()[sub.id]; track fb.id) {
+                          <div class="bg-surface-container-high rounded-lg p-3 text-body-sm">
+                            <div class="flex items-center justify-between mb-1">
+                              <span class="font-bold">{{ fb.lessonDate }}</span>
+                              <span class="text-body-xs text-on-surface-variant">{{ fb.teacherName }}</span>
+                            </div>
+                            <div class="flex items-center gap-1 mb-1">
+                              @for (s of [1,2,3,4,5]; track s) {
+                                <span class="material-symbols-outlined text-sm"
+                                      [class.star-filled]="s <= fb.rating"
+                                      [class.star-empty]="s > fb.rating"
+                                      style="font-variation-settings:'FILL'1;">star</span>
+                              }
+                            </div>
+                            <p class="text-body-xs text-on-surface-variant">
+                              ملاحظات: {{ understandingLabel(fb.understanding) }}
+                              @if (fb.comment) { — {{ fb.comment }} }
+                            </p>
+                          </div>
+                        }
+                      </div>
+                    } @else {
+                      <p class="text-body-sm text-on-surface-variant">لا توجد تقييمات</p>
+                    }
+                  } @else {
+                    <!-- Summary view (same as teacher) -->
+                    @if (adminSummaries()[sub.id]; as summary) {
+                      <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                          <span class="text-body-sm text-on-surface-variant">عدد التقييمات</span>
+                          <span class="font-bold">{{ summary.totalResponses }}</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                          <span class="text-body-sm text-on-surface-variant">متوسط التقييم</span>
+                          <div class="flex items-center gap-1">
+                            <span class="font-bold text-lg">{{ summary.averageRating }}</span>
+                            <span class="material-symbols-outlined star-filled" style="font-variation-settings:'FILL'1;">star</span>
+                          </div>
+                        </div>
+
+                        @if (summary.totalResponses > 0) {
+                          @let total = summary.understandingBreakdown.yesCount + summary.understandingBreakdown.partialCount + summary.understandingBreakdown.noCount;
+                          @let yesPct = total > 0 ? (summary.understandingBreakdown.yesCount / total) * 100 : 0;
+                          @let partialPct = total > 0 ? (summary.understandingBreakdown.partialCount / total) * 100 : 0;
+                          @let noPct = total > 0 ? (summary.understandingBreakdown.noCount / total) * 100 : 0;
+                          <div>
+                            <span class="text-body-sm text-on-surface-variant block mb-1">مستوى الفهم</span>
+                            <div class="h-3 rounded-full bg-surface-container-high flex overflow-hidden">
+                              <div class="h-full bg-green-500" [style.width.%]="yesPct" title="نعم: {{ summary.understandingBreakdown.yesCount }}"></div>
+                              <div class="h-full bg-warning" [style.width.%]="partialPct" title="جزئياً: {{ summary.understandingBreakdown.partialCount }}"></div>
+                              <div class="h-full bg-error" [style.width.%]="noPct" title="لا: {{ summary.understandingBreakdown.noCount }}"></div>
+                            </div>
+                            <div class="flex justify-between text-body-xs text-on-surface-variant mt-1">
+                              <span>نعم ({{ summary.understandingBreakdown.yesCount }})</span>
+                              <span>جزئياً ({{ summary.understandingBreakdown.partialCount }})</span>
+                              <span>لا ({{ summary.understandingBreakdown.noCount }})</span>
+                            </div>
+                          </div>
+                        }
+                      </div>
+                    } @else {
+                      <p class="text-body-sm text-on-surface-variant">لا توجد تقييمات</p>
+                    }
+                  }
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    }
+  }
+    </main>
+</div>

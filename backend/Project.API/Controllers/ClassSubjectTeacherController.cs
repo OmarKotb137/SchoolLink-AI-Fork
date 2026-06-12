@@ -112,6 +112,16 @@ public class ClassSubjectTeacherController : ControllerBase
         return Ok(result);
     }
 
+    [Authorize(Roles = "Admin,Teacher,Student")]
+    [HttpGet("by-class-public/{classId:int}")]
+    public async Task<IActionResult> GetByClassPublic(int classId, [FromQuery] int academicYearId)
+    {
+        var result = await _classSubjectTeacherService.GetByClassAsync(classId, academicYearId);
+        if (!result.IsSuccess)
+            return NotFound(result);
+        return Ok(result);
+    }
+
     [Authorize(Roles = "Admin")]
     [HttpGet("available-teachers")]
     public async Task<IActionResult> GetAvailableTeachers([FromQuery] int subjectId, [FromQuery] int classId, [FromQuery] int academicYearId)

@@ -10,7 +10,7 @@ public class LLMRouter : ILLMRouter
     private readonly ILogger<LLMRouter> _logger;
     private readonly string _defaultProvider;
 
-    public LLMRouter(IEnumerable<ILLMProvider> providers, ILogger<LLMRouter> logger, string defaultProvider = "Gemini")
+    public LLMRouter(IEnumerable<ILLMProvider> providers, ILogger<LLMRouter> logger, string defaultProvider = "OpenCodeAI")
     {
         _providers = providers;
         _logger = logger;

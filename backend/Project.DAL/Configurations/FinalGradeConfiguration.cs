@@ -28,6 +28,9 @@ namespace Project.DAL.Configurations
             builder.Property(x => x.Total)
                 .HasColumnType("decimal(5,2)");
 
+            builder.Property(x => x.MaxTotal)
+                .HasColumnType("decimal(5,2)");
+
             builder.HasIndex(x => x.EnrollmentId)
                 .IsUnique();
 

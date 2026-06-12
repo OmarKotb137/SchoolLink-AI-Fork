@@ -108,8 +108,23 @@ public class OpenCodeAILlmClient : ILlmClient
         if (!resp.IsSuccessStatusCode)
         {
             var errorBody = await resp.Content.ReadAsStringAsync();
-            throw new InvalidOperationException(
-                $"OpenCodeAI API error {resp.StatusCode}: {errorBody}");
+
+            // Handle rate limits gracefully
+            if (resp.StatusCode == System.Net.HttpStatusCode.TooManyRequests ||
+                errorBody.Contains("FreeUsageLimitError") ||
+                errorBody.Contains("Rate limit"))
+            {
+                return new LlmResponse
+                {
+                    Content = "عذراً، تم تجاوز حد الاستخدام المسموح به حالياً. يرجى الانتظار قليلاً ثم المحاولة مرة أخرى. 🙏"
+                };
+            }
+
+            // For other errors, also return friendly message
+            return new LlmResponse
+            {
+                Content = "عذراً، حدث خطأ في الاتصال بالمساعد الذكي. يرجى المحاولة مرة أخرى لاحقاً."
+            };
         }
 
         var json = await resp.Content.ReadAsStringAsync();

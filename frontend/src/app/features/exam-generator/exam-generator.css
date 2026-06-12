@@ -887,3 +887,138 @@
 .history-row[role="button"] {
   cursor: pointer;
 }
+
+/* ===== History Delete Button ===== */
+.history-delete-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 8px;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.history-delete-btn:hover {
+  color: #ef4444;
+  background: #fef2f2;
+}
+.history-delete-btn .material-symbols-outlined {
+  font-size: 18px;
+}
+
+/* ===== Preview Link Row ===== */
+.preview-link-row {
+  padding: 12px 20px;
+  display: flex;
+  justify-content: center;
+}
+.preview-link-btn {
+  text-decoration: none;
+  max-width: 280px;
+}
+
+/* ===== Edit Mode ===== */
+.editing-card {
+  border-color: #fbbf24 !important;
+  border-right-color: #f59e0b !important;
+  background: #fffbeb !important;
+}
+.edit-pts-input {
+  width: 70px;
+  min-height: 30px;
+  padding: 2px 6px;
+  border: 2px solid var(--gray-border);
+  border-radius: 8px;
+  font-family: 'Tajawal', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  background: white;
+  direction: rtl;
+}
+.edit-pts-input:focus {
+  outline: none;
+  border-color: var(--blue-md);
+}
+.edit-q-textarea {
+  width: 100%;
+  min-height: 48px;
+  padding: 8px 10px;
+  border: 2px solid var(--gray-border);
+  border-radius: 8px;
+  font-family: 'Tajawal', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  resize: vertical;
+  background: white;
+  margin-bottom: 8px;
+  direction: rtl;
+}
+.edit-q-textarea:focus {
+  outline: none;
+  border-color: var(--blue-md);
+}
+.edit-opt-input {
+  flex: 1;
+  min-height: 30px;
+  padding: 4px 8px;
+  border: 2px solid var(--gray-border);
+  border-radius: 6px;
+  font-family: 'Tajawal', sans-serif;
+  font-size: 13px;
+  background: white;
+  direction: rtl;
+}
+.edit-opt-input:focus {
+  outline: none;
+  border-color: var(--blue-md);
+}
+.edit-correct-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #22c55e;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.edit-correct-label input[type="checkbox"] {
+  accent-color: #22c55e;
+  width: 16px;
+  height: 16px;
+}
+.edit-correct-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: #f0fdf4;
+  border-radius: 8px;
+}
+.edit-correct-row label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #15803d;
+}
+.edit-correct-row .edit-opt-input {
+  flex: 1;
+}
+.edit-actions-row {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+.q-edit-points {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  margin-right: auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}

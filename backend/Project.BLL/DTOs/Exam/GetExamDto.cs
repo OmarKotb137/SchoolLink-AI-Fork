@@ -5,6 +5,7 @@ namespace Project.BLL.DTOs.Exam
     public class GetExamDto
     {
         public int Id { get; set; }
+        public Guid Uid { get; set; }
         public string Title { get; set; } = string.Empty;
         public DateTime? StartTime { get; set; }
         public DateTime? EndTime { get; set; }
@@ -30,6 +31,7 @@ namespace Project.BLL.DTOs.Exam
         public string? ContentText { get; set; }
         public string QuestionText { get; set; } = string.Empty;
         public QuestionType QuestionType { get; set; }
+        public string? CorrectAnswer { get; set; }
         public string? ImageUrl { get; set; }
         public decimal Points { get; set; }
         public int DisplayOrder { get; set; }
@@ -40,6 +42,7 @@ namespace Project.BLL.DTOs.Exam
     {
         public int Id { get; set; }
         public string OptionText { get; set; } = string.Empty;
+        public bool IsCorrect { get; set; }
         public int DisplayOrder { get; set; }
     }
 }

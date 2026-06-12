@@ -27,6 +27,24 @@ public class FinalGradesController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPost("calculate-full/{classId:int}")]
+    public async Task<IActionResult> CalculateFullForClass(int classId, [FromBody] CalculateFullFinalGradesRequest request)
+    {
+        var result = await _service.CalculateFullForClassAsync(classId, request);
+        if (!result.IsSuccess)
+            return BadRequest(result);
+        return Ok(result);
+    }
+
+    [HttpPost("recalculate/{classId:int}")]
+    public async Task<IActionResult> RecalculateForClass(int classId)
+    {
+        var result = await _service.RecalculateForClassAsync(classId);
+        if (!result.IsSuccess)
+            return BadRequest(result);
+        return Ok(result);
+    }
+
     [HttpGet("by-academic-year/{academicYearId:int}")]
     public async Task<IActionResult> GetByAcademicYear(int academicYearId)
     {
