@@ -1,4 +1,4 @@
-using AutoMapper;
+﻿using AutoMapper;
 using Common.Results;
 using Project.BLL.DTOs.Common;
 using Project.BLL.DTOs.Feedback;
@@ -153,7 +153,7 @@ public class LessonFeedbackService : ILessonFeedbackService
         if (caller == null || caller.IsDeleted)
             return OperationResult.Failure("المستخدم غير موجود");
 
-        if (caller.Role != UserRole.Admin)
+        if (!caller.Role.IsAdminLike())
             return OperationResult.Failure("فقط المدراء يمكنهم حذف التقييمات");
 
         _unitOfWork.LessonFeedbacks.SoftDelete(feedback);

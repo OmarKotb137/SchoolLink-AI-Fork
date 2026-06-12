@@ -109,6 +109,7 @@ export class ClassManagement implements OnInit {
 
   errorMessage = signal('');
   successMessage = signal('');
+  deleteClassConfirmId = signal<number | null>(null);
 
   newClass: Partial<ClassEntity> = { name: '', gradeLevelId: 0, academicYearId: 0 };
 
@@ -257,18 +258,27 @@ export class ClassManagement implements OnInit {
   }
 
   deleteClass(id: number) {
-    if (confirm('هل أنت متأكد من حذف هذا الفصل؟ قد يؤدي هذا إلى حذف بيانات مرتبطة به.')) {
-      this.classService.delete(id).subscribe({
-        next: () => {
-          this.loadClasses();
-          this.showSuccess('تم حذف الفصل بنجاح!');
-        },
-        error: (err) => {
-          console.error('Delete failed', err);
-          this.showError('فشل في حذف الفصل. حاول مرة أخرى.');
-        }
-      });
-    }
+    this.deleteClassConfirmId.set(id);
+  }
+
+  cancelDeleteClass() {
+    this.deleteClassConfirmId.set(null);
+  }
+
+  confirmDeleteClass() {
+    const id = this.deleteClassConfirmId();
+    if (!id) return;
+    this.deleteClassConfirmId.set(null);
+    this.classService.delete(id).subscribe({
+      next: () => {
+        this.loadClasses();
+        this.showSuccess('تم حذف الفصل بنجاح!');
+      },
+      error: (err) => {
+        console.error('Delete failed', err);
+        this.showError('فشل في حذف الفصل. حاول مرة أخرى.');
+      }
+    });
   }
 
   openStudentsModal(cls: ClassEntity) {

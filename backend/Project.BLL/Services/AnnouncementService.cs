@@ -1,10 +1,11 @@
-using AutoMapper;
+﻿using AutoMapper;
 using Common.Results;
 using Project.BLL.DTOs.Announcements;
 using Project.BLL.DTOs.Common;
 using Project.BLL.Interfaces;
 using Project.DAL.Interfaces;
 using Project.Domain.Entities;
+using Project.Domain.Enums;
 
 namespace Project.BLL.Services;
 
@@ -25,7 +26,7 @@ public class AnnouncementService : IAnnouncementService
         if (author == null || author.IsDeleted)
             return OperationResult<AnnouncementDto>.Failure("Author not found");
 
-        if (author.Role != Project.Domain.Enums.UserRole.Admin &&
+        if (!author.Role.IsAdminLike() &&
             author.Role != Project.Domain.Enums.UserRole.Teacher)
             return OperationResult<AnnouncementDto>.Failure("Only Admins and Teachers can create announcements");
 
@@ -62,7 +63,7 @@ public class AnnouncementService : IAnnouncementService
         if (caller == null || caller.IsDeleted)
             return OperationResult<AnnouncementDto>.Failure("Caller not found");
 
-        if (caller.Role != Project.Domain.Enums.UserRole.Admin &&
+        if (!caller.Role.IsAdminLike() &&
             caller.Role != Project.Domain.Enums.UserRole.Teacher)
             return OperationResult<AnnouncementDto>.Failure("Only Admins and Teachers can update announcements");
 
@@ -94,7 +95,7 @@ public class AnnouncementService : IAnnouncementService
         if (caller == null || caller.IsDeleted)
             return OperationResult.Failure("Caller not found");
 
-        if (caller.Role != Project.Domain.Enums.UserRole.Admin && announcement.AuthorId != callerUserId)
+        if (!caller.Role.IsAdminLike() && announcement.AuthorId != callerUserId)
             return OperationResult.Failure("Only the author or an Admin can delete this announcement");
 
         _unitOfWork.Announcements.SoftDelete(announcement);

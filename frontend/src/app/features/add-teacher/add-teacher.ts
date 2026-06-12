@@ -32,7 +32,7 @@ export class AddTeacher implements OnInit {
   itemsPerPage = signal(10);
 
   newName = signal('');
-  newEmail = signal('');
+  newUsername = signal('');
   newPassword = signal('');
   newPhone = signal('');
   selectedSubjectIds = signal<number[]>([]);
@@ -43,6 +43,8 @@ export class AddTeacher implements OnInit {
   isLoading = signal(false);
   errorMessage = signal<string | null>(null);
   successMessage = signal<string | null>(null);
+  deleteConfirmId = signal<number | null>(null);
+  toggleStatusConfirm = signal<Teacher | null>(null);
 
   filteredTeachers = computed(() => {
     const query = this.searchQuery().trim().toLowerCase();
@@ -53,7 +55,7 @@ export class AddTeacher implements OnInit {
       const matchesQuery =
         !query ||
         teacher.fullName.toLowerCase().includes(query) ||
-        teacher.email.toLowerCase().includes(query) ||
+        teacher.username.toLowerCase().includes(query) ||
         (teacher.phone ?? '').toLowerCase().includes(query);
 
       const matchesStatus =
@@ -158,7 +160,7 @@ export class AddTeacher implements OnInit {
 
   resetForm() {
     this.newName.set('');
-    this.newEmail.set('');
+    this.newUsername.set('');
     this.newPassword.set('');
     this.newPhone.set('');
     this.selectedSubjectIds.set([]);
@@ -166,7 +168,7 @@ export class AddTeacher implements OnInit {
   }
 
   saveTeacher() {
-    if (!this.newName() || !this.newEmail() || !this.newPassword()) {
+    if (!this.newName() || !this.newUsername() || !this.newPassword()) {
       this.showError('يرجى تعبئة الاسم والبريد الإلكتروني وكلمة المرور');
       return;
     }
@@ -180,7 +182,8 @@ export class AddTeacher implements OnInit {
 
     const payload: CreateTeacherRequest = {
       fullName: this.newName(),
-      email: this.newEmail(),
+      username: this.newUsername(),
+      contactEmail: this.newPhone() || undefined,
       password: this.newPassword(),
       phone: this.newPhone() || undefined,
       subjectIds: this.selectedSubjectIds()
@@ -204,7 +207,7 @@ export class AddTeacher implements OnInit {
   editTeacher(t: Teacher) {
     this.editingTeacherId.set(t.id);
     this.newName.set(t.fullName);
-    this.newEmail.set(t.email);
+    this.newUsername.set(t.username);
     this.newPassword.set('');
     this.newPhone.set(t.phone || '');
     this.selectedSubjectIds.set(t.subjectIds || []);
@@ -257,8 +260,17 @@ export class AddTeacher implements OnInit {
   }
 
   deleteTeacher(id: number) {
-    if (!confirm('هل أنت متأكد من حذف هذا المعلم؟ إذا كان لديه تعيينات فعالة فسيتم تعطيله بدلا من حذفه.')) return;
+    this.deleteConfirmId.set(id);
+  }
 
+  cancelDeleteTeacher() {
+    this.deleteConfirmId.set(null);
+  }
+
+  confirmDeleteTeacher() {
+    const id = this.deleteConfirmId();
+    if (!id) return;
+    this.deleteConfirmId.set(null);
     this.teacherService.deleteTeacher(id).subscribe({
       next: () => {
         this.showSuccess('تم تنفيذ حذف أو تعطيل المعلم بنجاح');
@@ -269,13 +281,18 @@ export class AddTeacher implements OnInit {
   }
 
   toggleTeacherStatus(teacher: Teacher) {
+    this.toggleStatusConfirm.set(teacher);
+  }
+
+  cancelToggleStatus() {
+    this.toggleStatusConfirm.set(null);
+  }
+
+  confirmToggleStatus() {
+    const teacher = this.toggleStatusConfirm();
+    if (!teacher) return;
+    this.toggleStatusConfirm.set(null);
     const nextStatus = !teacher.isActive;
-    const actionLabel = nextStatus ? 'تفعيل' : 'تعطيل';
-
-    if (!confirm(`هل تريد ${actionLabel} المعلم ${teacher.fullName}؟`)) {
-      return;
-    }
-
     this.isLoading.set(true);
     this.userService.setActiveStatus(teacher.id, nextStatus).subscribe({
       next: () => {
@@ -284,7 +301,7 @@ export class AddTeacher implements OnInit {
         this.loadTeachers();
       },
       error: err => {
-        const msg = err?.error?.message || `تعذر ${actionLabel} المعلم`;
+        const msg = err?.error?.message || `تعذر ${nextStatus ? 'تفعيل' : 'تعطيل'} المعلم`;
         this.showError(msg);
         this.isLoading.set(false);
       }
@@ -321,7 +338,7 @@ export class AddTeacher implements OnInit {
   }
 
   canSaveTeacher(): boolean {
-    return !!this.newName() && !!this.newEmail() && !!this.newPassword() && this.selectedSubjectIds().length > 0 && !this.isLoading();
+    return !!this.newName() && !!this.newUsername() && !!this.newPassword() && this.selectedSubjectIds().length > 0 && !this.isLoading();
   }
 
   canUpdateTeacher(): boolean {

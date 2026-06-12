@@ -14,13 +14,15 @@ export class LoginGuardian {
   private router = inject(Router);
   private roleService = inject(RoleService);
   roleTab = signal<'student' | 'parent'>('student');
+  errorMsg = signal('');
 
   handleLogin(f: any) {
-    if (!f.valid) { alert('يرجى إدخال البريد الإلكتروني وكلمة المرور'); return; }
-    const { email, password } = f.value;
-    this.auth.login(this.roleTab(), email, password).subscribe({
+    this.errorMsg.set('');
+    if (!f.valid) { this.errorMsg.set('يرجى إدخال اسم المستخدم وكلمة المرور'); return; }
+    const { username, password } = f.value;
+    this.auth.login(this.roleTab(), username, password).subscribe({
       next: (session) => this.router.navigateByUrl(this.roleService.getHomeRoute(session.role)),
-      error: (err) => alert(err.message)
+      error: (err) => this.errorMsg.set(err.message || 'اسم المستخدم أو كلمة المرور غير صحيحة')
     });
   }
 }

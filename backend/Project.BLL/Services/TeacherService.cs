@@ -23,12 +23,12 @@ public class TeacherService : ITeacherService
 
     public async Task<OperationResult<TeacherDto>> CreateTeacherAsync(CreateTeacherRequest request)
     {
-        var existing = await _unitOfWork.Users.GetByEmailAsync(request.Email);
+        var existing = await _unitOfWork.Users.GetByUsernameAsync(request.Username);
         if (existing != null && !existing.IsDeleted)
-            return OperationResult<TeacherDto>.Failure("يوجد مستخدم مسجل بهذا البريد الإلكتروني بالفعل");
+            return OperationResult<TeacherDto>.Failure("اسم المستخدم مأخوذ بالفعل");
 
         if (existing != null && existing.IsDeleted)
-            return OperationResult<TeacherDto>.Failure("هذا البريد الإلكتروني مرتبط بحساب محذوف، يرجى استخدام بريد إلكتروني آخر");
+            return OperationResult<TeacherDto>.Failure("اسم المستخدم مرتبط بحساب محذوف، يرجى اختيار اسم آخر");
 
         var subjectValidation = await ValidateSubjectIdsAsync(request.SubjectIds);
         if (!subjectValidation.IsSuccess)
@@ -54,10 +54,10 @@ public class TeacherService : ITeacherService
             await PopulateTeacherSubjectsAsync(dto);
             return OperationResult<TeacherDto>.Success(dto, "تم إنشاء المعلم بنجاح");
         }
-        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("IX_Users_Email") == true)
+        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("IX_Users_Username") == true)
         {
             await _unitOfWork.RollbackTransactionAsync();
-            return OperationResult<TeacherDto>.Failure("يوجد مستخدم مسجل بهذا البريد الإلكتروني بالفعل");
+            return OperationResult<TeacherDto>.Failure("اسم المستخدم مأخوذ بالفعل");
         }
         catch
         {

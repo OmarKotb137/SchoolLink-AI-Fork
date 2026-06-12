@@ -7,8 +7,11 @@ import { OperationResult } from '../models/api.model';
 export interface User {
   id: number;
   fullName: string;
-  email: string;
-  username?: string;
+  username: string;
+  contactEmail?: string | null;
+  isContactEmailVerified?: boolean;
+  contactEmailVerifiedAt?: string | null;
+  email?: string;
   role: string;
   phone?: string;
   isActive: boolean;
@@ -26,7 +29,8 @@ export interface GetUsersFilter {
 
 export interface CreateUserRequest {
   fullName: string;
-  email: string;
+  username: string;
+  contactEmail?: string;
   password: string;
   phone?: string;
   role: string;
@@ -36,6 +40,11 @@ export interface UpdateUserRequest {
   fullName: string;
   phone?: string;
   profilePictureUrl?: string;
+}
+
+export interface UpdateProfileRequest {
+  fullName: string;
+  phone?: string;
 }
 
 export interface StudentAccountCandidate {
@@ -49,7 +58,7 @@ export interface StudentAccountCandidate {
 export interface GenerateStudentAccountResult {
   studentId: number;
   studentName: string;
-  generatedEmail: string;
+  generatedUsername: string;
   plainPassword: string;
   success: boolean;
   errorMessage?: string | null;
@@ -69,7 +78,8 @@ export interface ParentChildLinkRequest {
 
 export interface CreateParentWithStudentsRequest {
   fullName: string;
-  email: string;
+  username?: string;
+  contactEmail?: string;
   password: string;
   phone?: string;
   children: ParentChildLinkRequest[];
@@ -99,6 +109,7 @@ export interface ResetPasswordResult {
 export class UserService {
   private http = inject(HttpClient);
   private apiUrl = buildApiUrl('Users');
+  private profileUrl = buildApiUrl('Profile');
   private accountGenUrl = buildApiUrl('account-generation');
 
   getAll(filter?: GetUsersFilter): Observable<any> {
@@ -159,7 +170,28 @@ export class UserService {
     return this.http.post<OperationResult<CreateParentWithStudentsResult>>(`${this.accountGenUrl}/parents/create-with-students`, data);
   }
 
+  checkParentPhone(phone: string): Observable<OperationResult<{ alreadyExists: boolean; existingParentId?: number | null; existingParentName?: string | null; existingParentUsername?: string | null }>> {
+    const params = new HttpParams().set('phone', phone);
+    return this.http.get<OperationResult<{ alreadyExists: boolean; existingParentId?: number | null; existingParentName?: string | null; existingParentUsername?: string | null }>>(`${this.accountGenUrl}/parents/check-phone`, { params });
+  }
+
   resetPassword(userId: number): Observable<OperationResult<ResetPasswordResult>> {
     return this.http.post<OperationResult<ResetPasswordResult>>(`${this.apiUrl}/${userId}/reset-password`, {});
+  }
+
+  getMyProfile(): Observable<OperationResult<User>> {
+    return this.http.get<OperationResult<User>>(`${this.profileUrl}/me`);
+  }
+
+  updateMyProfile(data: UpdateProfileRequest): Observable<OperationResult<User>> {
+    return this.http.put<OperationResult<User>>(this.profileUrl, data);
+  }
+
+  sendEmailOtp(email: string): Observable<OperationResult<unknown>> {
+    return this.http.post<OperationResult<unknown>>(`${this.profileUrl}/email/send-otp`, { email });
+  }
+
+  verifyEmailOtp(email: string, code: string): Observable<OperationResult<unknown>> {
+    return this.http.post<OperationResult<unknown>>(`${this.profileUrl}/email/verify-otp`, { email, code });
   }
 }

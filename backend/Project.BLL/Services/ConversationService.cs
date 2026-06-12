@@ -1,4 +1,4 @@
-using AutoMapper;
+﻿using AutoMapper;
 using Common.Results;
 using Project.BLL.DTOs.Common;
 using Project.BLL.DTOs.Conversations;
@@ -123,7 +123,7 @@ public class ConversationService : IConversationService
         if (creator == null || creator.IsDeleted || !creator.IsActive)
             return OperationResult<ConversationDto>.Failure("المنشئ غير موجود أو غير نشط");
 
-        if (creator.Role != UserRole.Admin && creator.Role != UserRole.Teacher)
+        if (!creator.Role.IsAdminLike() && creator.Role != UserRole.Teacher)
             return OperationResult<ConversationDto>.Failure("يمكن للمشرفين والمعلمين فقط إنشاء محادثات جماعية للمواد");
 
         var subject = await _unitOfWork.Subjects.GetByIdAsync(request.SubjectId);
@@ -189,7 +189,7 @@ public class ConversationService : IConversationService
         if (creator == null || creator.IsDeleted || !creator.IsActive)
             return OperationResult<ConversationDto>.Failure("المنشئ غير موجود أو غير نشط");
 
-        if (creator.Role != UserRole.Admin && creator.Role != UserRole.Teacher)
+        if (!creator.Role.IsAdminLike() && creator.Role != UserRole.Teacher)
             return OperationResult<ConversationDto>.Failure("يمكن للمشرفين والمعلمين فقط إنشاء محادثات جماعية");
 
         var schoolClass = await _unitOfWork.Classes.GetByIdAsync(request.ClassId);
@@ -553,7 +553,7 @@ public class ConversationService : IConversationService
         if (blockerUser.Role == UserRole.Student && blockedUser.Role != UserRole.Student && blockedUser.Role != UserRole.Parent)
             return OperationResult.Failure("لا يمكن للطالب حظر هذا المستخدم");
 
-        if (blockerUser.Role == UserRole.Teacher && blockedUser.Role == UserRole.Admin)
+        if (blockerUser.Role == UserRole.Teacher && blockedUser.Role.IsAdminLike())
             return OperationResult.Failure("لا يمكن للمدرس حظر مدير");
 
         var existing = await _unitOfWork.BlockedUsers.GetBlockAsync(blockerId, blockedUserId, conversationId);

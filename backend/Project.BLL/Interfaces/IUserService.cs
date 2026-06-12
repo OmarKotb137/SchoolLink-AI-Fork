@@ -20,7 +20,7 @@ public interface IUserService
     Task<OperationResult<UserDto>> UpdateProfileAsync(int userId, UpdateProfileRequest request);
     Task<OperationResult> UpdateProfilePhotoAsync(int userId, string photoUrl);
     Task<OperationResult> DeleteProfilePhotoAsync(int userId);
-    Task<OperationResult<UserDto>> GetUserByEmailAsync(string email);
+    Task<OperationResult<UserDto>> GetUserByUsernameAsync(string username);
     Task<OperationResult<IEnumerable<UserDto>>> GetStudentsByParentAsync(int parentId);
     Task<OperationResult<IEnumerable<UserDto>>> ExportUsersAsync(UserRole? role = null);
     Task<OperationResult<ResetPasswordResult>> ResetPasswordAsync(int userId);

@@ -1,10 +1,11 @@
-﻿namespace Project.BLL.DTOs.Teachers;
+namespace Project.BLL.DTOs.Teachers;
 
 public class TeacherDto
 {
     public int Id { get; set; }
     public string FullName { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
+    public string Username { get; set; } = string.Empty;
+    public string? ContactEmail { get; set; }
     public string? Phone { get; set; }
     public bool IsActive { get; set; }
     public string? ProfilePictureUrl { get; set; }

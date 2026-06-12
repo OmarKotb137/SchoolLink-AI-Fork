@@ -1,4 +1,4 @@
-using AutoMapper;
+﻿using AutoMapper;
 using Common.Results;
 using Project.BLL.DTOs.FinalGrades;
 using Project.BLL.Interfaces;
@@ -87,7 +87,7 @@ public class FinalGradeService : IFinalGradeService
     public async Task<OperationResult> PublishGradesAsync(PublishGradesRequest request)
     {
         var admin = await _unitOfWork.Users.GetByIdAsync(request.PublishedById);
-        if (admin is null || admin.IsDeleted || !admin.IsActive || admin.Role != UserRole.Admin)
+        if (admin is null || admin.IsDeleted || !admin.IsActive || !admin.Role.IsAdminLike())
             return OperationResult.Failure("يجب أن يكون المستخدم مسؤولاً لنشر الدرجات");
 
         var year = await _unitOfWork.AcademicYears.GetByIdAsync(request.AcademicYearId);

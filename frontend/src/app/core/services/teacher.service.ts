@@ -7,6 +7,7 @@ import { PagedResult } from '../models/api.model';
 export interface Teacher {
   id: number;
   fullName: string;
+  username: string;
   email: string;
   phone?: string;
   isActive: boolean;
@@ -18,7 +19,8 @@ export interface Teacher {
 
 export interface CreateTeacherRequest {
   fullName: string;
-  email: string;
+  username: string;
+  contactEmail?: string;
   password: string;
   phone?: string;
   subjectIds: number[];

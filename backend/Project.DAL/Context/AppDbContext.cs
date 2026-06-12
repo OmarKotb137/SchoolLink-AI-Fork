@@ -19,6 +19,7 @@ public class AppDbContext : DbContext
     public DbSet<TeacherSubject> TeacherSubjects => Set<TeacherSubject>();
     public DbSet<ClassTemplateLink> ClassTemplateLinks => Set<ClassTemplateLink>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<EmailOtp> EmailOtps => Set<EmailOtp>();
     
     public DbSet<EvaluationTemplate> EvaluationTemplates => Set<EvaluationTemplate>();
     public DbSet<EvaluationItem> EvaluationItems => Set<EvaluationItem>();

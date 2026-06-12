@@ -81,9 +81,9 @@ export class SubjectManagement implements OnInit {
 
   editingSubjectId = signal<number | null>(null);
 
-  // FIX #2: رسائل feedback للمستخدم
   errorMessage = signal('');
   successMessage = signal('');
+  deleteSubjectConfirmId = signal<number | null>(null);
 
   newSubject: Partial<Subject> = { name: '', code: '' };
 
@@ -184,19 +184,27 @@ export class SubjectManagement implements OnInit {
   }
 
   deleteSubject(id: number) {
-    if (confirm('هل أنت متأكد من حذف هذه المادة؟')) {
-      this.subjectService.delete(id).subscribe({
-        next: () => {
-          this.loadSubjects();
-          this.showSuccess('تم حذف المادة بنجاح!');
-        },
-        // FIX #2: error handler مع رسالة للمستخدم
-        error: (err) => {
-          console.error('Delete failed', err);
-          this.showError('فشل في حذف المادة. حاول مرة أخرى.');
-        }
-      });
-    }
+    this.deleteSubjectConfirmId.set(id);
+  }
+
+  cancelDeleteSubject() {
+    this.deleteSubjectConfirmId.set(null);
+  }
+
+  confirmDeleteSubject() {
+    const id = this.deleteSubjectConfirmId();
+    if (!id) return;
+    this.deleteSubjectConfirmId.set(null);
+    this.subjectService.delete(id).subscribe({
+      next: () => {
+        this.loadSubjects();
+        this.showSuccess('تم حذف المادة بنجاح!');
+      },
+      error: (err) => {
+        console.error('Delete failed', err);
+        this.showError('فشل في حذف المادة. حاول مرة أخرى.');
+      }
+    });
   }
 
   private showError(msg: string) {

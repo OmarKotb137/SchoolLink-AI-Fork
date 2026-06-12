@@ -44,6 +44,7 @@ export class UserManagement implements OnInit {
   parentLinkedStudents = signal<Array<{ student: Student; link: ParentStudentLink | null }>>([]);
   parentChildSearchResults = signal<Student[]>([]);
   selectedChildren = signal<Array<{ student: Student; relationship: RelationshipType }>>([]);
+  parentPhoneCheckResult = signal<{ alreadyExists: boolean; existingParentId?: number | null; existingParentName?: string | null; existingParentUsername?: string | null } | null>(null);
 
   isLoading = signal(false);
   isGenerating = signal(false);
@@ -51,6 +52,10 @@ export class UserManagement implements OnInit {
 
   errorMessage = signal<string | null>(null);
   successMessage = signal<string | null>(null);
+  generateAllConfirmOpen = signal(false);
+  deleteAccountConfirm = signal<User | null>(null);
+  resetPasswordConfirm = signal<User | null>(null);
+  unlinkStudentConfirm = signal<ParentStudentLink | null>(null);
 
   showCreateModal = signal(false);
   showEditModal = signal(false);
@@ -71,7 +76,7 @@ export class UserManagement implements OnInit {
   parentChildSearch = signal('');
 
   formName = signal('');
-  formEmail = signal('');
+  formUsername = signal('');
   formPassword = signal('');
   formPhone = signal('');
   formRole = signal<ManagedRole>('Parent');
@@ -91,7 +96,7 @@ export class UserManagement implements OnInit {
       const matchesQuery =
         !query ||
         user.fullName.toLowerCase().includes(query) ||
-        user.email.toLowerCase().includes(query) ||
+        user.username.toLowerCase().includes(query) ||
         (user.phone ?? '').toLowerCase().includes(query);
 
       return matchesTab && matchesQuery;
@@ -206,13 +211,14 @@ export class UserManagement implements OnInit {
     if (role) {
       this.setFormRole(role);
     }
+    this.parentPhoneCheckResult.set(null);
     this.showCreateModal.set(true);
   }
 
   openEditModal(user: User) {
     this.editingUserId.set(user.id);
     this.formName.set(user.fullName);
-    this.formEmail.set(user.email);
+    this.formUsername.set(user.username);
     this.formPhone.set(user.phone ?? '');
     this.formRole.set(this.toManagedRole(user.role));
     this.formPassword.set('');
@@ -230,6 +236,7 @@ export class UserManagement implements OnInit {
     this.bulkResult.set(null);
     this.resetPasswordResult.set(null);
     this.showFormPassword.set(false);
+    this.parentPhoneCheckResult.set(null);
     this.resetForm();
   }
 
@@ -317,14 +324,18 @@ export class UserManagement implements OnInit {
 
   generateAllStudentAccounts() {
     const allIds = this.filteredCandidates().map(candidate => candidate.studentId);
-    if (allIds.length === 0) {
-      return;
-    }
+    if (allIds.length === 0) return;
+    this.generateAllConfirmOpen.set(true);
+  }
 
-    if (!confirm(`هل تريد إنشاء حسابات لـ ${allIds.length} طالب؟`)) {
-      return;
-    }
+  cancelGenerateAll() {
+    this.generateAllConfirmOpen.set(false);
+  }
 
+  confirmGenerateAll() {
+    this.generateAllConfirmOpen.set(false);
+    const allIds = this.filteredCandidates().map(candidate => candidate.studentId);
+    if (allIds.length === 0) return;
     this.isGenerating.set(true);
     this.userService.generateBulkStudentAccounts(allIds).subscribe({
       next: res => {
@@ -434,10 +445,17 @@ export class UserManagement implements OnInit {
   }
 
   deleteAccount(user: User) {
-    if (!confirm(`هل أنت متأكد من حذف حساب ${user.fullName}؟`)) {
-      return;
-    }
+    this.deleteAccountConfirm.set(user);
+  }
 
+  cancelDeleteAccount() {
+    this.deleteAccountConfirm.set(null);
+  }
+
+  confirmDeleteAccount() {
+    const user = this.deleteAccountConfirm();
+    if (!user) return;
+    this.deleteAccountConfirm.set(null);
     this.isLoading.set(true);
     this.userService.deleteUser(user.id).subscribe({
       next: () => {
@@ -452,10 +470,17 @@ export class UserManagement implements OnInit {
   }
 
   resetPassword(user: User) {
-    if (!confirm(`هل تريد إعادة تعيين كلمة مرور حساب "${user.fullName}"؟\nسيتم توليد كلمة مرور جديدة عشوائية.`)) {
-      return;
-    }
+    this.resetPasswordConfirm.set(user);
+  }
 
+  cancelResetPassword() {
+    this.resetPasswordConfirm.set(null);
+  }
+
+  confirmResetPassword() {
+    const user = this.resetPasswordConfirm();
+    if (!user) return;
+    this.resetPasswordConfirm.set(null);
     this.isLoading.set(true);
     this.userService.resetPassword(user.id).subscribe({
       next: res => {
@@ -502,15 +527,19 @@ export class UserManagement implements OnInit {
   }
 
   unlinkStudentFromParent(link: ParentStudentLink) {
+    if (!this.managingParent()) return;
+    this.unlinkStudentConfirm.set(link);
+  }
+
+  cancelUnlinkStudentFromParent() {
+    this.unlinkStudentConfirm.set(null);
+  }
+
+  confirmUnlinkStudentFromParent() {
+    const link = this.unlinkStudentConfirm();
     const parent = this.managingParent();
-    if (!parent) {
-      return;
-    }
-
-    if (!confirm(`هل تريد فك ربط الطالب ${link.studentName} من ولي الأمر ${link.parentName}؟`)) {
-      return;
-    }
-
+    if (!link || !parent) return;
+    this.unlinkStudentConfirm.set(null);
     this.isLoading.set(true);
     this.parentStudentService.unlink(link.id).subscribe({
       next: () => {
@@ -554,7 +583,34 @@ export class UserManagement implements OnInit {
       this.selectedChildren.set([]);
       this.parentChildSearch.set('');
       this.parentChildSearchResults.set([]);
+      this.parentPhoneCheckResult.set(null);
     }
+  }
+
+  checkParentPhone() {
+    const phone = this.formPhone().trim();
+    if (!phone) {
+      this.showError('يرجى إدخال رقم الهاتف أولًا');
+      return;
+    }
+
+    this.isLoading.set(true);
+    this.userService.checkParentPhone(phone).subscribe({
+      next: res => {
+        this.parentPhoneCheckResult.set(res.data ?? null);
+        this.isLoading.set(false);
+      },
+      error: err => {
+        this.showError(this.extractErrorMessage(err, 'تعذر فحص رقم الهاتف'));
+        this.isLoading.set(false);
+      }
+    });
+  }
+
+  generateParentCredentials() {
+    this.formRole.set('Parent');
+    this.selectedChildren.set([]);
+    this.showCreateModal.set(true);
   }
 
   copyToClipboard(text: string) {
@@ -586,7 +642,7 @@ export class UserManagement implements OnInit {
           <div class="card">
             <h1>بيانات دخول الطالب</h1>
             <div class="row"><div class="label">اسم الطالب</div><div class="value">${this.escapeHtml(credential.studentName)}</div></div>
-            <div class="row"><div class="label">البريد الإلكتروني</div><div class="value">${this.escapeHtml(credential.generatedEmail)}</div></div>
+            <div class="row"><div class="label">اسم المستخدم</div><div class="value">${this.escapeHtml(credential.generatedUsername)}</div></div>
             <div class="row"><div class="label">كلمة المرور</div><div class="value">${this.escapeHtml(credential.plainPassword)}</div></div>
           </div>
         </body>
@@ -604,7 +660,7 @@ export class UserManagement implements OnInit {
     const rows = bulk.results.map(result => `
       <tr>
         <td>${this.escapeHtml(result.studentName || 'غير معروف')}</td>
-        <td>${this.escapeHtml(result.generatedEmail || '—')}</td>
+        <td>${this.escapeHtml(result.generatedUsername || '—')}</td>
         <td>${this.escapeHtml(result.plainPassword || '—')}</td>
         <td>${result.success ? 'تم' : this.escapeHtml(result.errorMessage || 'فشل')}</td>
       </tr>
@@ -680,7 +736,7 @@ export class UserManagement implements OnInit {
   }
 
   canSaveAccount(): boolean {
-    return !!this.formName() && !!this.formEmail() && !!this.formPassword() && !this.isLoading();
+    return !!this.formName() && !!this.formUsername() && !!this.formPassword() && !this.isLoading();
   }
 
   canUpdateAccount(): boolean {
@@ -688,7 +744,7 @@ export class UserManagement implements OnInit {
   }
 
   private saveAccountBasic() {
-    if (!this.formName() || !this.formEmail() || !this.formPassword()) {
+    if (!this.formName() || !this.formUsername() || !this.formPassword()) {
       this.showError('يرجى إدخال الاسم والبريد الإلكتروني وكلمة المرور');
       return;
     }
@@ -696,7 +752,8 @@ export class UserManagement implements OnInit {
     this.isLoading.set(true);
     this.userService.createUser({
       fullName: this.formName(),
-      email: this.formEmail(),
+      username: this.formUsername(),
+      contactEmail: this.formUsername(),
       password: this.formPassword(),
       phone: this.formPhone() || undefined,
       role: this.formRole()
@@ -714,7 +771,7 @@ export class UserManagement implements OnInit {
   }
 
   private saveParentWithStudents() {
-    if (!this.formName() || !this.formEmail() || !this.formPassword()) {
+    if (!this.formName() || !this.formUsername() || !this.formPassword()) {
       this.showError('يرجى إدخال جميع البيانات المطلوبة');
       return;
     }
@@ -722,7 +779,8 @@ export class UserManagement implements OnInit {
     this.isLoading.set(true);
     this.userService.createParentWithStudents({
       fullName: this.formName(),
-      email: this.formEmail(),
+      username: this.formUsername(),
+      contactEmail: this.formUsername(),
       password: this.formPassword(),
       phone: this.formPhone() || undefined,
       children: this.selectedChildren().map(child => ({
@@ -750,7 +808,7 @@ export class UserManagement implements OnInit {
 
   private resetForm() {
     this.formName.set('');
-    this.formEmail.set('');
+    this.formUsername.set('');
     this.formPassword.set('');
     this.formPhone.set('');
     this.formRole.set('Parent');

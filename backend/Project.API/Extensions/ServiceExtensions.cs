@@ -38,6 +38,11 @@ public static class ServiceExtensions
         services.AddScoped<ILibraryService, LibraryService>();
         services.AddScoped<ISchoolProfileService, SchoolProfileService>();
         services.AddHttpClient<IDropboxService, DropboxService>();
+        services.AddHttpClient<IEmailService, BrevoEmailService>(client =>
+        {
+            client.BaseAddress = new Uri("https://api.brevo.com/v3/");
+        });
+        services.AddScoped<IEmailOtpService, EmailOtpService>();
 
 
         services.AddScoped<IAcademicYearService, AcademicYearService>();

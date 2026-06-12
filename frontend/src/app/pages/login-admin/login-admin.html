@@ -14,7 +14,7 @@
     <form #f="ngForm" (ngSubmit)="handleLogin(f)">
       <div style="position:relative;margin-bottom:16px">
         <span class="material-symbols-outlined" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,.2);font-size:18px">badge</span>
-        <input ngModel name="email" type="text" placeholder="البريد الإلكتروني" style="width:100%;padding:14px 44px 14px 14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;font-size:14px;color:#fff;outline:none;font-family:inherit;transition:all .25s">
+        <input ngModel name="username" type="text" placeholder="اسم المستخدم" style="width:100%;padding:14px 44px 14px 14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;font-size:14px;color:#fff;outline:none;font-family:inherit;transition:all .25s">
       </div>
       <div style="position:relative;margin-bottom:16px">
         <span class="material-symbols-outlined" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,.2);font-size:18px">key</span>
@@ -27,6 +27,12 @@
         <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:rgba(255,255,255,.45);cursor:pointer"><input type="checkbox" style="width:15px;height:15px;accent-color:#00236f"> تذكرني</label>
         <a href="#" style="font-size:13px;color:#6fa3ff;text-decoration:none;font-weight:600">نسيت كلمة المرور؟</a>
       </div>
+      @if (errorMsg()) {
+        <div style="display:flex;align-items:center;gap:8px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#fca5a5;font-size:13px;border-radius:12px;padding:12px 16px;margin-bottom:16px">
+          <span class="material-symbols-outlined" style="font-size:16px;flex-shrink:0">error</span>
+          {{ errorMsg() }}
+        </div>
+      }
       <button type="submit" style="width:100%;padding:15px;border:none;border-radius:14px;background:linear-gradient(135deg,#00236f,#1a4a9e);color:#fff;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
         <span class="material-symbols-outlined" style="font-size:18px">login</span> تسجيل الدخول
       </button>

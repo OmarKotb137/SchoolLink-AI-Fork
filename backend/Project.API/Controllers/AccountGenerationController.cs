@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Project.BLL.DTOs.AccountGeneration;
 using Project.BLL.Interfaces;
@@ -55,5 +55,15 @@ public class AccountGenerationController : ControllerBase
             return BadRequest(result);
 
         return StatusCode(201, result);
+    }
+
+    [HttpGet("parents/check-phone")]
+    public async Task<IActionResult> CheckParentPhone([FromQuery] string phone)
+    {
+        var result = await _accountGenerationService.CheckParentPhoneAsync(phone);
+        if (!result.IsSuccess)
+            return BadRequest(result);
+
+        return Ok(result);
     }
 }

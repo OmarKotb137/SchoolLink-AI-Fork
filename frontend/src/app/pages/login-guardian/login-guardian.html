@@ -45,10 +45,10 @@
 
       <form #f="ngForm" (ngSubmit)="handleLogin(f)" class="space-y-4">
         <div>
-          <label class="block text-sm font-semibold text-on-surface-variant mb-1.5">البريد الإلكتروني</label>
+          <label class="block text-sm font-semibold text-on-surface-variant mb-1.5">اسم المستخدم</label>
           <div class="relative">
             <span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-outline text-lg">badge</span>
-            <input ngModel name="email" type="email" required placeholder="أدخل البريد الإلكتروني"
+            <input ngModel name="username" type="text" required placeholder="أدخل اسم المستخدم"
                    class="w-full py-3.5 pr-12 pl-4 bg-surface-container-low border border-outline/30 rounded-xl text-sm text-on-surface outline-none transition-all focus:border-primary/50 focus:bg-white placeholder:text-outline/60" />
           </div>
         </div>
@@ -71,6 +71,13 @@
           </label>
           <a href="#" class="text-sm text-primary hover:text-primary/80 font-semibold no-underline">{{ roleTab() === 'student' ? 'مساعدة؟' : 'نسيت كلمة المرور؟' }}</a>
         </div>
+
+        @if (errorMsg()) {
+          <div class="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">
+            <span class="material-symbols-outlined text-base">error</span>
+            {{ errorMsg() }}
+          </div>
+        }
 
         <button type="submit"
                 class="w-full py-3.5 border-none rounded-xl bg-gradient-to-l from-primary to-blue-600 text-white text-sm font-bold cursor-pointer flex items-center justify-center gap-2 transition-all hover:shadow-lg hover:shadow-primary/20 active:scale-[0.98]">

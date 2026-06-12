@@ -29,9 +29,9 @@ public class AuthService : IAuthService
 
     public async Task<OperationResult<AuthResponseDto>> LoginAsync(LoginRequest request)
     {
-        var user = await _unitOfWork.Users.GetByEmailAsync(request.Email);
+        var user = await _unitOfWork.Users.GetByUsernameAsync(request.Username);
         if (user == null)
-            return OperationResult<AuthResponseDto>.Failure("البريد الإلكتروني أو كلمة المرور غير صحيحة");
+            return OperationResult<AuthResponseDto>.Failure("اسم المستخدم أو كلمة المرور غير صحيحة");
 
         if (user.IsDeleted)
             return OperationResult<AuthResponseDto>.Failure("تم حذف هذا الحساب");
@@ -40,7 +40,7 @@ public class AuthService : IAuthService
             return OperationResult<AuthResponseDto>.Failure("هذا الحساب غير نشط. اتصل بالمسؤول");
 
         if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
-            return OperationResult<AuthResponseDto>.Failure("البريد الإلكتروني أو كلمة المرور غير صحيحة");
+            return OperationResult<AuthResponseDto>.Failure("اسم المستخدم أو كلمة المرور غير صحيحة");
 
         var accessToken = GenerateAccessToken(user);
         var refreshToken = await GenerateAndStoreRefreshTokenAsync(user.Id);
@@ -58,9 +58,9 @@ public class AuthService : IAuthService
 
     public async Task<OperationResult<AuthResponseDto>> LoginByRoleAsync(LoginRequest request, UserRole role)
     {
-        var user = await _unitOfWork.Users.GetByEmailAsync(request.Email);
+        var user = await _unitOfWork.Users.GetByUsernameAsync(request.Username);
         if (user == null)
-            return OperationResult<AuthResponseDto>.Failure("البريد الإلكتروني أو كلمة المرور غير صحيحة");
+            return OperationResult<AuthResponseDto>.Failure("اسم المستخدم أو كلمة المرور غير صحيحة");
 
         if (user.IsDeleted)
             return OperationResult<AuthResponseDto>.Failure("تم حذف هذا الحساب");
@@ -68,11 +68,12 @@ public class AuthService : IAuthService
         if (!user.IsActive)
             return OperationResult<AuthResponseDto>.Failure("هذا الحساب غير نشط. اتصل بالمسؤول");
 
-        if (user.Role != role)
-            return OperationResult<AuthResponseDto>.Failure("بيانات الدخول غير صحيحة لهذا النوع من المستخدمين");
-
+        // نتحقق من كلمة المرور أولاً قبل الذور — عشان ماندِش نكشف إن المستخدم موجود بذور تاني
         if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
-            return OperationResult<AuthResponseDto>.Failure("البريد الإلكتروني أو كلمة المرور غير صحيحة");
+            return OperationResult<AuthResponseDto>.Failure("اسم المستخدم أو كلمة المرور غير صحيحة");
+
+        if (user.Role != role)
+            return OperationResult<AuthResponseDto>.Failure("اسم المستخدم أو كلمة المرور غير صحيحة");
 
         var accessToken = GenerateAccessToken(user);
         var refreshToken = await GenerateAndStoreRefreshTokenAsync(user.Id);
@@ -178,7 +179,7 @@ public class AuthService : IAuthService
             new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new Claim(ClaimTypes.Name, user.FullName),
             new Claim(ClaimTypes.Role, user.Role.ToString()),
-            new Claim(ClaimTypes.Email, user.Email)
+            new Claim("username", user.Username)
         };
 
         var expiry = DateTime.UtcNow.AddMinutes(GetConfigDouble("Jwt:ExpiryInMinutes", 60));

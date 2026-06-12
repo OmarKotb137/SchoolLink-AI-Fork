@@ -5,7 +5,7 @@ import { buildApiUrl } from '../utils/api-url';
 export interface Room {
   id: number;
   name: string;
-  // FIX: Backend RoomDto.Capacity is int? (nullable) ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â typed correctly to avoid
+  // FIX: Backend RoomDto.Capacity is int? (nullable) ��������a�����a��� typed correctly to avoid
   //      "null" being displayed in the UI or Number(null)=0 failing validation.
   capacity: number | null;
   type: string; // e.g., 'Classroom', 'ScienceLab', 'ComputerLab' ...
@@ -55,7 +55,7 @@ export class RoomService {
     return this.http.post<any>(this.apiUrl, data);
   }
 
-  // FIX: RoomsController.Update checks  `if (id != request.Id) ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ BadRequest`.
+  // FIX: RoomsController.Update checks  `if (id != request.Id) → BadRequest`.
   //      Previously the body was sent without `id`, so request.Id defaulted to 0
   //      and the check ALWAYS failed.  Now we spread `id` into the body so both
   //      the URL segment and the JSON body carry the same value.

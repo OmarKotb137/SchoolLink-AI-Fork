@@ -9,4 +9,5 @@ public interface IAccountGenerationService
     Task<OperationResult<GenerateStudentAccountResultDto>> GenerateStudentAccountAsync(int studentId);
     Task<OperationResult<GenerateBulkStudentAccountsResultDto>> GenerateBulkStudentAccountsAsync(List<int> studentIds);
     Task<OperationResult<CreateParentWithStudentsResultDto>> CreateParentWithStudentsAsync(CreateParentWithStudentsRequest request);
+    Task<OperationResult<ParentPhoneCheckDto>> CheckParentPhoneAsync(string phone);
 }

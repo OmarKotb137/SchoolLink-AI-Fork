@@ -31,3 +31,7 @@ tailwind-flowbite-guidelines.md
 pagination-pattern.md
 planparentstudentimport.md
 addingStudentToClass.md
+newplan.md
+planningchanges.md
+backend/Project.DAL/Context/AppDbContextFactory.cs
+backend/Project.DAL/Context/AppDbContextFactory.cs

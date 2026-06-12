@@ -28,12 +28,12 @@ public class UserService : IUserService
         if (request.Role == UserRole.Teacher)
             return OperationResult<UserDto>.Failure("استخدم API المعلمين لإنشاء حسابات المعلمين وتخصصاتهم");
 
-        var existing = await _unitOfWork.Users.GetByEmailAsync(request.Email);
+        var existing = await _unitOfWork.Users.GetByUsernameAsync(request.Username);
         if (existing != null && !existing.IsDeleted)
-            return OperationResult<UserDto>.Failure("يوجد مستخدم مسجل بهذا البريد الإلكتروني بالفعل");
+            return OperationResult<UserDto>.Failure("اسم المستخدم مأخوذ بالفعل");
 
         if (existing != null && existing.IsDeleted)
-            return OperationResult<UserDto>.Failure("هذا البريد الإلكتروني مرتبط بحساب محذوف، يرجى استخدام بريد إلكتروني آخر");
+            return OperationResult<UserDto>.Failure("اسم المستخدم مرتبط بحساب محذوف، يرجى اختيار اسم آخر");
 
         try
         {
@@ -49,10 +49,10 @@ public class UserService : IUserService
             var userDto = _mapper.Map<UserDto>(user);
             return OperationResult<UserDto>.Success(userDto, "تم إنشاء المستخدم بنجاح");
         }
-        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("IX_Users_Email") == true)
+        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("IX_Users_Username") == true)
         {
             await _unitOfWork.RollbackTransactionAsync();
-            return OperationResult<UserDto>.Failure("يوجد مستخدم مسجل بهذا البريد الإلكتروني بالفعل");
+            return OperationResult<UserDto>.Failure("اسم المستخدم مأخوذ بالفعل");
         }
         catch
         {
@@ -257,11 +257,11 @@ public class UserService : IUserService
         return OperationResult.Success("تم حذف المستخدم بنجاح");
     }
 
-    public async Task<OperationResult<UserDto>> GetUserByEmailAsync(string email)
+    public async Task<OperationResult<UserDto>> GetUserByUsernameAsync(string username)
     {
-        var user = await _unitOfWork.Users.GetByEmailAsync(email);
+        var user = await _unitOfWork.Users.GetByUsernameAsync(username);
         if (user == null || user.IsDeleted)
-            return OperationResult<UserDto>.Failure($"لم يتم العثور على مستخدم بالبريد الإلكتروني {email}");
+            return OperationResult<UserDto>.Failure($"لم يتم العثور على مستخدم باسم المستخدم {username}");
 
         var dto = _mapper.Map<UserDto>(user);
         return OperationResult<UserDto>.Success(dto, "تم استرجاع المستخدم بنجاح");

@@ -5,6 +5,11 @@ using Project.Domain.Enums;
 
 namespace Project.API.Extensions;
 
+/// <summary>
+/// One-time database seeder.
+/// Runs on every startup but exits immediately if Users table already has data.
+/// Covers every table in the schema with at least one record.
+/// </summary>
 public static class SeedData
 {
     public static async Task Initialize(IServiceProvider serviceProvider)
@@ -12,163 +17,174 @@ public static class SeedData
         using var scope = serviceProvider.CreateScope();
         var ctx = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        // Check if migrations are set up (__EFMigrationsHistory table exists)
-        var hasMigrations = false;
-        try { hasMigrations = (await ctx.Database.GetAppliedMigrationsAsync()).Any(); }
-        catch { /* history table doesn't exist */ }
+        // ── Apply any pending migrations ───────────────────────────────────
+        // Auto-heal: if the DB has tables but zero migration history
+        // (happens when dotnet-ef drop targeted a different SQL instance
+        // than the one the app connects to at runtime), drop and recreate.
+        if (await ctx.Database.CanConnectAsync())
+        {
+            var applied = (await ctx.Database.GetAppliedMigrationsAsync()).ToList();
+            if (!applied.Any())
+                await ctx.Database.EnsureDeletedAsync(); // wipe orphaned schema
+        }
+        await ctx.Database.MigrateAsync();
 
-        if (hasMigrations)
-        {
-            var pending = await ctx.Database.GetPendingMigrationsAsync();
-            if (pending.Any()) await ctx.Database.MigrateAsync();
-        }
-        else
-        {
-            await ctx.Database.EnsureCreatedAsync();
-        }
-
-        // Ensure ClassTemplateLinks table exists (entity was added after initial migration)
-        try { await ctx.Database.ExecuteSqlRawAsync("SELECT TOP 1 1 FROM ClassTemplateLinks"); }
-        catch
-        {
-            await ctx.Database.ExecuteSqlRawAsync(@"
-                CREATE TABLE ClassTemplateLinks (
-                    Id int IDENTITY(1,1) NOT NULL PRIMARY KEY,
-                    ClassId int NOT NULL,
-                    TemplateId int NOT NULL,
-                    AcademicYearId int NOT NULL,
-                    IsDeleted bit NOT NULL DEFAULT 0,
-                    CreatedAt datetime2 NOT NULL DEFAULT GETUTCDATE(),
-                    UpdatedAt datetime2 NOT NULL DEFAULT GETUTCDATE(),
-                    CONSTRAINT FK_ClassTemplateLinks_Class FOREIGN KEY (ClassId) REFERENCES Classes(Id),
-                    CONSTRAINT FK_ClassTemplateLinks_Template FOREIGN KEY (TemplateId) REFERENCES EvaluationTemplates(Id),
-                    CONSTRAINT FK_ClassTemplateLinks_AcademicYear FOREIGN KEY (AcademicYearId) REFERENCES AcademicYears(Id)
-                );
-                CREATE UNIQUE INDEX IX_ClassTemplateLinks_Class_Template_Year
-                    ON ClassTemplateLinks(ClassId, TemplateId, AcademicYearId)
-                    WHERE IsDeleted = 0;");
-        }
-
-        // Ensure EvaluationTemplates unique index has IsDeleted filter
-        try
-        {
-            await ctx.Database.ExecuteSqlRawAsync(@"
-                DROP INDEX IX_EvaluationTemplates_GradeLevelId_SubjectId_AcademicYearId ON EvaluationTemplates;
-                CREATE UNIQUE INDEX IX_EvaluationTemplates_GradeLevelId_SubjectId_AcademicYearId
-                    ON EvaluationTemplates(GradeLevelId, SubjectId, AcademicYearId)
-                    WHERE IsDeleted = 0;");
-        }
-        catch { /* index might already be correct */ }
-
-        // Ensure EvaluationItems has AbsenceMaxScore column
-        try
-        {
-            await ctx.Database.ExecuteSqlRawAsync("SELECT TOP 1 [AbsenceMaxScore] FROM EvaluationItems");
-        }
-        catch
-        {
-            await ctx.Database.ExecuteSqlRawAsync("ALTER TABLE EvaluationItems ADD AbsenceMaxScore decimal(5,2) NULL");
-        }
-
-        if (await ctx.AcademicYears.AnyAsync())
-        {
-        await SeedUnitsAndLessons(ctx);
-        await SeedStudentUsers(ctx);
-        await SeedEvaluationPeriods(ctx);
-        await SeedParents(ctx);
-        return;
-        }
+        // ── Guard: seed only once ──────────────────────────────────────────
+        if (await ctx.Users.IgnoreQueryFilters().AnyAsync()) return;
 
         var now = DateTime.UtcNow;
+        var rng = new Random(42);
 
-        // ── 1. AcademicYear ──
+        // =================================================================
+        // 1. AcademicYear
+        // =================================================================
         var year = new AcademicYear
         {
-            Name = "2025/2026", StartDate = new DateOnly(2025, 9, 21),
-            EndDate = new DateOnly(2026, 6, 11), IsCurrent = true,
+            Name      = "2025/2026",
+            StartDate = new DateOnly(2025, 9, 21),
+            EndDate   = new DateOnly(2026, 6, 11),
+            IsCurrent = true,
             CreatedAt = now, UpdatedAt = now
         };
         ctx.AcademicYears.Add(year);
+        await ctx.SaveChangesAsync();
 
-        // ── 2. GradeLevel ──
+        // =================================================================
+        // 2. SchoolProfile
+        // =================================================================
+        ctx.SchoolProfiles.Add(new SchoolProfile
+        {
+            SchoolName                = "مدرسة النيل الإعدادية بنين",
+            Governorate               = "محافظة الجيزة",
+            Directorate               = "مديرية التربية والتعليم بالجيزة",
+            EducationalAdministration = "إدارة الجيزة التعليمية",
+            Address    = "شارع النيل - وسط الجيزة",
+            Phone      = "02-37654321",
+            Email      = "nile.prep@sch.ed.eg",
+            ManagerName= "أ/ محمد عبد الرحمن",
+            IsActive   = true,
+            CreatedAt = now, UpdatedAt = now
+        });
+        await ctx.SaveChangesAsync();
+
+        // =================================================================
+        // 3. GradeLevel
+        // =================================================================
         var grade1 = new GradeLevel
         {
             Name = "الصف الأول الإعدادي", LevelOrder = 1, Stage = "إعدادي",
             CreatedAt = now, UpdatedAt = now
         };
-        ctx.GradeLevels.Add(grade1);
-
-        // ── 3. Subjects ──
-        var subjects = new List<Subject>
+        var grade2 = new GradeLevel
         {
-            new() { Name = "اللغة العربية", Code = "ARB", CreatedAt = now, UpdatedAt = now },
-            new() { Name = "اللغة الإنجليزية", Code = "ENG", CreatedAt = now, UpdatedAt = now },
-            new() { Name = "الرياضيات", Code = "MTH", CreatedAt = now, UpdatedAt = now },
-            new() { Name = "العلوم", Code = "SCI", CreatedAt = now, UpdatedAt = now },
-            new() { Name = "الدراسات الاجتماعية", Code = "SOC", CreatedAt = now, UpdatedAt = now },
-            new() { Name = "التربية الإسلامية", Code = "ISL", CreatedAt = now, UpdatedAt = now },
-            new() { Name = "الحاسب الآلي", Code = "CMP", CreatedAt = now, UpdatedAt = now },
-        };
-        ctx.Subjects.AddRange(subjects);
-        await ctx.SaveChangesAsync();
-        var subj = subjects.Where(s => s.Code != null).ToDictionary(s => s.Code!, s => s.Id);
-
-        // ── 4. SchoolProfile ──
-        ctx.SchoolProfiles.Add(new SchoolProfile
-        {
-            SchoolName = "مدرسة النيل الإعدادية بنين",
-            Governorate = "محافظة الجيزة",
-            Directorate = "مديرية التربية والتعليم بالجيزة",
-            EducationalAdministration = "إدارة الجيزة التعليمية",
-            Address = "شارع النيل - وسط الجيزة",
-            Phone = "02-37654321",
-            Email = "nile.prep@sch.ed.eg",
-            ManagerName = "أ/ محمد عبد الرحمن",
-            IsActive = true,
+            Name = "الصف الثاني الإعدادي", LevelOrder = 2, Stage = "إعدادي",
             CreatedAt = now, UpdatedAt = now
-        });
+        };
+        var grade3 = new GradeLevel
+        {
+            Name = "الصف الثالث الإعدادي", LevelOrder = 3, Stage = "إعدادي",
+            CreatedAt = now, UpdatedAt = now
+        };
+        ctx.GradeLevels.AddRange(grade1, grade2, grade3);
+        await ctx.SaveChangesAsync();
 
-        // ── 5. Users - Admin + Teachers ──
+        // =================================================================
+        // 4. Subjects  (7 subjects)
+        // =================================================================
+        var subjectDefs = new (string name, string code)[]
+        {
+            ("اللغة العربية",       "ARB"),
+            ("اللغة الإنجليزية",    "ENG"),
+            ("الرياضيات",           "MTH"),
+            ("العلوم",              "SCI"),
+            ("الدراسات الاجتماعية","SOC"),
+            ("التربية الإسلامية",  "ISL"),
+            ("الحاسب الآلي",       "CMP"),
+        };
+        var subjectEntities = subjectDefs
+            .Select(d => new Subject { Name = d.name, Code = d.code, CreatedAt = now, UpdatedAt = now })
+            .ToList();
+        ctx.Subjects.AddRange(subjectEntities);
+        await ctx.SaveChangesAsync();
+
+        // Quick lookup: code → entity
+        var S = subjectEntities.ToDictionary(s => s.Code!, s => s);
+
+        // =================================================================
+        // 5. Users — Admin
+        // =================================================================
         var admin = new User
         {
-            FullName = "Super Admin",
-            Email = "admin@school.com",
+            FullName = "Super Admin", Username = "admin",
+            ContactEmail = "admin@school.com",
             PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@123"),
             Role = UserRole.Admin, IsActive = true,
             CreatedAt = now, UpdatedAt = now
         };
-        ctx.Users.Add(admin);
-        await ctx.SaveChangesAsync();
-
-        var teacherData = new (string name, string email, string code)[]
+        var director = new User
         {
-            ("أحمد علي حسن",     "ahmed.ali@school.com", "ARB"),
-            ("سارة محمود عبد الله","sara.mahmoud@school.com","ENG"),
-            ("محمد كمال الدين",  "mohamed.kamal@school.com","MTH"),
-            ("إيمان عبد الفتاح", "eman.abdelfattah@school.com","SCI"),
-            ("خالد رشاد عثمان",  "khaled.reshad@school.com","SOC"),
-            ("نادية جابر سليمان","nadia.gaber@school.com","ISL"),
-            ("أيمن شعبان مصطفى", "ayman.shaban@school.com","CMP"),
+            FullName = "مدير المدرسة", Username = "director",
+            ContactEmail = "director@school.com",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Director@123"),
+            Role = UserRole.Admin, IsActive = true,
+            CreatedAt = now, UpdatedAt = now
         };
-        var teachers = new List<User>();
-        foreach (var (n, e, _) in teacherData)
-        {
-            var t = new User
-            {
-                FullName = n, Email = e,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Teacher@123"),
-                Role = UserRole.Teacher, IsActive = true,
-                CreatedAt = now, UpdatedAt = now
-            };
-            ctx.Users.Add(t);
-            teachers.Add(t);
-        }
+        ctx.Users.AddRange(admin, director);
         await ctx.SaveChangesAsync();
-        var teacherMap = new Dictionary<string, int>();
-        for (int i = 0; i < teacherData.Length; i++)
-            teacherMap[teacherData[i].code] = teachers[i].Id;
 
-        // ── 6. Classes ──
+        // =================================================================
+        // 6. Users — Teachers (one per subject)
+        // =================================================================
+        var teacherDefs = new (string fullName, string username, string email, string code)[]
+        {
+            ("أحمد علي حسن",        "ahmed.ali",       "ahmed.ali@school.com",       "ARB"),
+            ("سارة محمود عبد الله", "sara.mahmoud",    "sara.mahmoud@school.com",    "ENG"),
+            ("محمد كمال الدين",     "mohamed.kamal",   "mohamed.kamal@school.com",   "MTH"),
+            ("إيمان عبد الفتاح",    "eman.abdelfattah","eman.abdelfattah@school.com","SCI"),
+            ("خالد رشاد عثمان",     "khaled.reshad",   "khaled.reshad@school.com",   "SOC"),
+            ("نادية جابر سليمان",   "nadia.gaber",     "nadia.gaber@school.com",     "ISL"),
+            ("أيمن شعبان مصطفى",    "ayman.shaban",    "ayman.shaban@school.com",    "CMP"),
+        };
+        var teacherUsers = teacherDefs.Select(d => new User
+        {
+            FullName = d.fullName, Username = d.username, ContactEmail = d.email,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Teacher@123"),
+            Role = UserRole.Teacher, IsActive = true,
+            CreatedAt = now, UpdatedAt = now
+        }).ToList();
+        ctx.Users.AddRange(teacherUsers);
+        await ctx.SaveChangesAsync();
+
+        // code → teacher User
+        var T = teacherDefs.Zip(teacherUsers, (d, u) => (d.code, user: u))
+                           .ToDictionary(x => x.code, x => x.user);
+
+        // =================================================================
+        // 7. Rooms
+        // =================================================================
+        var roomDefs = new (string name, string type, int cap)[]
+        {
+            ("فصل أ",               "Classroom", 35),
+            ("فصل ب",               "Classroom", 35),
+            ("فصل ج",               "Classroom", 35),
+            ("فصل د",               "Classroom", 35),
+            ("فصل هـ",              "Classroom", 35),
+            ("فصل و",               "Classroom", 35),
+            ("معمل علوم",           "Lab",       30),
+            ("معمل حاسب",           "Lab",       30),
+            ("قاعة متعددة الأغراض","Hall",      100),
+        };
+        var rooms = roomDefs.Select(d => new Room
+        {
+            Name = d.name, Type = d.type, Capacity = d.cap,
+            CreatedAt = now, UpdatedAt = now
+        }).ToList();
+        ctx.Rooms.AddRange(rooms);
+        await ctx.SaveChangesAsync();
+
+        // =================================================================
+        // 8. Classes  (2 classes, same grade)
+        // =================================================================
         var class1 = new SchoolClass
         {
             GradeLevelId = grade1.Id, AcademicYearId = year.Id,
@@ -182,35 +198,299 @@ public static class SeedData
         ctx.Classes.AddRange(class1, class2);
         await ctx.SaveChangesAsync();
 
-        // ── 7. Students (60) ──
-        var firstNames = new[] { "أحمد", "محمد", "علي", "عمر", "خالد", "يوسف", "محمود", "كريم",
-            "حسن", "حسين", "إبراهيم", "عبد الله", "أمير", "بسام", "جمال", "حمزة", "سامي",
-            "صالح", "عادل", "طارق", "زياد", "شادي", "نادر", "هاني", "وائل", "باهر", "رامي",
-            "فادي", "مازن", "ياسر" };
-        var middleNames = new[] { "عبد الرحمن", "سامح", "جابر", "إسماعيل", "فتحي", "أنور", "حمدي",
-            "رفعت", "سمير", "جلال", "نبيل", "كامل", "رشاد", "بهجت", "نعيم", "وجيه", "قاسم",
-            "مبشر", "رؤوف", "وديع", "بهاء", "سعيد", "لطفي", "نزيه", "هشام", "أكرم", "بطرس",
-            "ثروت", "جورج", "حبيب", "داوود", "رزق", "زكريا", "شكري", "صبري", "ضياء", "طاهر",
-            "ظافر", "عبد المجيد", "غريب", "فكري", "قدرى", "كرم", "ماجد", "ناصر", "هادي",
-            "وحيد", "يسري", "زغلول", "عبد الحميد" };
-        var lastNames  = new[] { "عبد العزيز", "السيد", "خليل", "مرسي", "فوزي", "نصر", "الشيخ",
-            "شحاتة", "النجار", "هاشم", "الديب", "رمضان", "سلامة", "بسيوني", "عتريس", "أبو زيد",
-            "الزهار", "عرفة", "جابر", "خضر", "زيتون", "طنطاوي", "عبده", "غانم", "قنديل",
-            "كمال", "لقمة", "موسى", "نوح", "هندي" };
-        var students = new List<Student>();
-        var enrollments = new List<StudentEnrollment>();
-        int seq = 0;
-        foreach (var cls in new[] { class1, class2 })
+        // =================================================================
+        // 8b. Classes — grade2 & grade3
+        // =================================================================
+        var class3 = new SchoolClass
         {
-            for (int i = 0; i < 30; i++)
+            GradeLevelId = grade2.Id, AcademicYearId = year.Id,
+            Name = "2/1", CreatedAt = now, UpdatedAt = now
+        };
+        var class4 = new SchoolClass
+        {
+            GradeLevelId = grade2.Id, AcademicYearId = year.Id,
+            Name = "2/2", CreatedAt = now, UpdatedAt = now
+        };
+        var class5 = new SchoolClass
+        {
+            GradeLevelId = grade3.Id, AcademicYearId = year.Id,
+            Name = "3/1", CreatedAt = now, UpdatedAt = now
+        };
+        var class6 = new SchoolClass
+        {
+            GradeLevelId = grade3.Id, AcademicYearId = year.Id,
+            Name = "3/2", CreatedAt = now, UpdatedAt = now
+        };
+        ctx.Classes.AddRange(class3, class4, class5, class6);
+        await ctx.SaveChangesAsync();
+
+        // =================================================================
+        // 9. TeacherSubjects + ClassSubjectTeachers
+        // =================================================================
+        var weeklyPeriods = new Dictionary<string, int>
+        {
+            ["ARB"] = 6, ["ENG"] = 4, ["MTH"] = 5,
+            ["SCI"] = 3, ["SOC"] = 3, ["ISL"] = 2, ["CMP"] = 2
+        };
+
+        // TeacherSubject — one row per (teacher, subject)
+        foreach (var (code, teacher) in T)
+        {
+            ctx.TeacherSubjects.Add(new TeacherSubject
+            {
+                TeacherId = teacher.Id, SubjectId = S[code].Id,
+                CreatedAt = now, UpdatedAt = now
+            });
+        }
+        await ctx.SaveChangesAsync();
+
+        // ClassSubjectTeacher — each teacher × each class
+        var cstList = new List<ClassSubjectTeacher>();
+        foreach (var cls in new[] { class1, class2, class3, class4, class5, class6 })
+        {
+            foreach (var (code, teacher) in T)
+            {
+                var cst = new ClassSubjectTeacher
+                {
+                    ClassId = cls.Id, SubjectId = S[code].Id,
+                    TeacherId = teacher.Id, AcademicYearId = year.Id,
+                    WeeklyPeriods = weeklyPeriods[code],
+                    CreatedAt = now, UpdatedAt = now
+                };
+                ctx.ClassSubjectTeachers.Add(cst);
+                cstList.Add(cst);
+            }
+        }
+        await ctx.SaveChangesAsync();
+
+        // =================================================================
+        // 10. Timetables + TimetableSlots
+        // =================================================================
+        var schoolDays = new[] { SchoolDay.Sunday, SchoolDay.Monday, SchoolDay.Tuesday, SchoolDay.Wednesday, SchoolDay.Thursday };
+        var slotTimes  = new (TimeOnly start, TimeOnly end)[]
+        {
+            (new TimeOnly(8,  0), new TimeOnly(8,  45)),
+            (new TimeOnly(8, 45), new TimeOnly(9,  30)),
+            (new TimeOnly(9, 45), new TimeOnly(10, 30)),
+            (new TimeOnly(10,30), new TimeOnly(11, 15)),
+            (new TimeOnly(11,30), new TimeOnly(12, 15)),
+            (new TimeOnly(12,15), new TimeOnly(13,  0)),
+            (new TimeOnly(13,15), new TimeOnly(14,  0)),
+        };
+        var codes7 = new[] { "ARB", "ENG", "MTH", "SCI", "SOC", "ISL", "CMP" };
+
+        var classArray = new[] { class1, class2, class3, class4, class5, class6 };
+        for (int ci = 0; ci < classArray.Length; ci++)
+        {
+            var cls = classArray[ci];
+
+            // subjectId → cstId for this class
+            var cstMap = cstList
+                .Where(c => c.ClassId == cls.Id)
+                .ToDictionary(c => c.SubjectId, c => c.Id);
+
+            var tt = new Timetable
+            {
+                ClassId = cls.Id, AcademicYearId = year.Id,
+                IsActive = true, CreatedAt = now, UpdatedAt = now
+            };
+            ctx.Timetables.Add(tt);
+            await ctx.SaveChangesAsync();
+
+            var slots = new List<TimetableSlot>();
+            for (int d = 0; d < schoolDays.Length; d++)
+            {
+                for (int p = 0; p < slotTimes.Length; p++)
+                {
+                    var code = codes7[(d * slotTimes.Length + p) % 7];
+                    slots.Add(new TimetableSlot
+                    {
+                        TimetableId           = tt.Id,
+                        DayOfWeek             = schoolDays[d],
+                        PeriodNumber          = p + 1,
+                        StartTime             = slotTimes[p].start,
+                        EndTime               = slotTimes[p].end,
+                        ClassSubjectTeacherId = cstMap[S[code].Id],
+                        RoomId                = rooms[ci].Id,  // كل فصل في أوضته الخاصة
+                        CreatedAt = now, UpdatedAt = now
+                    });
+                }
+            }
+            ctx.TimetableSlots.AddRange(slots);
+        }
+        await ctx.SaveChangesAsync();
+
+        // =================================================================
+        // 11. EvaluationPeriods
+        // =================================================================
+        var periodsList = Project.Domain.Helpers.EvaluationPeriodGenerator
+            .GeneratePeriods(year.Id, year.StartDate, year.EndDate)
+            .ToList();
+        ctx.EvaluationPeriods.AddRange(periodsList);
+        await ctx.SaveChangesAsync();
+
+        // =================================================================
+        // 12. EvaluationTemplates — Math + Arabic (للصفوف الثلاثة)
+        // =================================================================
+        var templateMath = new EvaluationTemplate
+        {
+            GradeLevelId = grade1.Id, SubjectId = S["MTH"].Id, AcademicYearId = year.Id,
+            Name = "تقييم الرياضيات - الأول الإعدادي",
+            CalculationType = EvaluationCalculationType.MiddleSchool,
+            IsActive = true, Weeks = 12, CreatedAt = now, UpdatedAt = now
+        };
+        var templateArb = new EvaluationTemplate
+        {
+            GradeLevelId = grade1.Id, SubjectId = S["ARB"].Id, AcademicYearId = year.Id,
+            Name = "تقييم اللغة العربية - الأول الإعدادي",
+            CalculationType = EvaluationCalculationType.MiddleSchool,
+            IsActive = true, Weeks = 12, CreatedAt = now, UpdatedAt = now
+        };
+        var templateMath2 = new EvaluationTemplate
+        {
+            GradeLevelId = grade2.Id, SubjectId = S["MTH"].Id, AcademicYearId = year.Id,
+            Name = "تقييم الرياضيات - الثاني الإعدادي",
+            CalculationType = EvaluationCalculationType.MiddleSchool,
+            IsActive = true, Weeks = 12, CreatedAt = now, UpdatedAt = now
+        };
+        var templateArb2 = new EvaluationTemplate
+        {
+            GradeLevelId = grade2.Id, SubjectId = S["ARB"].Id, AcademicYearId = year.Id,
+            Name = "تقييم اللغة العربية - الثاني الإعدادي",
+            CalculationType = EvaluationCalculationType.MiddleSchool,
+            IsActive = true, Weeks = 12, CreatedAt = now, UpdatedAt = now
+        };
+        var templateMath3 = new EvaluationTemplate
+        {
+            GradeLevelId = grade3.Id, SubjectId = S["MTH"].Id, AcademicYearId = year.Id,
+            Name = "تقييم الرياضيات - الثالث الإعدادي",
+            CalculationType = EvaluationCalculationType.MiddleSchool,
+            IsActive = true, Weeks = 12, CreatedAt = now, UpdatedAt = now
+        };
+        var templateArb3 = new EvaluationTemplate
+        {
+            GradeLevelId = grade3.Id, SubjectId = S["ARB"].Id, AcademicYearId = year.Id,
+            Name = "تقييم اللغة العربية - الثالث الإعدادي",
+            CalculationType = EvaluationCalculationType.MiddleSchool,
+            IsActive = true, Weeks = 12, CreatedAt = now, UpdatedAt = now
+        };
+        ctx.EvaluationTemplates.AddRange(
+            templateMath, templateArb,
+            templateMath2, templateArb2,
+            templateMath3, templateArb3);
+        await ctx.SaveChangesAsync();
+
+        // EvaluationItems — grade 1
+        var mathItems = BuildItems(templateMath.Id, now, new[]
+        {
+            ("السلوك والحضور",    5m,  ItemType.Number, AutoCalcType.Attendance),
+            ("الواجب المنزلي",    5m,  ItemType.Number, AutoCalcType.None),
+            ("النشاط الصفي",      5m,  ItemType.Number, AutoCalcType.None),
+            ("التقييم الأسبوعي", 10m, ItemType.Number, AutoCalcType.None),
+            ("الاختبار القصير",   5m,  ItemType.Number, AutoCalcType.None),
+        });
+        var arbItems = BuildItems(templateArb.Id, now, new[]
+        {
+            ("السلوك والحضور",    3m,  ItemType.Number, AutoCalcType.Attendance),
+            ("الواجب المنزلي",    5m,  ItemType.Number, AutoCalcType.None),
+            ("الإملاء",           2m,  ItemType.Number, AutoCalcType.None),
+            ("النشاط الصفي",      5m,  ItemType.Number, AutoCalcType.None),
+            ("التقييم الأسبوعي", 10m, ItemType.Number, AutoCalcType.None),
+            ("الاختبار القصير",   5m,  ItemType.Number, AutoCalcType.None),
+        });
+
+        // EvaluationItems — grade 2
+        var mathItems2 = BuildItems(templateMath2.Id, now, new[]
+        {
+            ("السلوك والحضور",    5m,  ItemType.Number, AutoCalcType.Attendance),
+            ("الواجب المنزلي",    5m,  ItemType.Number, AutoCalcType.None),
+            ("النشاط الصفي",      5m,  ItemType.Number, AutoCalcType.None),
+            ("التقييم الأسبوعي", 10m, ItemType.Number, AutoCalcType.None),
+            ("الاختبار القصير",   5m,  ItemType.Number, AutoCalcType.None),
+        });
+        var arbItems2 = BuildItems(templateArb2.Id, now, new[]
+        {
+            ("السلوك والحضور",    3m,  ItemType.Number, AutoCalcType.Attendance),
+            ("الواجب المنزلي",    5m,  ItemType.Number, AutoCalcType.None),
+            ("الإملاء",           2m,  ItemType.Number, AutoCalcType.None),
+            ("النشاط الصفي",      5m,  ItemType.Number, AutoCalcType.None),
+            ("التقييم الأسبوعي", 10m, ItemType.Number, AutoCalcType.None),
+            ("الاختبار القصير",   5m,  ItemType.Number, AutoCalcType.None),
+        });
+
+        // EvaluationItems — grade 3
+        var mathItems3 = BuildItems(templateMath3.Id, now, new[]
+        {
+            ("السلوك والحضور",    5m,  ItemType.Number, AutoCalcType.Attendance),
+            ("الواجب المنزلي",    5m,  ItemType.Number, AutoCalcType.None),
+            ("النشاط الصفي",      5m,  ItemType.Number, AutoCalcType.None),
+            ("التقييم الأسبوعي", 10m, ItemType.Number, AutoCalcType.None),
+            ("الاختبار القصير",   5m,  ItemType.Number, AutoCalcType.None),
+        });
+        var arbItems3 = BuildItems(templateArb3.Id, now, new[]
+        {
+            ("السلوك والحضور",    3m,  ItemType.Number, AutoCalcType.Attendance),
+            ("الواجب المنزلي",    5m,  ItemType.Number, AutoCalcType.None),
+            ("الإملاء",           2m,  ItemType.Number, AutoCalcType.None),
+            ("النشاط الصفي",      5m,  ItemType.Number, AutoCalcType.None),
+            ("التقييم الأسبوعي", 10m, ItemType.Number, AutoCalcType.None),
+            ("الاختبار القصير",   5m,  ItemType.Number, AutoCalcType.None),
+        });
+
+        var allEvalItems = mathItems.Concat(arbItems)
+            .Concat(mathItems2).Concat(arbItems2)
+            .Concat(mathItems3).Concat(arbItems3).ToList();
+        ctx.EvaluationItems.AddRange(allEvalItems);
+        await ctx.SaveChangesAsync();
+
+        // =================================================================
+        // 13. ClassTemplateLinks  (each class × its grade templates)
+        // =================================================================
+        var classTmplPairs = new (SchoolClass cls, EvaluationTemplate math, EvaluationTemplate arb)[]
+        {
+            (class1, templateMath,  templateArb),
+            (class2, templateMath,  templateArb),
+            (class3, templateMath2, templateArb2),
+            (class4, templateMath2, templateArb2),
+            (class5, templateMath3, templateArb3),
+            (class6, templateMath3, templateArb3),
+        };
+        foreach (var (cls, tmplMath, tmplArb) in classTmplPairs)
+        {
+            ctx.ClassTemplateLinks.Add(new ClassTemplateLink
+            {
+                ClassId = cls.Id, TemplateId = tmplMath.Id, AcademicYearId = year.Id,
+                CreatedAt = now, UpdatedAt = now
+            });
+            ctx.ClassTemplateLinks.Add(new ClassTemplateLink
+            {
+                ClassId = cls.Id, TemplateId = tmplArb.Id, AcademicYearId = year.Id,
+                CreatedAt = now, UpdatedAt = now
+            });
+        }
+        await ctx.SaveChangesAsync();
+
+        // =================================================================
+        // 14. Students (10 per class × 6 classes = 60) + User accounts + Enrollments
+        // =================================================================
+        var firstNames  = new[] { "أحمد","محمد","علي","عمر","خالد","يوسف","محمود","كريم","حسن","حسين","إبراهيم","عبد الله","أمير","بسام","جمال","حمزة","سامي","صالح","عادل","طارق","زياد","شادي","نادر","هاني","وائل","باهر","رامي","فادي","مازن","ياسر" };
+        var middleNames = new[] { "عبد الرحمن","سامح","جابر","إسماعيل","فتحي","أنور","حمدي","رفعت","سمير","جلال","نبيل","كامل","رشاد","بهجت","نعيم","وجيه","قاسم","مبشر","رؤوف","وديع","بهاء","سعيد","لطفي","نزيه","هشام","أكرم","بطرس","ثروت","جورج","حبيب" };
+        var lastNames   = new[] { "عبد العزيز","السيد","خليل","مرسي","فوزي","نصر","الشيخ","شحاتة","النجار","هاشم","الديب","رمضان","سلامة","بسيوني","عتريس","أبو زيد","الزهار","عرفة","جابر","خضر","زيتون","طنطاوي","عبده","غانم","قنديل","كمال","لقمة","موسى","نوح","هندي" };
+
+        // ── Create Student rows ─────────────────────────────────────────
+        var students = new List<Student>();
+        int seq = 0;
+        foreach (var cls in new[] { class1, class2, class3, class4, class5, class6 })
+        {
+            for (int i = 0; i < 10; i++)
             {
                 seq++;
                 var st = new Student
                 {
-                    FullName = $"{firstNames[i % 30]} {middleNames[i % 50]} {lastNames[i]}",
-                    Gender = Gender.Male,
+                    FullName  = $"{firstNames[i]} {middleNames[i]} {lastNames[i]}",
+                    Gender    = Gender.Male,
                     BirthDate = new DateOnly(2012, 1 + (seq % 12), 1 + (seq % 28)),
-                    IsActive = true,
+                    IsActive  = true,
                     CreatedAt = now, UpdatedAt = now
                 };
                 ctx.Students.Add(st);
@@ -219,40 +499,37 @@ public static class SeedData
         }
         await ctx.SaveChangesAsync();
 
-        // ── 7.1 Student user accounts ──
-        var studentUsers = new List<User>();
-        foreach (var st in students)
+        // ── Create Student User accounts (batch) ────────────────────────
+        var studentUsers = students.Select(st => new User
         {
-            var studentUser = new User
-            {
-                FullName = st.FullName,
-                Email = $"student{st.Id}@school.com",
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Student@123"),
-                Role = UserRole.Student,
-                IsActive = true,
-                CreatedAt = now,
-                UpdatedAt = now
-            };
-            ctx.Users.Add(studentUser);
-            studentUsers.Add(studentUser);
-        }
+            FullName     = st.FullName,
+            Username     = $"student{st.Id}",
+            ContactEmail = $"student{st.Id}@school.com",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Student@123"),
+            Role = UserRole.Student, IsActive = true,
+            CreatedAt = now, UpdatedAt = now
+        }).ToList();
+        ctx.Users.AddRange(studentUsers);
         await ctx.SaveChangesAsync();
 
+        // Link Student → User
         for (int i = 0; i < students.Count; i++)
-        {
             students[i].UserId = studentUsers[i].Id;
-        }
         await ctx.SaveChangesAsync();
 
+        // ── Enrollments ─────────────────────────────────────────────────
+        var enrollments = new List<StudentEnrollment>();
         seq = 0;
-        foreach (var cls in new[] { class1, class2 })
+        foreach (var cls in new[] { class1, class2, class3, class4, class5, class6 })
         {
-            for (int i = 0; i < 30; i++)
+            for (int i = 0; i < 10; i++)
             {
                 var enr = new StudentEnrollment
                 {
-                    StudentId = students[seq].Id, ClassId = cls.Id, AcademicYearId = year.Id,
-                    EnrolledAt = new DateOnly(2025, 9, 21),
+                    StudentId      = students[seq].Id,
+                    ClassId        = cls.Id,
+                    AcademicYearId = year.Id,
+                    EnrolledAt     = new DateOnly(2025, 9, 21),
                     CreatedAt = now, UpdatedAt = now
                 };
                 ctx.StudentEnrollments.Add(enr);
@@ -262,201 +539,83 @@ public static class SeedData
         }
         await ctx.SaveChangesAsync();
 
-        // ── 8a. TeacherSubject (teacher specializations) ──
-        foreach (var kv in teacherMap)
+        // =================================================================
+        // 15. Parents (one per student) + ParentStudents
+        // =================================================================
+        var parentUsers = students.Select(st => new User
         {
-            ctx.Set<TeacherSubject>().Add(new TeacherSubject
-            {
-                TeacherId  = kv.Value,
-                SubjectId  = subj[kv.Key],
-                CreatedAt  = now,
-                UpdatedAt  = now
-            });
-        }
+            FullName     = $"وليّ أمر {st.FullName}",
+            Username     = $"parent{st.Id}",
+            ContactEmail = $"parent{st.Id}@school.com",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Parent@123"),
+            Role = UserRole.Parent, IsActive = true,
+            CreatedAt = now, UpdatedAt = now
+        }).ToList();
+        ctx.Users.AddRange(parentUsers);
         await ctx.SaveChangesAsync();
 
-        // ── 8b. ClassSubjectTeacher ──
-        var cstList = new List<ClassSubjectTeacher>();
-        foreach (var cls in new[] { class1, class2 })
+        var parentStudentLinks = students.Zip(parentUsers, (st, p) => new ParentStudent
         {
-            foreach (var kv in teacherMap)
-            {
-                var cst = new ClassSubjectTeacher
-                {
-                    ClassId = cls.Id, SubjectId = subj[kv.Key],
-                    TeacherId = kv.Value, AcademicYearId = year.Id,
-                    CreatedAt = now, UpdatedAt = now
-                };
-                ctx.ClassSubjectTeachers.Add(cst);
-                cstList.Add(cst);
-            }
-        }
+            ParentId     = p.Id,
+            StudentId    = st.Id,
+            Relationship = RelationshipType.Father,
+            CreatedAt = now, UpdatedAt = now
+        }).ToList();
+        ctx.ParentStudents.AddRange(parentStudentLinks);
         await ctx.SaveChangesAsync();
 
-        // ── 9. Rooms ──
-        var rooms = new List<Room>();
-        for (int r = 1; r <= 6; r++)
-        {
-            var rm = new Room
-            {
-                Name = $"فصل {r}", Type = "Classroom", Capacity = 35,
-                CreatedAt = now, UpdatedAt = now
-            };
-            ctx.Rooms.Add(rm);
-            rooms.Add(rm);
-        }
-        await ctx.SaveChangesAsync();
+        // =================================================================
+        // 16. StudentEvaluations (batch insert)
+        //     + accumulate scores in memory for PeriodAverages (no N+1)
+        // =================================================================
+        var mathTeacherId = T["MTH"].Id;
 
-        // ── 10. Timetable + Slots ──
-        var days = new[] { SchoolDay.Sunday, SchoolDay.Monday, SchoolDay.Tuesday, SchoolDay.Wednesday, SchoolDay.Thursday };
-        var periods = new (TimeOnly start, TimeOnly end)[]
+        // (enrollmentId, periodId) → (earnedTotal, maxTotal)
+        var periodTotals = new Dictionary<(int, int), (double earned, double max)>();
+
+        var evalBatch = new List<StudentEvaluation>(500);
+        // كل فصل ياخد items بتاعة درجته بس
+        var classEvalItems = new Dictionary<int, List<EvaluationItem>>
         {
-            (new TimeOnly(8,0), new TimeOnly(8,45)),
-            (new TimeOnly(8,45), new TimeOnly(9,30)),
-            (new TimeOnly(9,45), new TimeOnly(10,30)),
-            (new TimeOnly(10,30), new TimeOnly(11,15)),
-            (new TimeOnly(11,30), new TimeOnly(12,15)),
-            (new TimeOnly(12,15), new TimeOnly(13,0)),
-            (new TimeOnly(13,15), new TimeOnly(14,0)),
+            [class1.Id] = mathItems.Concat(arbItems).ToList(),
+            [class2.Id] = mathItems.Concat(arbItems).ToList(),
+            [class3.Id] = mathItems2.Concat(arbItems2).ToList(),
+            [class4.Id] = mathItems2.Concat(arbItems2).ToList(),
+            [class5.Id] = mathItems3.Concat(arbItems3).ToList(),
+            [class6.Id] = mathItems3.Concat(arbItems3).ToList(),
         };
-        var subjectCodes = new[] { "ARB", "ENG", "MTH", "SCI", "SOC", "ISL", "CMP" };
-        foreach (var cls in new[] { class1, class2 })
-        {
-            var cstMap = cstList.Where(c => c.ClassId == cls.Id).ToDictionary(c => c.SubjectId, c => c.Id);
-            var tt = new Timetable
-            {
-                ClassId = cls.Id, AcademicYearId = year.Id, IsActive = true,
-                CreatedAt = now, UpdatedAt = now
-            };
-            ctx.Timetables.Add(tt);
-            await ctx.SaveChangesAsync();
-
-            int roomOffset = cls.Id == class1.Id ? 0 : 3;
-            for (int d = 0; d < days.Length; d++)
-            {
-                for (int p = 0; p < periods.Length; p++)
-                {
-                    var slot = new TimetableSlot
-                    {
-                        TimetableId = tt.Id, DayOfWeek = days[d],
-                        PeriodNumber = p + 1, StartTime = periods[p].start,
-                        EndTime = periods[p].end,
-                        ClassSubjectTeacherId = cstMap[subj[subjectCodes[(d + p) % 7]]],
-                        RoomId = rooms[(d + roomOffset) % 6].Id,
-                        CreatedAt = now, UpdatedAt = now
-                    };
-                    ctx.TimetableSlots.Add(slot);
-                }
-            }
-        }
-        await ctx.SaveChangesAsync();
-
-        // ── 11. EvaluationPeriods — dynamic from academic year ──
-        var generatedPeriods = Project.Domain.Helpers.EvaluationPeriodGenerator.GeneratePeriods(year.Id, year.StartDate, year.EndDate);
-        var periodsList = generatedPeriods.ToList();
-        ctx.EvaluationPeriods.AddRange(periodsList);
-        await ctx.SaveChangesAsync();
-
-        // ── 12. EvaluationTemplates (Math + Arabic) ──
-        var templateMath = new EvaluationTemplate
-        {
-            GradeLevelId = grade1.Id, SubjectId = subj["MTH"], AcademicYearId = year.Id,
-            Name = "تقييم الرياضيات الأسبوعي", CalculationType = EvaluationCalculationType.MiddleSchool,
-            IsActive = true, CreatedAt = now, UpdatedAt = now
-        };
-        var templateArb = new EvaluationTemplate
-        {
-            GradeLevelId = grade1.Id, SubjectId = subj["ARB"], AcademicYearId = year.Id,
-            Name = "تقييم اللغة العربية الأسبوعي", CalculationType = EvaluationCalculationType.MiddleSchool,
-            IsActive = true, CreatedAt = now, UpdatedAt = now
-        };
-        ctx.EvaluationTemplates.AddRange(templateMath, templateArb);
-        await ctx.SaveChangesAsync();
-
-        // ── 13. EvaluationItems ──
-        var mathItems = new (string name, decimal max, ItemType type, AutoCalcType auto)[]
-        {
-            ("السلوك والحضور",   5m,  ItemType.Number, AutoCalcType.Attendance),
-            ("الواجب المنزلي",   5m,  ItemType.Number, AutoCalcType.None),
-            ("النشاط الصفي",     5m,  ItemType.Number, AutoCalcType.None),
-            ("التقييم الأسبوعي", 10m, ItemType.Number, AutoCalcType.None),
-            ("الاختبار القصير",  5m,  ItemType.Number, AutoCalcType.None),
-        };
-        var arbItems = new (string name, decimal max, ItemType type, AutoCalcType auto)[]
-        {
-            ("السلوك والحضور",   3m,  ItemType.Number, AutoCalcType.Attendance),
-            ("الواجب المنزلي",   5m,  ItemType.Number, AutoCalcType.None),
-            ("الإملاء",          2m,  ItemType.Number, AutoCalcType.None),
-            ("النشاط الصفي",     5m,  ItemType.Number, AutoCalcType.None),
-            ("التقييم الأسبوعي", 10m, ItemType.Number, AutoCalcType.None),
-            ("الاختبار القصير",  5m,  ItemType.Number, AutoCalcType.None),
-        };
-        var allItems = new List<EvaluationItem>();
-        int order = 1;
-        foreach (var (n, m, t, a) in mathItems)
-        {
-            var item = new EvaluationItem
-            {
-                TemplateId = templateMath.Id, Name = n, MaxScore = m,
-                Weight = 1, ItemType = t, AutoCalcType = a, DisplayOrder = order++,
-                IsVisible = true, CreatedAt = now, UpdatedAt = now
-            };
-            ctx.EvaluationItems.Add(item);
-            allItems.Add(item);
-        }
-        order = 1;
-        foreach (var (n, m, t, a) in arbItems)
-        {
-            var item = new EvaluationItem
-            {
-                TemplateId = templateArb.Id, Name = n, MaxScore = m,
-                Weight = 1, ItemType = t, AutoCalcType = a, DisplayOrder = order++,
-                IsVisible = true, CreatedAt = now, UpdatedAt = now
-            };
-            ctx.EvaluationItems.Add(item);
-            allItems.Add(item);
-        }
-        await ctx.SaveChangesAsync();
-
-        var mathItemIds = allItems.Where(i => i.TemplateId == templateMath.Id).ToList();
-        var arbItemIds = allItems.Where(i => i.TemplateId == templateArb.Id).ToList();
-        var teacherUserId = teachers[0].Id; // use first teacher as entered-by
-
-        // ── 14. StudentEvaluations — scores per item per period ──
-        var evalBatch = new List<StudentEvaluation>();
-        var rng = new Random(42);
         foreach (var enr in enrollments)
         {
+            var gradeItems = classEvalItems[enr.ClassId];
             foreach (var period in periodsList)
             {
-                foreach (var item in mathItemIds)
+                double periodEarned = 0;
+                double periodMax    = 0;
+
+                foreach (var item in gradeItems)
                 {
-                    var max = (double)item.MaxScore;
+                    var maxD  = (double)item.MaxScore;
                     var score = item.AutoCalcType == AutoCalcType.Attendance
-                        ? max
-                        : Math.Round(rng.NextDouble() * max * 0.6 + max * 0.3, 2);
+                        ? maxD
+                        : Math.Round(rng.NextDouble() * maxD * 0.6 + maxD * 0.4, 2);
+
                     evalBatch.Add(new StudentEvaluation
                     {
-                        EnrollmentId = enr.Id, EvaluationItemId = item.Id,
-                        PeriodId = period.Id, Score = (decimal)score,
-                        EnteredById = teacherUserId, EnteredAt = now,
+                        EnrollmentId     = enr.Id,
+                        EvaluationItemId = item.Id,
+                        PeriodId         = period.Id,
+                        Score            = (decimal)score,
+                        EnteredById      = mathTeacherId,
+                        EnteredAt        = now,
                         CreatedAt = now, UpdatedAt = now
                     });
+
+                    periodEarned += score;
+                    periodMax    += maxD;
                 }
-                foreach (var item in arbItemIds)
-                {
-                    var max = (double)item.MaxScore;
-                    var score = item.AutoCalcType == AutoCalcType.Attendance
-                        ? max
-                        : Math.Round(rng.NextDouble() * max * 0.6 + max * 0.3, 2);
-                    evalBatch.Add(new StudentEvaluation
-                    {
-                        EnrollmentId = enr.Id, EvaluationItemId = item.Id,
-                        PeriodId = period.Id, Score = (decimal)score,
-                        EnteredById = teacherUserId, EnteredAt = now,
-                        CreatedAt = now, UpdatedAt = now
-                    });
-                }
+
+                periodTotals[(enr.Id, period.Id)] = (periodEarned, periodMax);
+
                 if (evalBatch.Count >= 500)
                 {
                     ctx.StudentEvaluations.AddRange(evalBatch);
@@ -469,319 +628,662 @@ public static class SeedData
         {
             ctx.StudentEvaluations.AddRange(evalBatch);
             await ctx.SaveChangesAsync();
-            evalBatch.Clear();
         }
 
-        // ── 15. PeriodAverages ──
-        var avgBatch = new List<PeriodAverage>();
+        // =================================================================
+        // 17. PeriodAverages  (fully in-memory, zero extra queries)
+        // =================================================================
+        var avgBatch = periodTotals.Select(kv => new PeriodAverage
+        {
+            EnrollmentId = kv.Key.Item1,
+            PeriodId     = kv.Key.Item2,
+            AvgScore     = (decimal)Math.Round(kv.Value.earned, 2),
+            MaxScore     = (decimal)Math.Round(kv.Value.max,    2),
+            CalculatedAt = now,
+            CreatedAt = now, UpdatedAt = now
+        }).ToList();
+        ctx.PeriodAverages.AddRange(avgBatch);
+        await ctx.SaveChangesAsync();
+
+        // =================================================================
+        // 18. PeriodicAssessments (2 exams per enrollment)
+        // =================================================================
+        var assessments = new List<PeriodicAssessment>();
         foreach (var enr in enrollments)
         {
-            foreach (var period in periodsList)
+            assessments.Add(new PeriodicAssessment
             {
-                var scores = await ctx.StudentEvaluations
-                    .Where(se => se.EnrollmentId == enr.Id && se.PeriodId == period.Id && se.Score != null)
-                    .ToListAsync();
-                var avg = scores.Any() ? scores.Average(s => (double)s.Score!) : 0;
-                avgBatch.Add(new PeriodAverage
+                EnrollmentId   = enr.Id,
+                AssessmentType = PeriodicAssessmentType.MonthlyExam1,
+                Score          = (decimal)Math.Round(rng.NextDouble() * 6 + 9, 2),
+                MaxScore       = 15,
+                AssessmentDate = new DateOnly(2026, 3, 15),
+                CreatedAt = now, UpdatedAt = now
+            });
+            assessments.Add(new PeriodicAssessment
+            {
+                EnrollmentId   = enr.Id,
+                AssessmentType = PeriodicAssessmentType.MonthlyExam2,
+                Score          = (decimal)Math.Round(rng.NextDouble() * 6 + 9, 2),
+                MaxScore       = 15,
+                AssessmentDate = new DateOnly(2026, 4, 15),
+                CreatedAt = now, UpdatedAt = now
+            });
+        }
+        ctx.PeriodicAssessments.AddRange(assessments);
+        await ctx.SaveChangesAsync();
+
+        // =================================================================
+        // 19. FinalGrades  (in-memory from assessments already created)
+        // =================================================================
+        var asmByEnr = assessments.GroupBy(a => a.EnrollmentId)
+                                   .ToDictionary(g => g.Key, g => g.ToList());
+        var finalGrades = enrollments.Select(enr =>
+        {
+            var asms = asmByEnr.GetValueOrDefault(enr.Id) ?? new();
+            var e1   = asms.FirstOrDefault(a => a.AssessmentType == PeriodicAssessmentType.MonthlyExam1)?.Score ?? 0;
+            var e2   = asms.FirstOrDefault(a => a.AssessmentType == PeriodicAssessmentType.MonthlyExam2)?.Score ?? 0;
+            var written  = e1 + e2;
+            var finalExam= (decimal)Math.Round(rng.NextDouble() * 10 + 20, 2);
+            var total    = written + finalExam;
+            return new FinalGrade
+            {
+                EnrollmentId     = enr.Id,
+                PeriodAvgScore   = (decimal)Math.Round(rng.NextDouble() * 15 + 25, 2),
+                Assessment1Score = e1,
+                Assessment2Score = e2,
+                WrittenTotal     = written,
+                FinalExamScore   = finalExam,
+                Total            = total > 100 ? 100 : total,
+                IsPublished      = true,
+                CreatedAt = now, UpdatedAt = now
+            };
+        }).ToList();
+        ctx.FinalGrades.AddRange(finalGrades);
+        await ctx.SaveChangesAsync();
+
+        // =================================================================
+        // 20. DailyAbsences  (~25% of students, 3 absences each)
+        // =================================================================
+        var mathCstClass1 = cstList.First(c => c.ClassId == class1.Id && c.SubjectId == S["MTH"].Id);
+        var febStart = new DateOnly(2026, 2, 1);
+        var absences = new List<DailyAbsence>();
+        foreach (var enr in enrollments)
+        {
+            if (rng.NextDouble() >= 0.25) continue;
+            var mathCstForClass = cstList.First(c => c.ClassId == enr.ClassId && c.SubjectId == S["MTH"].Id);
+            for (int d = 0; d < 3; d++)
+            {
+                absences.Add(new DailyAbsence
                 {
-                    EnrollmentId = enr.Id, PeriodId = period.Id,
-                    AvgScore = (decimal)Math.Round(avg, 2),
-                    MaxScore = 40, CalculatedAt = now,
+                    EnrollmentId          = enr.Id,
+                    ClassSubjectTeacherId = mathCstForClass.Id,
+                    AbsenceDate           = febStart.AddDays(d * 8 + rng.Next(0, 7)),
+                    IsAbsent              = true,
+                    Reason                = "مرض",
+                    PeriodId              = periodsList[rng.Next(periodsList.Count)].Id,
+                    RecordedById          = mathTeacherId,
                     CreatedAt = now, UpdatedAt = now
                 });
             }
         }
-        ctx.PeriodAverages.AddRange(avgBatch);
+        ctx.DailyAbsences.AddRange(absences);
         await ctx.SaveChangesAsync();
 
-        // ── 15.1 Parent accounts ──
-        await SeedParents(ctx);
+        // =================================================================
+        // 21. Units + Lessons  (all 7 subjects)
+        // =================================================================
+        await SeedUnitsAndLessons(ctx, S, now);
 
-        // ── 16. PeriodicAssessments (exam1 & exam2) ──
-        var asmBatch = new List<PeriodicAssessment>();
-        foreach (var enr in enrollments)
+        // =================================================================
+        // 22. Assignment + Question + Option + Submission + Answer
+        // =================================================================
+        var mathCst1 = cstList.First(c => c.ClassId == class1.Id && c.SubjectId == S["MTH"].Id);
+        var assignment = new Assignment
         {
-            asmBatch.Add(new PeriodicAssessment
-            {
-                EnrollmentId = enr.Id, AssessmentType = PeriodicAssessmentType.MonthlyExam1,
-                Score = (decimal)Math.Round(rng.NextDouble() * 6 + 9, 2),
-                MaxScore = 15, AssessmentDate = new DateOnly(2026, 3, 15),
-                CreatedAt = now, UpdatedAt = now
-            });
-            asmBatch.Add(new PeriodicAssessment
-            {
-                EnrollmentId = enr.Id, AssessmentType = PeriodicAssessmentType.MonthlyExam2,
-                Score = (decimal)Math.Round(rng.NextDouble() * 6 + 9, 2),
-                MaxScore = 15, AssessmentDate = new DateOnly(2026, 4, 15),
-                CreatedAt = now, UpdatedAt = now
-            });
-        }
-        ctx.PeriodicAssessments.AddRange(asmBatch);
+            ClassSubjectTeacherId = mathCst1.Id,
+            Title       = "واجب الرياضيات الأول",
+            Description = "واجب أسبوعي — حل التمارين من الكتاب.",
+            DueDate     = now.AddDays(7),
+            MaxScore    = 10,
+            IsAutoGraded= true,
+            Category    = EvaluationCategory.Academic,
+            IsPublished = true,
+            CreatedAt = now, UpdatedAt = now
+        };
+        ctx.Assignments.Add(assignment);
         await ctx.SaveChangesAsync();
 
-        // ── 17. FinalGrades ──
-        var fgBatch = new List<FinalGrade>();
-        foreach (var enr in enrollments)
+        var asgQ = new AssignmentQuestion
         {
-            var exam1 = await ctx.PeriodicAssessments
-                .FirstOrDefaultAsync(pa => pa.EnrollmentId == enr.Id && pa.AssessmentType == PeriodicAssessmentType.MonthlyExam1);
-            var exam2 = await ctx.PeriodicAssessments
-                .FirstOrDefaultAsync(pa => pa.EnrollmentId == enr.Id && pa.AssessmentType == PeriodicAssessmentType.MonthlyExam2);
-            var e1 = exam1?.Score ?? 0;
-            var e2 = exam2?.Score ?? 0;
-            var written = e1 + e2;
-            var finalExam = (decimal)Math.Round(rng.NextDouble() * 10 + 20, 2);
-            var total = written + finalExam;
-            fgBatch.Add(new FinalGrade
-            {
-                EnrollmentId = enr.Id,
-                PeriodAvgScore = (decimal)Math.Round(rng.NextDouble() * 15 + 25, 2),
-                Assessment1Score = e1,
-                Assessment2Score = e2,
-                WrittenTotal = written,
-                FinalExamScore = finalExam,
-                Total = total > 100 ? 100 : total,
-                IsPublished = true,
-                CreatedAt = now, UpdatedAt = now
-            });
-        }
-        ctx.FinalGrades.AddRange(fgBatch);
+            AssignmentId = assignment.Id,
+            QuestionText = "ما ناتج 2 + 3؟",
+            QuestionType = QuestionType.MultipleChoice,
+            CorrectAnswer= "5",
+            DisplayOrder = 1,
+            Points       = 10,
+            CreatedAt = now, UpdatedAt = now
+        };
+        ctx.AssignmentQuestions.Add(asgQ);
         await ctx.SaveChangesAsync();
 
-        // ── 18. DailyAbsences (random) ──
-        var absBatch = new List<DailyAbsence>();
-        var mathCst = cstList.First(c => c.ClassId == class1.Id && c.SubjectId == subj["MTH"]);
-        var febStart = new DateOnly(2026, 2, 1);
-        foreach (var enr in enrollments)
+        var asgOpt = new AssignmentQuestionOption
         {
-            if (rng.NextDouble() < 0.25)
+            QuestionId   = asgQ.Id,
+            OptionText   = "5",
+            IsCorrect    = true,
+            DisplayOrder = 1,
+            CreatedAt = now, UpdatedAt = now
+        };
+        ctx.AssignmentQuestionOptions.Add(asgOpt);
+        await ctx.SaveChangesAsync();
+
+        var firstEnr = enrollments.First();
+        var submission = new StudentAssignmentSubmission
+        {
+            EnrollmentId = firstEnr.Id,
+            AssignmentId = assignment.Id,
+            SubmittedAt  = now,
+            Score        = 10,
+            MaxScore     = 10,
+            IsGraded     = true,
+            AIFeedback   = "إجابة صحيحة.",
+            CreatedAt = now, UpdatedAt = now
+        };
+        ctx.StudentAssignmentSubmissions.Add(submission);
+        await ctx.SaveChangesAsync();
+
+        ctx.StudentAssignmentAnswers.Add(new StudentAssignmentAnswer
+        {
+            SubmissionId     = submission.Id,
+            QuestionId       = asgQ.Id,
+            AnswerText       = "5",
+            SelectedOptionId = asgOpt.Id,
+            IsCorrect        = true,
+            PointsEarned     = 10,
+            CreatedAt = now, UpdatedAt = now
+        });
+        await ctx.SaveChangesAsync();
+
+        // =================================================================
+        // 23. Exam + Group + Question + Option + Attempt + Answer
+        // =================================================================
+        var exam = new Exam
+        {
+            ClassSubjectTeacherId = mathCst1.Id,
+            Title           = "اختبار الرياضيات القصير",
+            StartTime       = now.AddDays(1),
+            EndTime         = now.AddDays(1).AddMinutes(30),
+            DurationMinutes = 30,
+            TotalScore      = 10,
+            Category        = EvaluationCategory.Academic,
+            IsPublished     = true,
+            CreatedAt = now, UpdatedAt = now
+        };
+        ctx.Exams.Add(exam);
+        await ctx.SaveChangesAsync();
+
+        var examGroup = new ExamQuestionGroup
+        {
+            ExamId       = exam.Id,
+            DisplayType  = TemplateContentType.Passage,
+            ContentTitle = "أسئلة عامة",
+            ContentText  = "اختر الإجابة الصحيحة.",
+            DisplayOrder = 1,
+            CreatedAt = now, UpdatedAt = now
+        };
+        ctx.ExamQuestionGroups.Add(examGroup);
+        await ctx.SaveChangesAsync();
+
+        var examQ = new ExamQuestion
+        {
+            ExamId       = exam.Id,
+            GroupId      = examGroup.Id,
+            QuestionText = "ما ناتج 4 + 1؟",
+            QuestionType = QuestionType.MultipleChoice,
+            CorrectAnswer= "5",
+            DisplayOrder = 1,
+            Points       = 10,
+            CreatedAt = now, UpdatedAt = now
+        };
+        ctx.ExamQuestions.Add(examQ);
+        await ctx.SaveChangesAsync();
+
+        var examOpt = new ExamQuestionOption
+        {
+            QuestionId   = examQ.Id,
+            OptionText   = "5",
+            IsCorrect    = true,
+            DisplayOrder = 1,
+            CreatedAt = now, UpdatedAt = now
+        };
+        ctx.ExamQuestionOptions.Add(examOpt);
+        await ctx.SaveChangesAsync();
+
+        var attempt = new StudentExamAttempt
+        {
+            EnrollmentId = firstEnr.Id,
+            ExamId       = exam.Id,
+            StartedAt    = now,
+            SubmittedAt  = now.AddMinutes(12),
+            Score        = 10,
+            TotalScore   = 10,
+            IsGraded     = true,
+            CreatedAt = now, UpdatedAt = now
+        };
+        ctx.StudentExamAttempts.Add(attempt);
+        await ctx.SaveChangesAsync();
+
+        ctx.StudentExamAnswers.Add(new StudentExamAnswer
+        {
+            AttemptId        = attempt.Id,
+            QuestionId       = examQ.Id,
+            AnswerText       = "5",
+            SelectedOptionId = examOpt.Id,
+            IsCorrect        = true,
+            PointsEarned     = 10,
+            CreatedAt = now, UpdatedAt = now
+        });
+        await ctx.SaveChangesAsync();
+
+        // =================================================================
+        // 24. Conversation + Participants + Message + BlockedUser
+        // =================================================================
+        var conversation = new Conversation
+        {
+            Title         = "محادثة تجريبية",
+            Type          = ConversationType.Direct,
+            LastMessageAt = now,
+            CreatedAt = now, UpdatedAt = now
+        };
+        ctx.Conversations.Add(conversation);
+        await ctx.SaveChangesAsync();
+
+        var firstTeacher     = teacherUsers.First();
+        var firstStudentUser = studentUsers.First();
+        ctx.ConversationParticipants.AddRange(
+            new ConversationParticipant
             {
-                for (int d = 0; d < 3; d++)
-                {
-                    int skip = rng.Next(0, 25);
-                    absBatch.Add(new DailyAbsence
-                    {
-                        EnrollmentId = enr.Id,
-                        ClassSubjectTeacherId = mathCst.Id,
-                        AbsenceDate = febStart.AddDays(skip),
-                        IsAbsent = true, Reason = "مرض",
-                        PeriodId = periodsList[rng.Next(12)].Id,
-                        RecordedById = teacherUserId,
-                        CreatedAt = now, UpdatedAt = now
-                    });
-                }
+                ConversationId = conversation.Id, UserId = firstTeacher.Id,
+                JoinedAt = now, LastReadAt = now, CreatedAt = now, UpdatedAt = now
+            },
+            new ConversationParticipant
+            {
+                ConversationId = conversation.Id, UserId = firstStudentUser.Id,
+                JoinedAt = now, CreatedAt = now, UpdatedAt = now
             }
-        }
-        ctx.DailyAbsences.AddRange(absBatch);
+        );
+        ctx.Messages.Add(new Message
+        {
+            ConversationId = conversation.Id,
+            SenderId       = firstTeacher.Id,
+            Content        = "مرحباً، هل أتممت الواجب؟",
+            SentAt         = now,
+            CreatedAt = now, UpdatedAt = now
+        });
         await ctx.SaveChangesAsync();
 
-        await SeedUnitsAndLessons(ctx);
+        ctx.BlockedUsers.Add(new BlockedUser
+        {
+            BlockerId      = firstTeacher.Id,
+            BlockedUserId  = firstStudentUser.Id,
+            ConversationId = conversation.Id,
+            CreatedAt      = now,
+            UpdatedAt      = now
+        });
+        await ctx.SaveChangesAsync();
+
+        // =================================================================
+        // 25. Notifications
+        // =================================================================
+        ctx.Notifications.Add(new Notification
+        {
+            UserId   = firstStudentUser.Id,
+            Title    = "واجب جديد",
+            Body     = "تم إضافة واجب رياضيات جديد.",
+            Type     = NotificationType.NewAssignment,
+            DataJson = "{\"source\":\"seed\"}",
+            CreatedAt = now, UpdatedAt = now
+        });
+        await ctx.SaveChangesAsync();
+
+        // =================================================================
+        // 26. Announcements
+        // =================================================================
+        ctx.Announcements.AddRange(
+            new Announcement
+            {
+                AuthorId = admin.Id,
+                Title    = "مرحباً بكم في العام الدراسي 2025/2026",
+                Body     = "يسعد إدارة المدرسة أن ترحب بجميع الطلاب وأولياء الأمور. نتمنى للجميع عاماً دراسياً موفقاً ومثمراً.",
+                TargetRole = null,
+                ExpiresAt  = new DateTime(2025, 10, 1, 0, 0, 0, DateTimeKind.Utc),
+                CreatedAt  = new DateTime(2025,  9,21, 8, 0, 0, DateTimeKind.Utc),
+                UpdatedAt  = now
+            },
+            new Announcement
+            {
+                AuthorId = admin.Id,
+                Title    = "موعد امتحانات نصف العام",
+                Body     = "تُعلن الإدارة عن بدء امتحانات نصف العام في 15 يناير 2026. يُرجى الاطلاع على الجدول المعتمد.",
+                TargetRole = null,
+                ExpiresAt  = new DateTime(2026, 1, 20, 0, 0, 0, DateTimeKind.Utc),
+                CreatedAt  = new DateTime(2026, 1,  5, 8, 0, 0, DateTimeKind.Utc),
+                UpdatedAt  = now
+            },
+            new Announcement
+            {
+                AuthorId   = admin.Id,
+                Title      = "تنبيه للمعلمين: رفع الدرجات",
+                Body       = "يُرجى من جميع المعلمين الانتهاء من رفع درجات الفصل الأول قبل 20 يناير 2026.",
+                TargetRole = UserRole.Teacher,
+                ExpiresAt  = new DateTime(2026, 1, 20, 0, 0, 0, DateTimeKind.Utc),
+                CreatedAt  = new DateTime(2026, 1, 10, 8, 0, 0, DateTimeKind.Utc),
+                UpdatedAt  = now
+            },
+            new Announcement
+            {
+                AuthorId   = admin.Id,
+                Title      = "نتائج الفصل الأول متاحة",
+                Body       = "يمكن لأولياء الأمور الاطلاع على نتائج الفصل الأول لأبنائهم من خلال تطبيق SchoolLink.",
+                TargetRole = UserRole.Parent,
+                ExpiresAt  = new DateTime(2026, 3,  1, 0, 0, 0, DateTimeKind.Utc),
+                CreatedAt  = new DateTime(2026, 1, 22, 8, 0, 0, DateTimeKind.Utc),
+                UpdatedAt  = now
+            }
+        );
+        await ctx.SaveChangesAsync();
+
+        // =================================================================
+        // 27. LibraryItems
+        // =================================================================
+        ctx.LibraryItems.AddRange(
+            new LibraryItem
+            {
+                Title        = "سجل الرصد",
+                ItemType     = LibraryItemType.File,
+                FileUrl      = "https://dl.dropboxusercontent.com/scl/fi/bma8k570mpck582jg1wuh/.docx?rlkey=1he3059cyyvw1gnf4cy0kqrqe&dl=0",
+                UploadedById = admin.Id,
+                IsActive     = true,
+                CreatedAt    = new DateTime(2026, 6, 7, 21, 0, 20, DateTimeKind.Utc),
+                UpdatedAt    = now
+            },
+            new LibraryItem
+            {
+                Title        = "تجربه",
+                ItemType     = LibraryItemType.Video,
+                FileUrl      = "https://www.youtube.com/watch?v=bythRt5CIkI",
+                SubjectId    = S["SCI"].Id,
+                UploadedById = admin.Id,
+                IsActive     = true,
+                CreatedAt    = new DateTime(2026, 6, 7, 21, 3, 0, DateTimeKind.Utc),
+                UpdatedAt    = now
+            }
+        );
+        await ctx.SaveChangesAsync();
+
+        // =================================================================
+        // 28. ResultVisibilitySettings
+        // =================================================================
+        ctx.ResultVisibilitySettings.AddRange(
+            new ResultVisibilitySetting
+            {
+                AcademicYearId = year.Id, Term = AcademicTerm.FirstSemester,
+                IsVisible      = true,
+                VisibleFrom    = new DateTime(2026, 1, 20, 0, 0, 0, DateTimeKind.Utc),
+                VisibleUntil   = new DateTime(2026, 3,  1, 0, 0, 0, DateTimeKind.Utc),
+                ControlledById = admin.Id, CreatedAt = now, UpdatedAt = now
+            },
+            new ResultVisibilitySetting
+            {
+                AcademicYearId = year.Id, Term = AcademicTerm.SecondSemester,
+                IsVisible      = false,
+                ControlledById = admin.Id, CreatedAt = now, UpdatedAt = now
+            },
+            new ResultVisibilitySetting
+            {
+                AcademicYearId = year.Id, Term = AcademicTerm.Final,
+                IsVisible      = false,
+                ControlledById = admin.Id, CreatedAt = now, UpdatedAt = now
+            }
+        );
+        await ctx.SaveChangesAsync();
+
+        // =================================================================
+        // 29. RefreshToken + EmailOtp
+        // =================================================================
+        ctx.RefreshTokens.Add(new RefreshToken
+        {
+            UserId    = admin.Id,
+            Token     = $"seed-{Guid.NewGuid():N}",
+            ExpiresAt = now.AddDays(7),
+            CreatedAt = now, UpdatedAt = now
+        });
+        ctx.EmailOtps.Add(new EmailOtp
+        {
+            UserId       = admin.Id,
+            Email        = admin.ContactEmail!,
+            CodeHash     = BCrypt.Net.BCrypt.HashPassword("123456"),
+            ExpiresAt    = now.AddMinutes(10),
+            UsedAt       = now,
+            AttemptCount = 0,
+            CreatedAt = now, UpdatedAt = now
+        });
+        await ctx.SaveChangesAsync();
+
+        // =================================================================
+        // 30. StudyPlan + StudyPlanItem
+        // =================================================================
+        var studyPlan = new StudyPlan
+        {
+            EnrollmentId  = firstEnr.Id,
+            GeneratedByAI = false,
+            StartDate     = DateOnly.FromDateTime(now),
+            EndDate       = DateOnly.FromDateTime(now.AddDays(14)),
+            IsActive      = true,
+            RestDay       = 5,
+            CreatedAt = now, UpdatedAt = now
+        };
+        ctx.StudyPlans.Add(studyPlan);
+        await ctx.SaveChangesAsync();
+
+        ctx.StudyPlanItems.Add(new StudyPlanItem
+        {
+            StudyPlanId = studyPlan.Id,
+            SubjectId   = S["MTH"].Id,
+            DayOfWeek   = 0,
+            StartTime   = new TimeOnly(17, 0),
+            EndTime     = new TimeOnly(18, 0),
+            Topic       = "مراجعة المعادلات التربيعية",
+            Notes       = "حل تمارين الكتاب ص 45-50.",
+            CreatedAt = now, UpdatedAt = now
+        });
+        await ctx.SaveChangesAsync();
+
+        // =================================================================
+        // 31. LessonFeedback
+        // =================================================================
+        ctx.LessonFeedbacks.Add(new LessonFeedback
+        {
+            EnrollmentId          = firstEnr.Id,
+            ClassSubjectTeacherId = mathCstClass1.Id,
+            LessonDate            = DateOnly.FromDateTime(now),
+            Rating                = 5,
+            Understanding         = LessonUnderstanding.Yes,
+            Comment               = "الشرح كان واضحاً ومفيداً.",
+            CreatedAt = now, UpdatedAt = now
+        });
+        await ctx.SaveChangesAsync();
+
+        // =================================================================
+        // 32. AIGenerationLog
+        // =================================================================
+        ctx.AIGenerationLogs.Add(new AIGenerationLog
+        {
+            UserId        = firstTeacher.Id,
+            OperationType = "SeedPreview",
+            InputSummary  = "بيانات تجريبية للتأكد من عمل سجل عمليات الذكاء الاصطناعي.",
+            IsSuccess     = true,
+            TokensUsed    = 120,
+            LatencyMs     = 450,
+            CreatedAt = now, UpdatedAt = now
+        });
+        await ctx.SaveChangesAsync();
+
+        // =================================================================
+        // 33. AgentConversationMessage
+        // =================================================================
+        ctx.AgentConversationMessages.Add(new AgentConversationMessage
+        {
+            ConversationId = $"seed-agent-{Guid.NewGuid():N}",
+            Sender         = "Teacher",
+            Content        = "رسالة تجريبية لمساعد المعلم الذكي.",
+            AgentType      = "TeacherAssistant",
+            Timestamp      = now,
+            CreatedAt = now, UpdatedAt = now
+        });
+        await ctx.SaveChangesAsync();
     }
 
-    private static async Task SeedUnitsAndLessons(AppDbContext ctx)
-    {
-        if (await ctx.Units.AnyAsync())
-            return;
+    // =========================================================================
+    // Private helpers
+    // =========================================================================
 
-        var now = DateTime.UtcNow;
-        var subjects = await ctx.Subjects.ToDictionaryAsync(s => s.Code ?? s.Name, s => s);
-
-        Unit AddUnit(AppDbContext c, Subject s, string name, int order, List<Lesson>? lessons = null)
+    /// <summary>Builds EvaluationItem list from a compact definition array.</summary>
+    private static List<EvaluationItem> BuildItems(
+        int templateId,
+        DateTime now,
+        (string name, decimal max, ItemType type, AutoCalcType auto)[] defs)
+        => defs.Select((d, i) => new EvaluationItem
         {
-            var u = new Unit
+            TemplateId   = templateId,
+            Name         = d.name,
+            MaxScore     = d.max,
+            Weight       = 1,
+            ItemType     = d.type,
+            AutoCalcType = d.auto,
+            DisplayOrder = i + 1,
+            IsVisible    = true,
+            CreatedAt = now, UpdatedAt = now
+        }).ToList();
+
+    /// <summary>Seeds Units and Lessons for all 7 subjects.</summary>
+    private static async Task SeedUnitsAndLessons(
+        AppDbContext ctx,
+        Dictionary<string, Subject> S,
+        DateTime now)
+    {
+        // Helper: add a unit with optional lessons
+        async Task<Unit> AddUnit(Subject subject, string name, int order,
+                                  (string title, string content, int dispOrder)[]? lessons = null)
+        {
+            var unit = new Unit
             {
-                SubjectId = s.Id, Name = name, DisplayOrder = order,
-                CreatedAt = now, UpdatedAt = now
+                SubjectId    = subject.Id,
+                Name         = name,
+                DisplayOrder = order,
+                CreatedAt    = now, UpdatedAt = now
             };
-            c.Units.Add(u);
-            if (lessons != null)
-            {
-                foreach (var l in lessons)
-                {
-                    l.Unit = u;
-                    c.Lessons.Add(l);
-                }
-            }
-            return u;
-        }
-
-        // ── الرياضيات ──
-        if (subjects.TryGetValue("MTH", out var mth))
-        {
-            var u1 = AddUnit(ctx, mth, "الوحدة الأولى: الأعداد والجبر", 1, new()
-            {
-                new() { Title = "المعادلات التربيعية", Content = "المعادلة التربيعية هي معادلة من الشكل ax² + bx + c = 0 حيث a ≠ 0.\nيمكن حلها بثلاث طرق: التحليل إلى عوامل، إكمال المربع، القانون العام.\nالقانون العام: x = (-b ± √(b²-4ac)) / 2a\nالمميز (Discriminant) = b²-4ac.", DisplayOrder = 1, CreatedAt = now, UpdatedAt = now },
-                new() { Title = "الدوال الخطية", Content = "الدالة الخطية هي دالة من الشكل f(x) = mx + b حيث m هو الميل و b هو المقطع الصادي.\nميل الخط المستقيم = (y₂-y₁)/(x₂-x₁)", DisplayOrder = 2, CreatedAt = now, UpdatedAt = now },
-            });
-            var u2 = AddUnit(ctx, mth, "الوحدة الثانية: الهندسة", 2, new()
-            {
-                new() { Title = "نظرية فيثاغورس", Content = "في المثلث القائم الزاوية، مربع طول الوتر يساوي مجموع مربعي طولي الضلعين الآخرين.\na² + b² = c²", DisplayOrder = 1, CreatedAt = now, UpdatedAt = now },
-            });
-        }
-
-        // ── العلوم ──
-        if (subjects.TryGetValue("SCI", out var sci))
-        {
-            AddUnit(ctx, sci, "الوحدة الأولى: الكيمياء", 1, new()
-            {
-                new() { Title = "المادة وخصائصها", Content = "المادة هي كل ما له كتلة ويشغل حيزاً من الفراغ.\nتوجد المادة في ثلاث حالات: صلبة، سائلة، غازية.", DisplayOrder = 1, CreatedAt = now, UpdatedAt = now },
-            });
-            AddUnit(ctx, sci, "الوحدة الثانية: الأحياء", 2, new()
-            {
-                new() { Title = "الميتوز والميوز", Content = "الميتوز هو انقسام خلوي ينتج عنه خليتان بنت تحملان نفس العدد الكروموسومي للخلية الأم (2n).\nالميوز هو انقسام اختزالي ينتج عنه أربع خلايا يحمل كل منها نصف عدد الكروموسومات (n).", DisplayOrder = 1, CreatedAt = now, UpdatedAt = now },
-            });
-        }
-
-        // ── اللغة العربية ──
-        if (subjects.TryGetValue("ARB", out var arb))
-        {
-            AddUnit(ctx, arb, "الوحدة الأولى: القراءة والنصوص", 1, new()
-            {
-                new() { Title = "نصوص أدبية", Content = "النص الأدبي هو عمل فني يهدف إلى التعبير عن المشاعر والأفكار باستخدام اللغة الجمالية.", DisplayOrder = 1, CreatedAt = now, UpdatedAt = now },
-            });
-            AddUnit(ctx, arb, "الوحدة الثانية: النحو", 2, new()
-            {
-                new() { Title = "أقسام الكلام", Content = "الكلمة في اللغة العربية تنقسم إلى ثلاثة أقسام: اسم، فعل، حرف.", DisplayOrder = 1, CreatedAt = now, UpdatedAt = now },
-            });
-        }
-
-        // ── اللغة الإنجليزية (بدون دروس) ──
-        if (subjects.TryGetValue("ENG", out var eng))
-        {
-            AddUnit(ctx, eng, "Unit 1: Greetings and Introductions", 1);
-            AddUnit(ctx, eng, "Unit 2: Daily Routines", 2);
-            AddUnit(ctx, eng, "Unit 3: Food and Drinks", 3);
-            AddUnit(ctx, eng, "Unit 4: Travel and Tourism", 4);
-        }
-
-        // ── الدراسات الاجتماعية ──
-        if (subjects.TryGetValue("SOC", out var soc))
-        {
-            AddUnit(ctx, soc, "الوحدة الأولى: الجغرافيا", 1, new()
-            {
-                new() { Title = "الموقع الجغرافي لمصر", Content = "تقع مصر في شمال شرق قارة أفريقيا، يحدها من الشمال البحر المتوسط، ومن الشرق البحر الأحمر.", DisplayOrder = 1, CreatedAt = now, UpdatedAt = now },
-            });
-            AddUnit(ctx, soc, "الوحدة الثانية: التاريخ", 2, new()
-            {
-                new() { Title = "الحضارة المصرية القديمة", Content = "تعد الحضارة المصرية القديمة واحدة من أقدم الحضارات في العالم، وتميزت ببناء الأهرامات.", DisplayOrder = 1, CreatedAt = now, UpdatedAt = now },
-            });
-        }
-
-        // ── التربية الإسلامية ──
-        if (subjects.TryGetValue("ISL", out var isl))
-        {
-            AddUnit(ctx, isl, "الوحدة الأولى: القرآن الكريم", 1, new()
-            {
-                new() { Title = "سورة الفاتحة", Content = "سورة الفاتحة هي أعظم سورة في القرآن الكريم، وهي السبع المثاني.", DisplayOrder = 1, CreatedAt = now, UpdatedAt = now },
-            });
-        }
-
-        // ── الحاسب الآلي ──
-        if (subjects.TryGetValue("CMP", out var cmp))
-        {
-            AddUnit(ctx, cmp, "الوحدة الأولى: أساسيات الحاسب", 1, new()
-            {
-                new() { Title = "مكونات الحاسب", Content = "يتكون الحاسب من مكونات مادية: وحدة المعالجة المركزية، الذاكرة، أجهزة الإدخال والإخراج.", DisplayOrder = 1, CreatedAt = now, UpdatedAt = now },
-            });
-            AddUnit(ctx, cmp, "الوحدة الثانية: البرمجة", 2, new()
-            {
-                new() { Title = "مقدمة في البرمجة", Content = "البرمجة هي عملية كتابة تعليمات للحاسب لتنفيذ مهمة محددة.", DisplayOrder = 1, CreatedAt = now, UpdatedAt = now },
-            });
-        }
-
-        await ctx.SaveChangesAsync();
-    }
-
-    private static async Task SeedStudentUsers(AppDbContext ctx)
-    {
-        var now = DateTime.UtcNow;
-        var allStudents = await ctx.Students.ToListAsync();
-        var existingEmails = await ctx.Users
-            .Where(u => u.Role == UserRole.Student && u.Email != null)
-            .Select(u => u.Email)
-            .ToListAsync();
-        var emailSet = new HashSet<string>(existingEmails!);
-
-        foreach (var st in allStudents)
-        {
-            if (st.UserId != null) continue;
-
-            var email = $"student{st.Id}@school.com";
-            var existingUser = await ctx.Users.FirstOrDefaultAsync(u => u.Email == email);
-            if (existingUser != null)
-            {
-                st.UserId = existingUser.Id;
-            }
-            else
-            {
-                var su = new User
-                {
-                    FullName = st.FullName,
-                    Email = email,
-                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("Student@123"),
-                    Role = UserRole.Student, IsActive = true,
-                    CreatedAt = now, UpdatedAt = now
-                };
-                ctx.Users.Add(su);
-                await ctx.SaveChangesAsync();
-                st.UserId = su.Id;
-            }
-        }
-        await ctx.SaveChangesAsync();
-    }
-
-    private static async Task SeedEvaluationPeriods(AppDbContext ctx)
-    {
-        if (await ctx.EvaluationPeriods.AnyAsync())
-            return;
-
-        var year = await ctx.AcademicYears.FirstAsync();
-        var periods = Project.Domain.Helpers.EvaluationPeriodGenerator.GeneratePeriods(year.Id, year.StartDate, year.EndDate);
-        ctx.EvaluationPeriods.AddRange(periods);
-        await ctx.SaveChangesAsync();
-    }
-
-    private static async Task SeedParents(AppDbContext ctx)
-    {
-        var now = DateTime.UtcNow;
-        var existingParentEmails = await ctx.Users
-            .Where(u => u.Role == UserRole.Parent && u.Email != null)
-            .Select(u => u.Email!)
-            .ToListAsync();
-        var emailSet = new HashSet<string>(existingParentEmails);
-
-        var studentsWithoutParent = await ctx.Students
-            .Where(s => !s.IsDeleted && !ctx.ParentStudents.Any(ps => ps.StudentId == s.Id))
-            .ToListAsync();
-
-        foreach (var st in studentsWithoutParent)
-        {
-            var email = $"parent{st.Id}@school.com";
-            if (emailSet.Contains(email)) continue;
-
-            var parent = new User
-            {
-                FullName = $"وليّ أمر {st.FullName}",
-                Email = email,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Parent@123"),
-                Role = UserRole.Parent,
-                IsActive = true,
-                CreatedAt = now,
-                UpdatedAt = now
-            };
-            ctx.Users.Add(parent);
+            ctx.Units.Add(unit);
             await ctx.SaveChangesAsync();
 
-            ctx.ParentStudents.Add(new ParentStudent
+            if (lessons != null)
             {
-                ParentId = parent.Id,
-                StudentId = st.Id,
-                Relationship = RelationshipType.Father,
-                CreatedAt = now,
-                UpdatedAt = now
-            });
-            emailSet.Add(email);
+                ctx.Lessons.AddRange(lessons.Select(l => new Lesson
+                {
+                    UnitId       = unit.Id,
+                    Title        = l.title,
+                    Content      = l.content,
+                    DisplayOrder = l.dispOrder,
+                    CreatedAt    = now, UpdatedAt = now
+                }));
+                await ctx.SaveChangesAsync();
+            }
+            return unit;
         }
-        await ctx.SaveChangesAsync();
+
+        // ── الرياضيات ──────────────────────────────────────────────────────
+        await AddUnit(S["MTH"], "الوحدة الأولى: الأعداد والجبر", 1, new[]
+        {
+            ("المعادلات التربيعية",
+             "المعادلة التربيعية: ax²+bx+c=0 حيث a≠0.\nالقانون العام: x = (-b ± √(b²-4ac)) / 2a\nالمميز = b²-4ac.",
+             1),
+            ("الدوال الخطية",
+             "الدالة الخطية: f(x)=mx+b\nم = الميل، ب = المقطع الصادي.\nميل الخط = (y₂-y₁)/(x₂-x₁).",
+             2),
+        });
+        await AddUnit(S["MTH"], "الوحدة الثانية: الهندسة", 2, new[]
+        {
+            ("نظرية فيثاغورس",    "في المثلث القائم: a²+b²=c² حيث c هو الوتر.", 1),
+            ("مساحات الأشكال",    "مساحة المثلث = ½×القاعدة×الارتفاع.\nمساحة الدائرة = π×r².", 2),
+        });
+
+        // ── العلوم ─────────────────────────────────────────────────────────
+        await AddUnit(S["SCI"], "الوحدة الأولى: الكيمياء", 1, new[]
+        {
+            ("المادة وخصائصها",    "المادة: كل ما له كتلة ويشغل حيزاً. توجد صلبة وسائلة وغازية.", 1),
+            ("التفاعلات الكيميائية","التفاعل الكيميائي: تحوّل مادة إلى مادة جديدة بخصائص مختلفة.", 2),
+        });
+        await AddUnit(S["SCI"], "الوحدة الثانية: الأحياء", 2, new[]
+        {
+            ("الميتوز والميوز",
+             "الميتوز: ينتج خليتين (2n).\nالميوز: ينتج أربع خلايا (n).",
+             1),
+        });
+
+        // ── اللغة العربية ──────────────────────────────────────────────────
+        await AddUnit(S["ARB"], "الوحدة الأولى: القراءة والنصوص", 1, new[]
+        {
+            ("النصوص الأدبية", "النص الأدبي عمل فني يهدف إلى التعبير عن المشاعر بلغة جمالية.", 1),
+        });
+        await AddUnit(S["ARB"], "الوحدة الثانية: النحو والصرف", 2, new[]
+        {
+            ("أقسام الكلام",   "الكلمة تنقسم إلى: اسم، فعل، حرف.", 1),
+            ("المبتدأ والخبر", "المبتدأ: اسم مرفوع في أول الجملة الاسمية.\nالخبر: ما يتمّ به المعنى مع المبتدأ.", 2),
+        });
+
+        // ── اللغة الإنجليزية ───────────────────────────────────────────────
+        await AddUnit(S["ENG"], "Unit 1: Greetings and Introductions", 1, new[]
+        {
+            ("Hello and Goodbye", "Greetings: Hello, Hi, Good morning, Goodbye, Bye.", 1),
+        });
+        await AddUnit(S["ENG"], "Unit 2: Daily Routines",    2);
+        await AddUnit(S["ENG"], "Unit 3: Food and Drinks",   3);
+        await AddUnit(S["ENG"], "Unit 4: Travel and Tourism",4);
+
+        // ── الدراسات الاجتماعية ─────────────────────────────────────────────
+        await AddUnit(S["SOC"], "الوحدة الأولى: الجغرافيا", 1, new[]
+        {
+            ("الموقع الجغرافي لمصر",
+             "تقع مصر في شمال شرق أفريقيا، يحدها شمالاً البحر المتوسط وشرقاً البحر الأحمر.",
+             1),
+        });
+        await AddUnit(S["SOC"], "الوحدة الثانية: التاريخ", 2, new[]
+        {
+            ("الحضارة المصرية القديمة",
+             "تُعدّ الحضارة المصرية القديمة من أقدم الحضارات وتتميز ببناء الأهرامات.",
+             1),
+        });
+
+        // ── التربية الإسلامية ───────────────────────────────────────────────
+        await AddUnit(S["ISL"], "الوحدة الأولى: القرآن الكريم", 1, new[]
+        {
+            ("سورة الفاتحة", "سورة الفاتحة أعظم سورة في القرآن وتُسمى السبع المثاني.", 1),
+        });
+        await AddUnit(S["ISL"], "الوحدة الثانية: الحديث النبوي", 2, new[]
+        {
+            ("أحاديث الرحمة", "الرحماء يرحمهم الرحمن، ارحموا من في الأرض يرحمكم من في السماء.", 1),
+        });
+
+        // ── الحاسب الآلي ────────────────────────────────────────────────────
+        await AddUnit(S["CMP"], "الوحدة الأولى: أساسيات الحاسب", 1, new[]
+        {
+            ("مكونات الحاسب", "الحاسب يتكون من: وحدة معالجة، ذاكرة، أجهزة إدخال وإخراج.", 1),
+        });
+        await AddUnit(S["CMP"], "الوحدة الثانية: البرمجة", 2, new[]
+        {
+            ("مقدمة في البرمجة", "البرمجة: كتابة تعليمات للحاسب باستخدام لغة برمجة.", 1),
+            ("المتغيرات",        "المتغير: مكان في الذاكرة يُخزّن فيه قيمة يمكن تغييرها.", 2),
+        });
     }
 }

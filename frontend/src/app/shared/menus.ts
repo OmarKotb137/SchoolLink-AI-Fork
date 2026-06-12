@@ -6,6 +6,7 @@ export interface SidebarMenuItem {
 
 export const ADMIN_MENU: SidebarMenuItem[] = [
   { label: 'لوحة القيادة', icon: 'dashboard', route: '/admin' },
+  { label: 'حسابي', icon: 'account_circle', route: '/profile' },
   { label: 'تحليل الأداء', icon: 'analytics', route: '/analysis-ai' },
   { label: 'الجدول الدراسي', icon: 'calendar_month', route: '/admin-schedule' },
   { label: 'التعيينات', icon: 'assignment_ind', route: '/teacher-assignments' },
@@ -31,6 +32,7 @@ export const ADMIN_MENU: SidebarMenuItem[] = [
 
 export const TEACHER_MENU: SidebarMenuItem[] = [
   { label: 'لوحة القيادة', icon: 'dashboard', route: '/teacher' },
+  { label: 'حسابي', icon: 'account_circle', route: '/profile' },
   { label: 'فصولي', icon: 'groups', route: '/class-analysis' },
   { label: 'جدول الحصص', icon: 'calendar_month', route: '/teacher-schedule' },
   { label: 'إدارة الامتحانات', icon: 'fact_check', route: '/exam-management' },
@@ -49,6 +51,7 @@ export const TEACHER_MENU: SidebarMenuItem[] = [
 
 export const PARENT_MENU: SidebarMenuItem[] = [
   { label: 'لوحة القيادة', icon: 'dashboard', route: '/parent' },
+  { label: 'حسابي', icon: 'account_circle', route: '/profile' },
   { label: 'جداول الأبناء', icon: 'calendar_month', route: '/parent-schedule' },
   { label: 'متابعة ابني', icon: 'supervisor_account', route: '/child-progress' },
   { label: 'التقارير', icon: 'description', route: '/reports' },
@@ -59,6 +62,7 @@ export const PARENT_MENU: SidebarMenuItem[] = [
 
 export const STUDENT_MENU: SidebarMenuItem[] = [
   { label: 'لوحة القيادة', icon: 'dashboard', route: '/student' },
+  { label: 'حسابي', icon: 'account_circle', route: '/profile' },
   { label: 'الواجبات', icon: 'assignment', route: '/my-assignments' },
   { label: 'امتحاناتي', icon: 'quiz', route: '/my-exams' },
   { label: 'جدولي', icon: 'calendar_month', route: '/class-schedule' },
