@@ -1,5 +1,3 @@
-using System.Text.Json;
-using System.Text.RegularExpressions;
 using Common.Results;
 using Microsoft.Extensions.Logging;
 using Project.BLL.AI.Interfaces;
@@ -8,16 +6,13 @@ using Project.DAL.Interfaces;
 
 namespace Project.BLL.AI.Agents;
 
-public class StudentAssistantAgent : IStudentAssistantAgent
+public class StudentAssistantAgent : BaseAssistantAgent, IStudentAssistantAgent
 {
-    private readonly ILLMRouter _router;
-    private readonly ILlmClient _llmClient;
-    private readonly IUnitOfWork _unitOfWork;
     private readonly IStudentToolService _toolService;
-    private readonly ILogger<StudentAssistantAgent> _logger;
-    private readonly IAgentChatStore _chatStore;
 
-    private const string SystemPrompt = @"
+    protected override string AgentType => "student";
+
+    protected override string SystemPrompt => @"
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🤖 IDENTITY & ROLE — Student Assistant Agent
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -232,142 +227,54 @@ PROTOCOL 5 — التدريبات والتمارين 📝 (مهم جداً)
         IStudentToolService toolService,
         ILogger<StudentAssistantAgent> logger,
         IAgentChatStore chatStore)
+        : base(router, llmClient, unitOfWork, logger, chatStore)
     {
-        _router = router;
-        _llmClient = llmClient;
-        _unitOfWork = unitOfWork;
         _toolService = toolService;
-        _logger = logger;
-        _chatStore = chatStore;
     }
 
-    public async Task<OperationResult<AgentResponse>> ChatAsync(string message, string? conversationId = null, UserContext? context = null, CancellationToken ct = default)
+    protected override Dictionary<string, AiTool> CreateTools(UserContext context, CancellationToken ct)
+        => _toolService.CreateTools(context, ct);
+
+    protected override Task ResolveContextAsync(UserContext context, CancellationToken ct)
+        => ResolveStudentContextAsync(context, ct);
+
+    protected override List<string> GetDynamicSuggestions(string lastToolCalled)
+        => GetStudentDynamicSuggestions(lastToolCalled);
+
+    private async Task<Domain.Entities.StudentEnrollment?> ResolveStudentContextAsync(UserContext context, CancellationToken ct)
     {
-        conversationId ??= Guid.NewGuid().ToString();
-        context ??= new UserContext();
-
-        var enrollment = await ResolveStudentContextAsync(context, ct);
-
-        var messages = new List<LlmChatMessage>
+        if (context.EnrollmentId.HasValue)
         {
-            new(MessageRole.System, SystemPrompt)
-        };
-
-        var history = await _chatStore.GetRecentMessagesAsync(conversationId, context.UserId, 50, ct);
-        foreach (var msg in history)
-            messages.Add(new LlmChatMessage(
-                msg.Role == "user" ? MessageRole.User : MessageRole.Assistant, msg.Content));
-
-        messages.Add(new LlmChatMessage(MessageRole.User, message));
-        await _chatStore.SaveMessageAsync(conversationId, context.UserId, "user", message, "student", ct);
-
-        var tools = _toolService.CreateTools(context, ct);
-        var toolDefs = tools.Values.Select(t => new FunctionDefinition
-        {
-            Name = t.Name,
-            Description = t.Description,
-            InputSchema = t.Parameters ?? System.Text.Json.JsonDocument.Parse("{}").RootElement
-        }).ToList();
-
-        var lastToolCalled = "";
-
-        for (int step = 0; step < 10; step++)
-        {
-            _logger.LogInformation("StudentAgent step {Step} for conv {ConvId}", step + 1, conversationId);
-
-            var response = await _llmClient.ChatAsync(messages, toolDefs);
-
-            if (response.ToolCalls is null || response.ToolCalls.Count == 0)
+            var enrollment = await _unitOfWork.StudentEnrollments.GetByIdAsync(context.EnrollmentId.Value);
+            if (enrollment != null)
             {
-                var answer = StripMarkdown(response.Content) ?? "لم يتمكن المساعد من الإجابة.";
-                await _chatStore.SaveMessageAsync(conversationId, context.UserId, "assistant", answer, "student", ct);
-
-                var suggestions = GetDynamicSuggestions(lastToolCalled, context);
-
-                return OperationResult<AgentResponse>.Success(new AgentResponse
-                {
-                    Text = answer,
-                    SuggestedActions = suggestions,
-                    AdditionalData = new() { ["conversationId"] = conversationId }
-                });
-            }
-
-            messages.Add(new LlmChatMessage(
-                MessageRole.Assistant,
-                StripMarkdown(response.Content) ?? "",
-                toolCalls: response.ToolCalls));
-
-            foreach (var call in response.ToolCalls)
-            {
-                _logger.LogInformation("StudentAgent calling tool: {Tool}", call.Name);
-
-                if (!tools.TryGetValue(call.Name, out var tool))
-                {
-                    messages.Add(new LlmChatMessage(MessageRole.Tool,
-                        $"{{\"error\": \"الأداة '{call.Name}' غير موجودة\"}}", toolCallId: call.Id));
-                    continue;
-                }
-
-                try
-                {
-                    lastToolCalled = call.Name;
-                    var result = await tool.ExecuteAsync(call.Arguments);
-                    messages.Add(new LlmChatMessage(MessageRole.Tool, result, toolCallId: call.Id));
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "StudentAgent tool {Tool} failed", call.Name);
-                    messages.Add(new LlmChatMessage(MessageRole.Tool,
-                        $"{{\"error\": \"{ex.Message}\"}}", toolCallId: call.Id));
-                }
+                context.ClassId ??= enrollment.ClassId;
+                context.StudentId ??= enrollment.StudentId;
+                return enrollment;
             }
         }
 
-        _logger.LogError("StudentAgent exceeded max steps for conv {ConvId}", conversationId);
-        return OperationResult<AgentResponse>.Success(new AgentResponse
-        {
-            Text = "عذراً، لم أتمكن من إكمال العملية. يرجى إعادة صياغة سؤالك.",
-            AdditionalData = new() { ["conversationId"] = conversationId }
-        });
-    }
+        var student = (await _unitOfWork.Students.FindAsync(s => s.UserId == context.UserId && !s.IsDeleted)).FirstOrDefault();
+        if (student == null) return null;
 
-    /// <summary>
-    /// تنظيف الرد من رموز الماركداون (# و ** و * و > و --- و ```)
-    /// </summary>
-    private static string? StripMarkdown(string? text)
-    {
-        if (string.IsNullOrEmpty(text)) return text;
+        context.StudentId = student.Id;
 
-        var lines = text.Split('\n');
-        for (int i = 0; i < lines.Length; i++)
+        var enrollments = await _unitOfWork.StudentEnrollments.FindAsync(
+            e => e.StudentId == student.Id && !e.IsDeleted);
+        var enrollmentFirst = enrollments.FirstOrDefault();
+        if (enrollmentFirst != null)
         {
-            var trimmed = lines[i].TrimStart();
-            // Remove leading # (headings)
-            if (trimmed.StartsWith("### "))
-                lines[i] = lines[i].Replace("### ", "");
-            else if (trimmed.StartsWith("## "))
-                lines[i] = lines[i].Replace("## ", "");
-            else if (trimmed.StartsWith("# "))
-                lines[i] = lines[i].Replace("# ", "");
-            // Remove **bold**
-            lines[i] = System.Text.RegularExpressions.Regex.Replace(lines[i], @"\*\*(.*?)\*\*", "$1");
-            // Remove *italic*
-            lines[i] = System.Text.RegularExpressions.Regex.Replace(lines[i], @"\*(.*?)\*", "$1");
-            // Remove markdown separators line
-            if (System.Text.RegularExpressions.Regex.IsMatch(lines[i].Trim(), @"^[-*_]{3,}$"))
-                lines[i] = "";
-            // Remove > quotes
-            lines[i] = System.Text.RegularExpressions.Regex.Replace(lines[i], @"^\s*>\s*", "");
-            // Remove backticks (single or triple)
-            lines[i] = System.Text.RegularExpressions.Regex.Replace(lines[i], @"`+", "");
-            // Remove link prefix like 🔗 رابط معاينة الامتحان:
-            lines[i] = System.Text.RegularExpressions.Regex.Replace(lines[i], @"🔗\s*رابط\s*(معاينة\s*)?(الامتحان\s*)?:?\s*", "");
+            context.EnrollmentId = enrollmentFirst.Id;
+            context.ClassId = enrollmentFirst.ClassId;
         }
 
-        return string.Join("\n", lines.Where(l => l != null)).Trim();
+        var activeYear = await _unitOfWork.AcademicYears.FindAsync(y => y.IsCurrent && !y.IsDeleted);
+        context.AcademicYearId = activeYear.FirstOrDefault()?.Id;
+
+        return enrollmentFirst;
     }
 
-    private static List<string> GetDynamicSuggestions(string lastToolCalled, UserContext context)
+    private static List<string> GetStudentDynamicSuggestions(string lastToolCalled)
     {
         return lastToolCalled switch
         {
@@ -410,40 +317,6 @@ PROTOCOL 5 — التدريبات والتمارين 📝 (مهم جداً)
             }
         };
     }
-
-    private async Task<Domain.Entities.StudentEnrollment?> ResolveStudentContextAsync(UserContext context, CancellationToken ct)
-    {
-        if (context.EnrollmentId.HasValue)
-        {
-            var enrollment = await _unitOfWork.StudentEnrollments.GetByIdAsync(context.EnrollmentId.Value);
-            if (enrollment != null)
-            {
-                context.ClassId ??= enrollment.ClassId;
-                context.StudentId ??= enrollment.StudentId;
-                return enrollment;
-            }
-        }
-
-        var student = (await _unitOfWork.Students.FindAsync(s => s.UserId == context.UserId && !s.IsDeleted)).FirstOrDefault();
-        if (student == null) return null;
-
-        context.StudentId = student.Id;
-
-        var enrollments = await _unitOfWork.StudentEnrollments.FindAsync(
-            e => e.StudentId == student.Id && !e.IsDeleted);
-        var enrollmentFirst = enrollments.FirstOrDefault();
-        if (enrollmentFirst != null)
-        {
-            context.EnrollmentId = enrollmentFirst.Id;
-            context.ClassId = enrollmentFirst.ClassId;
-        }
-
-        var activeYear = await _unitOfWork.AcademicYears.FindAsync(y => y.IsCurrent && !y.IsDeleted);
-        context.AcademicYearId = activeYear.FirstOrDefault()?.Id;
-
-        return enrollmentFirst;
-    }
-
 
     public async Task<OperationResult<AgentResponse>> AnswerQuestionAsync(AiQuestionRequest request, CancellationToken ct = default)
     {

@@ -1,24 +1,18 @@
-﻿using System.Text.Json;
-using System.Text.RegularExpressions;
-using Common.Results;
+﻿using Common.Results;
 using Microsoft.Extensions.Logging;
 using Project.BLL.AI.Interfaces;
 using Project.BLL.AI.Models;
-using Project.BLL.Interfaces;
 using Project.DAL.Interfaces;
 
 namespace Project.BLL.AI.Agents;
 
-public class ParentAssistantAgent : IParentAssistantAgent
+public class ParentAssistantAgent : BaseAssistantAgent, IParentAssistantAgent
 {
-    private readonly ILLMRouter _router;
-    private readonly ILlmClient _llmClient;
-    private readonly IUnitOfWork _unitOfWork;
     private readonly IParentToolService _toolService;
-    private readonly ILogger<ParentAssistantAgent> _logger;
-    private readonly IAgentChatStore _chatStore;
 
-    private const string SystemPrompt = @"
+    protected override string AgentType => "parent";
+
+    protected override string SystemPrompt => @"
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🤖 IDENTITY & ROLE — Parent Assistant Agent
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -139,125 +133,26 @@ PROTOCOL 4 — متابعة الامتحانات
         IParentToolService toolService,
         ILogger<ParentAssistantAgent> logger,
         IAgentChatStore chatStore)
+        : base(router, llmClient, unitOfWork, logger, chatStore)
     {
-        _router = router;
-        _llmClient = llmClient;
-        _unitOfWork = unitOfWork;
         _toolService = toolService;
-        _logger = logger;
-        _chatStore = chatStore;
     }
 
-    public async Task<OperationResult<AgentResponse>> ChatAsync(string message, string? conversationId = null, UserContext? context = null, CancellationToken ct = default)
+    protected override Dictionary<string, AiTool> CreateTools(UserContext context, CancellationToken ct)
+        => _toolService.CreateTools(context, ct);
+
+    protected override Task ResolveContextAsync(UserContext context, CancellationToken ct)
+        => ResolveParentContextAsync(context, ct);
+
+    protected override List<string> GetDynamicSuggestions(string lastToolCalled)
+        => GetParentDynamicSuggestions(lastToolCalled);
+
+    private async Task ResolveParentContextAsync(UserContext context, CancellationToken ct)
     {
-        conversationId ??= Guid.NewGuid().ToString();
-        context ??= new UserContext();
+        context.ParentId ??= context.UserId;
 
-        await ResolveParentContextAsync(context, ct);
-
-        var messages = new List<LlmChatMessage>
-        {
-            new(MessageRole.System, SystemPrompt)
-        };
-
-        var history = await _chatStore.GetRecentMessagesAsync(conversationId, context.UserId, 50, ct);
-        foreach (var msg in history)
-            messages.Add(new LlmChatMessage(
-                msg.Role == "user" ? MessageRole.User : MessageRole.Assistant, msg.Content));
-
-        messages.Add(new LlmChatMessage(MessageRole.User, message));
-        await _chatStore.SaveMessageAsync(conversationId, context.UserId, "user", message, "parent", ct);
-
-        var tools = _toolService.CreateTools(context, ct);
-        var toolDefs = tools.Values.Select(t => new FunctionDefinition
-        {
-            Name = t.Name,
-            Description = t.Description,
-            InputSchema = t.Parameters ?? System.Text.Json.JsonDocument.Parse("{}").RootElement
-        }).ToList();
-
-        var lastToolCalled = "";
-
-        for (int step = 0; step < 10; step++)
-        {
-            _logger.LogInformation("ParentAgent step {Step} for conv {ConvId}", step + 1, conversationId);
-
-            var response = await _llmClient.ChatAsync(messages, toolDefs);
-
-            if (response.ToolCalls is null || response.ToolCalls.Count == 0)
-            {
-                var answer = StripMarkdown(response.Content) ?? "لم يتمكن المساعد من الإجابة.";
-                await _chatStore.SaveMessageAsync(conversationId, context.UserId, "assistant", answer, "parent", ct);
-                return OperationResult<AgentResponse>.Success(new AgentResponse
-                {
-                    Text = answer,
-                    SuggestedActions = GetParentDynamicSuggestions(lastToolCalled),
-                    AdditionalData = new() { ["conversationId"] = conversationId }
-                });
-            }
-
-            messages.Add(new LlmChatMessage(
-                MessageRole.Assistant,
-                StripMarkdown(response.Content) ?? "",
-                toolCalls: response.ToolCalls));
-
-            foreach (var call in response.ToolCalls)
-            {
-                _logger.LogInformation("ParentAgent calling tool: {Tool}", call.Name);
-
-                if (!tools.TryGetValue(call.Name, out var tool))
-                {
-                    messages.Add(new LlmChatMessage(MessageRole.Tool,
-                        $"{{\"error\": \"الأداة '{call.Name}' غير موجودة\"}}", toolCallId: call.Id));
-                    continue;
-                }
-
-                try
-                {
-                    lastToolCalled = call.Name;
-                    var result = await tool.ExecuteAsync(call.Arguments);
-                    messages.Add(new LlmChatMessage(MessageRole.Tool, result, toolCallId: call.Id));
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "ParentAgent tool {Tool} failed", call.Name);
-                    messages.Add(new LlmChatMessage(MessageRole.Tool,
-                        $"{{\"error\": \"{ex.Message}\"}}", toolCallId: call.Id));
-                }
-            }
-        }
-
-        _logger.LogError("ParentAgent exceeded max steps for conv {ConvId}", conversationId);
-        return OperationResult<AgentResponse>.Success(new AgentResponse
-        {
-            Text = "عذراً، لم أتمكن من إكمال العملية. يرجى إعادة صياغة سؤالك.",
-            AdditionalData = new() { ["conversationId"] = conversationId }
-        });
-    }
-
-    /// <summary>
-    /// تنظيف الرد من رموز الماركداون
-    /// </summary>
-    private static string? StripMarkdown(string? text)
-    {
-        if (string.IsNullOrEmpty(text)) return text;
-
-        var lines = text.Split('\n');
-        for (int i = 0; i < lines.Length; i++)
-        {
-            var trimmed = lines[i].TrimStart();
-            if (trimmed.StartsWith("### ")) lines[i] = lines[i].Replace("### ", "");
-            else if (trimmed.StartsWith("## ")) lines[i] = lines[i].Replace("## ", "");
-            else if (trimmed.StartsWith("# ")) lines[i] = lines[i].Replace("# ", "");
-            lines[i] = Regex.Replace(lines[i], @"\*\*(.*?)\*\*", "$1");
-            lines[i] = Regex.Replace(lines[i], @"\*(.*?)\*", "$1");
-            if (Regex.IsMatch(lines[i].Trim(), @"^[-*_]{3,}$")) lines[i] = "";
-            lines[i] = Regex.Replace(lines[i], @"^\s*>\s*", "");
-            lines[i] = Regex.Replace(lines[i], @"`+", ""); // إزالة الباكتيك
-            lines[i] = Regex.Replace(lines[i], @"🔗\s*رابط\s*(معاينة\s*)?(الامتحان\s*)?:?\s*", ""); // إزالة رابط معاينة
-        }
-
-        return string.Join("\n", lines.Where(l => l != null)).Trim();
+        var activeYear = await _unitOfWork.AcademicYears.FindAsync(y => y.IsCurrent && !y.IsDeleted);
+        context.AcademicYearId = activeYear.FirstOrDefault()?.Id;
     }
 
     private static List<string> GetParentDynamicSuggestions(string lastToolCalled)
@@ -297,15 +192,6 @@ PROTOCOL 4 — متابعة الامتحانات
             }
         };
     }
-
-    private async Task ResolveParentContextAsync(UserContext context, CancellationToken ct)
-    {
-        context.ParentId ??= context.UserId;
-
-        var activeYear = await _unitOfWork.AcademicYears.FindAsync(y => y.IsCurrent && !y.IsDeleted);
-        context.AcademicYearId = activeYear.FirstOrDefault()?.Id;
-    }
-
 
     public async Task<OperationResult<AgentResponse>> GetProgressSummaryAsync(int studentId, CancellationToken ct = default)
     {

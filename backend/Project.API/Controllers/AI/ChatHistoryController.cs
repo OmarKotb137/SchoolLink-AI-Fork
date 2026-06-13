@@ -16,8 +16,28 @@ public class ChatHistoryController : ControllerBase
 
     public ChatHistoryController(IAgentChatStore chatStore) => _chatStore = chatStore;
 
-    private int CurrentUserId =>
-        int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+    private int? CurrentUserId
+    {
+        get
+        {
+            var claim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (claim is null || !int.TryParse(claim.Value, out var userId))
+                return null;
+            return userId;
+        }
+    }
+
+    private IActionResult? UnauthorizedIfMissingUserId(out int userId)
+    {
+        var id = CurrentUserId;
+        if (!id.HasValue)
+        {
+            userId = 0;
+            return Unauthorized(OperationResult.Failure("المستخدم غير موجود", 401));
+        }
+        userId = id.Value;
+        return null;
+    }
 
     /// <summary>
     /// GET /api/ai/chats?agentType=teacher
@@ -26,7 +46,9 @@ public class ChatHistoryController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetConversations([FromQuery] string? agentType, CancellationToken ct)
     {
-        var userId = CurrentUserId;
+        var unauthorized = UnauthorizedIfMissingUserId(out var userId);
+        if (unauthorized is not null) return unauthorized;
+
         var conversations = await _chatStore.GetUserConversationsAsync(userId, agentType, ct);
 
         return Ok(OperationResult<List<ConversationListItemDto>>.Success(conversations));
@@ -39,7 +61,9 @@ public class ChatHistoryController : ControllerBase
     [HttpGet("{conversationId}/messages")]
     public async Task<IActionResult> GetMessages(string conversationId, CancellationToken ct)
     {
-        var userId = CurrentUserId;
+        var unauthorized = UnauthorizedIfMissingUserId(out var userId);
+        if (unauthorized is not null) return unauthorized;
+
         var messages = await _chatStore.GetConversationMessagesAsync(conversationId, userId, ct);
 
         if (messages.Count == 0)
@@ -55,7 +79,9 @@ public class ChatHistoryController : ControllerBase
     [HttpDelete("{conversationId}")]
     public async Task<IActionResult> DeleteConversation(string conversationId, CancellationToken ct)
     {
-        var userId = CurrentUserId;
+        var unauthorized = UnauthorizedIfMissingUserId(out var userId);
+        if (unauthorized is not null) return unauthorized;
+
         await _chatStore.DeleteConversationAsync(conversationId, userId, ct);
         return Ok(OperationResult.Success("تم حذف المحادثة"));
     }
