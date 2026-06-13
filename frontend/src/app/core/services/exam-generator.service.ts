@@ -5,6 +5,7 @@ import { buildApiUrl } from '../utils/api-url';
 
 export interface AiGenerateExamRequest {
   classSubjectTeacherId?: number | null;
+  subjectId?: number | null;
   title: string;
   durationMinutes?: number;
   totalScore: number;

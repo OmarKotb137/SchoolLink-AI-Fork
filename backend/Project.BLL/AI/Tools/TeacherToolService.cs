@@ -118,7 +118,7 @@ public class TeacherToolService : ITeacherToolService
                 properties = new
                 {
                     subjectId = new { type = "integer", description = "معرف المادة (من get_subjects) — بديل عن classSubjectTeacherId" },
-                    classSubjectTeacherId = new { type = "integer", description = "معرف المادة-الفصل-المدرس (اختياري — يحل تلقائياً من subjectId)" },
+                    classSubjectTeacherId = new { type = "integer", description = "معرف المادة-الفصل-المدرس (اختياري — لو محططش، الامتحان مش بيتقيد بفصل)" },
                     title = new { type = "string", description = "عنوان الامتحان" },
                     mcqCount = new { type = "integer", description = "عدد أسئلة الاختيار من متعدد (اختياري، افتراضي 5)" },
                     trueFalseCount = new { type = "integer", description = "عدد أسئلة صح/خطأ (اختياري، افتراضي 0)" },
@@ -136,22 +136,15 @@ public class TeacherToolService : ITeacherToolService
             {
                 using var doc = JsonDocument.Parse(args);
 
-                int cstId;
+                int? cstId = null;
+                int? resolvedSubjectId = null;
                 if (doc.RootElement.TryGetProperty("classSubjectTeacherId", out var cstEl) && cstEl.ValueKind == JsonValueKind.Number)
                 {
                     cstId = cstEl.GetInt32();
                 }
                 else if (doc.RootElement.TryGetProperty("subjectId", out var subjEl) && subjEl.ValueKind == JsonValueKind.Number)
                 {
-                    var sid = subjEl.GetInt32();
-                    if (!context.TeacherId.HasValue || !context.AcademicYearId.HasValue)
-                        return JsonSerializer.Serialize(new { error = "بيانات المدرس غير متوفرة" });
-                    var csts = await _unitOfWork.ClassSubjectTeachers
-                        .FindAsync(c => c.SubjectId == sid && c.TeacherId == context.TeacherId.Value && c.AcademicYearId == context.AcademicYearId.Value && !c.IsDeleted, ct);
-                    var first = csts.FirstOrDefault();
-                    if (first == null)
-                        return JsonSerializer.Serialize(new { error = "لم يتم العثور على المادة للمدرس في العام الدراسي الحالي" });
-                    cstId = first.Id;
+                    resolvedSubjectId = subjEl.GetInt32();
                 }
                 else
                 {
@@ -184,6 +177,7 @@ public class TeacherToolService : ITeacherToolService
                 var request = new AiGenerateExamRequest
                 {
                     ClassSubjectTeacherId = cstId,
+                    SubjectId = resolvedSubjectId,
                     Title = title,
                     DurationMinutes = durationMinutes,
                     TotalScore = totalScore,

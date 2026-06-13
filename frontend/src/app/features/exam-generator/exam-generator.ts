@@ -279,6 +279,7 @@ export class ExamGenerator implements OnInit {
 
     const body: AiGenerateExamRequest = {
       classSubjectTeacherId: cstId,
+      subjectId: this.selectedSubjectId(),
       title: this.title() || `امتحان ${this.selectedSubjectName() || ''}`,
       durationMinutes: this.durationMinutes() || undefined,
       totalScore: this.totalScore(),

@@ -6,6 +6,7 @@ using Project.BLL.AI.Models;
 using Project.BLL.DTOs;
 using Project.BLL.DTOs.Exam;
 using Project.BLL.Interfaces;
+using Project.DAL.Interfaces;
 using Project.Domain.Enums;
 
 namespace Project.BLL.AI.Services;
@@ -16,6 +17,7 @@ public class AiExamGeneratorService : IAiExamGeneratorService
     private readonly IExamService _examService;
     private readonly IClassSubjectTeacherService _cstService;
     private readonly IUnitService _unitService;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<AiExamGeneratorService> _logger;
 
     public AiExamGeneratorService(
@@ -23,12 +25,14 @@ public class AiExamGeneratorService : IAiExamGeneratorService
         IExamService examService,
         IClassSubjectTeacherService cstService,
         IUnitService unitService,
+        IUnitOfWork unitOfWork,
         ILogger<AiExamGeneratorService> logger)
     {
         _llmClient = llmClient;
         _examService = examService;
         _cstService = cstService;
         _unitService = unitService;
+        _unitOfWork = unitOfWork;
         _logger = logger;
     }
 
@@ -96,6 +100,20 @@ public class AiExamGeneratorService : IAiExamGeneratorService
             var cst = await _cstService.GetAssignmentByIdAsync(request.ClassSubjectTeacherId.Value);
             if (cst.IsSuccess && cst.Data is not null)
                 cstData = cst.Data;
+        }
+
+        // If no CST but we have SubjectId, build minimal context for the AI
+        if (cstData is null && request.SubjectId.HasValue)
+        {
+            var subject = await _unitOfWork.Subjects.GetByIdAsync(request.SubjectId.Value);
+            if (subject is not null && !subject.IsDeleted)
+            {
+                cstData = new ClassSubjectTeacherDto
+                {
+                    SubjectId = subject.Id,
+                    SubjectName = subject.Name,
+                };
+            }
         }
 
         var context = cstData is not null
