@@ -1,4 +1,4 @@
-import { Component, signal, inject, OnInit } from '@angular/core';
+import { Component, signal, computed, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
 import { Topbar } from '../../layouts/topbar/topbar';
@@ -61,6 +61,8 @@ export class ExamGenerator implements OnInit {
 
   selectedCstId = signal<number | null>(null);
   selectedSubjectId = signal<number | null>(null);
+  selectedSubjectName = signal<string>('');
+  selectedClassName = signal<string>('');
   title = signal('');
   durationMinutes = signal<number>(60);
   totalScore = signal<number>(100);
@@ -98,6 +100,28 @@ export class ExamGenerator implements OnInit {
     const qc = this.questionCounts();
     return Object.values(qc).reduce((a, b) => a + b, 0);
   }
+
+  /** قائمة المواد الفريدة من بيانات المدرس */
+  subjectOptions = computed(() => {
+    const seen = new Map<string, { subjectName: string; subjectId: number; count: number }>();
+    for (const a of this.assignments()) {
+      if (!seen.has(a.subjectName)) {
+        seen.set(a.subjectName, { subjectName: a.subjectName, subjectId: a.subjectId, count: 0 });
+      }
+      seen.get(a.subjectName)!.count++;
+    }
+    return [...seen.values()].sort((a, b) => a.subjectName.localeCompare(b.subjectName));
+  });
+
+  /** الفصول المتاحة للمادة المختارة */
+  classOptions = computed(() => {
+    const name = this.selectedSubjectName();
+    if (!name) return [];
+    return this.assignments().filter(a => a.subjectName === name);
+  });
+
+  /** هل للمادة أكثر من فصل؟ */
+  hasMultipleClasses = computed(() => this.classOptions().length > 1);
 
   ngOnInit() {
     this.loadMyAssignments();
@@ -140,20 +164,44 @@ export class ExamGenerator implements OnInit {
     });
   }
 
-  onCstChange() {
-    const cstId = this.selectedCstId();
-    if (!cstId) {
+  onSubjectChange() {
+    const name = this.selectedSubjectName();
+    this.selectedClassName.set('');
+    this.selectedCstId.set(null);
+    this.units.set([]);
+    this.lessons.set([]);
+    this.selectedUnitId.set(null);
+    this.selectedLessonIds.set(new Set());
+
+    if (!name) {
       this.selectedSubjectId.set(null);
-      this.units.set([]);
-      this.lessons.set([]);
-      this.selectedUnitId.set(null);
-      this.selectedLessonIds.set(new Set());
       return;
     }
-    const cst = this.assignments().find(a => a.id === cstId);
-    if (cst) {
-      this.selectedSubjectId.set(cst.subjectId);
-      this.loadUnits(cst.subjectId);
+
+    const classes = this.classOptions();
+    const first = classes[0];
+    if (!first) {
+      this.selectedSubjectId.set(null);
+      return;
+    }
+
+    this.selectedSubjectId.set(first.subjectId);
+    this.loadUnits(first.subjectId);
+
+    // Auto-resolve if only one class, or let user pick
+    if (classes.length === 1) {
+      this.selectedCstId.set(first.id);
+      this.selectedClassName.set(first.className);
+    }
+  }
+
+  onClassChange() {
+    const cstId = this.selectedCstId();
+    if (cstId) {
+      const cst = this.assignments().find(a => a.id === cstId);
+      if (cst) {
+        this.selectedClassName.set(cst.className);
+      }
     }
   }
 
@@ -211,8 +259,13 @@ export class ExamGenerator implements OnInit {
   }
 
   preview() {
-    const cstId = this.selectedCstId();
-    if (!cstId) { this.errorMsg.set('اختر المادة والفصل'); return; }
+    // Auto-resolve CST for AI context (must have a class for prompt context)
+    let cstId = this.selectedCstId();
+    if (!cstId) {
+      const classes = this.classOptions();
+      cstId = classes.length > 0 ? classes[0].id : null;
+    }
+    if (!cstId) { this.errorMsg.set('اختر المادة أولاً'); return; }
     const totalQ = this.totalQuestionCount();
     if (!totalQ) { this.errorMsg.set('اختر عدداً من الأسئلة'); return; }
 
@@ -226,7 +279,7 @@ export class ExamGenerator implements OnInit {
 
     const body: AiGenerateExamRequest = {
       classSubjectTeacherId: cstId,
-      title: this.title() || `امتحان ${this.assignments().find(a => a.id === cstId)?.subjectName ?? ''}`,
+      title: this.title() || `امتحان ${this.selectedSubjectName() || ''}`,
       durationMinutes: this.durationMinutes() || undefined,
       totalScore: this.totalScore(),
       category: 1,
@@ -270,7 +323,7 @@ export class ExamGenerator implements OnInit {
     this.editData.set([]);
 
     const saveBody: any = {
-      classSubjectTeacherId: this.selectedCstId(),
+      classSubjectTeacherId: this.selectedCstId() ?? null,
       title: preview.title,
       durationMinutes: preview.durationMinutes,
       totalScore: preview.totalScore,
@@ -429,6 +482,8 @@ export class ExamGenerator implements OnInit {
   reset() {
     this.selectedCstId.set(null);
     this.selectedSubjectId.set(null);
+    this.selectedSubjectName.set('');
+    this.selectedClassName.set('');
     this.title.set('');
     this.durationMinutes.set(60);
     this.totalScore.set(100);

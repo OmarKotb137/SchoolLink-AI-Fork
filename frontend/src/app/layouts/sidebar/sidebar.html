@@ -21,10 +21,12 @@
     </nav>
     <div>
       <div class="sdbr-hr"></div>
-      <button class="sdbr-ai-btn" (click)="onAiConsult()">
-        <span class="material-symbols-outlined ai-icon">auto_awesome</span>
-        <span>استشارة الذكاء الاصطناعي</span>
-      </button>
+      @if (currentRole() !== 'admin') {
+        <button class="sdbr-ai-btn" (click)="onAiConsult()">
+          <span class="material-symbols-outlined ai-icon">auto_awesome</span>
+          <span>استشارة الذكاء الاصطناعي</span>
+        </button>
+      }
       <button class="sdbr-out" type="button" (click)="logout()">
         <span class="material-symbols-outlined" style="font-size:18px;">logout</span>
         <span>تسجيل الخروج</span>

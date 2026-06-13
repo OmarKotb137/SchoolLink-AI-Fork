@@ -54,9 +54,9 @@ public class AiExamGeneratorService : IAiExamGeneratorService
 
         var preview = new AiExamPreviewDto
         {
-            SubjectName = cst.SubjectName,
-            ClassName = cst.ClassName,
-            TeacherName = cst.TeacherName,
+            SubjectName = cst?.SubjectName ?? "",
+            ClassName = cst?.ClassName ?? "",
+            TeacherName = cst?.TeacherName ?? "",
             Title = createDto.Title,
             DurationMinutes = createDto.DurationMinutes,
             TotalScore = createDto.TotalScore,
@@ -86,14 +86,26 @@ public class AiExamGeneratorService : IAiExamGeneratorService
         return await _examService.CreateFromAiAsync(dto, ct);
     }
 
-    private async Task<OperationResult<(CreateExamFromAiDto CreateDto, ClassSubjectTeacherDto Cst)>> GenerateCoreAsync(
+    private async Task<OperationResult<(CreateExamFromAiDto CreateDto, ClassSubjectTeacherDto? Cst)>> GenerateCoreAsync(
         AiGenerateExamRequest request, CancellationToken ct = default)
     {
-        var cst = await _cstService.GetAssignmentByIdAsync(request.ClassSubjectTeacherId);
-        if (!cst.IsSuccess || cst.Data is null)
-            return OperationResult<(CreateExamFromAiDto, ClassSubjectTeacherDto)>.Failure("المادة غير موجودة", 404);
+        ClassSubjectTeacherDto? cstData = null;
 
-        var context = await BuildContextAsync(request, cst.Data);
+        if (request.ClassSubjectTeacherId.HasValue)
+        {
+            var cst = await _cstService.GetAssignmentByIdAsync(request.ClassSubjectTeacherId.Value);
+            if (cst.IsSuccess && cst.Data is not null)
+                cstData = cst.Data;
+        }
+
+        var context = cstData is not null
+            ? await BuildContextAsync(request, cstData)
+            : new ExamGenerationContext
+            {
+                SubjectName = "",
+                ClassName = "",
+                ContextText = ""
+            };
 
         var typeNames = new Dictionary<int, string>
         {
@@ -180,12 +192,12 @@ public class AiExamGeneratorService : IAiExamGeneratorService
         catch (Exception ex)
         {
             _logger.LogError(ex, "LLM call failed for exam generation");
-            return OperationResult<(CreateExamFromAiDto, ClassSubjectTeacherDto)>.Failure($"فشل الاتصال بالذكاء الاصطناعي: {ex.Message}");
+            return OperationResult<(CreateExamFromAiDto, ClassSubjectTeacherDto?)>.Failure($"فشل الاتصال بالذكاء الاصطناعي: {ex.Message}");
         }
 
         var content = llmResp.Content;
         if (string.IsNullOrWhiteSpace(content))
-            return OperationResult<(CreateExamFromAiDto, ClassSubjectTeacherDto)>.Failure("لم يتم توليد الامتحان");
+            return OperationResult<(CreateExamFromAiDto, ClassSubjectTeacherDto?)>.Failure("لم يتم توليد الامتحان");
 
         content = content.Trim();
         if (content.StartsWith("```json"))
@@ -209,11 +221,11 @@ public class AiExamGeneratorService : IAiExamGeneratorService
         catch (JsonException ex)
         {
             _logger.LogError(ex, "Failed to parse LLM JSON. Response: {Resp}", content);
-            return OperationResult<(CreateExamFromAiDto, ClassSubjectTeacherDto)>.Failure("فشل تحليل JSON المولد");
+            return OperationResult<(CreateExamFromAiDto, ClassSubjectTeacherDto?)>.Failure("فشل تحليل JSON المولد");
         }
 
         if (generatedExam is null || generatedExam.StandaloneQuestions is null || generatedExam.StandaloneQuestions.Count == 0)
-            return OperationResult<(CreateExamFromAiDto, ClassSubjectTeacherDto)>.Failure("لم يتم توليد أي أسئلة");
+            return OperationResult<(CreateExamFromAiDto, ClassSubjectTeacherDto?)>.Failure("لم يتم توليد أي أسئلة");
 
         var createDto = new CreateExamFromAiDto
         {
@@ -238,7 +250,7 @@ public class AiExamGeneratorService : IAiExamGeneratorService
             }).ToList()
         };
 
-        return OperationResult<(CreateExamFromAiDto, ClassSubjectTeacherDto)>.Success((createDto, cst.Data));
+        return OperationResult<(CreateExamFromAiDto, ClassSubjectTeacherDto?)>.Success((createDto, cstData));
     }
 
     private async Task<ExamGenerationContext> BuildContextAsync(

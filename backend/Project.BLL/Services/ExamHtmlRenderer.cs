@@ -530,6 +530,14 @@ body{
     location.reload();
   }}
 
+  function getToken() {{
+    try {{
+      return localStorage.getItem('access_token') || '';
+    }} catch(e) {{
+      return '';
+    }}
+  }}
+
   window.saveExam = function(){{
     var btn = document.getElementById('saveBtn');
     btn.disabled = true;
@@ -573,9 +581,13 @@ body{
       dto.questions.push(q);
     }});
 
+    var token = getToken();
+    var headers = {{ 'Content-Type': 'application/json' }};
+    if (token) headers['Authorization'] = 'Bearer ' + token;
+
     fetch('/api/exam/' + '{uid}' + '/save', {{
       method: 'PUT',
-      headers: {{ 'Content-Type': 'application/json' }},
+      headers: headers,
       body: JSON.stringify(dto)
     }})
     .then(function(r){{ return r.json() }})

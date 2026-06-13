@@ -83,7 +83,7 @@ public class ChildProgressService : IChildProgressService
 
             // — Exams —
             var exams = await _unitOfWork.Exams
-                .FindAsync(e => cstIds.Contains(e.ClassSubjectTeacherId) && !e.IsDeleted && e.IsPublished);
+                .FindAsync(e => e.ClassSubjectTeacherId != null && cstIds.Contains(e.ClassSubjectTeacherId.Value) && !e.IsDeleted && e.IsPublished);
             var attempts = await _unitOfWork.StudentExamAttempts.GetByEnrollmentIdAsync(enrollment.Id);
             var attemptMap = attempts.ToDictionary(a => a.ExamId);
 

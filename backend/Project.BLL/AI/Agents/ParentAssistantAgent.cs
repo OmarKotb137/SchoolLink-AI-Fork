@@ -160,7 +160,7 @@ PROTOCOL 4 — متابعة الامتحانات
             new(MessageRole.System, SystemPrompt)
         };
 
-        var history = await _chatStore.GetRecentMessagesAsync(conversationId, 50, ct);
+        var history = await _chatStore.GetRecentMessagesAsync(conversationId, context.UserId, 50, ct);
         foreach (var msg in history)
             messages.Add(new LlmChatMessage(
                 msg.Role == "user" ? MessageRole.User : MessageRole.Assistant, msg.Content));

@@ -1,4 +1,4 @@
-﻿using Project.Domain.Enums;
+using Project.Domain.Enums;
 
 namespace Project.BLL.DTOs.Exam
 {

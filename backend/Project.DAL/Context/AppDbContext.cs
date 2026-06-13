@@ -55,6 +55,9 @@ public class AppDbContext : DbContext
     public DbSet<ResultVisibilitySetting> ResultVisibilitySettings => Set<ResultVisibilitySetting>();
     public DbSet<AIGenerationLog> AIGenerationLogs => Set<AIGenerationLog>();
     public DbSet<SchoolProfile> SchoolProfiles => Set<SchoolProfile>();
+
+    public DbSet<QuestionBank> QuestionBank => Set<QuestionBank>();
+    public DbSet<ExamQuestionBankItem> ExamQuestionBankItems => Set<ExamQuestionBankItem>();
     
     public DbSet<Room>          Rooms          => Set<Room>();
     public DbSet<Timetable>     Timetables     => Set<Timetable>();

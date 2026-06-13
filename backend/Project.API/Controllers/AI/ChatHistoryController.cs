@@ -39,7 +39,8 @@ public class ChatHistoryController : ControllerBase
     [HttpGet("{conversationId}/messages")]
     public async Task<IActionResult> GetMessages(string conversationId, CancellationToken ct)
     {
-        var messages = await _chatStore.GetConversationMessagesAsync(conversationId, ct);
+        var userId = CurrentUserId;
+        var messages = await _chatStore.GetConversationMessagesAsync(conversationId, userId, ct);
 
         if (messages.Count == 0)
             return NotFound(OperationResult.Failure("المحادثة غير موجودة", 404));

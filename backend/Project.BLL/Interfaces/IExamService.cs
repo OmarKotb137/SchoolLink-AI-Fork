@@ -18,5 +18,6 @@ namespace Project.BLL.Interfaces
         Task<OperationResult<GetExamDto>> CreateFromAiAsync(CreateExamFromAiDto dto, CancellationToken ct = default);
         Task<OperationResult<string>> RenderHtmlAsync(Guid uid, CancellationToken ct = default);
         Task<OperationResult> SaveExamQuestionsAsync(SaveExamQuestionsDto dto, CancellationToken ct = default);
+        Task<OperationResult<GetExamDto>> GetByUidAsync(Guid uid, CancellationToken ct = default);
     }
 }

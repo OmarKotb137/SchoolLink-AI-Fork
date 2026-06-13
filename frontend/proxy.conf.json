@@ -4,5 +4,12 @@
     "secure": false,
     "changeOrigin": true,
     "logLevel": "debug"
+  },
+  "/exam": {
+    "target": "https://localhost:5001",
+    "secure": false,
+    "changeOrigin": true,
+    "pathRewrite": { "^/exam": "/api/exam" },
+    "logLevel": "debug"
   }
 }

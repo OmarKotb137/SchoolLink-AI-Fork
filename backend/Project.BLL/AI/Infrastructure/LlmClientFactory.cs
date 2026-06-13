@@ -50,6 +50,12 @@ public static class LlmClientFactory
                     var apiKey = config["LlmSettings:OpenCodeAI:ApiKey"]
                                  ?? throw new InvalidOperationException("OpenCodeAI ApiKey is missing");
                     client.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
+                    var timeoutSec = int.TryParse(config["LlmSettings:OpenCodeAI:TimeoutSeconds"], out var t) ? t : 300;
+                    client.Timeout = TimeSpan.FromSeconds(timeoutSec);
+                })
+                .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+                {
+                    MaxConnectionsPerServer = 5
                 });
                 break;
 

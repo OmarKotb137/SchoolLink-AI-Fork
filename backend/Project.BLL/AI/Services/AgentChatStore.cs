@@ -27,10 +27,10 @@ public class AgentChatStore : IAgentChatStore
         await _db.SaveChangesAsync(ct);
     }
 
-    public async Task<List<ChatMessage>> GetRecentMessagesAsync(string conversationId, int count = 10, CancellationToken ct = default)
+    public async Task<List<ChatMessage>> GetRecentMessagesAsync(string conversationId, int userId, int count = 10, CancellationToken ct = default)
     {
         var msgs = await _db.AgentConversationMessages
-            .Where(m => m.ConversationId == conversationId && !m.IsDeleted)
+            .Where(m => m.ConversationId == conversationId && m.UserId == userId && !m.IsDeleted)
             .OrderByDescending(m => m.Timestamp)
             .Take(count)
             .OrderBy(m => m.Timestamp)
@@ -80,10 +80,10 @@ public class AgentChatStore : IAgentChatStore
         }).ToList();
     }
 
-    public async Task<List<ConversationMessageDto>> GetConversationMessagesAsync(string conversationId, CancellationToken ct = default)
+    public async Task<List<ConversationMessageDto>> GetConversationMessagesAsync(string conversationId, int userId, CancellationToken ct = default)
     {
         var msgs = await _db.AgentConversationMessages
-            .Where(m => m.ConversationId == conversationId && !m.IsDeleted)
+            .Where(m => m.ConversationId == conversationId && m.UserId == userId && !m.IsDeleted)
             .OrderBy(m => m.Timestamp)
             .ToListAsync(ct);
 

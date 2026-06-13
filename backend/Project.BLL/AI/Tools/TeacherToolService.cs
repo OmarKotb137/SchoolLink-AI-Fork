@@ -2,6 +2,7 @@ using System.Text.Json;
 using Project.BLL.AI.Interfaces;
 using Project.BLL.AI.Models;
 using Project.BLL.DTOs.Exam;
+using Project.BLL.DTOs.QuestionBank;
 using Project.BLL.Interfaces;
 using Project.DAL.Interfaces;
 
@@ -13,17 +14,23 @@ public class TeacherToolService : ITeacherToolService
     private readonly ILessonRepository _lessonRepo;
     private readonly IExamService _examService;
     private readonly IAiExamGeneratorService _aiExamGen;
+    private readonly IQuestionBankService _questionBankService;
+    private readonly IUnitOfWork _unitOfWork;
 
     public TeacherToolService(
         ISubjectService subjectService,
         ILessonRepository lessonRepo,
         IExamService examService,
-        IAiExamGeneratorService aiExamGen)
+        IAiExamGeneratorService aiExamGen,
+        IQuestionBankService questionBankService,
+        IUnitOfWork unitOfWork)
     {
         _subjectService = subjectService;
         _lessonRepo = lessonRepo;
         _examService = examService;
         _aiExamGen = aiExamGen;
+        _questionBankService = questionBankService;
+        _unitOfWork = unitOfWork;
     }
 
     public Dictionary<string, AiTool> CreateTools(UserContext context, CancellationToken ct = default)
@@ -38,7 +45,7 @@ public class TeacherToolService : ITeacherToolService
             list.Add(new AiTool
             {
                 Name = "get_subjects",
-                Description = "جلب المواد المتاحة للمدرس مع classSubjectTeacherId",
+                Description = "جلب المواد المتاحة للمدرس (أسماء فقط بدون فصول)",
                 Parameters = JsonSerializer.SerializeToElement(new
                 {
                     type = "object",
@@ -47,7 +54,7 @@ public class TeacherToolService : ITeacherToolService
                 }),
                 ExecuteAsync = async (args) =>
                 {
-                    var result = await _subjectService.GetAssignmentsByTeacherAsync(tId, yId);
+                    var result = await _subjectService.GetSubjectsByTeacherAsync(tId, yId);
                     return JsonSerializer.Serialize(result.Data, new JsonSerializerOptions { WriteIndented = true });
                 }
             });
@@ -104,13 +111,14 @@ public class TeacherToolService : ITeacherToolService
         list.Add(new AiTool
         {
             Name = "generate_exam_with_ai",
-            Description = "توليد أسئلة امتحان بالذكاء الاصطناعي بناءً على المحتوى الدراسي للوحدة/الدروس وحفظها مباشرة. استخدم get_subjects أولاً لمعرفة classSubjectTeacherId.",
+            Description = "توليد أسئلة امتحان بالذكاء الاصطناعي بناءً على المحتوى الدراسي للوحدة/الدروس وحفظها مباشرة. استخدم get_subjects أولاً لمعرفة subjectId.",
             Parameters = JsonSerializer.SerializeToElement(new
             {
                 type = "object",
                 properties = new
                 {
-                    classSubjectTeacherId = new { type = "integer", description = "معرف المادة-الفصل-المدرس (إجباري)" },
+                    subjectId = new { type = "integer", description = "معرف المادة (من get_subjects) — بديل عن classSubjectTeacherId" },
+                    classSubjectTeacherId = new { type = "integer", description = "معرف المادة-الفصل-المدرس (اختياري — يحل تلقائياً من subjectId)" },
                     title = new { type = "string", description = "عنوان الامتحان" },
                     mcqCount = new { type = "integer", description = "عدد أسئلة الاختيار من متعدد (اختياري، افتراضي 5)" },
                     trueFalseCount = new { type = "integer", description = "عدد أسئلة صح/خطأ (اختياري، افتراضي 0)" },
@@ -122,13 +130,34 @@ public class TeacherToolService : ITeacherToolService
                     lessonIds = new { type = "array", items = new { type = "integer" }, description = "مصفوفة معرفات الدروس (اختياري)" },
                     topic = new { type = "string", description = "موضوع محدد للامتحان (اختياري)" }
                 },
-                required = new[] { "classSubjectTeacherId", "title" }
+                required = new[] { "title" }
             }),
             ExecuteAsync = async (args) =>
             {
                 using var doc = JsonDocument.Parse(args);
 
-                var cstId = doc.RootElement.GetProperty("classSubjectTeacherId").GetInt32();
+                int cstId;
+                if (doc.RootElement.TryGetProperty("classSubjectTeacherId", out var cstEl) && cstEl.ValueKind == JsonValueKind.Number)
+                {
+                    cstId = cstEl.GetInt32();
+                }
+                else if (doc.RootElement.TryGetProperty("subjectId", out var subjEl) && subjEl.ValueKind == JsonValueKind.Number)
+                {
+                    var sid = subjEl.GetInt32();
+                    if (!context.TeacherId.HasValue || !context.AcademicYearId.HasValue)
+                        return JsonSerializer.Serialize(new { error = "بيانات المدرس غير متوفرة" });
+                    var csts = await _unitOfWork.ClassSubjectTeachers
+                        .FindAsync(c => c.SubjectId == sid && c.TeacherId == context.TeacherId.Value && c.AcademicYearId == context.AcademicYearId.Value && !c.IsDeleted, ct);
+                    var first = csts.FirstOrDefault();
+                    if (first == null)
+                        return JsonSerializer.Serialize(new { error = "لم يتم العثور على المادة للمدرس في العام الدراسي الحالي" });
+                    cstId = first.Id;
+                }
+                else
+                {
+                    return JsonSerializer.Serialize(new { error = "يجب توفير subjectId أو classSubjectTeacherId" });
+                }
+
                 var title = doc.RootElement.GetProperty("title").GetString() ?? "امتحان من AI";
 
                 var questionCounts = new Dictionary<int, int>
@@ -185,54 +214,139 @@ public class TeacherToolService : ITeacherToolService
         list.Add(new AiTool
         {
             Name = "save_to_question_bank",
-            Description = "حفظ أسئلة امتحان في بنك الأسئلة (استخدمها بعد توليد الامتحان إذا أردت حفظ نسخة إضافية أو تعديل)",
+            Description = "حفظ سؤال واحد أو أكثر في بنك الأسئلة (الموضوع مطلوب). يستخدم لتجميع الأسئلة في بنك مركزي لاستخدامها لاحقاً.",
             Parameters = JsonSerializer.SerializeToElement(new
             {
                 type = "object",
                 properties = new
                 {
-                    classSubjectTeacherId = new { type = "integer", description = "معرف المادة-الفصل" },
-                    title = new { type = "string", description = "عنوان الامتحان" },
-                    totalScore = new { type = "number", description = "الدرجة الكلية" },
-                    questionsJson = new { type = "string", description = "مصفوفة الأسئلة بصيغة JSON (كل سؤال يحتوي: questionText, questionType, points, displayOrder, options, correctAnswer)" }
+                    subjectId = new { type = "integer", description = "معرف المادة (من get_subjects: الـ subjectId)" },
+                    sourceExamId = new { type = "integer", description = "معرف الامتحان المصدر (اختياري)" },
+                    questions = new
+                    {
+                        type = "array",
+                        description = "مصفوفة الأسئلة المراد حفظها",
+                        items = new
+                        {
+                            type = "object",
+                            properties = new
+                            {
+                                questionText = new { type = "string", description = "نص السؤال" },
+                                questionType = new { type = "integer", description = "نوع السؤال: 1=اختيار من متعدد, 2=صح/خطأ, 3=أكمل الفراغ, 4=مقالي" },
+                                correctAnswer = new { type = "string", description = "الإجابة الصحيحة (للأكمل والمقالي)" },
+                                options = new
+                                {
+                                    type = "array",
+                                    description = "الخيارات (لـ MCQ وصح/خطأ)",
+                                    items = new
+                                    {
+                                        type = "object",
+                                        properties = new
+                                        {
+                                            text = new { type = "string", description = "نص الخيار" },
+                                            isCorrect = new { type = "boolean", description = "هل هذا هو الخيار الصحيح؟" },
+                                            displayOrder = new { type = "integer", description = "ترتيب العرض" }
+                                        }
+                                    }
+                                }
+                            },
+                            required = new[] { "questionText", "questionType" }
+                        }
+                    }
                 },
-                required = new[] { "classSubjectTeacherId", "title", "questionsJson" }
+                required = new[] { "subjectId", "questions" }
             }),
             ExecuteAsync = async (args) =>
             {
                 using var doc = JsonDocument.Parse(args);
-                var cstId = doc.RootElement.GetProperty("classSubjectTeacherId").GetInt32();
-                var title = doc.RootElement.GetProperty("title").GetString() ?? "امتحان";
-                var totalScore = doc.RootElement.TryGetProperty("totalScore", out var ts) ? ts.GetDecimal() : 100;
-                var questionsJson = doc.RootElement.GetProperty("questionsJson").GetString() ?? "[]";
+                var subjectId = doc.RootElement.GetProperty("subjectId").GetInt32();
+                var sourceExamId = doc.RootElement.TryGetProperty("sourceExamId", out var se) ? se.GetInt32() : (int?)null;
 
-                try
+                var questionsArray = doc.RootElement.GetProperty("questions").EnumerateArray();
+
+                var addedCount = 0;
+                var duplicateCount = 0;
+
+                foreach (var qEl in questionsArray)
                 {
-                    var questions = JsonSerializer.Deserialize<List<AiQuestionDto>>(questionsJson,
-                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
-                    var dto = new CreateExamFromAiDto
+                    var dto = new DTOs.QuestionBank.AddToQuestionBankDto
                     {
-                        ClassSubjectTeacherId = cstId,
-                        Title = title,
-                        TotalScore = totalScore,
-                        Category = Domain.Enums.EvaluationCategory.Academic,
-                        DurationMinutes = 60,
-                        StandaloneQuestions = questions ?? new()
+                        QuestionText = qEl.GetProperty("questionText").GetString() ?? "",
+                        QuestionType = qEl.TryGetProperty("questionType", out var qt) ? qt.GetInt32() : 1,
+                        CorrectAnswer = qEl.TryGetProperty("correctAnswer", out var ca) ? ca.GetString() : null,
+                        SubjectId = subjectId,
+                        SourceExamId = sourceExamId,
+                        Options = new()
                     };
 
-                    var result = await _examService.CreateFromAiAsync(dto, ct);
-                    return JsonSerializer.Serialize(new
+                    if (qEl.TryGetProperty("options", out var opts) && opts.ValueKind == JsonValueKind.Array)
                     {
-                        examId = result.Data?.Id,
-                        success = result.IsSuccess,
-                        message = result.IsSuccess ? "تم حفظ الأسئلة بنجاح" : result.Message
-                    }, new JsonSerializerOptions { WriteIndented = true });
+                        foreach (var opt in opts.EnumerateArray())
+                        {
+                            dto.Options.Add(new DTOs.QuestionBank.AddOptionDto
+                            {
+                                Text = opt.GetProperty("text").GetString() ?? "",
+                                IsCorrect = opt.TryGetProperty("isCorrect", out var ic) && ic.GetBoolean(),
+                                DisplayOrder = opt.TryGetProperty("displayOrder", out var od) ? od.GetInt32() : 0
+                            });
+                        }
+                    }
+
+                    var result = await _questionBankService.AddQuestionAsync(dto);
+                    if (result.IsSuccess)
+                    {
+                        if (result.Message?.Contains("موجود مسبقاً") == true)
+                            duplicateCount++;
+                        else
+                            addedCount++;
+                    }
                 }
-                catch (JsonException ex)
+
+                return JsonSerializer.Serialize(new
                 {
-                    return JsonSerializer.Serialize(new { error = $"خطأ في تحليل JSON: {ex.Message}" });
-                }
+                    success = true,
+                    addedCount,
+                    duplicateCount,
+                    message = $"تم إضافة {addedCount} سؤال جديد إلى بنك الأسئلة" +
+                              (duplicateCount > 0 ? $"، و{duplicateCount} أسئلة موجودة مسبقاً (تم زيادة عدد استخداماتها)" : "")
+                }, new JsonSerializerOptions { WriteIndented = true });
+            }
+        });
+
+        list.Add(new AiTool
+        {
+            Name = "add_exam_to_question_bank",
+            Description = "إضافة جميع أسئلة امتحان موجود إلى بنك الأسئلة (يستخدم بعد توليد امتحان أو من الامتحانات السابقة)",
+            Parameters = JsonSerializer.SerializeToElement(new
+            {
+                type = "object",
+                properties = new
+                {
+                    examUid = new { type = "string", description = "UID الامتحان (من رابط المعاينة)" },
+                    subjectId = new { type = "integer", description = "معرف المادة (من get_subjects: الـ subjectId)" }
+                },
+                required = new[] { "examUid", "subjectId" }
+            }),
+            ExecuteAsync = async (args) =>
+            {
+                using var doc = JsonDocument.Parse(args);
+                var examUid = doc.RootElement.GetProperty("examUid").GetString() ?? "";
+                var subjectId = doc.RootElement.GetProperty("subjectId").GetInt32();
+
+                if (!Guid.TryParse(examUid, out var uid))
+                    return JsonSerializer.Serialize(new { error = "UID غير صحيح" });
+
+                var exam = await _examService.GetByUidAsync(uid);
+                if (!exam.IsSuccess || exam.Data is null)
+                    return JsonSerializer.Serialize(new { error = "الامتحان غير موجود" });
+
+                var result = await _questionBankService.BulkAddFromExamAsync(exam.Data.Id, subjectId);
+                return JsonSerializer.Serialize(new
+                {
+                    success = result.IsSuccess,
+                    addedCount = result.Data,
+                    message = result.Message ?? "تم إضافة أسئلة الامتحان إلى بنك الأسئلة"
+                }, new JsonSerializerOptions { WriteIndented = true });
             }
         });
 

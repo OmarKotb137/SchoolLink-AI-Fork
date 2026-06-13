@@ -12,6 +12,7 @@ import {
 import { AuthService } from '../../core/services/auth.service';
 import { RoleService } from '../../shared/role.service';
 import { VoiceTranscriptionService } from '../../core/services/voice-transcription.service';
+import { TextToSpeechService } from '../../core/services/text-to-speech.service';
 import { buildApiUrl } from '../../core/utils/api-url';
 import { catchError, finalize, of } from 'rxjs';
 
@@ -63,6 +64,7 @@ const QUICK_PROMPTS: Record<string, QuickPrompt[]> = {
 export class ChatAi implements OnInit, AfterViewChecked, OnDestroy {
   private agentSvc = inject(AiAgentChatService);
   private voiceTranscribeSvc = inject(VoiceTranscriptionService);
+  private ttsSvc = inject(TextToSpeechService);
   private auth = inject(AuthService);
   private roleService = inject(RoleService);
 
@@ -79,6 +81,14 @@ export class ChatAi implements OnInit, AfterViewChecked, OnDestroy {
   private readonly SUGGESTIONS_KEY = 'ai_last_suggestions';
   private readonly CONVERSATIONS_KEY = 'ai_conversations_cache';
   conversationId = signal<string>('');
+
+  private get storageKey(): string {
+    return `${this.STORAGE_KEY}_${this.userRole}`;
+  }
+
+  private get suggestionsKey(): string {
+    return `${this.SUGGESTIONS_KEY}_${this.userRole}`;
+  }
 
   // ── History ──
   conversations = signal<ConversationListItem[]>([]);
@@ -99,6 +109,7 @@ export class ChatAi implements OnInit, AfterViewChecked, OnDestroy {
   userRole = '';
   quickPrompts: QuickPrompt[] = [];
   contextActions = signal<string[]>([]);
+  ttsLoading = signal<string | null>(null); // holds the text being spoken, or null
 
   constructor() {
     const user = this.auth.user();
@@ -114,7 +125,7 @@ export class ChatAi implements OnInit, AfterViewChecked, OnDestroy {
 
   ngOnInit() {
     // Try to restore previous conversationId from localStorage
-    const stored = localStorage.getItem(this.STORAGE_KEY);
+    const stored = localStorage.getItem(this.storageKey);
     if (stored) {
       this.conversationId.set(stored);
       this.loadConversationMessages(stored);
@@ -130,16 +141,16 @@ export class ChatAi implements OnInit, AfterViewChecked, OnDestroy {
   /** حفظ آخر suggestedActions في localStorage */
   private saveSuggestions(actions: string[]) {
     if (actions && actions.length > 0) {
-      localStorage.setItem(this.SUGGESTIONS_KEY, JSON.stringify(actions));
+      localStorage.setItem(this.suggestionsKey, JSON.stringify(actions));
     } else {
-      localStorage.removeItem(this.SUGGESTIONS_KEY);
+      localStorage.removeItem(this.suggestionsKey);
     }
   }
 
   /** استرجاع آخر suggestedActions من localStorage */
   private loadSavedSuggestions(): string[] {
     try {
-      const saved = localStorage.getItem(this.SUGGESTIONS_KEY);
+      const saved = localStorage.getItem(this.suggestionsKey);
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
@@ -161,7 +172,7 @@ export class ChatAi implements OnInit, AfterViewChecked, OnDestroy {
 
   private generateId(): string {
     const id = 'conv_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
-    localStorage.setItem(this.STORAGE_KEY, id);
+    localStorage.setItem(this.storageKey, id);
     return id;
   }
 
@@ -213,7 +224,7 @@ export class ChatAi implements OnInit, AfterViewChecked, OnDestroy {
   switchConversation(convId: string) {
     this.showHistory.set(false);
     this.conversationId.set(convId);
-    localStorage.setItem(this.STORAGE_KEY, convId);
+    localStorage.setItem(this.storageKey, convId);
     this.loading.set(true);
 
     this.loadConversationMessages(convId);
@@ -225,7 +236,7 @@ export class ChatAi implements OnInit, AfterViewChecked, OnDestroy {
     this.showHistory.set(false);
     this.conversationId.set(this.generateId());
     this.messages.set([]);
-    localStorage.removeItem(this.SUGGESTIONS_KEY);
+    localStorage.removeItem(this.suggestionsKey);
     this.contextActions.set([]);
   }
 
@@ -516,7 +527,7 @@ export class ChatAi implements OnInit, AfterViewChecked, OnDestroy {
           if (data.additionalData?.['conversationId']) {
             const newId = data.additionalData['conversationId'] as string;
             this.conversationId.set(newId);
-            localStorage.setItem(this.STORAGE_KEY, newId);
+            localStorage.setItem(this.storageKey, newId);
           }
 
           // Refresh conversation list after sending a message
@@ -527,6 +538,27 @@ export class ChatAi implements OnInit, AfterViewChecked, OnDestroy {
 
   onSuggestedAction(action: string) {
     this.sendMessage(action);
+  }
+
+  /** تحويل نص الرسالة إلى صوت (لطلاب فقط) */
+  speakMessage(text: string) {
+    if (this.ttsLoading() !== null) return; // already playing
+    this.ttsLoading.set(text);
+    this.ttsSvc.synthesizeSpeech(text).subscribe({
+      next: (blob) => {
+        this.ttsLoading.set(null);
+        const audioUrl = URL.createObjectURL(blob);
+        const audio = new Audio(audioUrl);
+        audio.onended = () => URL.revokeObjectURL(audioUrl);
+        audio.play().catch(() => {
+          // Autoplay might be blocked
+        });
+      },
+      error: () => {
+        this.ttsLoading.set(null);
+        this.errorMsg.set('فشل تحويل النص إلى صوت');
+      },
+    });
   }
 
   /** استخراج الروابط من النص */

@@ -4,7 +4,7 @@ namespace Project.BLL.DTOs.Exam;
 
 public class AiGenerateExamRequest
 {
-    public int ClassSubjectTeacherId { get; set; }
+    public int? ClassSubjectTeacherId { get; set; }
     public string Title { get; set; } = string.Empty;
     public int? DurationMinutes { get; set; }
     public decimal TotalScore { get; set; }

@@ -46,7 +46,7 @@ namespace Project.BLL.Services
 
             var cstIds = csts.Select(c => c.Id).ToList();
             var allExams = await _unitOfWork.Exams
-                .FindAsync(e => cstIds.Contains(e.ClassSubjectTeacherId) && e.IsAIGenerated && !e.IsDeleted,
+                .FindAsync(e => (e.ClassSubjectTeacherId != null && cstIds.Contains(e.ClassSubjectTeacherId.Value) || e.ClassSubjectTeacherId == null) && e.IsAIGenerated && !e.IsDeleted,
                     CancellationToken.None);
 
             var ordered = allExams.OrderByDescending(e => e.CreatedAt).ToList();
@@ -65,13 +65,26 @@ namespace Project.BLL.Services
             return OperationResult<GetExamDto>.Success(dto);
         }
 
+        public async Task<OperationResult<GetExamDto>> GetByUidAsync(Guid uid, CancellationToken ct = default)
+        {
+            var exam = await _unitOfWork.Exams.GetWithQuestionsByUidAsync(uid, ct);
+            if (exam == null || exam.IsDeleted)
+                return OperationResult<GetExamDto>.Failure("الامتحان غير موجود", 404);
+
+            var dto = _mapper.Map<GetExamDto>(exam);
+            return OperationResult<GetExamDto>.Success(dto);
+        }
+
         public async Task<OperationResult<ExamSummaryDto>> CreateAsync(CreateExamDto dto)
         {
-            var classSubjectTeacher = await _unitOfWork.ClassSubjectTeachers
-                .GetByIdAsync(dto.ClassSubjectTeacherId);
+            if (dto.ClassSubjectTeacherId.HasValue)
+            {
+                var classSubjectTeacher = await _unitOfWork.ClassSubjectTeachers
+                    .GetByIdAsync(dto.ClassSubjectTeacherId.Value);
 
-            if (classSubjectTeacher == null || classSubjectTeacher.IsDeleted)
-                return OperationResult<ExamSummaryDto>.Failure("المادة غير موجودة", 404);
+                if (classSubjectTeacher == null || classSubjectTeacher.IsDeleted)
+                    return OperationResult<ExamSummaryDto>.Failure("المادة غير موجودة", 404);
+            }
 
             var exam = _mapper.Map<Exam>(dto);
 
@@ -168,7 +181,7 @@ namespace Project.BLL.Services
                 return OperationResult<List<ExamSummaryDto>>.Success(new List<ExamSummaryDto>());
 
             var allExams = await _unitOfWork.Exams
-                .FindAsync(e => cstIds.Contains(e.ClassSubjectTeacherId) && !e.IsDeleted);
+                .FindAsync(e => (e.ClassSubjectTeacherId != null && cstIds.Contains(e.ClassSubjectTeacherId.Value) || e.ClassSubjectTeacherId == null) && !e.IsDeleted);
 
             var dtos = _mapper.Map<List<ExamSummaryDto>>(allExams);
             return OperationResult<List<ExamSummaryDto>>.Success(dtos, "تم جلب الامتحانات بنجاح");
@@ -187,11 +200,14 @@ namespace Project.BLL.Services
 
         public async Task<OperationResult<GetExamDto>> CreateFromAiAsync(CreateExamFromAiDto dto, CancellationToken ct = default)
         {
-            var classSubjectTeacher = await _unitOfWork.ClassSubjectTeachers
-                .GetByIdAsync(dto.ClassSubjectTeacherId);
+            if (dto.ClassSubjectTeacherId.HasValue)
+            {
+                var classSubjectTeacher = await _unitOfWork.ClassSubjectTeachers
+                    .GetByIdAsync(dto.ClassSubjectTeacherId.Value);
 
-            if (classSubjectTeacher == null || classSubjectTeacher.IsDeleted)
-                return OperationResult<GetExamDto>.Failure("المادة غير موجودة", 404);
+                if (classSubjectTeacher == null || classSubjectTeacher.IsDeleted)
+                    return OperationResult<GetExamDto>.Failure("المادة غير موجودة", 404);
+            }
 
             var exam = new Exam
             {

@@ -40,6 +40,10 @@ public static class ServiceExtensions
         services.AddScoped<ILibraryService, LibraryService>();
         services.AddScoped<ISchoolProfileService, SchoolProfileService>();
         services.AddHttpClient<IDropboxService, DropboxService>();
+        services.AddHttpClient<ITextToSpeechService, TextToSpeechService>(c =>
+        {
+            c.Timeout = TimeSpan.FromMinutes(3);
+        });
 
 
         services.AddScoped<IAcademicYearService, AcademicYearService>();
@@ -55,6 +59,7 @@ public static class ServiceExtensions
         services.AddScoped<IExamService, ExamService>();
         services.AddScoped<IExamAttemptService, ExamAttemptService>();
         services.AddScoped<IExamHtmlRenderer, ExamHtmlRenderer>();
+        services.AddScoped<IQuestionBankService, QuestionBankService>();
         services.AddScoped<IExamMediaService>(sp =>
         {
             var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();

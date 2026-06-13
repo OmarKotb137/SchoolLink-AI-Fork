@@ -158,6 +158,23 @@
 
                 <span class="msg-time">{{ msg.timestamp | date:'shortTime' }}</span>
               </div>
+
+              <!-- TTS Button (لطلاب فقط) — جنب الرسالة -->
+              @if (isStudent) {
+                <button
+                  class="tts-icon-btn"
+                  [class.tts-loading]="ttsLoading() === msg.text"
+                  (click)="speakMessage(msg.text)"
+                  title="استماع إلى الرسالة"
+                >
+                  @if (ttsLoading() === msg.text) {
+                    <span class="material-symbols-outlined tts-spin">volume_up</span>
+                  } @else {
+                    <span class="material-symbols-outlined">volume_up</span>
+                  }
+                  <span class="tts-label">استماع</span>
+                </button>
+              }
             </div>
           }
         }

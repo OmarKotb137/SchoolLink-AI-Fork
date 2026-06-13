@@ -99,57 +99,78 @@ public class OpenCodeAILlmClient : ILlmClient
         }
 
         var url = $"{_baseUrl.TrimEnd('/')}/chat/completions";
-
         var jsonString = body.ToJsonString();
-        var content = new StringContent(jsonString, Encoding.UTF8, "application/json");
 
-        var resp = await _http.PostAsync(url, content);
-
-        if (!resp.IsSuccessStatusCode)
+        // Retry up to 2 times with exponential backoff for transient failures
+        var maxRetries = 2;
+        for (int attempt = 0; attempt <= maxRetries; attempt++)
         {
-            var errorBody = await resp.Content.ReadAsStringAsync();
-
-            // Handle rate limits gracefully
-            if (resp.StatusCode == System.Net.HttpStatusCode.TooManyRequests ||
-                errorBody.Contains("FreeUsageLimitError") ||
-                errorBody.Contains("Rate limit"))
+            try
             {
-                return new LlmResponse
+                var request = new HttpRequestMessage(HttpMethod.Post, url)
                 {
-                    Content = "عذراً، تم تجاوز حد الاستخدام المسموح به حالياً. يرجى الانتظار قليلاً ثم المحاولة مرة أخرى. 🙏"
+                    Content = new StringContent(jsonString, Encoding.UTF8, "application/json"),
+                    Version = new Version(1, 1),
+                    VersionPolicy = HttpVersionPolicy.RequestVersionExact
                 };
-            }
 
-            // For other errors, also return friendly message
-            return new LlmResponse
-            {
-                Content = "عذراً، حدث خطأ في الاتصال بالمساعد الذكي. يرجى المحاولة مرة أخرى لاحقاً."
-            };
-        }
+                var resp = await _http.SendAsync(request);
 
-        var json = await resp.Content.ReadAsStringAsync();
-        var doc = JsonDocument.Parse(json);
-        var choice = doc.RootElement.GetProperty("choices")[0].GetProperty("message");
-
-        var result = new LlmResponse();
-
-        if (choice.TryGetProperty("content", out var textEl) && textEl.ValueKind != JsonValueKind.Null)
-            result.Content = textEl.GetString();
-
-        if (choice.TryGetProperty("tool_calls", out var callsEl) && callsEl.ValueKind == JsonValueKind.Array)
-        {
-            result.ToolCalls = new List<ToolCall>();
-            foreach (var call in callsEl.EnumerateArray())
-            {
-                result.ToolCalls.Add(new ToolCall
+                if (!resp.IsSuccessStatusCode)
                 {
-                    Id = call.GetProperty("id").GetString() ?? "",
-                    Name = call.GetProperty("function").GetProperty("name").GetString() ?? "",
-                    Arguments = call.GetProperty("function").GetProperty("arguments").GetString() ?? "{}"
-                });
+                    var errorBody = await resp.Content.ReadAsStringAsync();
+
+                    // Handle rate limits gracefully
+                    if (resp.StatusCode == System.Net.HttpStatusCode.TooManyRequests ||
+                        errorBody.Contains("FreeUsageLimitError") ||
+                        errorBody.Contains("Rate limit"))
+                    {
+                        return new LlmResponse
+                        {
+                            Content = "عذراً، تم تجاوز حد الاستخدام المسموح به حالياً. يرجى الانتظار قليلاً ثم المحاولة مرة أخرى. 🙏"
+                        };
+                    }
+
+                    // For other errors, also return friendly message
+                    return new LlmResponse
+                    {
+                        Content = "عذراً، حدث خطأ في الاتصال بالمساعد الذكي. يرجى المحاولة مرة أخرى لاحقاً."
+                    };
+                }
+
+                var jsonResp = await resp.Content.ReadAsStringAsync();
+                var doc = JsonDocument.Parse(jsonResp);
+                var choice = doc.RootElement.GetProperty("choices")[0].GetProperty("message");
+
+                var result = new LlmResponse();
+
+                if (choice.TryGetProperty("content", out var textEl) && textEl.ValueKind != JsonValueKind.Null)
+                    result.Content = textEl.GetString();
+
+                if (choice.TryGetProperty("tool_calls", out var callsEl) && callsEl.ValueKind == JsonValueKind.Array)
+                {
+                    result.ToolCalls = new List<ToolCall>();
+                    foreach (var call in callsEl.EnumerateArray())
+                    {
+                        result.ToolCalls.Add(new ToolCall
+                        {
+                            Id = call.GetProperty("id").GetString() ?? "",
+                            Name = call.GetProperty("function").GetProperty("name").GetString() ?? "",
+                            Arguments = call.GetProperty("function").GetProperty("arguments").GetString() ?? "{}"
+                        });
+                    }
+                }
+
+                return result;
+            }
+            catch (Exception ex) when (attempt < maxRetries &&
+                (ex is HttpRequestException || ex is TaskCanceledException || ex is System.IO.IOException))
+            {
+                var delay = TimeSpan.FromSeconds(Math.Pow(2, attempt + 1));
+                await Task.Delay(delay);
             }
         }
 
-        return result;
+        throw new HttpRequestException("فشل الاتصال بعد 3 محاولات");
     }
 }

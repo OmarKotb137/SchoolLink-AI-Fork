@@ -82,6 +82,10 @@ public interface IUnitOfWork : IDisposable, IAsyncDisposable
     IStudyPlanRepository                   StudyPlans                   { get; }
     IStudyPlanItemRepository               StudyPlanItems               { get; }
 
+    // Section J: Question Bank
+    IRepository<QuestionBank>              QuestionBank                 { get; }
+    IRepository<ExamQuestionBankItem>      ExamQuestionBankItems        { get; }
+
     // Persistence
 
     Task<int> SaveChangesAsync(CancellationToken ct = default);

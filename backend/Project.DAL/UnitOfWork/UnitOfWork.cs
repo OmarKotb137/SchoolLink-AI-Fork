@@ -82,7 +82,11 @@ public class UnitOfWork : IUnitOfWork
 
         IStudyPlanRepository                   studyPlans,
         IStudyPlanItemRepository               studyPlanItems,
-        IRepository<ClassTemplateLink>         classTemplateLinks)
+        IRepository<ClassTemplateLink>         classTemplateLinks,
+
+        // Section J: Question Bank
+        IRepository<QuestionBank>              questionBank,
+        IRepository<ExamQuestionBankItem>      examQuestionBankItems)
     {
         _context = context;
 
@@ -152,6 +156,10 @@ public class UnitOfWork : IUnitOfWork
         StudyPlans                   = studyPlans;
         StudyPlanItems               = studyPlanItems;
         ClassTemplateLinks           = classTemplateLinks;
+
+        // Section J
+        QuestionBank                 = questionBank;
+        ExamQuestionBankItems        = examQuestionBankItems;
     }
 
     public IRepository<ClassTemplateLink>         ClassTemplateLinks           { get; }
@@ -221,6 +229,10 @@ public class UnitOfWork : IUnitOfWork
     // Section I: Study Plans
     public IStudyPlanRepository                   StudyPlans                   { get; }
     public IStudyPlanItemRepository               StudyPlanItems               { get; }
+
+    // Section J: Question Bank
+    public IRepository<QuestionBank>              QuestionBank                 { get; }
+    public IRepository<ExamQuestionBankItem>      ExamQuestionBankItems        { get; }
 
     // Persistence
 

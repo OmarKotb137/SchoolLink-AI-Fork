@@ -42,14 +42,28 @@
 
             <!-- Subject -->
             <div class="pf">
-              <label>المادة / الفصل</label>
-              <select class="k-select" [ngModel]="selectedCstId()" (ngModelChange)="selectedCstId.set($event); onCstChange()">
-                <option [ngValue]="null" disabled>اختر...</option>
-                @for (a of assignments(); track a.id) {
-                  <option [ngValue]="a.id">{{ a.className }} - {{ a.subjectName }}</option>
+              <label>المادة</label>
+              <select class="k-select" [ngModel]="selectedSubjectName()" (ngModelChange)="selectedSubjectName.set($event); onSubjectChange()">
+                <option value="" disabled>اختر مادة...</option>
+                @for (s of subjectOptions(); track s.subjectId) {
+                  <option [value]="s.subjectName">{{ s.subjectName }}</option>
                 }
               </select>
             </div>
+
+            <!-- Class (optional — يظهر فقط إذا كان للمادة أكثر من فصل) -->
+            @if (selectedSubjectName() && hasMultipleClasses()) {
+              <div class="pf">
+                <label>الفصل (اختياري)</label>
+                <select class="k-select" [ngModel]="selectedCstId()" (ngModelChange)="selectedCstId.set($event); onClassChange()">
+                  <option [ngValue]="null">تلقائي (أول فصل متاح)</option>
+                  @for (c of classOptions(); track c.id) {
+                    <option [ngValue]="c.id">{{ c.className }}</option>
+                  }
+                </select>
+                <small class="pf-hint">إذا لم تختر فصلاً، سيتم استخدام أول فصل متاح تلقائياً</small>
+              </div>
+            }
 
             <!-- Title -->
             <div class="pf">
@@ -119,7 +133,7 @@
             }
 
             <!-- Generate Button -->
-            <button class="kids-ai-main-btn" (click)="preview()" [disabled]="generating() || !selectedCstId()">
+            <button class="kids-ai-main-btn" (click)="preview()" [disabled]="generating() || !selectedSubjectName()">
               @if (generating()) {
                 <span class="spinner"></span>
                 <span>جاري الإنشاء...</span>

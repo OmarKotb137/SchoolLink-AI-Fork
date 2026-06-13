@@ -18,6 +18,7 @@ try
     builder.WebHost.ConfigureKestrel(options =>
         options.Limits.MaxRequestBodySize = 100_000_000);
 
+    builder.Logging.ClearProviders();
     builder.Host.UseSerilog((context, services, config) =>
         config.ReadFrom.Configuration(context.Configuration)
               .ReadFrom.Services(services)
