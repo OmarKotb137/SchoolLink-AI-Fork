@@ -8,6 +8,7 @@ public class SaveExamQuestionsDto
     public string Title { get; set; } = string.Empty;
     public int? DurationMinutes { get; set; }
     public decimal TotalScore { get; set; }
+    public int? ClassSubjectTeacherId { get; set; }
     public List<SaveQuestionDto> Questions { get; set; } = new();
 }
 

@@ -74,13 +74,16 @@ export class ChatAi implements OnInit, AfterViewChecked, OnDestroy {
   sidebarOpen = signal(false);
   messages = signal<ChatMessage[]>([]);
   inputText = signal('');
-  loading = signal(false);
+  isLoading = signal(false);
   errorMsg = signal('');
 
   private readonly STORAGE_KEY = 'ai_conversation_id';
   private readonly SUGGESTIONS_KEY = 'ai_last_suggestions';
   private readonly CONVERSATIONS_KEY = 'ai_conversations_cache';
   conversationId = signal<string>('');
+  /** مانع الإرسال المتزامن — يمنع إرسال طلبين لنفس المحادثة */
+  private isSending = false;
+  private lastSendTime = 0;
 
   private get storageKey(): string {
     return `${this.STORAGE_KEY}_${this.userRole}`;
@@ -225,10 +228,10 @@ export class ChatAi implements OnInit, AfterViewChecked, OnDestroy {
     this.showHistory.set(false);
     this.conversationId.set(convId);
     localStorage.setItem(this.storageKey, convId);
-    this.loading.set(true);
+    this.isLoading.set(true);
 
     this.loadConversationMessages(convId);
-    this.loading.set(false);
+    this.isLoading.set(false);
   }
 
   /** بدء محادثة جديدة */
@@ -411,11 +414,11 @@ export class ChatAi implements OnInit, AfterViewChecked, OnDestroy {
       return;
     }
 
-    this.loading.set(true);
+    this.isLoading.set(true);
 
     this.voiceTranscribeSvc.transcribeAudio(blob).subscribe({
       next: (res) => {
-        this.loading.set(false);
+        this.isLoading.set(false);
         if (res.isSuccess && res.text) {
           this.inputText.set(this.inputText() + (this.inputText() ? ' ' : '') + res.text);
         } else {
@@ -423,7 +426,7 @@ export class ChatAi implements OnInit, AfterViewChecked, OnDestroy {
         }
       },
       error: (err) => {
-        this.loading.set(false);
+        this.isLoading.set(false);
         this.errorMsg.set('حدث خطأ أثناء معالجة الصوت.');
         console.error('Transcription upload error:', err);
       },
@@ -497,12 +500,18 @@ export class ChatAi implements OnInit, AfterViewChecked, OnDestroy {
 
   sendMessage(text?: string) {
     const message = text ?? this.inputText();
-    if (!message || !message.trim() || this.loading()) return;
+    if (!message || !message.trim() || this.isLoading()) return;
+
+    // Debounce: يمنع تكرار الإرسال خلال ثانية واحدة
+    const now = Date.now();
+    if (this.lastSendTime > 0 && now - this.lastSendTime < 1000) return;
+    this.lastSendTime = now;
 
     const trimmed = message.trim();
     this.inputText.set('');
     this.addUserMessage(trimmed);
-    this.loading.set(true);
+    this.isLoading.set(true);
+    this.isSending = true;
     this.errorMsg.set('');
 
     this.agentSvc
@@ -513,7 +522,10 @@ export class ChatAi implements OnInit, AfterViewChecked, OnDestroy {
           this.errorMsg.set(msg);
           return of(null);
         }),
-        finalize(() => this.loading.set(false))
+        finalize(() => {
+          this.isLoading.set(false);
+          this.isSending = false;
+        })
       )
       .subscribe({
         next: result => {
@@ -544,9 +556,11 @@ export class ChatAi implements OnInit, AfterViewChecked, OnDestroy {
   speakMessage(text: string) {
     if (this.ttsLoading() !== null) return; // already playing
     this.ttsLoading.set(text);
+    this.isSending = true; // Use same debounce mechanism
     this.ttsSvc.synthesizeSpeech(text).subscribe({
       next: (blob) => {
         this.ttsLoading.set(null);
+        this.isSending = false;
         const audioUrl = URL.createObjectURL(blob);
         const audio = new Audio(audioUrl);
         audio.onended = () => URL.revokeObjectURL(audioUrl);
@@ -556,6 +570,7 @@ export class ChatAi implements OnInit, AfterViewChecked, OnDestroy {
       },
       error: () => {
         this.ttsLoading.set(null);
+        this.isSending = false;
         this.errorMsg.set('فشل تحويل النص إلى صوت');
       },
     });

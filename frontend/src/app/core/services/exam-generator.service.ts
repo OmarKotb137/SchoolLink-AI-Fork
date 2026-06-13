@@ -25,6 +25,7 @@ export interface GetExamDto {
   isAIGenerated: boolean;
   isPublished: boolean;
   category: number;
+  classSubjectTeacherId: number | null;
   subjectName: string;
   className: string;
   teacherName: string;
@@ -66,6 +67,7 @@ export interface GetExamQuestionOptionDto {
 }
 
 export interface AiExamPreviewDto {
+  classSubjectTeacherId: number | null;
   subjectName: string;
   className: string;
   teacherName: string;

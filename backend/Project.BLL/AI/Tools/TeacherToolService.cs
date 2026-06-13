@@ -16,6 +16,8 @@ public class TeacherToolService : ITeacherToolService
     private readonly IAiExamGeneratorService _aiExamGen;
     private readonly IQuestionBankService _questionBankService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IUnitService _unitService;
+    private readonly IStudentEvaluationService _evalService;
 
     public TeacherToolService(
         ISubjectService subjectService,
@@ -23,7 +25,9 @@ public class TeacherToolService : ITeacherToolService
         IExamService examService,
         IAiExamGeneratorService aiExamGen,
         IQuestionBankService questionBankService,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IUnitService unitService,
+        IStudentEvaluationService evalService)
     {
         _subjectService = subjectService;
         _lessonRepo = lessonRepo;
@@ -31,6 +35,8 @@ public class TeacherToolService : ITeacherToolService
         _aiExamGen = aiExamGen;
         _questionBankService = questionBankService;
         _unitOfWork = unitOfWork;
+        _unitService = unitService;
+        _evalService = evalService;
     }
 
     public Dictionary<string, AiTool> CreateTools(UserContext context, CancellationToken ct = default)
@@ -58,7 +64,132 @@ public class TeacherToolService : ITeacherToolService
                     return JsonSerializer.Serialize(result.Data, new JsonSerializerOptions { WriteIndented = true });
                 }
             });
+
+            list.Add(new AiTool
+            {
+                Name = "get_classes",
+                Description = "جلب الفصول المتاحة للمدرس (الفصول التي يدرسها المدرس).",
+                Parameters = JsonSerializer.SerializeToElement(new
+                {
+                    type = "object",
+                    properties = new object(),
+                    required = Array.Empty<string>()
+                }),
+                ExecuteAsync = async (args) =>
+                {
+                    var csts = await _unitOfWork.ClassSubjectTeachers.FindAsync(cst =>
+                        cst.TeacherId == tId && cst.AcademicYearId == yId && !cst.IsDeleted);
+                    var classIds = csts.Select(c => c.ClassId).Distinct().ToList();
+                    var allClasses = await _unitOfWork.Classes.FindAsync(c => classIds.Contains(c.Id) && !c.IsDeleted);
+                    var result = allClasses.Select(c => new { classId = c.Id, className = c.Name }).ToList();
+                    return JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
+                }
+            });
+
+            list.Add(new AiTool
+            {
+                Name = "get_evaluation_periods",
+                Description = "جلب فترات التقييم المتاحة للسنة الدراسية.",
+                Parameters = JsonSerializer.SerializeToElement(new
+                {
+                    type = "object",
+                    properties = new object(),
+                    required = Array.Empty<string>()
+                }),
+                ExecuteAsync = async (args) =>
+                {
+                    var periods = await _unitOfWork.EvaluationPeriods.GetOrderedByYearAsync(yId);
+                    var result = periods.Where(p => !p.IsDeleted).Select(p => new
+                    {
+                        id = p.Id,
+                        name = p.Name,
+                        type = p.PeriodType.ToString(),
+                        order = p.OrderNum
+                    }).ToList();
+                    return JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
+                }
+            });
+
+            list.Add(new AiTool
+            {
+                Name = "get_class_evaluations",
+                Description = "جلب تقييمات الطلاب لفصل معين وفترة تقييم محددة (غياب، سلوك، واجبات، تفاعل)",
+                Parameters = JsonSerializer.SerializeToElement(new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        classId = new { type = "integer", description = "معرف الفصل (من get_classes)" },
+                        periodId = new { type = "integer", description = "معرف فترة التقييم (من get_evaluation_periods)" }
+                    },
+                    required = new[] { "classId", "periodId" }
+                }),
+                ExecuteAsync = async (args) =>
+                {
+                    using var doc = JsonDocument.Parse(args);
+                    var classId = doc.RootElement.GetProperty("classId").GetInt32();
+                    var periodId = doc.RootElement.GetProperty("periodId").GetInt32();
+                    var result = await _evalService.GetByClassAndPeriodAsync(classId, periodId);
+                    return JsonSerializer.Serialize(result.Data, new JsonSerializerOptions { WriteIndented = true });
+                }
+            });
         }
+
+            list.Add(new AiTool
+            {
+                Name = "get_units",
+                Description = "جلب أسماء الوحدات والدروس لمادة معينة (بدون المحتوى — فقط للتصفح والاختيار). بعدها استخدم get_unit_content لجلب محتوى وحدة محددة.",
+                Parameters = JsonSerializer.SerializeToElement(new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        subjectId = new { type = "integer", description = "معرف المادة (من get_subjects)" }
+                    },
+                    required = new[] { "subjectId" }
+                }),
+                ExecuteAsync = async (args) =>
+                {
+                    using var doc = JsonDocument.Parse(args);
+                    var subjectId = doc.RootElement.GetProperty("subjectId").GetInt32();
+                    var result = await _unitService.GetUnitsWithLessonsBySubjectAsync(subjectId);
+                    // إرجاع الأسماء فقط بدون محتوى للحفاظ على حجم الـ context
+                    var light = (result.Data ?? []).Select(u => new
+                    {
+                        id = u.Id,
+                        name = u.Name,
+                        lessons = (u.Lessons ?? []).Select(l => new { id = l.Id, title = l.Title }).ToList()
+                    }).ToList();
+                    return JsonSerializer.Serialize(light, new JsonSerializerOptions { WriteIndented = true });
+                }
+            });
+
+            list.Add(new AiTool
+            {
+                Name = "get_unit_content",
+                Description = "جلب المحتوى الكامل لوحدة معينة (بما في ذلك محتوى الوحدة ودروسها). استخدم get_units أولاً لمعرفة unitId.",
+                Parameters = JsonSerializer.SerializeToElement(new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        subjectId = new { type = "integer", description = "معرف المادة (من get_subjects)" },
+                        unitId = new { type = "integer", description = "معرف الوحدة (من get_units)" }
+                    },
+                    required = new[] { "subjectId", "unitId" }
+                }),
+                ExecuteAsync = async (args) =>
+                {
+                    using var doc = JsonDocument.Parse(args);
+                    var subjectId = doc.RootElement.GetProperty("subjectId").GetInt32();
+                    var unitId = doc.RootElement.GetProperty("unitId").GetInt32();
+                    var result = await _unitService.GetUnitsWithLessonsBySubjectAsync(subjectId);
+                    var unit = (result.Data ?? []).FirstOrDefault(u => u.Id == unitId);
+                    if (unit is null)
+                        return JsonSerializer.Serialize(new { error = "الوحدة غير موجودة" });
+                    return JsonSerializer.Serialize(unit, new JsonSerializerOptions { WriteIndented = true });
+                }
+            });
 
         list.Add(new AiTool
         {

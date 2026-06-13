@@ -61,6 +61,83 @@ public class StudentToolService : IStudentToolService
         });
 
         // ─────────────────────────────────────────
+        // TOOL: get_units — تصفح الوحدات والدروس (أسماء فقط)
+        // ─────────────────────────────────────────
+        list.Add(new AiTool
+        {
+            Name = "get_units",
+            Description = "جلب أسماء الوحدات والدروس لمادة معينة (بدون المحتوى — فقط للتصفح). استخدم get_unit_content أو get_lesson_content لجلب المحتوى.",
+            Parameters = JsonSerializer.SerializeToElement(new
+            {
+                type = "object",
+                properties = new
+                {
+                    subjectId = new { type = "integer", description = "معرف المادة (اختياري — لو مش معروف، استخدم اسم المادة)" },
+                    subjectName = new { type = "string", description = "اسم المادة (اختياري — بديل عن subjectId)" }
+                },
+                required = Array.Empty<string>()
+            }),
+            ExecuteAsync = async (args) =>
+            {
+                using var doc = JsonDocument.Parse(args);
+                int? subjectId = null;
+                if (doc.RootElement.TryGetProperty("subjectId", out var sid) && sid.ValueKind == JsonValueKind.Number)
+                    subjectId = sid.GetInt32();
+
+                if (!subjectId.HasValue && doc.RootElement.TryGetProperty("subjectName", out var sn) && sn.ValueKind == JsonValueKind.String)
+                {
+                    var subjects = await _subjectService.GetAllSubjectsAsync();
+                    var match = (subjects.Data ?? []).FirstOrDefault(s => s.Name.Contains(sn.GetString()!, StringComparison.OrdinalIgnoreCase));
+                    subjectId = match?.Id;
+                }
+
+                if (!subjectId.HasValue)
+                    return JsonSerializer.Serialize(new { error = "لم يتم العثور على المادة. استخدم search_lessons للبحث." });
+
+                var result = await _unitService.GetUnitsWithLessonsBySubjectAsync(subjectId.Value);
+                // أسماء فقط — بدون محتوى
+                var light = (result.Data ?? []).Select(u => new
+                {
+                    id = u.Id,
+                    name = u.Name,
+                    hasContent = !string.IsNullOrWhiteSpace(u.Content),
+                    lessons = (u.Lessons ?? []).Select(l => new { id = l.Id, title = l.Title }).ToList()
+                }).ToList();
+                return JsonSerializer.Serialize(light, new JsonSerializerOptions { WriteIndented = true });
+            }
+        });
+
+        // ─────────────────────────────────────────
+        // TOOL: get_unit_content — محتوى وحدة كاملة
+        // ─────────────────────────────────────────
+        list.Add(new AiTool
+        {
+            Name = "get_unit_content",
+            Description = "جلب المحتوى الكامل لوحدة معينة (محتوى الوحدة + محتوى دروسها). استخدم get_units أولاً لمعرفة subjectId و unitId.",
+            Parameters = JsonSerializer.SerializeToElement(new
+            {
+                type = "object",
+                properties = new
+                {
+                    subjectId = new { type = "integer", description = "معرف المادة (من get_units)" },
+                    unitId = new { type = "integer", description = "معرف الوحدة (من get_units)" }
+                },
+                required = new[] { "subjectId", "unitId" }
+            }),
+            ExecuteAsync = async (args) =>
+            {
+                using var doc = JsonDocument.Parse(args);
+                var subjectId = doc.RootElement.GetProperty("subjectId").GetInt32();
+                var unitId = doc.RootElement.GetProperty("unitId").GetInt32();
+                var result = await _unitService.GetUnitsWithLessonsBySubjectAsync(subjectId);
+                var unit = (result.Data ?? []).FirstOrDefault(u => u.Id == unitId);
+                if (unit is null)
+                    return JsonSerializer.Serialize(new { error = "الوحدة غير موجودة" });
+                return JsonSerializer.Serialize(unit, new JsonSerializerOptions { WriteIndented = true });
+            }
+        });
+
+        // ─────────────────────────────────────────
         // TOOL: get_lesson_content
         // ─────────────────────────────────────────
         list.Add(new AiTool

@@ -128,6 +128,10 @@ public class ExamRepository : Repository<Exam>, IExamRepository
         int examId,
         CancellationToken ct = default)
         => await _context.Exams
+            .Include(e => e.ClassSubjectTeacher)
+                .ThenInclude(cst => cst.Subject)
+            .Include(e => e.ClassSubjectTeacher)
+                .ThenInclude(cst => cst.Class)
             .Include(e => e.Questions
                 .OrderBy(q => q.DisplayOrder))
                 .ThenInclude(q => q.Options
@@ -140,11 +144,25 @@ public class ExamRepository : Repository<Exam>, IExamRepository
 
     public async Task<Exam?> GetWithQuestionsByUidAsync(Guid uid, CancellationToken ct = default)
         => await _context.Exams
+            .Include(e => e.ClassSubjectTeacher)
+                .ThenInclude(cst => cst.Subject)
+            .Include(e => e.ClassSubjectTeacher)
+                .ThenInclude(cst => cst.Class)
             .Include(e => e.Questions
                 .OrderBy(q => q.DisplayOrder))
                 .ThenInclude(q => q.Options
                     .OrderBy(o => o.DisplayOrder))
             .FirstOrDefaultAsync(e => e.Uid == uid, ct);
+
+    public async Task<IReadOnlyList<Exam>> GetAIGeneratedByTeacherAsync(List<int> cstIds, CancellationToken ct = default)
+        => await _context.Exams
+            .Include(e => e.Questions.Where(q => !q.IsDeleted))
+            .Include(e => e.Groups.Where(g => !g.IsDeleted))
+                .ThenInclude(g => g.Questions.Where(q => !q.IsDeleted))
+            .Where(e => (e.ClassSubjectTeacherId != null && cstIds.Contains(e.ClassSubjectTeacherId.Value) || e.ClassSubjectTeacherId == null)
+                && e.IsAIGenerated && !e.IsDeleted)
+            .OrderByDescending(e => e.CreatedAt)
+            .ToListAsync(ct);
 }
 
 

@@ -50,12 +50,12 @@ public abstract class BaseAssistantAgent
             new(MessageRole.System, SystemPrompt + GetContextHint(context))
         };
 
-        var history = await _chatStore.GetRecentMessagesAsync(conversationId, context.UserId, 50, ct);
+        var history = await _chatStore.GetRecentMessagesAsync(conversationId, context.UserId, 50, CancellationToken.None);
         foreach (var msg in history)
             messages.Add(new LlmChatMessage(msg.ToMessageRole(), msg.Content));
 
         messages.Add(new LlmChatMessage(MessageRole.User, message));
-        await _chatStore.SaveMessageAsync(conversationId, context.UserId, "user", message, AgentType, ct);
+        await _chatStore.SaveMessageAsync(conversationId, context.UserId, "user", message, AgentType, CancellationToken.None);
 
         var tools = CreateTools(context, ct);
         var toolDefs = tools.Values.Select(t => new FunctionDefinition
@@ -76,7 +76,7 @@ public abstract class BaseAssistantAgent
             if (response.ToolCalls is null || response.ToolCalls.Count == 0)
             {
                 var answer = StripMarkdown(response.Content) ?? "لم يتمكن المساعد من الإجابة.";
-                await _chatStore.SaveMessageAsync(conversationId, context.UserId, "assistant", answer, AgentType, ct);
+                await _chatStore.SaveMessageAsync(conversationId, context.UserId, "assistant", answer, AgentType, CancellationToken.None);
                 return OperationResult<AgentResponse>.Success(new AgentResponse
                 {
                     Text = answer,

@@ -1,6 +1,7 @@
 ﻿using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using Project.BLL.AI.Interfaces;
 using Project.BLL.AI.Models;
 
@@ -12,8 +13,13 @@ namespace Project.API.Controllers.AI;
 public class TeacherAgentController : ControllerBase
 {
     private readonly ITeacherAssistantAgent _agent;
+    private readonly ILogger<TeacherAgentController> _logger;
 
-    public TeacherAgentController(ITeacherAssistantAgent agent) => _agent = agent;
+    public TeacherAgentController(ITeacherAssistantAgent agent, ILogger<TeacherAgentController> logger)
+    {
+        _agent = agent;
+        _logger = logger;
+    }
 
     [HttpPost("lesson-plan")]
     public async Task<IActionResult> LessonPlan([FromBody] LessonPlanRequest request, CancellationToken ct)
@@ -56,13 +62,21 @@ public class TeacherAgentController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.Message))
             return BadRequest(new { error = "Message is required." });
 
-        var context = new UserContext
+        try
         {
-            UserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value),
-            UserRole = "Teacher"
-        };
+            var context = new UserContext
+            {
+                UserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value),
+                UserRole = "Teacher"
+            };
 
-        var result = await _agent.ChatAsync(request.Message, request.ConversationId, context, ct);
-        return result.IsSuccess ? Ok(result) : BadRequest(result);
+            var result = await _agent.ChatAsync(request.Message, request.ConversationId, context, ct);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "TeacherAgent chat failed");
+            return StatusCode(500, new { error = "حدث خطأ داخلي. يرجى المحاولة مرة أخرى." });
+        }
     }
 }

@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Project.BLL.AI.Interfaces;
 using Project.BLL.AI.Models;
 
@@ -10,13 +11,15 @@ namespace Project.BLL.AI.Infrastructure;
 public class OpenCodeAILlmClient : ILlmClient
 {
     private readonly HttpClient _http;
+    private readonly ILogger<OpenCodeAILlmClient> _logger;
     private readonly string _model;
     private readonly string _baseUrl;
     private readonly int _maxTokens;
 
-    public OpenCodeAILlmClient(HttpClient http, IConfiguration config)
+    public OpenCodeAILlmClient(HttpClient http, IConfiguration config, ILogger<OpenCodeAILlmClient> logger)
     {
         _http = http;
+        _logger = logger;
         _model = config["LlmSettings:OpenCodeAI:Model"]
                  ?? "deepseek-v4-flash-free";
         _baseUrl = config["LlmSettings:OpenCodeAI:BaseUrl"]
@@ -119,6 +122,10 @@ public class OpenCodeAILlmClient : ILlmClient
                 if (!resp.IsSuccessStatusCode)
                 {
                     var errorBody = await resp.Content.ReadAsStringAsync();
+                    var statusCode = (int)resp.StatusCode;
+
+                    _logger.LogWarning("LLM API ({Model}) returned {StatusCode}: {ErrorBody}",
+                        _model, statusCode, errorBody);
 
                     // Handle rate limits gracefully
                     if (resp.StatusCode == System.Net.HttpStatusCode.TooManyRequests ||
@@ -131,7 +138,17 @@ public class OpenCodeAILlmClient : ILlmClient
                         };
                     }
 
-                    // For other errors, also return friendly message
+                    // Retry on 5xx server errors
+                    if (statusCode >= 500 && attempt < maxRetries)
+                    {
+                        var delay = TimeSpan.FromSeconds(Math.Pow(2, attempt + 1));
+                        _logger.LogInformation("Retrying after {Delay}s (attempt {Attempt}/{MaxRetries})",
+                            delay.TotalSeconds, attempt + 1, maxRetries);
+                        await Task.Delay(delay);
+                        continue;
+                    }
+
+                    // For other errors after all retries, return friendly message
                     return new LlmResponse
                     {
                         Content = "عذراً، حدث خطأ في الاتصال بالمساعد الذكي. يرجى المحاولة مرة أخرى لاحقاً."
@@ -166,11 +183,16 @@ public class OpenCodeAILlmClient : ILlmClient
             catch (Exception ex) when (attempt < maxRetries &&
                 (ex is HttpRequestException || ex is TaskCanceledException || ex is System.IO.IOException))
             {
+                _logger.LogWarning(ex, "LLM API ({Model}) attempt {Attempt} failed, retrying...", _model, attempt + 1);
                 var delay = TimeSpan.FromSeconds(Math.Pow(2, attempt + 1));
                 await Task.Delay(delay);
             }
         }
 
-        throw new HttpRequestException("فشل الاتصال بعد 3 محاولات");
+        _logger.LogError("LLM API ({Model}) failed after {MaxRetries} retries", _model, maxRetries);
+        return new LlmResponse
+        {
+            Content = "عذراً، حدث خطأ في الاتصال بالمساعد الذكي. يرجى المحاولة مرة أخرى لاحقاً."
+        };
     }
 }

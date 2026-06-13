@@ -84,6 +84,25 @@ export class ExamGenerator implements OnInit {
   // Edit Mode
   editMode = signal(false);
   editData = signal<{ questionText: string; points: number; correctAnswer: string | null; options: { optionText: string; isCorrect: boolean }[] }[]>([]);
+  editTitle = signal('');
+  editDuration = signal<number>(60);
+  editTotalScore = signal<number>(100);
+  editCstId = signal<number | null>(null);
+  editSubjectName = signal<string>('');
+  editSubjectId = signal<number | null>(null);
+  /** SubjectId محفوظ عند تحميل الامتحان (للمعاينة فقط) */
+  savedSubjectId = signal<number | null>(null);
+  savedClassSubjectTeacherId = signal<number | null>(null);
+
+  /** الفصول المتاحة للمادة المختارة في edit mode */
+  editClassOptions = computed(() => {
+    const name = this.editSubjectName();
+    if (!name) return [];
+    return this.assignments().filter(a => a.subjectName === name);
+  });
+
+  /** هل للمادة المختارة في edit mode أكثر من فصل؟ */
+  editHasMultipleClasses = computed(() => this.editClassOptions().length > 1);
 
   readonly QUESTION_TYPE_LABELS: { value: number; label: string; icon: string }[] = [
     { value: 1, label: 'اختيار من متعدد', icon: 'quiz' },
@@ -192,6 +211,24 @@ export class ExamGenerator implements OnInit {
     if (classes.length === 1) {
       this.selectedCstId.set(first.id);
       this.selectedClassName.set(first.className);
+    }
+  }
+
+  onEditSubjectChange() {
+    const name = this.editSubjectName();
+    this.editCstId.set(null);
+    this.editSubjectId.set(null);
+
+    if (!name) return;
+
+    const classes = this.editClassOptions();
+    const first = classes[0];
+    if (!first) return;
+
+    this.editSubjectId.set(first.subjectId);
+
+    if (classes.length === 1) {
+      this.editCstId.set(first.id);
     }
   }
 
@@ -424,8 +461,10 @@ export class ExamGenerator implements OnInit {
             durationMinutes: saved.durationMinutes,
             totalScore: saved.totalScore,
             questionsCount: saved.questionsCount || 0,
+            classSubjectTeacherId: saved.classSubjectTeacherId ?? null,
             standaloneQuestions: [],
           };
+          this.savedClassSubjectTeacherId.set(saved.classSubjectTeacherId ?? null);
 
           const allQ: AiExamPreviewQuestionDto[] = [];
           if (saved.groups) {
@@ -504,6 +543,14 @@ export class ExamGenerator implements OnInit {
     this.deleteTargetId.set(null);
     this.editMode.set(false);
     this.editData.set([]);
+    this.editTitle.set('');
+    this.editDuration.set(60);
+    this.editTotalScore.set(100);
+    this.editCstId.set(null);
+    this.editSubjectName.set('');
+    this.editSubjectId.set(null);
+    this.savedSubjectId.set(null);
+    this.savedClassSubjectTeacherId.set(null);
     this.errorMsg.set('');
   }
 
@@ -565,6 +612,15 @@ export class ExamGenerator implements OnInit {
     const next = !this.editMode();
     this.editMode.set(next);
     if (next) {
+      const preview = this.previewExam();
+      this.editTitle.set(preview?.title ?? '');
+      this.editDuration.set(preview?.durationMinutes ?? 60);
+      this.editTotalScore.set(preview?.totalScore ?? 100);
+      this.editCstId.set(this.savedClassSubjectTeacherId());
+      const cstId = this.savedClassSubjectTeacherId();
+      const cst = cstId ? this.assignments().find(a => a.id === cstId) : null;
+      this.editSubjectName.set(cst?.subjectName ?? '');
+      this.editSubjectId.set(cst?.subjectId ?? null);
       this.editData.set(this.previewQuestions().map(q => ({
         questionText: q.questionText,
         points: q.points,
@@ -580,6 +636,12 @@ export class ExamGenerator implements OnInit {
   cancelEdit() {
     this.editMode.set(false);
     this.editData.set([]);
+    this.editTitle.set('');
+    this.editDuration.set(60);
+    this.editTotalScore.set(100);
+    this.editCstId.set(null);
+    this.editSubjectName.set('');
+    this.editSubjectId.set(null);
     // Reload from saved/history state
     const savedId = this.savedExamId();
     if (savedId) {
@@ -611,9 +673,10 @@ export class ExamGenerator implements OnInit {
 
     const dto = {
       uid: uid,
-      title: preview.title,
-      durationMinutes: preview.durationMinutes,
-      totalScore: preview.totalScore,
+      title: this.editTitle() || preview.title,
+      durationMinutes: this.editDuration() || preview.durationMinutes,
+      totalScore: this.editTotalScore() || preview.totalScore,
+      classSubjectTeacherId: this.editCstId() ?? null,
       questions: questions,
     };
 

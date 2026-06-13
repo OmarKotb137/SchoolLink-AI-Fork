@@ -46,11 +46,9 @@ namespace Project.BLL.Services
 
             var cstIds = csts.Select(c => c.Id).ToList();
             var allExams = await _unitOfWork.Exams
-                .FindAsync(e => (e.ClassSubjectTeacherId != null && cstIds.Contains(e.ClassSubjectTeacherId.Value) || e.ClassSubjectTeacherId == null) && e.IsAIGenerated && !e.IsDeleted,
-                    CancellationToken.None);
+                .GetAIGeneratedByTeacherAsync(cstIds, CancellationToken.None);
 
-            var ordered = allExams.OrderByDescending(e => e.CreatedAt).ToList();
-            var dtos = _mapper.Map<List<ExamSummaryDto>>(ordered);
+            var dtos = _mapper.Map<List<ExamSummaryDto>>(allExams);
             return OperationResult<List<ExamSummaryDto>>.Success(dtos, "تم جلب سجل الامتحانات بنجاح");
         }
 
@@ -305,6 +303,7 @@ namespace Project.BLL.Services
             exam.Title = dto.Title;
             exam.DurationMinutes = dto.DurationMinutes;
             exam.TotalScore = dto.TotalScore;
+            exam.ClassSubjectTeacherId = dto.ClassSubjectTeacherId;
             exam.UpdatedAt = DateTime.UtcNow;
             _unitOfWork.Exams.Update(exam);
 

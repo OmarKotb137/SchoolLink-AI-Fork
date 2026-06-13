@@ -1029,3 +1029,35 @@
   align-items: center;
   gap: 4px;
 }
+
+/* ===== Required Mark ===== */
+.required-mark {
+  color: #ef4444;
+  font-size: 14px;
+  margin-right: 2px;
+}
+
+/* ===== Edit Meta Section ===== */
+.edit-meta-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  background: #fffbeb;
+  border: 2px solid #fbbf24;
+  border-radius: var(--radius-sm);
+}
+.edit-meta-section .pf label {
+  font-size: 12px;
+  font-weight: 800;
+  color: #92400e;
+}
+.edit-meta-section .k-input,
+.edit-meta-section .k-select {
+  background: white;
+  border-color: #fde68a;
+}
+.edit-meta-section .k-input:focus,
+.edit-meta-section .k-select:focus {
+  border-color: #f59e0b;
+}

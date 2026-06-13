@@ -180,7 +180,7 @@
         }
 
         <!-- Typing Indicator -->
-        @if (loading()) {
+        @if (isLoading()) {
           <div class="msg-row msg-assistant">
             <div class="msg-avatar ai-avatar">
               <span class="material-symbols-outlined">auto_awesome</span>
@@ -245,12 +245,12 @@
             (keyup.enter)="sendMessage()"
             placeholder="{{ isRecordingBackend() ? 'جاري التسجيل...' : 'اكتب رسالتك هنا... أو اضغط على الميكروفون' }}"
             dir="rtl"
-            [disabled]="loading()"
+            [disabled]="isLoading()"
           />
           <button
             class="chat-send-btn"
             (click)="sendMessage()"
-            [disabled]="loading() || !inputText().trim()"
+            [disabled]="isLoading() || !inputText().trim()"
           >
             <span class="material-symbols-outlined">send</span>
           </button>

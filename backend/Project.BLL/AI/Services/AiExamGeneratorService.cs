@@ -58,6 +58,7 @@ public class AiExamGeneratorService : IAiExamGeneratorService
 
         var preview = new AiExamPreviewDto
         {
+            ClassSubjectTeacherId = createDto.ClassSubjectTeacherId,
             SubjectName = cst?.SubjectName ?? "",
             ClassName = cst?.ClassName ?? "",
             TeacherName = cst?.TeacherName ?? "",

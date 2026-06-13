@@ -42,7 +42,7 @@
 
             <!-- Subject -->
             <div class="pf">
-              <label>المادة</label>
+              <label>المادة <span class="required-mark">*</span></label>
               <select class="k-select" [ngModel]="selectedSubjectName()" (ngModelChange)="selectedSubjectName.set($event); onSubjectChange()">
                 <option value="" disabled>اختر مادة...</option>
                 @for (s of subjectOptions(); track s.subjectId) {
@@ -218,7 +218,45 @@
                 <span><b>عدد الأسئلة:</b> {{ preview.questionsCount || previewQuestions().length }}</span>
               </div>
 
-              <hr class="exam-divider" />
+              @if (editMode()) {
+                <div class="edit-meta-section">
+                  <div class="pf">
+                    <label>عنوان الامتحان</label>
+                    <input class="k-input" type="text" [ngModel]="editTitle()" (ngModelChange)="editTitle.set($event)" />
+                  </div>
+                  <div class="pf-row">
+                    <div class="pf flex-1">
+                      <label>المدة (دقيقة)</label>
+                      <input class="k-input" type="number" min="15" max="180" [ngModel]="editDuration()" (ngModelChange)="editDuration.set($event)" />
+                    </div>
+                    <div class="pf flex-1">
+                      <label>الدرجة الكلية</label>
+                      <input class="k-input" type="number" min="10" max="500" [ngModel]="editTotalScore()" (ngModelChange)="editTotalScore.set($event)" />
+                    </div>
+                  </div>
+                  <div class="pf">
+                    <label>المادة</label>
+                    <select class="k-select" [ngModel]="editSubjectName()" (ngModelChange)="editSubjectName.set($event); onEditSubjectChange()">
+                      <option value="" disabled>اختر مادة...</option>
+                      @for (s of subjectOptions(); track s.subjectId) {
+                        <option [value]="s.subjectName">{{ s.subjectName }}</option>
+                      }
+                    </select>
+                  </div>
+                  @if (editSubjectName()) {
+                    <div class="pf">
+                      <label>الفصل</label>
+                      <select class="k-select" [ngModel]="editCstId()" (ngModelChange)="editCstId.set($event)">
+                        <option [ngValue]="null">{{ editHasMultipleClasses() ? 'بدون فصل' : 'تلقائي' }}</option>
+                        @for (c of editClassOptions(); track c.id) {
+                          <option [ngValue]="c.id">{{ c.className }}</option>
+                        }
+                      </select>
+                    </div>
+                  }
+                </div>
+                <hr class="exam-divider" />
+              }
 
               <!-- Questions -->
               <div class="questions-list">
