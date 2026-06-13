@@ -29,6 +29,8 @@ export class StudentManagement implements OnInit {
   isLoading = signal(false);
   errorMessage = signal<string | null>(null);
   successMessage = signal<string | null>(null);
+  deleteStudentConfirm = signal<Student | null>(null);
+  unlinkParentConfirm = signal<ParentStudentLink | null>(null);
   searchQuery = signal('');
 
   currentPage = signal(1);
@@ -278,10 +280,17 @@ export class StudentManagement implements OnInit {
   }
 
   deleteStudent(student: Student) {
-    if (!confirm(`هل أنت متأكد من حذف ملف الطالب ${student.fullName}؟`)) {
-      return;
-    }
+    this.deleteStudentConfirm.set(student);
+  }
 
+  cancelDeleteStudent() {
+    this.deleteStudentConfirm.set(null);
+  }
+
+  confirmDeleteStudent() {
+    const student = this.deleteStudentConfirm();
+    if (!student) return;
+    this.deleteStudentConfirm.set(null);
     this.isLoading.set(true);
 
     this.studentService.delete(student.id).subscribe({
@@ -361,10 +370,17 @@ export class StudentManagement implements OnInit {
   }
 
   unlinkParent(link: ParentStudentLink) {
-    if (!confirm(`هل تريد إلغاء ربط ${link.parentName} بالطالب ${link.studentName}؟`)) {
-      return;
-    }
+    this.unlinkParentConfirm.set(link);
+  }
 
+  cancelUnlinkParent() {
+    this.unlinkParentConfirm.set(null);
+  }
+
+  confirmUnlinkParent() {
+    const link = this.unlinkParentConfirm();
+    if (!link) return;
+    this.unlinkParentConfirm.set(null);
     this.isLoading.set(true);
 
     this.parentStudentService.unlink(link.id).subscribe({

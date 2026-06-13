@@ -86,6 +86,7 @@
           </button>
         </div>
 
+        <!-- ── Candidates: Generate All Section ───────────────────────────── -->
         <div class="bg-white rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden">
           <div class="p-5 border-b border-gray-100 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 bg-gray-50">
             <div>
@@ -109,7 +110,7 @@
                 class="px-4 py-2 text-sm font-medium text-white rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-lg transform transition-all hover:-translate-y-0.5 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 type="button"
                 (click)="generateAllStudentAccounts()"
-                [disabled]="isGenerating() || filteredCandidates().length === 0">
+                [disabled]="isGenerating() || filteredCandidates().length === 0 || generateAllConfirmOpen()">
                 <span class="material-symbols-outlined text-sm">group_add</span>
                 @if (isGenerating()) {
                   جار التوليد...
@@ -119,6 +120,18 @@
               </button>
             </div>
           </div>
+
+          <!-- ── Inline confirm bar for generateAll ────────────────────────── -->
+          @if (generateAllConfirmOpen()) {
+            <div class="mx-5 my-4 flex flex-col sm:flex-row items-start sm:items-center gap-3 p-4 bg-amber-50 border border-amber-200 rounded-2xl">
+              <span class="material-symbols-outlined text-amber-700 text-xl shrink-0">warning</span>
+              <span class="text-sm font-medium text-amber-900">هل تريد إنشاء حسابات لـ {{ filteredCandidates().length }} طالب؟ سيتم توليد بيانات دخول لجميعهم دفعة واحدة.</span>
+              <div class="flex gap-2 sm:mr-auto shrink-0">
+                <button class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 transition-colors" type="button" (click)="cancelGenerateAll()">إلغاء</button>
+                <button class="px-4 py-2 text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 rounded-2xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed" type="button" (click)="confirmGenerateAll()" [disabled]="isGenerating()">تأكيد التوليد</button>
+              </div>
+            </div>
+          }
 
           <div class="overflow-x-auto">
             <table class="w-full text-sm text-right text-gray-500">
@@ -167,6 +180,7 @@
           </div>
         </div>
 
+        <!-- ── Users Table ─────────────────────────────────────────────────── -->
         <div class="bg-white rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col overflow-hidden">
           <div class="p-5 border-b border-gray-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
@@ -246,7 +260,7 @@
                         {{ getRoleLabel(user.role) }}
                       </span>
                     </td>
-                    <td class="px-6 py-4 text-gray-600">{{ user.email }}</td>
+                    <td class="px-6 py-4 text-gray-600">{{ user.username }}</td>
                     <td class="px-6 py-4 text-gray-600">{{ user.phone || '—' }}</td>
                     <td class="px-6 py-4 text-center">
                       <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border"
@@ -336,6 +350,36 @@
   </main>
 </div>
 
+<!-- ══ Floating inline confirm bars (fixed bottom) ════════════════════════ -->
+
+@if (deleteAccountConfirm(); as userToDelete) {
+  <div class="fixed bottom-6 inset-x-0 z-[300] flex justify-center px-4 pointer-events-none">
+    <div class="bg-white border border-red-200 rounded-2xl shadow-xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3 max-w-xl w-full pointer-events-auto">
+      <span class="material-symbols-outlined text-red-600 text-xl shrink-0">warning</span>
+      <span class="text-sm font-medium text-gray-900">هل أنت متأكد من حذف حساب «{{ userToDelete.fullName }}»؟ هذا الإجراء لا يمكن التراجع عنه.</span>
+      <div class="flex gap-2 sm:mr-auto shrink-0">
+        <button class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 transition-colors" type="button" (click)="cancelDeleteAccount()">إلغاء</button>
+        <button class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-2xl transition-colors disabled:opacity-50" type="button" (click)="confirmDeleteAccount()" [disabled]="isLoading()">تأكيد الحذف</button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (resetPasswordConfirm(); as userToReset) {
+  <div class="fixed bottom-6 inset-x-0 z-[300] flex justify-center px-4 pointer-events-none">
+    <div class="bg-white border border-amber-200 rounded-2xl shadow-xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3 max-w-xl w-full pointer-events-auto">
+      <span class="material-symbols-outlined text-amber-600 text-xl shrink-0">lock_reset</span>
+      <span class="text-sm font-medium text-gray-900">هل تريد إعادة تعيين كلمة مرور حساب «{{ userToReset.fullName }}»؟ سيتم توليد كلمة مرور جديدة عشوائية.</span>
+      <div class="flex gap-2 sm:mr-auto shrink-0">
+        <button class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 transition-colors" type="button" (click)="cancelResetPassword()">إلغاء</button>
+        <button class="px-4 py-2 text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 rounded-2xl transition-colors disabled:opacity-50" type="button" (click)="confirmResetPassword()" [disabled]="isLoading()">تأكيد إعادة التعيين</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ══ Modals ══════════════════════════════════════════════════════════════ -->
+
 @if (showCreateModal()) {
   <div class="fixed inset-0 z-[200] flex items-center justify-center bg-gray-900/50 backdrop-blur-sm p-4" (click)="closeModals()">
     <div class="bg-white rounded-3xl shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden" (click)="$event.stopPropagation()">
@@ -365,12 +409,28 @@
           </div>
           <div class="flex flex-col gap-2">
             <label class="text-sm font-medium text-gray-900">البريد الإلكتروني <span class="text-red-500">*</span></label>
-            <input class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5" type="email" [value]="formEmail()" (input)="formEmail.set($any($event.target).value)" />
+            <input class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5" type="text" [value]="formUsername()" (input)="formUsername.set($any($event.target).value)" />
           </div>
           <div class="flex flex-col gap-2">
             <label class="text-sm font-medium text-gray-900">رقم الهاتف</label>
             <input class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5" type="tel" [value]="formPhone()" (input)="formPhone.set($any($event.target).value)" />
           </div>
+          @if (formRole() === 'Parent') {
+            <div class="md:col-span-2 flex items-center gap-3">
+              <button type="button" class="px-4 py-2 text-sm font-medium text-white rounded-2xl bg-indigo-600 hover:bg-indigo-700" (click)="checkParentPhone()">
+                فحص رقم ولي الأمر
+              </button>
+              @if (parentPhoneCheckResult(); as checkResult) {
+                <span class="text-sm" [class.text-emerald-700]="!checkResult.alreadyExists" [class.text-amber-700]="checkResult.alreadyExists">
+                  @if (checkResult.alreadyExists) {
+                    موجود بالفعل{{ checkResult.existingParentUsername ? ' (' + checkResult.existingParentUsername + ')' : '' }}
+                  } @else {
+                    الرقم غير مستخدم
+                  }
+                </span>
+              }
+            </div>
+          }
           <div class="flex flex-col gap-2 md:col-span-2">
             <label class="text-sm font-medium text-gray-900">كلمة المرور <span class="text-red-500">*</span></label>
             <div class="relative">
@@ -564,7 +624,7 @@
           <h2 class="text-xl font-bold text-gray-900">إدارة أبناء ولي الأمر</h2>
           <p class="text-sm text-gray-500 mt-1">
             @if (managingParent(); as parent) {
-              <span class="font-bold text-gray-700">{{ parent.fullName }}</span> - {{ parent.email }}
+              <span class="font-bold text-gray-700">{{ parent.fullName }}</span> - {{ parent.username }}
             }
           </p>
         </div>
@@ -689,6 +749,18 @@
         </div>
       </div>
 
+      <!-- ── Inline confirm bar: unlink student ──────────────────────────── -->
+      @if (unlinkStudentConfirm(); as linkToRemove) {
+        <div class="px-5 py-4 border-t border-red-100 bg-red-50 shrink-0 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <span class="material-symbols-outlined text-red-600 text-xl shrink-0">link_off</span>
+          <span class="text-sm font-medium text-red-900">هل تريد فك ربط الطالب «{{ linkToRemove.studentName }}»؟</span>
+          <div class="flex gap-2 sm:mr-auto shrink-0">
+            <button class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 transition-colors" type="button" (click)="cancelUnlinkStudentFromParent()">إلغاء</button>
+            <button class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-2xl transition-colors disabled:opacity-50" type="button" (click)="confirmUnlinkStudentFromParent()" [disabled]="isLoading()">تأكيد فك الربط</button>
+          </div>
+        </div>
+      }
+
       <div class="px-6 py-4 border-t border-gray-200 flex justify-end bg-gray-50 shrink-0">
         <button class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 flex items-center gap-2" (click)="closeParentLinksModal()">إغلاق</button>
       </div>
@@ -724,9 +796,9 @@
               <div class="flex items-center justify-between gap-3">
                 <div>
                   <span class="block text-xs text-gray-500 mb-1">بريد الدخول</span>
-                  <strong class="text-sm text-gray-900 break-all font-mono">{{ credential.generatedEmail }}</strong>
+                  <strong class="text-sm text-gray-900 break-all font-mono">{{ credential.generatedUsername }}</strong>
                 </div>
-                <button class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 flex items-center gap-2" type="button" (click)="copyToClipboard(credential.generatedEmail)">
+                <button class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 flex items-center gap-2" type="button" (click)="copyToClipboard(credential.generatedUsername)">
                   <span class="material-symbols-outlined text-sm">content_copy</span>
                   نسخ
                 </button>
@@ -809,7 +881,7 @@
                 @for (result of bulk.results; track result.studentId) {
                   <tr class="transition-colors hover:bg-blue-50" [class.bg-red-50]="!result.success">
                     <td class="px-4 py-3 font-medium text-gray-900">{{ result.studentName || 'غير معروف' }}</td>
-                    <td class="px-4 py-3 font-mono text-xs text-gray-700">{{ result.generatedEmail || '—' }}</td>
+                    <td class="px-4 py-3 font-mono text-xs text-gray-700">{{ result.generatedUsername || '—' }}</td>
                     <td class="px-4 py-3 font-mono text-xs text-blue-700 font-bold">{{ result.plainPassword || '—' }}</td>
                     <td class="px-4 py-3">
                       @if (result.success) {

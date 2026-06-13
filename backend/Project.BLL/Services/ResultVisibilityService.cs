@@ -1,4 +1,4 @@
-using AutoMapper;
+﻿using AutoMapper;
 using Common.Results;
 using Project.BLL.DTOs.ResultVisibility;
 using Project.BLL.Interfaces;
@@ -29,7 +29,7 @@ public class ResultVisibilityService : IResultVisibilityService
         if (admin == null || admin.IsDeleted || !admin.IsActive)
             return OperationResult<ResultVisibilityDto>.Failure("المستخدم غير موجود أو غير نشط");
 
-        if (admin.Role != UserRole.Admin)
+        if (!admin.Role.IsAdminLike())
             return OperationResult<ResultVisibilityDto>.Failure("فقط المشرفون يمكنهم التحكم في إظهار النتائج");
 
         if (request.VisibleFrom.HasValue && request.VisibleUntil.HasValue &&

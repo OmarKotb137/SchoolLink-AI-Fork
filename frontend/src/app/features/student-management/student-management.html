@@ -416,6 +416,34 @@
   </div>
 }
 
+<!-- ══ Floating inline confirm bars (fixed bottom) ════════════════════════ -->
+
+@if (deleteStudentConfirm(); as studentToDelete) {
+  <div class="fixed bottom-6 inset-x-0 z-[300] flex justify-center px-4 pointer-events-none">
+    <div class="bg-white border border-red-200 rounded-2xl shadow-xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3 max-w-xl w-full pointer-events-auto">
+      <span class="material-symbols-outlined text-red-600 text-xl shrink-0">warning</span>
+      <span class="text-sm font-medium text-gray-900">هل أنت متأكد من حذف ملف الطالب «{{ studentToDelete.fullName }}»؟ هذا الإجراء لا يمكن التراجع عنه.</span>
+      <div class="flex gap-2 sm:mr-auto shrink-0">
+        <button class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 transition-colors" type="button" (click)="cancelDeleteStudent()">إلغاء</button>
+        <button class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-2xl transition-colors disabled:opacity-50" type="button" (click)="confirmDeleteStudent()" [disabled]="isLoading()">تأكيد الحذف</button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (unlinkParentConfirm(); as linkToRemove) {
+  <div class="fixed bottom-6 inset-x-0 z-[300] flex justify-center px-4 pointer-events-none">
+    <div class="bg-white border border-amber-200 rounded-2xl shadow-xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3 max-w-xl w-full pointer-events-auto">
+      <span class="material-symbols-outlined text-amber-600 text-xl shrink-0">link_off</span>
+      <span class="text-sm font-medium text-gray-900">هل تريد إلغاء ربط ولي الأمر «{{ linkToRemove.parentName }}» من هذا الطالب؟</span>
+      <div class="flex gap-2 sm:mr-auto shrink-0">
+        <button class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 transition-colors" type="button" (click)="cancelUnlinkParent()">إلغاء</button>
+        <button class="px-4 py-2 text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 rounded-2xl transition-colors disabled:opacity-50" type="button" (click)="confirmUnlinkParent()" [disabled]="isLoading()">تأكيد إلغاء الربط</button>
+      </div>
+    </div>
+  </div>
+}
+
 @if (showEditModal()) {
   <div class="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/50 backdrop-blur-sm p-4" (click)="closeModals()">
     <div class="bg-white rounded-3xl shadow-xl max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden" (click)="$event.stopPropagation()">

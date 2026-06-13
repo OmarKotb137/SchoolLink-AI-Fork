@@ -10,7 +10,7 @@ public class ParentStudentMappingProfile : Profile
     {
         CreateMap<ParentStudent, ParentStudentDto>()
             .ForMember(d => d.ParentName, o => o.MapFrom(s => s.Parent.FullName))
-            .ForMember(d => d.ParentEmail, o => o.MapFrom(s => s.Parent.Email))
+            .ForMember(d => d.ParentEmail, o => o.MapFrom(s => s.Parent.ContactEmail))
             .ForMember(d => d.StudentName, o => o.MapFrom(s => s.Student.FullName));
 
         CreateMap<LinkParentStudentRequest, ParentStudent>()

@@ -1,4 +1,4 @@
-using AutoMapper;
+﻿using AutoMapper;
 using Common.Results;
 using Project.BLL.DTOs.Common;
 using Project.BLL.DTOs.Library;
@@ -26,7 +26,7 @@ public class LibraryService : ILibraryService
         if (uploader == null || uploader.IsDeleted)
             return OperationResult<LibraryItemDto>.Failure("لم يتم العثور على الرافع");
 
-        if (uploader.Role != UserRole.Admin && uploader.Role != UserRole.Teacher)
+        if (!uploader.Role.IsAdminLike() && uploader.Role != UserRole.Teacher)
             return OperationResult<LibraryItemDto>.Failure("فقط المدراء والمدرسون يمكنهم رفع عناصر المكتبة");
 
         if (string.IsNullOrWhiteSpace(request.Title))
@@ -77,7 +77,7 @@ public class LibraryService : ILibraryService
         if (caller == null || caller.IsDeleted)
             return OperationResult<LibraryItemDto>.Failure("لم يتم العثور على المستدعي");
 
-        if (caller.Role != UserRole.Admin && item.UploadedById != request.CallerUserId)
+        if (!caller.Role.IsAdminLike() && item.UploadedById != request.CallerUserId)
             return OperationResult<LibraryItemDto>.Failure("فقط الرافع أو المدراء يمكنهم تحديث هذا العنصر");
 
         if (string.IsNullOrWhiteSpace(request.Title))
@@ -245,7 +245,7 @@ public class LibraryService : ILibraryService
         if (caller == null || caller.IsDeleted)
             return OperationResult.Failure("لم يتم العثور على المستدعي");
 
-        if (caller.Role != UserRole.Admin && item.UploadedById != callerUserId)
+        if (!caller.Role.IsAdminLike() && item.UploadedById != callerUserId)
             return OperationResult.Failure("فقط الرافع أو المدراء يمكنهم حذف هذا العنصر");
 
         _unitOfWork.LibraryItems.SoftDelete(item);

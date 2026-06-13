@@ -19,6 +19,7 @@ public interface IUnitOfWork : IDisposable, IAsyncDisposable
     // Section A: Core
     IUserRepository                        Users                        { get; }
     IRefreshTokenRepository                RefreshTokens                { get; }
+    IRepository<EmailOtp>                  EmailOtps                    { get; }
     IAcademicYearRepository                AcademicYears                { get; }
     IGradeLevelRepository                  GradeLevels                  { get; }
     ISubjectRepository                     Subjects                     { get; }

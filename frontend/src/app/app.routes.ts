@@ -5,6 +5,7 @@ export const routes: Routes = [
   // Login pages
   { path: 'login-staff', loadComponent: () => import('./pages/login-staff/login-staff').then(c => c.LoginStaff) },
   { path: 'login-admin', loadComponent: () => import('./pages/login-admin/login-admin').then(c => c.LoginAdmin) },
+  { path: 'login-director', loadComponent: () => import('./pages/login-admin/login-admin').then(c => c.LoginAdmin) },
   { path: 'login-guardian', loadComponent: () => import('./pages/login-guardian/login-guardian').then(c => c.LoginGuardian) },
 
   // Dashboard / Feature pages
@@ -12,6 +13,7 @@ export const routes: Routes = [
   { path: 'student', canActivate: [authGuard], data: { roles: ['student'] }, loadComponent: () => import('./features/student-dashboard/student-dashboard').then(c => c.StudentDashboard) },
   { path: 'teacher', canActivate: [authGuard], data: { roles: ['teacher'] }, loadComponent: () => import('./features/teacher-dashboard/teacher-dashboard').then(c => c.TeacherDashboard) },
   { path: 'parent', canActivate: [authGuard], data: { roles: ['parent'] }, loadComponent: () => import('./features/parent-dashboard/parent-dashboard').then(c => c.ParentDashboard) },
+  { path: 'profile', canActivate: [authGuard], loadComponent: () => import('./features/profile/profile').then(c => c.Profile) },
   { path: 'class-analysis', canActivate: [authGuard], loadComponent: () => import('./features/class-analysis/class-analysis').then(c => c.ClassAnalysis) },
   { path: 'admin-schedule', canActivate: [authGuard], data: { roles: ['admin'] }, loadComponent: () => import('./features/admin-schedule/admin-schedule').then(c => c.AdminSchedule) },
   { path: 'class-schedule', canActivate: [authGuard], data: { roles: ['student'] }, loadComponent: () => import('./features/class-schedule/class-schedule').then(c => c.ClassSchedule) },

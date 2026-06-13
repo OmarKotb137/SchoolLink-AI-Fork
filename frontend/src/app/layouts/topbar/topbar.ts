@@ -35,7 +35,7 @@ export class Topbar {
     const role = this.roleService.currentRole();
     const items: SidebarMenuItem[] = role ? (ROLE_MENUS[role] ?? []) : [];
     const homeItem = items[0];
-    const chatItem = items.find((i: SidebarMenuItem) => i.icon === 'chat' || i.label.includes('المحادثات'));
+    const chatItem = items.find((i: SidebarMenuItem) => i.icon === 'chat');
     const notifItem = items.find((i: SidebarMenuItem) => i.icon === 'notifications');
     return { home: homeItem, chat: chatItem, notif: notifItem };
   });

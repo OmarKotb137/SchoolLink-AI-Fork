@@ -69,7 +69,7 @@
           <div class="mb-8">
             <div class="mb-4">
               <h3 class="text-base font-bold text-gray-900">1. بيانات الحساب</h3>
-              <p class="text-xs text-gray-500">أدخل الاسم والبريد الإلكتروني وكلمة المرور الأساسية للمعلم.</p>
+              <p class="text-xs text-gray-500">أدخل الاسم واسم المستخدم وكلمة المرور الأساسية للمعلم.</p>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -78,8 +78,8 @@
                 <input class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" placeholder="مثال: أ. أحمد علي" [value]="newName()" (input)="newName.set($any($event.target).value)" />
               </div>
               <div class="flex flex-col gap-2">
-                <label class="text-sm font-medium text-gray-900">البريد الإلكتروني <span class="text-red-500">*</span></label>
-                <input class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" type="email" placeholder="teacher@school.com" [value]="newEmail()" (input)="newEmail.set($any($event.target).value)" />
+                <label class="text-sm font-medium text-gray-900">اسم المستخدم <span class="text-red-500">*</span></label>
+                <input class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" type="text" placeholder="teacher123" [value]="newUsername()" (input)="newUsername.set($any($event.target).value)" />
               </div>
               <div class="flex flex-col gap-2">
                 <label class="text-sm font-medium text-gray-900">كلمة المرور <span class="text-red-500">*</span></label>
@@ -204,7 +204,7 @@
               <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-100">
                 <tr>
                   <th scope="col" class="px-6 py-4">الاسم</th>
-                  <th scope="col" class="px-6 py-4">البريد الإلكتروني</th>
+                  <th scope="col" class="px-6 py-4">اسم المستخدم</th>
                   <th scope="col" class="px-6 py-4">الهاتف</th>
                   <th scope="col" class="px-6 py-4">التخصصات</th>
                   <th scope="col" class="px-6 py-4 text-center">الحالة</th>
@@ -234,7 +234,7 @@
                   @for (t of paginatedTeachers(); track t.id) {
                     <tr class="hover:bg-gray-50 transition-colors bg-white">
                       <td class="px-6 py-4 font-bold text-gray-900">{{ t.fullName || '—' }}</td>
-                      <td class="px-6 py-4 text-gray-600">{{ t.email || '—' }}</td>
+                      <td class="px-6 py-4 text-gray-600">{{ t.username || '—' }}</td>
                       <td class="px-6 py-4 text-gray-600">{{ t.phone || '—' }}</td>
                       <td class="px-6 py-4 text-gray-600 max-w-xs truncate" [title]="getTeacherSubjectsText(t)">{{ getTeacherSubjectsText(t) }}</td>
                       <td class="px-6 py-4 text-center">
@@ -324,6 +324,34 @@
 
 <!-- Modals -->
 
+<!-- ══ Floating inline confirm bars (fixed bottom) ════════════════════════ -->
+
+@if (deleteConfirmId(); as teacherIdToDelete) {
+  <div class="fixed bottom-6 inset-x-0 z-[300] flex justify-center px-4 pointer-events-none">
+    <div class="bg-white border border-red-200 rounded-2xl shadow-xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3 max-w-xl w-full pointer-events-auto">
+      <span class="material-symbols-outlined text-red-600 text-xl shrink-0">warning</span>
+      <span class="text-sm font-medium text-gray-900">هل أنت متأكد من حذف هذا المعلم؟ قد يُعطَّل الحساب بدلاً من الحذف الكلي إذا كانت توجد بيانات مرتبطة.</span>
+      <div class="flex gap-2 sm:mr-auto shrink-0">
+        <button class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 transition-colors" type="button" (click)="cancelDeleteTeacher()">إلغاء</button>
+        <button class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-2xl transition-colors" type="button" (click)="confirmDeleteTeacher()">تأكيد الحذف</button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (toggleStatusConfirm(); as teacherToToggle) {
+  <div class="fixed bottom-6 inset-x-0 z-[300] flex justify-center px-4 pointer-events-none">
+    <div class="bg-white border border-amber-200 rounded-2xl shadow-xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3 max-w-xl w-full pointer-events-auto">
+      <span class="material-symbols-outlined text-amber-600 text-xl shrink-0">{{ teacherToToggle.isActive ? 'block' : 'check_circle' }}</span>
+      <span class="text-sm font-medium text-gray-900">هل تريد {{ teacherToToggle.isActive ? 'تعطيل' : 'تفعيل' }} المعلم «{{ teacherToToggle.fullName }}»؟</span>
+      <div class="flex gap-2 sm:mr-auto shrink-0">
+        <button class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 transition-colors" type="button" (click)="cancelToggleStatus()">إلغاء</button>
+        <button class="px-4 py-2 text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 rounded-2xl transition-colors" type="button" (click)="confirmToggleStatus()">{{ teacherToToggle.isActive ? 'تعطيل' : 'تفعيل' }}</button>
+      </div>
+    </div>
+  </div>
+}
+
 @if (showEditModal()) {
   <div class="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/50 backdrop-blur-sm p-4" (click)="closeEditModal()">
     <div class="bg-white rounded-3xl shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden" (click)="$event.stopPropagation()">
@@ -388,7 +416,7 @@
 
         <div class="flex items-start gap-3 p-4 text-sm text-yellow-800 rounded-2xl bg-yellow-50 border border-yellow-200">
           <span class="material-symbols-outlined shrink-0 text-lg">tips_and_updates</span>
-          <p class="font-medium">لتغيير البريد الإلكتروني أو كلمة المرور استخدم إدارة الحسابات، أما إسناد المعلم للفصول فيتم من صفحة التعيينات.</p>
+          <p class="font-medium">لتغيير اسم المستخدم أو كلمة المرور استخدم إدارة الحسابات، أما إسناد المعلم للفصول فيتم من صفحة التعيينات.</p>
         </div>
       </div>
 

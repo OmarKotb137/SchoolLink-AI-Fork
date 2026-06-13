@@ -22,7 +22,7 @@
       </button>
     }
     @if (showAvatar()) {
-      <div class="flex items-center gap-2">
+      <button type="button" class="flex items-center gap-2 bg-transparent border-0 p-0 cursor-pointer" (click)="navigate('/profile')">
         <div class="avatar-ring">
           <img alt="User avatar" class="avatar-img"
                src="https://lh3.googleusercontent.com/aida-public/AB6AXuAN4unMckodCs5g4LHVoMsjVqqcibeKvRpkgZbmfv5E6sc7o8g7HGyxYuhVzjbsHn60lTec0kpRzhBwirCwV1jMt0tlapmILzS-9_t1P_hCGSAm6B5sq-hwySr89MJvuiAnrZSbcACVF-UWBM79eHa2iMjRAlHOy5bBejGokUCJqU50MpIgSu_GBmC89XlEZNDJmNwcTawOOrFTRqtWXxuyiL9Z8-6Cdpy9qTlzGT6BfGxDtZ0F8hiWuje7715i-BGs_3mx2_ajPTw"/>
@@ -33,7 +33,7 @@
             <p class="text-[10px] text-outline leading-tight">{{ userRole() }}</p>
           }
         </div>
-      </div>
+      </button>
     }
   </div>
 </header>

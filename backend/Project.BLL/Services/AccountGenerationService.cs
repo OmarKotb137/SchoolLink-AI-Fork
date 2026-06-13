@@ -6,15 +6,12 @@ using Project.BLL.Interfaces;
 using Project.DAL.Interfaces;
 using Project.Domain.Entities;
 using Project.Domain.Enums;
-using System.Security.Cryptography;
 using Project.BLL.Utils;
 
 namespace Project.BLL.Services;
 
 public class AccountGenerationService : IAccountGenerationService
 {
-    private static readonly char[] EmailChars = "abcdefghjkmnpqrstuvwxyz23456789".ToCharArray();
-
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper _mapper;
 
@@ -57,16 +54,17 @@ public class AccountGenerationService : IAccountGenerationService
         {
             await _unitOfWork.BeginTransactionAsync();
 
-            var email = await GenerateUniqueStudentEmailAsync();
-            var plainPassword = GenerateSecurePassword();
+            var username = await GenerateUniqueUsernameAsync('s');
+            var plainPassword = PasswordGenerator.Generate();
 
             var user = new User
             {
-                FullName = student.FullName,
-                Email = email,
+                FullName     = student.FullName,
+                Username     = username,
+                ContactEmail = null,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(plainPassword),
-                Role = UserRole.Student,
-                IsActive = true
+                Role         = UserRole.Student,
+                IsActive     = true
             };
 
             await _unitOfWork.Users.AddAsync(user);
@@ -81,11 +79,11 @@ public class AccountGenerationService : IAccountGenerationService
             return OperationResult<GenerateStudentAccountResultDto>.Success(
                 new GenerateStudentAccountResultDto
                 {
-                    StudentId = student.Id,
-                    StudentName = student.FullName,
-                    GeneratedEmail = email,
-                    PlainPassword = plainPassword,
-                    Success = true
+                    StudentId       = student.Id,
+                    StudentName     = student.FullName,
+                    GeneratedUsername = username,
+                    PlainPassword   = plainPassword,
+                    Success         = true
                 },
                 "تم إنشاء حساب الطالب بنجاح");
         }
@@ -126,10 +124,10 @@ public class AccountGenerationService : IAccountGenerationService
                 result.FailureCount++;
                 result.Results.Add(new GenerateStudentAccountResultDto
                 {
-                    StudentId = studentId,
-                    StudentName = studentNamesById.GetValueOrDefault(studentId, "غير معروف"),
-                    Success = false,
-                    ErrorMessage = singleResult.Message
+                    StudentId     = studentId,
+                    StudentName   = studentNamesById.GetValueOrDefault(studentId, "غير معروف"),
+                    Success       = false,
+                    ErrorMessage  = singleResult.Message
                 });
             }
             catch (Exception ex)
@@ -137,10 +135,10 @@ public class AccountGenerationService : IAccountGenerationService
                 result.FailureCount++;
                 result.Results.Add(new GenerateStudentAccountResultDto
                 {
-                    StudentId = studentId,
-                    StudentName = studentNamesById.GetValueOrDefault(studentId, "غير معروف"),
-                    Success = false,
-                    ErrorMessage = $"خطأ غير متوقع: {ex.Message}"
+                    StudentId     = studentId,
+                    StudentName   = studentNamesById.GetValueOrDefault(studentId, "غير معروف"),
+                    Success       = false,
+                    ErrorMessage  = $"خطأ غير متوقع: {ex.Message}"
                 });
             }
         }
@@ -152,12 +150,32 @@ public class AccountGenerationService : IAccountGenerationService
 
     public async Task<OperationResult<CreateParentWithStudentsResultDto>> CreateParentWithStudentsAsync(CreateParentWithStudentsRequest request)
     {
-        var existing = await _unitOfWork.Users.GetByEmailAsync(request.Email);
-        if (existing != null && !existing.IsDeleted)
-            return OperationResult<CreateParentWithStudentsResultDto>.Failure("يوجد مستخدم مسجل بهذا البريد الإلكتروني بالفعل");
+        // توليد Username تلقائياً لو مش موجود
+        var username = !string.IsNullOrWhiteSpace(request.Username)
+            ? request.Username.Trim().ToLower()
+            : await GenerateUniqueUsernameAsync('p');
 
-        if (existing != null && existing.IsDeleted)
-            return OperationResult<CreateParentWithStudentsResultDto>.Failure("هذا البريد الإلكتروني مرتبط بحساب محذوف، يرجى استخدام بريد إلكتروني آخر");
+        // فحص تكرار الـ Username
+        var existingByUsername = await _unitOfWork.Users.GetByUsernameAsync(username);
+        if (existingByUsername != null && !existingByUsername.IsDeleted)
+            return OperationResult<CreateParentWithStudentsResultDto>.Failure("اسم المستخدم مأخوذ بالفعل");
+
+        if (existingByUsername != null && existingByUsername.IsDeleted)
+            return OperationResult<CreateParentWithStudentsResultDto>.Failure("اسم المستخدم مرتبط بحساب محذوف، يرجى اختيار اسم آخر");
+
+        // فحص تكرار بالتليفون (لو موجود)
+        if (!string.IsNullOrWhiteSpace(request.Phone))
+        {
+            var existingByPhone = await _unitOfWork.Users.GetParentByPhoneAsync(request.Phone);
+            if (existingByPhone != null)
+                return OperationResult<CreateParentWithStudentsResultDto>.Failure(
+                    $"يوجد ولي أمر بنفس رقم الهاتف بالفعل (اسم المستخدم: {existingByPhone.Username}). استخدم ربط الطالب بحسابه الموجود.");
+        }
+
+        // توليد Password تلقائياً لو مش موجود
+        var password = !string.IsNullOrWhiteSpace(request.Password)
+            ? request.Password
+            : PasswordGenerator.Generate();
 
         request.Children = (request.Children ?? [])
             .GroupBy(c => c.StudentId)
@@ -170,12 +188,13 @@ public class AccountGenerationService : IAccountGenerationService
 
             var user = new User
             {
-                FullName = request.FullName,
-                Email = request.Email,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
-                Phone = request.Phone,
-                Role = UserRole.Parent,
-                IsActive = true
+                FullName     = request.FullName,
+                Username     = username,
+                ContactEmail = request.ContactEmail,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
+                Phone        = request.Phone,
+                Role         = UserRole.Parent,
+                IsActive     = true
             };
 
             await _unitOfWork.Users.AddAsync(user);
@@ -190,9 +209,9 @@ public class AccountGenerationService : IAccountGenerationService
                 {
                     linkResults.Add(new ChildLinkResultDto
                     {
-                        StudentId = child.StudentId,
-                        StudentName = "غير معروف",
-                        Success = false,
+                        StudentId    = child.StudentId,
+                        StudentName  = "غير معروف",
+                        Success      = false,
                         ErrorMessage = "الطالب غير موجود"
                     });
                     continue;
@@ -200,16 +219,16 @@ public class AccountGenerationService : IAccountGenerationService
 
                 await _unitOfWork.ParentStudents.AddAsync(new ParentStudent
                 {
-                    ParentId = user.Id,
-                    StudentId = child.StudentId,
+                    ParentId     = user.Id,
+                    StudentId    = child.StudentId,
                     Relationship = child.Relationship
                 });
 
                 linkResults.Add(new ChildLinkResultDto
                 {
-                    StudentId = child.StudentId,
+                    StudentId   = child.StudentId,
                     StudentName = student.FullName,
-                    Success = true
+                    Success     = true
                 });
             }
 
@@ -220,10 +239,10 @@ public class AccountGenerationService : IAccountGenerationService
             return OperationResult<CreateParentWithStudentsResultDto>.Success(
                 new CreateParentWithStudentsResultDto
                 {
-                    Parent = userDto,
-                    LinkedCount = linkResults.Count(r => r.Success),
-                    FailedCount = linkResults.Count(r => !r.Success),
-                    LinkResults = linkResults
+                    Parent       = userDto,
+                    LinkedCount  = linkResults.Count(r => r.Success),
+                    FailedCount  = linkResults.Count(r => !r.Success),
+                    LinkResults  = linkResults
                 },
                 "تم إنشاء حساب ولي الأمر بنجاح");
         }
@@ -234,22 +253,36 @@ public class AccountGenerationService : IAccountGenerationService
         }
     }
 
-    private static string GenerateSecurePassword() => PasswordGenerator.Generate();
+    public async Task<OperationResult<ParentPhoneCheckDto>> CheckParentPhoneAsync(string phone)
+    {
+        if (string.IsNullOrWhiteSpace(phone))
+            return OperationResult<ParentPhoneCheckDto>.Failure("رقم الهاتف مطلوب");
 
-    private async Task<string> GenerateUniqueStudentEmailAsync()
+        var existing = await _unitOfWork.Users.GetParentByPhoneAsync(phone);
+        if (existing == null)
+            return OperationResult<ParentPhoneCheckDto>.Success(
+                new ParentPhoneCheckDto { AlreadyExists = false });
+
+        return OperationResult<ParentPhoneCheckDto>.Success(new ParentPhoneCheckDto
+        {
+            AlreadyExists          = true,
+            ExistingParentId       = existing.Id,
+            ExistingParentName     = existing.FullName,
+            ExistingParentUsername = existing.Username
+        });
+    }
+
+    // ── Private helpers ──────────────────────────────────────────────────────
+
+    private async Task<string> GenerateUniqueUsernameAsync(char prefix)
     {
         for (var attempt = 0; attempt < 10; attempt++)
         {
-            var bytes = new byte[6];
-            RandomNumberGenerator.Fill(bytes);
-            var suffix = new string(bytes.Select(b => EmailChars[b % EmailChars.Length]).ToArray());
-            var email = $"s{suffix}@schoollink.com";
-
-            var existing = await _unitOfWork.Users.GetByEmailAsync(email);
-            if (existing == null)
-                return email;
+            var username = UsernameGenerator.Generate(prefix);
+            var existing = await _unitOfWork.Users.GetByUsernameAsync(username);
+            if (existing == null) return username;
         }
 
-        throw new InvalidOperationException("تعذر توليد بريد إلكتروني فريد بعد 10 محاولات");
+        throw new InvalidOperationException("تعذر توليد username فريد بعد 10 محاولات");
     }
 }

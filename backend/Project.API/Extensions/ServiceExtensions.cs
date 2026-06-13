@@ -44,6 +44,11 @@ public static class ServiceExtensions
         {
             c.Timeout = TimeSpan.FromMinutes(3);
         });
+        services.AddHttpClient<IEmailService, BrevoEmailService>(client =>
+        {
+            client.BaseAddress = new Uri("https://api.brevo.com/v3/");
+        });
+        services.AddScoped<IEmailOtpService, EmailOtpService>();
 
 
         services.AddScoped<IAcademicYearService, AcademicYearService>();

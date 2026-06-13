@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Project.Domain.Entities;
 
@@ -14,12 +14,16 @@ namespace Project.DAL.Configurations
                 .IsRequired()
                 .HasMaxLength(150);
 
-            builder.Property(x => x.Email)
+            builder.Property(x => x.Username)
                 .IsRequired()
-                .HasMaxLength(200);
+                .HasMaxLength(50);
 
-            builder.HasIndex(x => x.Email)
-                .IsUnique();
+            builder.HasIndex(x => x.Username)
+                .IsUnique()
+                .HasDatabaseName("IX_Users_Username");
+
+            builder.Property(x => x.ContactEmail)
+                .HasMaxLength(200);
 
             builder.Property(x => x.Phone)
                 .HasMaxLength(20);

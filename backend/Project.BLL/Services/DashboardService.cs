@@ -179,7 +179,7 @@ public class DashboardService : IDashboardService
             {
                 Name = u.FullName,
                 Role = GetRoleNameArabic(u.Role),
-                Email = u.Email,
+                Email = u.ContactEmail,
                 Status = u.IsActive ? "نشط" : "غير نشط"
             }).ToList();
         }

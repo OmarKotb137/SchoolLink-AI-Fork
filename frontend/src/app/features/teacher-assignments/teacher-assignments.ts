@@ -117,6 +117,7 @@ export class TeacherAssignments implements OnInit {
   isLoading = signal(false);
   errorMessage = signal<string | null>(null);
   successMessage = signal<string | null>(null);
+  removeAssignmentConfirmId = signal<number | null>(null);
 
   ngOnInit() {
     this.loadAcademicYear();
@@ -354,8 +355,17 @@ export class TeacherAssignments implements OnInit {
   }
 
   removeAssignment(id: number) {
-    if (!confirm('هل أنت متأكد من حذف هذا التعيين؟ سيؤدي ذلك إلى إزالة المعلم من تدريس هذه المادة لهذا الفصل.')) return;
+    this.removeAssignmentConfirmId.set(id);
+  }
 
+  cancelRemoveAssignment() {
+    this.removeAssignmentConfirmId.set(null);
+  }
+
+  confirmRemoveAssignment() {
+    const id = this.removeAssignmentConfirmId();
+    if (!id) return;
+    this.removeAssignmentConfirmId.set(null);
     this.assignmentService.delete(id).subscribe({
       next: () => {
         this.loadAssignments();

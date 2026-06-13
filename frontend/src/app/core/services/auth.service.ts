@@ -88,8 +88,8 @@ export class AuthService {
     return localStorage.getItem(this.REFRESH_KEY);
   }
 
-  login(role: AppRole, email: string, password: string): Observable<any> {
-    return this.http.post<any>(`${this.base}/login/${role}`, { email, password }).pipe(
+  login(role: AppRole, username: string, password: string): Observable<any> {
+    return this.http.post<any>(`${this.base}/login/${role}`, { username, password }).pipe(
       map(res => {
         const data = res.data ?? res;
         return {

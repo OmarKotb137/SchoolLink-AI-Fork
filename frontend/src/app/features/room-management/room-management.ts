@@ -99,6 +99,7 @@ export class RoomManagement implements OnInit {
 
   errorMessage   = signal('');
   successMessage = signal('');
+  deleteRoomConfirmId = signal<number | null>(null);
 
   newRoom: Partial<Room> = { name: '', capacity: 30, type: 'Classroom' };
 
@@ -217,18 +218,27 @@ export class RoomManagement implements OnInit {
   }
 
   deleteRoom(id: number) {
-    if (confirm('هل أنت متأكد من حذف هذه القاعة؟')) {
-      this.roomService.delete(id).subscribe({
-        next: () => {
-          this.loadRooms();
-          this.showSuccess('تم حذف القاعة بنجاح!');
-        },
-        error: (err) => {
-          console.error('Delete failed', err);
-          this.showError('فشل في حذف القاعة. حاول مرة أخرى.');
-        }
-      });
-    }
+    this.deleteRoomConfirmId.set(id);
+  }
+
+  cancelDeleteRoom() {
+    this.deleteRoomConfirmId.set(null);
+  }
+
+  confirmDeleteRoom() {
+    const id = this.deleteRoomConfirmId();
+    if (!id) return;
+    this.deleteRoomConfirmId.set(null);
+    this.roomService.delete(id).subscribe({
+      next: () => {
+        this.loadRooms();
+        this.showSuccess('تم حذف القاعة بنجاح!');
+      },
+      error: (err) => {
+        console.error('Delete failed', err);
+        this.showError('فشل في حذف القاعة. حاول مرة أخرى.');
+      }
+    });
   }
 
   getRoomTypeLabel(value: string): string {

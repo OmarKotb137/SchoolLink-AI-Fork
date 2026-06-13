@@ -18,8 +18,8 @@ export class LoginParent {
   }
   handleLogin(f: any) {
     if (!f.valid) { alert('يرجى إدخال البيانات'); return; }
-    const { email, password } = f.value;
-    this.auth.login('parent', email, password).subscribe({
+    const { username, password } = f.value;
+    this.auth.login('parent', username, password).subscribe({
       next: () => this.router.navigate(['/parent']),
       error: (err) => alert(err.message)
     });

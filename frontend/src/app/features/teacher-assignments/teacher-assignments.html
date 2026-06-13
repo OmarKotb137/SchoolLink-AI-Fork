@@ -334,3 +334,18 @@
     </div>
   </main>
 </div>
+
+<!-- ══ Floating inline confirm bars (fixed bottom) ════════════════════════ -->
+
+@if (removeAssignmentConfirmId()) {
+  <div class="fixed bottom-6 inset-x-0 z-[300] flex justify-center px-4 pointer-events-none">
+    <div class="bg-white border border-red-200 rounded-2xl shadow-xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3 max-w-xl w-full pointer-events-auto">
+      <span class="material-symbols-outlined text-red-600 text-xl shrink-0">warning</span>
+      <span class="text-sm font-medium text-gray-900">هل أنت متأكد من حذف هذا التعيين؟ سيتم فك ربط المعلم بالفصل والمادة نهائيًا.</span>
+      <div class="flex gap-2 sm:mr-auto shrink-0">
+        <button class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 transition-colors" type="button" (click)="cancelRemoveAssignment()">إلغاء</button>
+        <button class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-2xl transition-colors" type="button" (click)="confirmRemoveAssignment()">تأكيد الحذف</button>
+      </div>
+    </div>
+  </div>
+}

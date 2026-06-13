@@ -10,7 +10,7 @@ public class StudentMappingProfile : Profile
     {
         CreateMap<Student, StudentDto>()
             .ForMember(d => d.UserName, o => o.MapFrom(s => s.User != null ? s.User.FullName : null))
-            .ForMember(d => d.UserEmail, o => o.MapFrom(s => s.User != null ? s.User.Email : null));
+            .ForMember(d => d.UserEmail, o => o.MapFrom(s => s.User != null ? s.User.ContactEmail : null));
 
         CreateMap<CreateStudentRequest, Student>()
             .ForMember(d => d.Id, o => o.Ignore())

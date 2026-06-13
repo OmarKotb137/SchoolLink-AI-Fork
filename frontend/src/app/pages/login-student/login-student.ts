@@ -18,8 +18,8 @@ export class LoginStudent {
   }
   handleLogin(f: any) {
     if (!f.valid) { alert('يرجى إدخال اسم المستخدم وكلمة المرور'); return; }
-    const { email, password } = f.value;
-    this.auth.login('student', email, password).subscribe({
+    const { username, password } = f.value;
+    this.auth.login('student', username, password).subscribe({
       next: () => this.router.navigate(['/student']),
       error: (err) => alert(err.message)
     });

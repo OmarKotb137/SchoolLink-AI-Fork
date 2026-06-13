@@ -30,6 +30,7 @@ public class UnitOfWork : IUnitOfWork
         IUserRepository                        users,
 
         IRefreshTokenRepository                refreshTokens,
+        IRepository<EmailOtp>                  emailOtps,
         IAcademicYearRepository                academicYears,
         IGradeLevelRepository                  gradeLevels,
         ISubjectRepository                     subjects,
@@ -93,6 +94,7 @@ public class UnitOfWork : IUnitOfWork
         // Section A
         Users                        = users;
         RefreshTokens                = refreshTokens;
+        EmailOtps                    = emailOtps;
         AcademicYears                = academicYears;
         GradeLevels                  = gradeLevels;
         Subjects                     = subjects;
@@ -167,6 +169,7 @@ public class UnitOfWork : IUnitOfWork
     // Section A: Core
     public IUserRepository                        Users                        { get; }
     public IRefreshTokenRepository                RefreshTokens                { get; }
+    public IRepository<EmailOtp>                  EmailOtps                    { get; }
     public IAcademicYearRepository                AcademicYears                { get; }
     public IGradeLevelRepository                  GradeLevels                  { get; }
     public ISubjectRepository                     Subjects                     { get; }
