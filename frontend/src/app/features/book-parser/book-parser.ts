@@ -314,13 +314,19 @@ export class BookParser {
 
   save() {
     const subjectId = this.selectedSubjectId();
+    const gradeLevelId = this.selectedGradeLevelId();
     if (!subjectId) {
       this.showToast('اختر المادة أولاً', 'error');
+      return;
+    }
+    if (!gradeLevelId) {
+      this.showToast('اختر الصف الدراسي أولاً', 'error');
       return;
     }
 
     this.saving.set(true);
     const units: CreateUnitDto[] = this.parsedUnits().map(u => ({
+      gradeLevelId: gradeLevelId,
       name: u.name,
       content: u.content || '',
       pageStart: u.pageStart,
@@ -335,7 +341,7 @@ export class BookParser {
       }))
     }));
 
-    this.service.save(subjectId, units).subscribe({
+    this.service.save(subjectId, gradeLevelId, units).subscribe({
       next: () => {
         this.step.set('saved');
         this.showToast('تم حفظ هيكل الكتاب بنجاح!', 'success');

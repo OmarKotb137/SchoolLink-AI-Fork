@@ -40,6 +40,17 @@
           </div>
           <div class="card-body">
 
+            <!-- Grade Level -->
+            <div class="pf">
+              <label>الصف الدراسي <span class="required-mark">*</span></label>
+              <select class="k-select" [ngModel]="selectedGradeLevelId()" (ngModelChange)="selectedGradeLevelId.set($event)">
+                <option [ngValue]="null">اختر الصف...</option>
+                @for (gl of gradeLevels(); track gl.id) {
+                  <option [ngValue]="gl.id">{{ gl.name }}</option>
+                }
+              </select>
+            </div>
+
             <!-- Subject -->
             <div class="pf">
               <label>المادة <span class="required-mark">*</span></label>
@@ -51,17 +62,17 @@
               </select>
             </div>
 
-            <!-- Class (optional — يظهر فقط إذا كان للمادة أكثر من فصل) -->
-            @if (selectedSubjectName() && hasMultipleClasses()) {
+            <!-- Class (اختياري — يظهر دايماً) -->
+            @if (selectedSubjectName() && classOptions().length > 0) {
               <div class="pf">
                 <label>الفصل (اختياري)</label>
                 <select class="k-select" [ngModel]="selectedCstId()" (ngModelChange)="selectedCstId.set($event); onClassChange()">
-                  <option [ngValue]="null">تلقائي (أول فصل متاح)</option>
+                  <option [ngValue]="null">بدون فصل</option>
                   @for (c of classOptions(); track c.id) {
                     <option [ngValue]="c.id">{{ c.className }}</option>
                   }
                 </select>
-                <small class="pf-hint">إذا لم تختر فصلاً، سيتم استخدام أول فصل متاح تلقائياً</small>
+                <small class="pf-hint">يمكنك ترك الفصل فارغاً — الامتحان مش هيتقيد بفصل محدد</small>
               </div>
             }
 
@@ -133,7 +144,7 @@
             }
 
             <!-- Generate Button -->
-            <button class="kids-ai-main-btn" (click)="preview()" [disabled]="generating() || !selectedSubjectName()">
+            <button class="kids-ai-main-btn" (click)="preview()" [disabled]="generating() || !selectedSubjectName() || !selectedGradeLevelId()">
               @if (generating()) {
                 <span class="spinner"></span>
                 <span>جاري الإنشاء...</span>
@@ -210,7 +221,7 @@
               <!-- Exam Info -->
               <div class="exam-info-row">
                 <span><b>المادة:</b> {{ preview.subjectName }}</span>
-                <span><b>الفصل:</b> {{ preview.className }}</span>
+                <span><b>الصف:</b> {{ preview.gradeLevelName || preview.className }}</span>
                 <span><b>الدرجة:</b> {{ preview.totalScore }}</span>
                 @if (preview.durationMinutes) {
                   <span><b>المدة:</b> {{ preview.durationMinutes }} دقيقة</span>
@@ -370,6 +381,18 @@
                       </button>
                     }
                   </div>
+                  @if (savedExamUid(); as uid) {
+                    <div class="edit-actions-row" style="margin-top:8px">
+                      <button class="kids-ai-btn kids-ai-btn-outline" (click)="embedToQuestionBank()" [disabled]="embedding()" style="flex:1">
+                        @if (embedding()) {
+                          <span class="spinner"></span>
+                        } @else {
+                          <span class="material-symbols-outlined">database</span>
+                        }
+                        {{ embedMsg() || 'حفظ في بنك الأسئلة' }}
+                      </button>
+                    </div>
+                  }
                 } @else {
                   <button class="kids-ai-main-btn save-btn" (click)="confirmSave()">
                     <span class="material-symbols-outlined">save</span> حفظ الامتحان

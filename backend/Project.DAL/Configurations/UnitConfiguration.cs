@@ -22,6 +22,11 @@ builder.HasOne(x => x.Subject)
     .HasForeignKey(x => x.SubjectId)
     .OnDelete(DeleteBehavior.Cascade);
 
+            builder.HasOne(x => x.GradeLevel)
+                .WithMany()
+                .HasForeignKey(x => x.GradeLevelId)
+                .OnDelete(DeleteBehavior.Restrict);
+
             builder.HasMany(x => x.Lessons)
                 .WithOne(l => l.Unit)
                 .HasForeignKey(l => l.UnitId)

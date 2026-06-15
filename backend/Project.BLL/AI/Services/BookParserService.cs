@@ -117,13 +117,14 @@ public class BookParserService : IBookParserService
     }
 
     public async Task<OperationResult<List<UnitDto>>> SaveBookStructureAsync(
-        int subjectId, List<CreateUnitDto> units)
+        int subjectId, int gradeLevelId, List<CreateUnitDto> units)
     {
         try
         {
             var createdUnits = new List<UnitDto>();
             foreach (var unit in units)
             {
+                unit.GradeLevelId = gradeLevelId;
                 var result = await _unitService.CreateUnitAsync(subjectId, unit);
                 if (result.IsSuccess && result.Data is not null)
                     createdUnits.Add(result.Data);

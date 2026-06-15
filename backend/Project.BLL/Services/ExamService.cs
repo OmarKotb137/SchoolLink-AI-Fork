@@ -84,6 +84,13 @@ namespace Project.BLL.Services
                     return OperationResult<ExamSummaryDto>.Failure("المادة غير موجودة", 404);
             }
 
+            if (dto.GradeLevelId > 0)
+            {
+                var gradeLevel = await _unitOfWork.GradeLevels.GetByIdAsync(dto.GradeLevelId);
+                if (gradeLevel == null || gradeLevel.IsDeleted)
+                    return OperationResult<ExamSummaryDto>.Failure("الصف الدراسي غير موجود", 404);
+            }
+
             var exam = _mapper.Map<Exam>(dto);
 
             await _unitOfWork.Exams.AddAsync(exam);
@@ -207,9 +214,26 @@ namespace Project.BLL.Services
                     return OperationResult<GetExamDto>.Failure("المادة غير موجودة", 404);
             }
 
+            if (dto.GradeLevelId <= 0)
+                return OperationResult<GetExamDto>.Failure("الصف الدراسي مطلوب", 400);
+
+            var gradeLevel = await _unitOfWork.GradeLevels.GetByIdAsync(dto.GradeLevelId);
+            if (gradeLevel == null || gradeLevel.IsDeleted)
+                return OperationResult<GetExamDto>.Failure("الصف الدراسي غير موجود", 404);
+
+            // If no CST but SubjectId is provided, validate subject exists
+            if (!dto.ClassSubjectTeacherId.HasValue && dto.SubjectId.HasValue)
+            {
+                var subject = await _unitOfWork.Subjects.GetByIdAsync(dto.SubjectId.Value);
+                if (subject == null || subject.IsDeleted)
+                    return OperationResult<GetExamDto>.Failure("المادة غير موجودة", 404);
+            }
+
             var exam = new Exam
             {
                 ClassSubjectTeacherId = dto.ClassSubjectTeacherId,
+                SubjectId = !dto.ClassSubjectTeacherId.HasValue ? dto.SubjectId : null,
+                GradeLevelId = dto.GradeLevelId,
                 Title = dto.Title,
                 DurationMinutes = dto.DurationMinutes,
                 TotalScore = dto.TotalScore,
@@ -304,6 +328,8 @@ namespace Project.BLL.Services
             exam.DurationMinutes = dto.DurationMinutes;
             exam.TotalScore = dto.TotalScore;
             exam.ClassSubjectTeacherId = dto.ClassSubjectTeacherId;
+            if (dto.GradeLevelId > 0)
+                exam.GradeLevelId = dto.GradeLevelId;
             exam.UpdatedAt = DateTime.UtcNow;
             _unitOfWork.Exams.Update(exam);
 

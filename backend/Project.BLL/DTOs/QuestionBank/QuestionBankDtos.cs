@@ -9,6 +9,8 @@ public class QuestionBankItemDto
     public List<QuestionBankOptionDto> Options { get; set; } = new();
     public string SubjectName { get; set; } = string.Empty;
     public int SubjectId { get; set; }
+    public int GradeLevelId { get; set; }
+    public string? GradeLevelName { get; set; }
     public int UsageCount { get; set; }
     public DateTime CreatedAt { get; set; }
 }
@@ -27,6 +29,7 @@ public class AddToQuestionBankDto
     public string? CorrectAnswer { get; set; }
     public List<AddOptionDto> Options { get; set; } = new();
     public int SubjectId { get; set; }
+    public int GradeLevelId { get; set; }
     public int? SourceExamId { get; set; }
 }
 
@@ -41,6 +44,7 @@ public class SearchQuestionBankDto
 {
     public string? SearchText { get; set; }
     public int? SubjectId { get; set; }
+    public int? GradeLevelId { get; set; }
     public int? QuestionType { get; set; }
     public int Page { get; set; } = 1;
     public int PageSize { get; set; } = 20;

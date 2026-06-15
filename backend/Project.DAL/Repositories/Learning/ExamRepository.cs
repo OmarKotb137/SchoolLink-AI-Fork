@@ -15,6 +15,9 @@ public class ExamRepository : Repository<Exam>, IExamRepository
         int classSubjectTeacherId,
         CancellationToken ct = default)
         => await _context.Exams
+            .Include(e => e.ClassSubjectTeacher)
+                .ThenInclude(cst => cst.Subject)
+            .Include(e => e.GradeLevel)
             .Where(e => e.ClassSubjectTeacherId == classSubjectTeacherId)
             .OrderByDescending(e => e.CreatedAt)
             .ToListAsync(ct);
@@ -24,6 +27,9 @@ public class ExamRepository : Repository<Exam>, IExamRepository
         EvaluationCategory category,
         CancellationToken ct = default)
         => await _context.Exams
+            .Include(e => e.ClassSubjectTeacher)
+                .ThenInclude(cst => cst.Subject)
+            .Include(e => e.GradeLevel)
             .Where(e =>
                 e.ClassSubjectTeacherId == classSubjectTeacherId &&
                 e.Category              == category)
@@ -34,6 +40,9 @@ public class ExamRepository : Repository<Exam>, IExamRepository
         int classSubjectTeacherId,
         CancellationToken ct = default)
         => await _context.Exams
+            .Include(e => e.ClassSubjectTeacher)
+                .ThenInclude(cst => cst.Subject)
+            .Include(e => e.GradeLevel)
             .Where(e =>
                 e.ClassSubjectTeacherId == classSubjectTeacherId &&
                 e.IsAIGenerated)
@@ -72,6 +81,7 @@ public class ExamRepository : Repository<Exam>, IExamRepository
                 e.StartTime <= cutoff)
             .Include(e => e.ClassSubjectTeacher)
                 .ThenInclude(cst => cst.Subject)
+            .Include(e => e.GradeLevel)
             .OrderBy(e => e.StartTime)
             .ToListAsync(ct);
     }
@@ -91,6 +101,7 @@ public class ExamRepository : Repository<Exam>, IExamRepository
                 e.EndTime   >= now)
             .Include(e => e.ClassSubjectTeacher)
                 .ThenInclude(cst => cst.Subject)
+            .Include(e => e.GradeLevel)
             .OrderBy(e => e.EndTime)
             .ToListAsync(ct);
     }
@@ -106,6 +117,7 @@ public class ExamRepository : Repository<Exam>, IExamRepository
                 e.StartTime <= to)
             .Include(e => e.ClassSubjectTeacher)
                 .ThenInclude(cst => cst.Subject)
+            .Include(e => e.GradeLevel)
             .OrderBy(e => e.StartTime)
             .ToListAsync(ct);
 
@@ -132,6 +144,8 @@ public class ExamRepository : Repository<Exam>, IExamRepository
                 .ThenInclude(cst => cst.Subject)
             .Include(e => e.ClassSubjectTeacher)
                 .ThenInclude(cst => cst.Class)
+            .Include(e => e.Subject)
+            .Include(e => e.GradeLevel)
             .Include(e => e.Questions
                 .OrderBy(q => q.DisplayOrder))
                 .ThenInclude(q => q.Options
@@ -148,6 +162,8 @@ public class ExamRepository : Repository<Exam>, IExamRepository
                 .ThenInclude(cst => cst.Subject)
             .Include(e => e.ClassSubjectTeacher)
                 .ThenInclude(cst => cst.Class)
+            .Include(e => e.Subject)
+            .Include(e => e.GradeLevel)
             .Include(e => e.Questions
                 .OrderBy(q => q.DisplayOrder))
                 .ThenInclude(q => q.Options
@@ -156,6 +172,10 @@ public class ExamRepository : Repository<Exam>, IExamRepository
 
     public async Task<IReadOnlyList<Exam>> GetAIGeneratedByTeacherAsync(List<int> cstIds, CancellationToken ct = default)
         => await _context.Exams
+            .Include(e => e.ClassSubjectTeacher)
+                .ThenInclude(cst => cst.Subject)
+            .Include(e => e.Subject)
+            .Include(e => e.GradeLevel)
             .Include(e => e.Questions.Where(q => !q.IsDeleted))
             .Include(e => e.Groups.Where(g => !g.IsDeleted))
                 .ThenInclude(g => g.Questions.Where(q => !q.IsDeleted))

@@ -25,6 +25,11 @@ namespace Project.DAL.Configurations
                 .HasForeignKey(x => x.SubjectId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            builder.HasOne(x => x.GradeLevel)
+                .WithMany()
+                .HasForeignKey(x => x.GradeLevelId)
+                .OnDelete(DeleteBehavior.Restrict);
+
             builder.HasOne(x => x.SourceExam)
                 .WithMany()
                 .HasForeignKey(x => x.SourceExamId)

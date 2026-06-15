@@ -11,14 +11,20 @@ namespace Project.BLL.Mapping
         {
             CreateMap<Exam, ExamSummaryDto>()
                 .ForMember(d => d.SubjectName, o => o.MapFrom(s =>
-                    s.ClassSubjectTeacher != null ? s.ClassSubjectTeacher.Subject.Name : ""))
+                    s.ClassSubjectTeacher != null ? s.ClassSubjectTeacher.Subject.Name :
+                    s.Subject != null ? s.Subject.Name : ""))
+                .ForMember(d => d.GradeLevelName, o => o.MapFrom(s =>
+                    s.GradeLevel != null ? s.GradeLevel.Name : ""))
                 .ForMember(d => d.QuestionsCount, o => o.MapFrom(s =>
                     s.Questions.Count(q => !q.IsDeleted) +
                     s.Groups.Sum(g => g.Questions.Count(q => !q.IsDeleted))));
 
             CreateMap<Exam, GetExamDto>()
                 .ForMember(d => d.SubjectName, o => o.MapFrom(s =>
-                    s.ClassSubjectTeacher != null ? s.ClassSubjectTeacher.Subject.Name : ""))
+                    s.ClassSubjectTeacher != null ? s.ClassSubjectTeacher.Subject.Name :
+                    s.Subject != null ? s.Subject.Name : ""))
+                .ForMember(d => d.GradeLevelName, o => o.MapFrom(s =>
+                    s.GradeLevel != null ? s.GradeLevel.Name : ""))
                 .ForMember(d => d.ClassName, o => o.MapFrom(s =>
                     s.ClassSubjectTeacher != null ? s.ClassSubjectTeacher.Class.Name : ""))
                 .ForMember(d => d.TeacherName, o => o.MapFrom(s =>

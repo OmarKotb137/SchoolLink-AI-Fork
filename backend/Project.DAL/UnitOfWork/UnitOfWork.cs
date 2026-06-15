@@ -242,6 +242,9 @@ public class UnitOfWork : IUnitOfWork
     public async Task<int> SaveChangesAsync(CancellationToken ct = default)
         => await _context.SaveChangesAsync(ct);
 
+    public void ClearChangeTracker()
+        => _context.ChangeTracker.Clear();
+
     // Transaction Management
 
     public async Task BeginTransactionAsync(CancellationToken ct = default)

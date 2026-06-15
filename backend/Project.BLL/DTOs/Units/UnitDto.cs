@@ -4,12 +4,14 @@ public class UnitDto
 {
     public int Id { get; set; }
     public int SubjectId { get; set; }
+    public int GradeLevelId { get; set; }
     public string Name { get; set; } = string.Empty;
     public string? Content { get; set; }
     public int DisplayOrder { get; set; }
     public int? PageStart { get; set; }
     public int? PageEnd { get; set; }
     public string? SubjectName { get; set; }
+    public string? GradeLevelName { get; set; }
     public List<LessonDto>? Lessons { get; set; }
 }
 
@@ -35,6 +37,7 @@ public class CreateLessonDto
 
 public class CreateUnitDto
 {
+    public int GradeLevelId { get; set; }
     public string Name { get; set; } = string.Empty;
     public string? Content { get; set; }
     public int DisplayOrder { get; set; }
@@ -47,6 +50,7 @@ public class SubjectWithStructureDto
 {
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
+    public int GradeLevelId { get; set; }
     public string? GradeLevelName { get; set; }
     public int UnitCount { get; set; }
     public int LessonCount { get; set; }
@@ -65,6 +69,7 @@ public class ParsedUnitDto
     public int DisplayOrder { get; set; }
     public int? PageStart { get; set; }
     public int? PageEnd { get; set; }
+    public int? GradeLevelId { get; set; }
     public List<ParsedLessonDto>? Lessons { get; set; }
 }
 
