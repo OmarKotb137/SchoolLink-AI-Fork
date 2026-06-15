@@ -56,9 +56,20 @@ public class AiExamGeneratorService : IAiExamGeneratorService
 
         var (createDto, cst) = genResult.Data;
 
+        // Resolve GradeLevelName from DB
+        string gradeLevelName = "";
+        if (request.GradeLevelId > 0)
+        {
+            var gradeLevel = await _unitOfWork.GradeLevels.GetByIdAsync(request.GradeLevelId);
+            if (gradeLevel is not null && !gradeLevel.IsDeleted)
+                gradeLevelName = gradeLevel.Name;
+        }
+
         var preview = new AiExamPreviewDto
         {
             ClassSubjectTeacherId = createDto.ClassSubjectTeacherId,
+            GradeLevelId = createDto.GradeLevelId,
+            GradeLevelName = gradeLevelName,
             SubjectName = cst?.SubjectName ?? "",
             ClassName = cst?.ClassName ?? "",
             TeacherName = cst?.TeacherName ?? "",
@@ -155,45 +166,47 @@ public class AiExamGeneratorService : IAiExamGeneratorService
 
         if (!string.IsNullOrWhiteSpace(context.ContextText))
             userPrompt += $"\n\nالمحتوى الدراسي:\n{context.ContextText}";
+        else
+            userPrompt += "\n\n⚠️ ملاحظة: لم يتم العثور على المحتوى الدراسي في قاعدة البيانات. اعتمد على معرفتك التخصصية بالمنهج الدراسي المصري لإنشاء أسئلة دقيقة ومناسبة للمادة والصف.";
 
-        userPrompt += """
-                     
-                     مهمتك:
-                     1. أنشئ أسئلة متنوعة ودقيقة تغطي المحتوى المطلوب
-                     2. لكل سؤال قدم: نص السؤال، النوع، الإجابة الصحيحة، والدرجة
-                     3. لأسئلة الاختيار من متعدد: قدم 4 خيارات (واحدة صحيحة)
-                     4. لأسئلة صح/خطأ: حدد الصواب والخطأ مع الإجابة
-                     5. لأسئلة أكمل: اكتب جملة مع فراغ
-                     6. للأسئلة المقالية: اكتب السؤال فقط (بدون خيارات)
+        userPrompt += $$"""
+                       
+                       مهمتك:
+                       1. أنشئ أسئلة متنوعة ودقيقة تغطي المحتوى المطلوب
+                       2. لكل سؤال قدم: نص السؤال، النوع، الإجابة الصحيحة، والدرجة
+                       3. لأسئلة الاختيار من متعدد: قدم 4 خيارات (واحدة صحيحة)
+                       4. لأسئلة صح/خطأ: حدد الصواب والخطأ مع الإجابة
+                       5. لأسئلة أكمل: اكتب جملة مع فراغ
+                       6. للأسئلة المقالية: اكتب السؤال فقط (بدون خيارات)
 
-                     أرجع النتيجة بصيغة JSON فقط (بدون أي نص إضافي):
-                     {
-                       "title": "{{request.Title}}",
-                       "durationMinutes": {{request.DurationMinutes ?? 60}},
-                       "totalScore": {{request.TotalScore}},
-                       "standaloneQuestions": [
-                         {
-                           "questionText": "نص السؤال",
-                           "questionType": 1,
-                           "options": [
-                             { "text": "الخيار أ", "isCorrect": true, "displayOrder": 1 },
-                             { "text": "الخيار ب", "isCorrect": false, "displayOrder": 2 },
-                             { "text": "الخيار ج", "isCorrect": false, "displayOrder": 3 },
-                             { "text": "الخيار د", "isCorrect": false, "displayOrder": 4 }
-                           ],
-                           "correctAnswer": "الإجابة الصحيحة",
-                           "points": 5,
-                           "displayOrder": 1
-                         }
-                       ]
-                     }
+                       أرجع النتيجة بصيغة JSON فقط (بدون أي نص إضافي):
+                       {
+                         "title": "{{request.Title}}",
+                         "durationMinutes": {{request.DurationMinutes ?? 60}},
+                         "totalScore": {{request.TotalScore}},
+                         "standaloneQuestions": [
+                           {
+                             "questionText": "نص السؤال",
+                             "questionType": 1,
+                             "options": [
+                               { "text": "الخيار أ", "isCorrect": true, "displayOrder": 1 },
+                               { "text": "الخيار ب", "isCorrect": false, "displayOrder": 2 },
+                               { "text": "الخيار ج", "isCorrect": false, "displayOrder": 3 },
+                               { "text": "الخيار د", "isCorrect": false, "displayOrder": 4 }
+                             ],
+                             "correctAnswer": "الإجابة الصحيحة",
+                             "points": 5,
+                             "displayOrder": 1
+                           }
+                         ]
+                       }
 
-                     قيم questionType:
-                     - 1 = اختيار من متعدد (مع خيارات)
-                     - 2 = صح أو خطأ (مع خيارات "صح" و"خطأ")
-                     - 3 = أكمل الفراغ (بدون خيارات، correctAnswer هو الكلمة المفقودة)
-                     - 4 = سؤال مقالي (بدون خيارات)
-                     """;
+                       قيم questionType:
+                       - 1 = اختيار من متعدد (مع خيارات)
+                       - 2 = صح أو خطأ (مع خيارات "صح" و"خطأ")
+                       - 3 = أكمل الفراغ (بدون خيارات، correctAnswer هو الكلمة المفقودة)
+                       - 4 = سؤال مقالي (بدون خيارات)
+                       """;
 
         _logger.LogInformation("Sending exam generation prompt to LLM");
 
@@ -249,6 +262,8 @@ public class AiExamGeneratorService : IAiExamGeneratorService
         var createDto = new CreateExamFromAiDto
         {
             ClassSubjectTeacherId = request.ClassSubjectTeacherId,
+            SubjectId = request.SubjectId,
+            GradeLevelId = request.GradeLevelId,
             Title = generatedExam.Title ?? request.Title,
             DurationMinutes = generatedExam.DurationMinutes ?? request.DurationMinutes,
             TotalScore = generatedExam.TotalScore > 0 ? generatedExam.TotalScore : request.TotalScore,
@@ -282,8 +297,10 @@ public class AiExamGeneratorService : IAiExamGeneratorService
             ContextText = ""
         };
 
-        // Fetch all units+lessons for the subject once (like book-parser does)
-        var unitResult = await _unitService.GetUnitsWithLessonsBySubjectAsync(cst.SubjectId);
+        // Fetch units filtered by gradeLevelId if available
+        var unitResult = request.GradeLevelId > 0
+            ? await _unitService.GetUnitsByGradeLevelAndSubjectAsync(request.GradeLevelId, cst.SubjectId)
+            : await _unitService.GetUnitsWithLessonsBySubjectAsync(cst.SubjectId);
         var allUnits = unitResult.IsSuccess ? unitResult.Data : null;
         if (allUnits is null || allUnits.Count == 0) return ctx;
 

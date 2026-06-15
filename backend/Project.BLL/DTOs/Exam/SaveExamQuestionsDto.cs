@@ -9,6 +9,7 @@ public class SaveExamQuestionsDto
     public int? DurationMinutes { get; set; }
     public decimal TotalScore { get; set; }
     public int? ClassSubjectTeacherId { get; set; }
+    public int GradeLevelId { get; set; }
     public List<SaveQuestionDto> Questions { get; set; } = new();
 }
 

@@ -56,12 +56,12 @@ public class BookParserController : ControllerBase
     }
 
     [HttpPost("save")]
-    public async Task<IActionResult> Save(int subjectId, [FromBody] List<CreateUnitDto> units)
+    public async Task<IActionResult> Save(int subjectId, [FromQuery] int gradeLevelId, [FromBody] List<CreateUnitDto> units)
     {
         if (units is null || units.Count == 0)
             return BadRequest(new { message = "يجب إدخال وحدات على الأقل" });
 
-        var result = await _bookParserService.SaveBookStructureAsync(subjectId, units);
+        var result = await _bookParserService.SaveBookStructureAsync(subjectId, gradeLevelId, units);
         return result.IsSuccess ? Ok(result) : BadRequest(result);
     }
 

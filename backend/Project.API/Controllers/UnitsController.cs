@@ -17,17 +17,27 @@ public class UnitsController : ControllerBase
     }
 
     [HttpGet("api/subjects/{subjectId}/units-with-lessons")]
-    public async Task<IActionResult> GetUnitsWithLessons(int subjectId)
+    public async Task<IActionResult> GetUnitsWithLessons(int subjectId, [FromQuery] int? gradeLevelId = null)
     {
-        var result = await _unitService.GetUnitsWithLessonsBySubjectAsync(subjectId);
-        return result.IsSuccess ? Ok(result) : BadRequest(result);
+        if (gradeLevelId.HasValue && gradeLevelId > 0)
+        {
+            var result = await _unitService.GetUnitsByGradeLevelAndSubjectAsync(gradeLevelId.Value, subjectId);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
+        var resultAll = await _unitService.GetUnitsWithLessonsBySubjectAsync(subjectId);
+        return resultAll.IsSuccess ? Ok(resultAll) : BadRequest(resultAll);
     }
 
     [HttpGet("api/subjects/{subjectId}/units")]
-    public async Task<IActionResult> GetBySubject(int subjectId)
+    public async Task<IActionResult> GetBySubject(int subjectId, [FromQuery] int? gradeLevelId = null)
     {
-        var result = await _unitService.GetUnitsBySubjectAsync(subjectId);
-        return result.IsSuccess ? Ok(result) : BadRequest(result);
+        if (gradeLevelId.HasValue && gradeLevelId > 0)
+        {
+            var result = await _unitService.GetUnitsByGradeLevelAndSubjectAsync(gradeLevelId.Value, subjectId);
+            return result.IsSuccess ? Ok(result) : BadRequest(result);
+        }
+        var resultAll = await _unitService.GetUnitsBySubjectAsync(subjectId);
+        return resultAll.IsSuccess ? Ok(resultAll) : BadRequest(resultAll);
     }
 
     [HttpGet("api/units/{unitId}/lessons")]

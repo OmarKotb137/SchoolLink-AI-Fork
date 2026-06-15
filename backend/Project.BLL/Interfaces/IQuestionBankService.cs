@@ -5,7 +5,7 @@ namespace Project.BLL.Interfaces;
 
 public interface IQuestionBankService
 {
-    Task<OperationResult<List<QuestionBankItemDto>>> GetBySubjectAsync(int subjectId);
+    Task<OperationResult<List<QuestionBankItemDto>>> GetBySubjectAsync(int subjectId, int? gradeLevelId = null);
     Task<OperationResult<QuestionBankItemDto>> GetByIdAsync(int id);
     Task<OperationResult<List<QuestionBankItemDto>>> SearchAsync(SearchQuestionBankDto dto);
     Task<OperationResult<QuestionBankItemDto>> AddQuestionAsync(AddToQuestionBankDto dto);

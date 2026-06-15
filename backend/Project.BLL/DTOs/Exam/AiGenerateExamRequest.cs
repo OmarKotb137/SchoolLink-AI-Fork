@@ -6,6 +6,7 @@ public class AiGenerateExamRequest
 {
     public int? ClassSubjectTeacherId { get; set; }
     public int? SubjectId { get; set; }
+    public int GradeLevelId { get; set; }
     public string Title { get; set; } = string.Empty;
     public int? DurationMinutes { get; set; }
     public decimal TotalScore { get; set; }

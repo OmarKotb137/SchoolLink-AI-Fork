@@ -6,6 +6,8 @@ namespace Project.Domain.Entities
     {
         public Guid Uid { get; set; } = Guid.NewGuid();
         public int? ClassSubjectTeacherId { get; set; }
+        public int? SubjectId { get; set; }
+        public int GradeLevelId { get; set; }
         public string Title { get; set; } = string.Empty;
         public DateTime? StartTime { get; set; }
         public DateTime? EndTime { get; set; }
@@ -17,6 +19,8 @@ namespace Project.Domain.Entities
 
         // Navigation Properties
         public ClassSubjectTeacher? ClassSubjectTeacher { get; set; }
+        public Subject? Subject { get; set; }
+        public GradeLevel GradeLevel { get; set; } = null!;
         public ICollection<ExamQuestionGroup> Groups { get; set; } = new List<ExamQuestionGroup>();
         public ICollection<ExamQuestion> Questions { get; set; } = new List<ExamQuestion>();
         public ICollection<ExamQuestionBankItem> QuestionBankLinks { get; set; } = new List<ExamQuestionBankItem>();

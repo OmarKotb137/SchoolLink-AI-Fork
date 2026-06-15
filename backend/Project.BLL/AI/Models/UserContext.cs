@@ -8,6 +8,7 @@ public class UserContext
     public int? EnrollmentId { get; set; }
     public int? StudentId { get; set; }
     public int? ClassId { get; set; }
+    public int? GradeLevelId { get; set; }
     public int? AcademicYearId { get; set; }
 
     public int? TeacherId { get; set; }

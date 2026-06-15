@@ -18,9 +18,9 @@ public class QuestionBankController : ControllerBase
     }
 
     [HttpGet("subject/{subjectId}")]
-    public async Task<IActionResult> GetBySubject(int subjectId)
+    public async Task<IActionResult> GetBySubject(int subjectId, [FromQuery] int? gradeLevelId = null)
     {
-        var result = await _questionBankService.GetBySubjectAsync(subjectId);
+        var result = await _questionBankService.GetBySubjectAsync(subjectId, gradeLevelId);
         return result.IsSuccess ? Ok(result) : NotFound(result);
     }
 

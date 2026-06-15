@@ -110,6 +110,7 @@ public abstract class BaseAssistantAgent
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "{AgentType} tool {Tool} failed", AgentType, call.Name);
+                    _unitOfWork.ClearChangeTracker();
                     messages.Add(new LlmChatMessage(MessageRole.Tool,
                         $"{{\"error\": \"{ex.Message}\"}}", toolCallId: call.Id));
                 }

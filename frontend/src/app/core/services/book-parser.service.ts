@@ -16,10 +16,12 @@ export interface ParsedUnitDto {
   pageStart: number | null;
   pageEnd: number | null;
   displayOrder: number;
+  gradeLevelId?: number;
   lessons: ParsedLessonDto[];
 }
 
 export interface CreateUnitDto {
+  gradeLevelId: number;
   name: string;
   content: string;
   pageStart: number | null;
@@ -37,11 +39,14 @@ export interface CreateUnitDto {
 export interface UnitDto {
   id: number;
   subjectId: number;
+  gradeLevelId: number;
   name: string;
   content: string;
   pageStart: number | null;
   pageEnd: number | null;
   displayOrder: number;
+  subjectName?: string;
+  gradeLevelName?: string;
   lessons: {
     id: number;
     title: string;
@@ -63,9 +68,9 @@ export class BookParserService {
     return this.http.post<any>(`${this.parserBase}/preview`, formData);
   }
 
-  save(subjectId: number, units: CreateUnitDto[]): Observable<any> {
+  save(subjectId: number, gradeLevelId: number, units: CreateUnitDto[]): Observable<any> {
     return this.http.post<any>(
-      `${this.parserBase}/save?subjectId=${subjectId}`, units);
+      `${this.parserBase}/save?subjectId=${subjectId}&gradeLevelId=${gradeLevelId}`, units);
   }
 
   generateLessonContent(rawContent: string, title: string): Observable<any> {
