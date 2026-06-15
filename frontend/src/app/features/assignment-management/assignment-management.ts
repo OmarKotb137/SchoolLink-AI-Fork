@@ -1,88 +1,81 @@
-import { Component, signal, computed } from '@angular/core';
+import { Component, signal, OnInit, inject } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
 import { Topbar } from '../../layouts/topbar/topbar';
-
-interface Assignment {
-  id: number;
-  title: string;
-  subject: string;
-  class: string;
-  deadline: string;
-  submitted: number;
-  total: number;
-  status: 'active' | 'closed' | 'draft';
-}
-
-interface Question {
-  id: number;
-  type: 'mcq' | 'true-false' | 'essay';
-  text: string;
-  options?: string[];
-  correctAnswer: string;
-}
+import { AssignmentManagerService, AssignmentItem, Question, AssignmentDetail, Stats } from './assignment-manager.service';
 
 @Component({
   selector: 'app-assignment-management',
-  imports: [Sidebar, Topbar],
+  imports: [Sidebar, Topbar, FormsModule],
   templateUrl: './assignment-management.html',
   styleUrl: './assignment-management.css'
 })
-export class AssignmentManagement {
+export class AssignmentManagement implements OnInit {
+  private api = inject(AssignmentManagerService);
+
   sidebarOpen = signal(false);
   showAddModal = signal(false);
   showViewModal = signal(false);
-  viewingAssignment = signal<Assignment | null>(null);
-  editingAssignment = signal<Assignment | null>(null);
+  viewingAssignment = signal<AssignmentDetail | null>(null);
+  editingAssignment = signal<AssignmentItem | null>(null);
 
   newTitle = signal('');
-  newSubject = signal('');
-  newClass = signal('');
+  newSubjectId = signal<number | null>(null);
+  newClassId = signal<number | null>(null);
   newDeadline = signal('');
   questions = signal<Question[]>([]);
 
-  assignments = signal<Assignment[]>([
-    { id: 1, title: 'تمارين المعادلات', subject: 'الرياضيات', class: 'الصف الثالث - أ', deadline: '2026-06-10', submitted: 28, total: 35, status: 'active' },
-    { id: 2, title: 'تحليل النصوص', subject: 'اللغة العربية', class: 'الصف الثالث - ب', deadline: '2026-06-08', submitted: 30, total: 32, status: 'active' },
-    { id: 3, title: 'قواعد اللغة', subject: 'اللغة الإنجليزية', class: 'الصف الثالث - أ', deadline: '2026-06-05', submitted: 35, total: 35, status: 'closed' },
-    { id: 4, title: 'تجارب الكهرباء', subject: 'العلوم', class: 'الصف الثالث - أ', deadline: '2026-06-15', submitted: 0, total: 35, status: 'draft' },
-    { id: 5, title: 'مسائل الجبر', subject: 'الرياضيات', class: 'الصف الثالث - ب', deadline: '2026-06-12', submitted: 15, total: 30, status: 'active' },
-  ]);
+  assignments = signal<AssignmentItem[]>([]);
+  stats = signal<Stats>({ total: 0, active: 0, avgDelivery: 0, overdue: 0 });
 
-  stats = computed(() => {
-    const all = this.assignments();
-    return {
-      total: all.length,
-      active: all.filter(a => a.status === 'active').length,
-      avgDelivery: all.length ? Math.round(all.reduce((s, a) => s + (a.submitted / a.total) * 100, 0) / all.length) : 0,
-      overdue: all.filter(a => a.status === 'active' && a.submitted < a.total).length,
-    };
-  });
+  subjects = signal<{ id: number; name: string }[]>([]);
+  classes = signal<{ id: number; name: string }[]>([]);
 
-  subjects = ['الرياضيات', 'اللغة العربية', 'اللغة الإنجليزية', 'العلوم', 'الدراسات الاجتماعية'];
-  classes = ['الصف الثالث - أ', 'الصف الثالث - ب', 'الصف الثاني - أ', 'الصف الثاني - ب'];
+  ngOnInit() {
+    this.loadAll();
+  }
+
+  private loadAll() {
+    this.api.getAll().subscribe(r => {
+      if (r.isSuccess) {
+        this.assignments.set(r.data);
+      }
+    });
+    this.api.getStats().subscribe(r => {
+      if (r.isSuccess) {
+        this.stats.set(r.data);
+      }
+    });
+    this.api.getSubjects().subscribe(r => this.subjects.set(r));
+    this.api.getClasses().subscribe(r => this.classes.set(r));
+  }
 
   openAddModal() {
     this.editingAssignment.set(null);
     this.newTitle.set('');
-    this.newSubject.set('');
-    this.newClass.set('');
+    this.newSubjectId.set(null);
+    this.newClassId.set(null);
     this.newDeadline.set('');
     this.questions.set([]);
     this.showAddModal.set(true);
   }
 
-  openEditModal(a: Assignment) {
+  openEditModal(a: AssignmentItem) {
     this.editingAssignment.set(a);
     this.newTitle.set(a.title);
-    this.newSubject.set(a.subject);
-    this.newClass.set(a.class);
+    const subj = this.subjects().find(s => s.name === a.subject);
+    this.newSubjectId.set(subj ? subj.id : null);
+    const cls = this.classes().find(c => c.name === a.class);
+    this.newClassId.set(cls ? cls.id : null);
     this.newDeadline.set(a.deadline);
     this.showAddModal.set(true);
   }
 
-  openViewModal(a: Assignment) {
-    this.viewingAssignment.set(a);
-    this.showViewModal.set(true);
+  openViewModal(a: AssignmentItem) {
+    this.api.getById(a.id).subscribe(detail => {
+      this.viewingAssignment.set(detail);
+      this.showViewModal.set(true);
+    });
   }
 
   closeModals() {
@@ -99,7 +92,7 @@ export class AssignmentManagement {
     this.questions.update(q => q.filter(x => x.id !== id));
   }
 
-  updateQuestionType(id: number, type: 'mcq' | 'true-false' | 'essay') {
+  updateQuestionType(id: number, type: string) {
     this.questions.update(q => q.map(x => x.id === id ? { ...x, type, options: type === 'mcq' ? ['', '', '', ''] : type === 'true-false' ? ['صواب', 'خطأ'] : undefined, correctAnswer: '' } : x));
   }
 
@@ -116,17 +109,36 @@ export class AssignmentManagement {
   }
 
   saveAssignment() {
-    const a = this.editingAssignment();
-    if (a) {
-      this.assignments.update(list => list.map(x => x.id === a.id ? { ...x, title: this.newTitle(), subject: this.newSubject(), class: this.newClass(), deadline: this.newDeadline() } : x));
+    const payload = {
+      title: this.newTitle(),
+      subjectId: this.newSubjectId() ?? 0,
+      classId: this.newClassId() ?? 0,
+      deadline: this.newDeadline(),
+      questions: this.questions().map(q => ({
+        type: q.type,
+        text: q.text,
+        options: q.options ?? [],
+        correctAnswer: q.type === 'mcq' ? (q.options ? q.options[Number(q.correctAnswer)] ?? '' : '') : q.correctAnswer
+      }))
+    };
+
+    const existing = this.editingAssignment();
+    if (existing) {
+      this.api.update(existing.id, payload).subscribe(r => {
+        if (r.isSuccess) this.loadAll();
+      });
     } else {
-      this.assignments.update(list => [...list, { id: Date.now(), title: this.newTitle(), subject: this.newSubject(), class: this.newClass(), deadline: this.newDeadline(), submitted: 0, total: 35, status: 'draft' }]);
+      this.api.create(payload).subscribe(r => {
+        if (r.isSuccess) this.loadAll();
+      });
     }
     this.closeModals();
   }
 
   deleteAssignment(id: number) {
-    this.assignments.update(list => list.filter(x => x.id !== id));
+    this.api.delete(id).subscribe(r => {
+      if (r.isSuccess) this.loadAll();
+    });
   }
 
   getStatusText(status: string): string {
@@ -146,11 +158,4 @@ export class AssignmentManagement {
     return map[type] || type;
   }
 
-  getQuestionsForAssignment(a: Assignment): Question[] {
-    return [
-      { id: 1, type: 'mcq', text: 'ما هو حل المعادلة x² - 5x + 6 = 0؟', options: ['x=2, x=3', 'x=1, x=6', 'x=-2, x=-3', 'لا يوجد حل'], correctAnswer: 'x=2, x=3' },
-      { id: 2, type: 'true-false', text: 'المعادلة التربيعية لها جذران حقيقيان دائماً.', correctAnswer: 'خطأ' },
-      { id: 3, type: 'essay', text: 'اشرح طريقة حل المعادلة التربيعية باستخدام القانون العام.', correctAnswer: '' },
-    ];
-  }
 }
