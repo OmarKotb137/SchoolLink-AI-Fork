@@ -51,6 +51,13 @@
                   <span>{{ sub.className }}</span>
                 </div>
 
+                @if (subjectDaysMap()[sub.id]?.length) {
+                  <div class="text-body-sm text-on-surface-variant flex items-center gap-2 mt-1">
+                    <span class="material-symbols-outlined text-sm">calendar_month</span>
+                    <span>{{ subjectDaysMap()[sub.id].map(d => dayLabel(d)).join('، ') }}</span>
+                  </div>
+                }
+
                 <!-- Existing feedbacks for this subject -->
                 @if (feedbackHistory().filter(f => f.classSubjectTeacherId === sub.id).length > 0) {
                   <div class="mt-3 pt-3 border-t border-outline-variant/30">
@@ -96,12 +103,18 @@
                 </div>
               }
 
-              <div>
-                <label class="block text-body-sm font-bold text-on-surface mb-1">تاريخ الحصة</label>
-                <input type="date" [max]="todayString()" [(ngModel)]="lessonDate"
-                       (change)="onDateChange()"
-                       class="w-full p-2 rounded-lg bg-surface-container-high border border-outline text-on-surface">
-              </div>
+              @if (lessonDays().length > 0) {
+                <div>
+                  <label class="block text-body-sm font-bold text-on-surface mb-1">اليوم</label>
+                  <select [(ngModel)]="selectedDay" (change)="onDayChange()"
+                          class="w-full p-2 rounded-lg bg-surface-container-high border border-outline text-on-surface">
+                    <option value="" disabled>-- اختر اليوم --</option>
+                    @for (day of lessonDays(); track day) {
+                      <option [value]="day">{{ dayLabel(day) }}</option>
+                    }
+                  </select>
+                </div>
+              }
 
               @if (existingLessonFeedback()) {
                 <div class="bg-secondary-container text-on-secondary-container p-4 rounded-lg">

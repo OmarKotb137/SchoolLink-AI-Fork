@@ -9,6 +9,15 @@ import { SubjectService, Subject } from '../../core/services/subject.service';
 import { TeacherService, Teacher } from '../../core/services/teacher.service';
 import { AcademicYearService } from '../../core/services/academic-year.service';
 import { GradeLevelService, GradeLevel } from '../../core/services/grade-level.service';
+import { TimetableService, TimetableSlotDto } from '../../core/services/timetable.service';
+
+const DAY_LABELS: Record<string, string> = {
+  Sunday: 'الأحد',
+  Monday: 'الإثنين',
+  Tuesday: 'الثلاثاء',
+  Wednesday: 'الأربعاء',
+  Thursday: 'الخميس',
+};
 
 @Component({
   selector: 'app-teacher-assignments',
@@ -250,9 +259,11 @@ export class TeacherAssignments implements OnInit {
     this.isLoading.set(true);
     this.assignmentService.getByClass(this.selectedClassFilter, this.currentAcademicYearId ?? undefined).subscribe({
       next: (data) => {
-        this.assignments.set(data.data ?? data);
+        const items = data.data ?? data;
+        this.assignments.set(items);
         this.currentPage.set(1);
         this.isLoading.set(false);
+        for (const a of items) this.loadDaysForAssignment(a);
       },
       error: () => {
         this.assignments.set([]);
@@ -469,6 +480,191 @@ export class TeacherAssignments implements OnInit {
       },
       error: (err) => this.showError(err?.message || 'تعذر تحديث التعيين')
     });
+  }
+
+  /* ── Days management ─────────────────────────────────── */
+
+  private timetableService = inject(TimetableService);
+
+  daysDialogCst = signal<ClassSubjectTeacher | null>(null);
+  dialogSelectedDays = signal<string[]>([]);
+  daysSaving = signal(false);
+  assignmentDaysMap = signal<Record<number, string[]>>({});
+
+  dayOptions = ['Sunday','Monday','Tuesday','Wednesday','Thursday'];
+
+  get dayLabels(): Record<string, string> { return DAY_LABELS; }
+
+  async openDaysDialog(assignment: ClassSubjectTeacher) {
+    this.daysDialogCst.set(assignment);
+    this.dialogSelectedDays.set([]);
+
+    if (!this.currentAcademicYearId) return;
+
+    try {
+      const listRes: any = await this.timetableService.getByClass(assignment.classId, this.currentAcademicYearId).toPromise();
+      const allTts: any[] = listRes?.data ?? listRes ?? [];
+      // Prefer draft over active to show the latest editable state
+      const tt = Array.isArray(allTts) ? (allTts.find((t: any) => !t.isActive) || allTts.find((t: any) => t.isActive)) : null;
+      const slots: TimetableSlotDto[] = tt?.slots ?? [];
+      const assignmentSlots = slots.filter(s => s.classSubjectTeacherId === assignment.id && !s.isBreak);
+      this.dialogSelectedDays.set([...new Set(assignmentSlots.map(s => s.dayOfWeek))]);
+    } catch { /* no timetable */ }
+  }
+
+  toggleDay(day: string) {
+    const current = this.dialogSelectedDays();
+    if (current.includes(day)) {
+      this.dialogSelectedDays.set(current.filter(d => d !== day));
+    } else {
+      this.dialogSelectedDays.set([...current, day]);
+    }
+  }
+
+  async saveDays() {
+    const assignment = this.daysDialogCst();
+    if (!assignment?.id || !this.currentAcademicYearId) return;
+
+    this.daysSaving.set(true);
+
+    try {
+      let timetableId: number | null = null;
+      let existingSlots: TimetableSlotDto[] = [];
+
+      // 1. Get all timetables for this class
+      const listRes: any = await this.timetableService.getByClass(assignment.classId, this.currentAcademicYearId).toPromise();
+      const allTts: any[] = listRes?.data ?? listRes ?? [];
+
+      // 2. Find active and draft timetables
+      const active = Array.isArray(allTts) ? allTts.find((t: any) => t.isActive) : null;
+      const draft = Array.isArray(allTts) ? allTts.find((t: any) => !t.isActive) : null;
+
+      // 3. If draft exists, use it
+      if (draft?.id) {
+        timetableId = draft.id;
+        existingSlots = (draft.slots ?? []).filter((s: TimetableSlotDto) => s.classSubjectTeacherId === assignment.id && !s.isBreak);
+      }
+      // 4. If only active exists, clone it to create a draft
+      else if (active?.id) {
+        try {
+          const cloned: any = await this.timetableService.cloneDraft(assignment.classId, this.currentAcademicYearId).toPromise();
+          const clonedData = cloned?.data ?? cloned;
+          timetableId = clonedData?.id ?? cloned?.id;
+          existingSlots = (clonedData?.slots ?? []).filter((s: TimetableSlotDto) => s.classSubjectTeacherId === assignment.id && !s.isBreak);
+        } catch {
+          // clone failed (e.g. draft already exists), try getting the draft again
+          const retryRes: any = await this.timetableService.getByClass(assignment.classId, this.currentAcademicYearId).toPromise();
+          const retryTts: any[] = retryRes?.data ?? retryRes ?? [];
+          const retryDraft = Array.isArray(retryTts) ? retryTts.find((t: any) => !t.isActive) : null;
+          if (retryDraft?.id) {
+            timetableId = retryDraft.id;
+            existingSlots = (retryDraft.slots ?? []).filter((s: TimetableSlotDto) => s.classSubjectTeacherId === assignment.id && !s.isBreak);
+          } else {
+            timetableId = active.id; // last resort — may fail on addSlot
+          }
+        }
+      }
+      // 5. No timetable at all — create a new draft
+      else {
+        const created: any = await this.timetableService.create({
+          classId: assignment.classId,
+          academicYearId: this.currentAcademicYearId,
+        }).toPromise();
+        timetableId = created?.data?.id ?? created?.id;
+        existingSlots = [];
+      }
+
+      if (!timetableId) { this.showError('تعذر العثور على جدول للفصل'); this.daysSaving.set(false); return; }
+
+      const selectedDays = this.dialogSelectedDays();
+
+      // Delete unwanted slots
+      for (const slot of existingSlots) {
+        if (!selectedDays.includes(slot.dayOfWeek)) {
+          try {
+            await this.timetableService.deleteSlot(slot.id).toPromise();
+          } catch (delErr: any) {
+            console.warn('deleteSlot failed (ignored):', slot.id, delErr?.error?.message || delErr?.message);
+          }
+        }
+      }
+
+      // Verify the timetable is a draft (not active) before modifying
+      const refreshed: any = await this.timetableService.getById(timetableId!).toPromise();
+      const draftDetail = refreshed?.data ?? refreshed;
+      if (draftDetail?.isActive) {
+        this.showError('لا يمكن تعديل جدول منشور مباشرة. أنشئ مسودة جديدة أولاً.');
+        this.daysSaving.set(false);
+        return;
+      }
+      const allCurrentSlots: TimetableSlotDto[] = draftDetail?.slots ?? [];
+
+      // Add new slots using next available period number on each day
+      for (const day of selectedDays) {
+        if (!existingSlots.some(s => s.dayOfWeek === day)) {
+          const daySlots = allCurrentSlots.filter(s => s.dayOfWeek === day && !s.isBreak);
+          const usedPeriods = daySlots.map(s => s.periodNumber);
+          let period = 1;
+          while (usedPeriods.includes(period)) { period++; }
+
+          try {
+            await this.timetableService.addSlot({
+              timetableId,
+              dayOfWeek: day,
+              periodNumber: period,
+              startTime: '08:00:00',
+              endTime: '08:45:00',
+              classSubjectTeacherId: assignment.id,
+              isBreak: false,
+            }).toPromise();
+          } catch (addErr: any) {
+            const addMsg = addErr?.error?.message || addErr?.error?.title || addErr?.message || 'Unknown';
+            console.error(`addSlot failed [day=${day}, period=${period}, timetableId=${timetableId}]:`, addMsg);
+            this.showError(`تعذر إضافة الحصة ليوم ${day} (الفترة ${period}): ${addMsg}`);
+            throw addErr;
+          }
+        }
+      }
+
+      this.assignmentDaysMap.update(m => { m[assignment.id!] = selectedDays; return m; });
+
+      this.daysDialogCst.set(null);
+      this.showSuccess('تم حفظ أيام الحصص بنجاح');
+    } catch (e: any) {
+      console.error('saveDays outer catch:', e);
+      const msg = e?.error?.message || e?.error?.title || e?.message || '';
+      this.showError('تعذر حفظ أيام الحصص: ' + msg);
+    } finally {
+      this.daysSaving.set(false);
+    }
+  }
+
+  cancelDaysDialog() {
+    this.daysDialogCst.set(null);
+  }
+
+  getAssignmentDays(assignmentId: number): string {
+    const days = this.assignmentDaysMap()[assignmentId];
+    if (!days || days.length === 0) return '—';
+    return days.map(d => DAY_LABELS[d] || d).join('، ');
+  }
+
+  onLoadDaysForRow(assignment: ClassSubjectTeacher) {
+    if (!this.currentAcademicYearId || this.assignmentDaysMap()[assignment.id!]) return;
+    this.loadDaysForAssignment(assignment);
+  }
+
+  private async loadDaysForAssignment(assignment: ClassSubjectTeacher) {
+    if (!this.currentAcademicYearId) return;
+    try {
+      const listRes: any = await this.timetableService.getByClass(assignment.classId, this.currentAcademicYearId).toPromise();
+      const allTts: any[] = listRes?.data ?? listRes ?? [];
+      const tt = Array.isArray(allTts) ? (allTts.find((t: any) => !t.isActive) || allTts.find((t: any) => t.isActive)) : null;
+      if (!tt?.slots) return;
+      const assignmentSlots = (tt.slots as TimetableSlotDto[]).filter(s => s.classSubjectTeacherId === assignment.id && !s.isBreak);
+      const days = [...new Set(assignmentSlots.map(s => s.dayOfWeek))];
+      this.assignmentDaysMap.update(m => { m[assignment.id!] = days; return m; });
+    } catch { /* ignore */ }
   }
 
   private showError(msg: string) {

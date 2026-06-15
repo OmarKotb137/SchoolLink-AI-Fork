@@ -76,11 +76,11 @@ public class TimetableController : ControllerBase
         return Ok(result);
     }
 
-    [Authorize(Roles = "Admin,Teacher")]
+    [Authorize(Roles = "Admin,Teacher,Student")]
     [HttpGet("by-class")]
     public async Task<IActionResult> GetByClass([FromQuery] int classId, [FromQuery] int academicYearId)
     {
-        if (!User.IsInRole("Admin"))
+        if (User.IsInRole("Teacher"))
         {
             var teacherId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
             var teacherClassesResult = await _classService.GetClassesByTeacherAsync(teacherId, academicYearId);
