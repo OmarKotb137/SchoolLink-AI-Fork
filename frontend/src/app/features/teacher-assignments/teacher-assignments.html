@@ -186,6 +186,7 @@
                   <th scope="col" class="px-6 py-4">المادة</th>
                   <th scope="col" class="px-6 py-4">المعلم المكلف</th>
                   <th scope="col" class="px-6 py-4 text-center">عدد الحصص</th>
+                  <th scope="col" class="px-6 py-4 text-center">أيام الحصص</th>
                   <th scope="col" class="px-6 py-4 text-center">إجراءات</th>
                 </tr>
               </thead>
@@ -211,8 +212,16 @@
                         {{ assignment.weeklyPeriods }} حصص
                       </span>
                     </td>
+                    <td class="px-6 py-4 text-center text-xs text-gray-600" (mouseenter)="onLoadDaysForRow(assignment)">
+                      {{ getAssignmentDays(assignment.id!) }}
+                    </td>
                     <td class="px-6 py-4 text-center">
                       <div class="flex items-center justify-center gap-2">
+                        <button (click)="openDaysDialog(assignment)"
+                                class="p-2 text-green-600 hover:bg-green-50 rounded-2xl transition-colors"
+                                title="إدارة أيام الحصص">
+                          <span class="material-symbols-outlined text-sm">calendar_month</span>
+                        </button>
                         <button (click)="startEdit(assignment)"
                                 class="p-2 text-blue-600 hover:bg-blue-50 rounded-2xl transition-colors"
                                 title="تعديل المعلم أو عدد الحصص">
@@ -272,7 +281,7 @@
 
                 <!-- Empty State -->
                 <tr *ngIf="assignments().length === 0">
-                  <td colspan="5" class="px-6 py-16 text-center">
+                  <td colspan="6" class="px-6 py-16 text-center">
                     <div class="flex flex-col items-center justify-center text-gray-500">
                       <span class="material-symbols-outlined text-5xl mb-3 text-gray-300">assignment_ind</span>
                       <p class="text-base font-medium text-gray-900 mb-1">
@@ -334,6 +343,46 @@
     </div>
   </main>
 </div>
+
+<!-- ══ Days management dialog ═══════════════════════════════════════════ -->
+
+@if (daysDialogCst(); as dialogAssignment) {
+  <div class="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 px-4">
+    <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full">
+      <h3 class="text-lg font-bold text-gray-900 mb-2">أيام الحصص</h3>
+      <p class="text-sm text-gray-500 mb-4">
+        {{ dialogAssignment.subjectName || getSubjectName(dialogAssignment.subjectId) }}
+        —
+        {{ dialogAssignment.teacherName || getTeacherName(dialogAssignment.teacherId) }}
+      </p>
+      <div class="space-y-2 mb-6">
+        @for (day of dayOptions; track day) {
+          <label class="flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors"
+                 [class.border-primary]="dialogSelectedDays().includes(day)"
+                 [class.bg-primary/5]="dialogSelectedDays().includes(day)"
+                 [class.border-gray-200]="!dialogSelectedDays().includes(day)">
+            <input type="checkbox" [checked]="dialogSelectedDays().includes(day)" (change)="toggleDay(day)"
+                   class="w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary">
+            <span class="font-medium text-gray-900">{{ dayLabels[day] }}</span>
+          </label>
+        }
+      </div>
+      <div class="flex gap-3 justify-end">
+        <button (click)="cancelDaysDialog()" [disabled]="daysSaving()"
+                class="px-5 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
+          إلغاء
+        </button>
+        <button (click)="saveDays()" [disabled]="daysSaving()"
+                class="px-5 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-dark rounded-xl transition-colors flex items-center gap-2 disabled:opacity-50">
+          @if (daysSaving()) {
+            <span class="material-symbols-outlined text-sm animate-spin">sync</span>
+          }
+          حفظ
+        </button>
+      </div>
+    </div>
+  </div>
+}
 
 <!-- ══ Floating inline confirm bars (fixed bottom) ════════════════════════ -->
 

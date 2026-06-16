@@ -1,8 +1,11 @@
 import { Component, signal, computed, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
 import { Topbar } from '../../layouts/topbar/topbar';
 import { ExamGeneratorService, AiGenerateExamRequest, AiExamPreviewDto, AiExamPreviewQuestionDto, ExamSummaryDto } from '../../core/services/exam-generator.service';
+import { GradeLevelService } from '../../core/services/grade-level.service';
+import { buildApiUrl } from '../../core/utils/api-url';
 
 export interface ClassSubjectTeacherDto {
   id: number;
@@ -20,12 +23,14 @@ export interface ClassSubjectTeacherDto {
 export interface UnitDto {
   id: number;
   subjectId: number;
+  gradeLevelId: number;
   name: string;
   content?: string;
   displayOrder: number;
   pageStart?: number;
   pageEnd?: number;
   subjectName?: string;
+  gradeLevelName?: string;
   lessons?: LessonDto[];
 }
 
@@ -47,13 +52,19 @@ export interface LessonDto {
 })
 export class ExamGenerator implements OnInit {
   private genSvc = inject(ExamGeneratorService);
+  private gradeLevelSvc = inject(GradeLevelService);
+  private http = inject(HttpClient);
 
   sidebarOpen = signal(false);
   loading = signal(false);
   generating = signal(false);
   saving = signal(false);
+  embedding = signal(false);
+  embedMsg = signal<string | null>(null);
   errorMsg = signal('');
 
+  gradeLevels = signal<any[]>([]);
+  selectedGradeLevelId = signal<number | null>(null);
   assignments = signal<ClassSubjectTeacherDto[]>([]);
   units = signal<UnitDto[]>([]);
   lessons = signal<LessonDto[]>([]);
@@ -143,8 +154,19 @@ export class ExamGenerator implements OnInit {
   hasMultipleClasses = computed(() => this.classOptions().length > 1);
 
   ngOnInit() {
+    this.loadGradeLevels();
     this.loadMyAssignments();
     this.loadHistory();
+  }
+
+  private loadGradeLevels() {
+    this.gradeLevelSvc.getAll().subscribe({
+      next: (res: any) => {
+        const data = res?.data ?? (Array.isArray(res) ? res : []);
+        this.gradeLevels.set(data);
+      },
+      error: () => {}
+    });
   }
 
   private loadMyAssignments() {
@@ -243,7 +265,7 @@ export class ExamGenerator implements OnInit {
   }
 
   private loadUnits(subjectId: number) {
-    this.genSvc.getUnitsWithLessons(subjectId).subscribe({
+    this.genSvc.getUnitsWithLessons(subjectId, this.selectedGradeLevelId() ?? undefined).subscribe({
       next: (r: any) => {
         const list = Array.isArray(r.data) ? r.data : Array.isArray(r) ? r : [];
         this.units.set(list.map((u: any) => ({
@@ -296,13 +318,10 @@ export class ExamGenerator implements OnInit {
   }
 
   preview() {
-    // Auto-resolve CST for AI context (must have a class for prompt context)
     let cstId = this.selectedCstId();
     if (!cstId) {
-      const classes = this.classOptions();
-      cstId = classes.length > 0 ? classes[0].id : null;
+      // خلّي cstId = null عشان الامتحان مش هيتقيد بفصل
     }
-    if (!cstId) { this.errorMsg.set('اختر المادة أولاً'); return; }
     const totalQ = this.totalQuestionCount();
     if (!totalQ) { this.errorMsg.set('اختر عدداً من الأسئلة'); return; }
 
@@ -312,15 +331,18 @@ export class ExamGenerator implements OnInit {
     this.previewQuestions.set([]);
     this.savedExamId.set(null);
     this.savedExamUid.set(null);
+    this.embedMsg.set(null);
+    this.embedding.set(false);
     this.showConfirm.set(false);
 
     const body: AiGenerateExamRequest = {
       classSubjectTeacherId: cstId,
       subjectId: this.selectedSubjectId(),
+      gradeLevelId: this.selectedGradeLevelId(),
       title: this.title() || `امتحان ${this.selectedSubjectName() || ''}`,
       durationMinutes: this.durationMinutes() || undefined,
       totalScore: this.totalScore(),
-      category: 1,
+      category: 2,
       questionCounts: { ...this.questionCounts() },
       topic: this.topic() || undefined,
       unitId: this.selectedUnitId() ?? undefined,
@@ -362,10 +384,12 @@ export class ExamGenerator implements OnInit {
 
     const saveBody: any = {
       classSubjectTeacherId: this.selectedCstId() ?? null,
+      subjectId: this.selectedSubjectId(),
+      gradeLevelId: this.selectedGradeLevelId(),
       title: preview.title,
       durationMinutes: preview.durationMinutes,
       totalScore: preview.totalScore,
-      category: 1,
+      category: 2,
       standaloneQuestions: preview.standaloneQuestions.map((q, i) => ({
         questionText: q.questionText,
         questionType: q.questionType,
@@ -386,6 +410,13 @@ export class ExamGenerator implements OnInit {
         if (saved?.id) {
           this.savedExamId.set(saved.id);
           this.savedExamUid.set(saved.uid || null);
+          // Update previewExam with saved data so gradeLevelName etc. are shown
+          this.previewExam.update(p => p ? {
+            ...p,
+            subjectName: saved.subjectName || p.subjectName,
+            gradeLevelName: saved.gradeLevelName || p.gradeLevelName,
+            classSubjectTeacherId: saved.classSubjectTeacherId ?? p.classSubjectTeacherId,
+          } : p);
         }
         this.saving.set(false);
         this.loadHistory();
@@ -393,6 +424,29 @@ export class ExamGenerator implements OnInit {
       error: (err) => {
         this.saving.set(false);
         this.errorMsg.set(err?.error?.message || err?.message || 'فشل حفظ الامتحان');
+      }
+    });
+  }
+
+  /** حفظ أسئلة الامتحان في بنك الأسئلة مع إنشاء البحث الدلالي (MongoDB embedding) */
+  embedToQuestionBank() {
+    const uid = this.savedExamUid();
+    const examId = this.savedExamId();
+    if (!uid || !examId) return;
+
+    this.embedding.set(true);
+    this.embedMsg.set('جاري الحفظ في بنك الأسئلة...');
+
+    this.http.post(buildApiUrl(`question-embedding/from-exam/${examId}`), {}).subscribe({
+      next: (r: any) => {
+        this.embedding.set(false);
+        this.embedMsg.set(`✅ ${r?.message || 'تم الحفظ بنجاح'}`);
+      },
+      error: (err) => {
+        this.embedding.set(false);
+        const msg = err?.error?.message || err?.error?.title || err?.message || JSON.stringify(err?.error) || 'خطأ غير معروف';
+        console.error('Embed error:', err);
+        this.embedMsg.set('❌ ' + msg);
       }
     });
   }
@@ -444,6 +498,8 @@ export class ExamGenerator implements OnInit {
     this.previewQuestions.set([]);
     this.savedExamId.set(null);
     this.savedExamUid.set(null);
+    this.embedMsg.set(null);
+    this.embedding.set(false);
     this.showConfirm.set(false);
     this.showDeleteConfirm.set(false);
     this.editMode.set(false);
@@ -457,6 +513,8 @@ export class ExamGenerator implements OnInit {
             subjectName: saved.subjectName || '',
             className: saved.className || '',
             teacherName: saved.teacherName || '',
+            gradeLevelName: saved.gradeLevelName || '',
+            gradeLevelId: saved.gradeLevelId,
             title: saved.title,
             durationMinutes: saved.durationMinutes,
             totalScore: saved.totalScore,
@@ -520,6 +578,7 @@ export class ExamGenerator implements OnInit {
   }
 
   reset() {
+    this.selectedGradeLevelId.set(null);
     this.selectedCstId.set(null);
     this.selectedSubjectId.set(null);
     this.selectedSubjectName.set('');
@@ -537,6 +596,8 @@ export class ExamGenerator implements OnInit {
     this.previewQuestions.set([]);
     this.savedExamId.set(null);
     this.savedExamUid.set(null);
+    this.embedMsg.set(null);
+    this.embedding.set(false);
     this.viewingHistoryId.set(null);
     this.showConfirm.set(false);
     this.showDeleteConfirm.set(false);

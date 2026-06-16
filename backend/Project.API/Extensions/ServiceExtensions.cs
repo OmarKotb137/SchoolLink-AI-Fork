@@ -11,9 +11,11 @@ using Project.BLL.Interfaces;
 using Project.BLL.Mapping;
 using Project.BLL.Services;
 using Project.BLL.Validators;
+using Project.BLL.Embedding;
 using Project.DAL.Context;
 using Project.DAL.Interfaces;
 using Project.DAL.Interfaces.Repositories;
+using Project.DAL.MongoDb;
 using Project.DAL.Repositories;
 using Project.DAL.UnitOfWork;
 
@@ -60,8 +62,10 @@ public static class ServiceExtensions
         services.AddScoped<ITimetableService, TimetableService>();
         services.AddScoped<IRoomService, RoomService>();
         services.AddScoped<IAssignmentService, AssignmentService>();
+        services.AddScoped<IAssignmentManagerService, AssignmentManagerService>();
         services.AddScoped<IAssignmentSubmissionService, AssignmentSubmissionService>();
         services.AddScoped<IExamService, ExamService>();
+        services.AddScoped<IExamManagerService, ExamManagerService>();
         services.AddScoped<IExamAttemptService, ExamAttemptService>();
         services.AddScoped<IStudentExamService, StudentExamService>();
         services.AddScoped<IExamHtmlRenderer, ExamHtmlRenderer>();
@@ -171,6 +175,12 @@ public static class ServiceExtensions
         services.AddScoped<IExamGenerator, LlmExamGenerator>();
         services.AddScoped<IAgentChatStore, AgentChatStore>();
         services.AddScoped<IClassEnrollmentPickerService, ClassEnrollmentPickerService>();
+
+        // MongoDB & Embedding
+        services.Configure<MongoDbSettings>(config.GetSection("MongoDb"));
+        services.AddScoped<IMongoDbContext, MongoDbContext>();
+        services.AddScoped<IEmbeddingService, HuggingFaceEmbeddingService>();
+        services.AddScoped<IQuestionEmbeddingService, QuestionEmbeddingService>();
     }
 
     private static void RegisterProvider<T>(IServiceCollection services, string? httpClientName) where T : class, ILLMProvider

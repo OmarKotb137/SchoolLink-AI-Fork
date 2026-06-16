@@ -28,10 +28,14 @@ public class StudentAssistantAgent : BaseAssistantAgent, IStudentAssistantAgent
 • لو الطالب مش فاهم، متفاجئهوش — ابدأ من تاني بزاوية مختلفة.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🌍 LANGUAGE RULE — قاعدة اللغة
+🌍 LANGUAGE RULE — قاعدة اللغة واللهجة
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 • اكشف اللغة من أول كلمة للطالب.
+• لو الطالب كتب بمصري → رد بمصري. لو كتب فصحى → رد فصحى.
+• لو مش متأكد من اللهجة → استخدم المصري (الأقرب للطلاب).
+• استخدم كلمات مصري زي: ""إيه""، ""كده""، ""دلوقتي""، ""بقى""، ""خلينا""، ""يلا""، ""مالكش دعوة""، ""عادي"".
+• مش لازم تكون مصري مبالغ فيه — مجرد لغة ودية قريبة للقلب.
 • حافظ على نفس اللغة طوال الجلسة — بدون خلط.
 • عربي → عربي كامل. إنجليزي → إنجليزي كامل.
 
@@ -57,7 +61,7 @@ TOOL 1 — search_lessons
 TOOL 2 — get_units 🆕
 ────────────────────────────────────
 ● جلب أسماء الوحدات والدروس لمادة معينة (بدون محتوى — للتصفح فقط)
-● Arguments: subjectId (int — اختياري) أو subjectName (string — اختياري)
+● Arguments: subjectId (int — اختياري) أو subjectName (string — اختياري)، gradeLevelId (int — اختياري لتصفية الوحدات حسب الصف)
 ● الاستخدام: الخيار الأول لما الطالب يطلب مذاكرة مادة معينة
 ● تعطيك هيكل المادة: أسماء الوحدات والدروس فقط — بدون محتوى (للمحافظة على حجم المحادثة)
 ● 📌 مهم جداً: في بعض المواد (مثل اللغة الإنجليزية)، lessons ممكن تكون فاضية والمحتوى في الوحدة نفسها
@@ -71,7 +75,7 @@ TOOL 2 — get_units 🆕
 TOOL 3 — get_unit_content 🆕
 ────────────────────────────────────
 ● جلب المحتوى الكامل لوحدة معينة (محتوى الوحدة + محتوى دروسها)
-● Arguments: subjectId (int), unitId (int)
+● Arguments: subjectId (int), unitId (int), gradeLevelId (int — اختياري)
 ● الاستخدام: بعد get_units، لما الطالب يختار وحدة وعاوز تشوف محتواها
 ● تنبيه: استخدم get_unit_content فقط لو الطالب اختار وحدة معينة — مش لجميع الوحدات
 
@@ -114,6 +118,20 @@ TOOL 7 — get_upcoming_exams
 ● ماذا تفعل بعدها:
    ✅ اعرض المواعيد بشكل مرتب + اقترح خطة مذاكرة
    ❌ مفيش امتحانات قادمة → ""الحمدلله مفيش امتحانات قريبة، استغل الوقت في المراجعة!""
+
+────────────────────────────────────
+TOOL 8 — search_question_bank 🆕
+────────────────────────────────────
+● بحث عن أسئلة مشابهة في بنك الأسئلة (مع الإجابات)
+● Arguments: query (string — نص السؤال أو الموضوع المطلوب), subjectId (int — اختياري), limit (int — اختياري، افتراضي 10)
+● ⚠️ النتائج مُصفاة تلقائياً حسب صف الطالب الدراسي (GradeLevelId). مش محتاج تحدد الصف.
+● **الرد يكون:
+  ✅ success: true → فيه results (مصفوفة) كل عنصر: QuestionText, CorrectAnswer, Score
+  ❌ success: false → مفيش نتائج
+● الاستخدام: لما الطالب يقول ""عاوز أسئلة عن..."", ""دورلي على أسئلة..."", ""عاوز تدريبات على...""
+● ماذا تفعل بعدها:
+   ✅ عرض النتائج مرتبة حسب التشابه مع الأسئلة والإجابات
+   ❌ success: false → ""للأسف مفيش أسئلة مشابهة في البنك حالياً، لكن اقدر أساعدك بتمارين من عندي!""
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🗺️ INTENT DETECTION — اكتشاف نية الطالب
@@ -170,6 +188,13 @@ INTENT I — طلب شرح أو تبسيط لمفهوم 📖
 ● قسم الشرح إلى نقاط صغيرة، واستخدم أمثلة من الحياة اليومية
 ● بعد الشرح، اسأل: ""هل فهمت النقطة دي؟ نكمل؟""
 
+INTENT J — البحث عن أسئلة في بنك الأسئلة 🔍
+● الطالب يقول ""عاوز أسئلة عن..."", ""دورلي على أسئلة..."", ""عاوز تدريبات"", ""شوفلي أسئلة""
+● استخدم search_question_bank مع query = الموضوع المطلوب
+● ⚠️ النتائج تُصفى تلقائياً حسب صف الطالب — لا حاجة لتحديد الصف
+● عرض النتائج مع الإجابات
+● لو مفيش نتائج: ""للأسف مفيش أسئلة مشابهة في البنك حالياً، لكن اقدر أساعدك بتمارين من عندي!""
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📖 PROTOCOLS — بروتوكولات التعامل
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -178,6 +203,11 @@ PROTOCOL 1 — افتتاح الجلسة
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 • أول رسالة من الطالب: ""أهلاً! إيه اللي نعمله النهارده؟ نذاكر درس جديد ولا تشوف تقييمك؟ 😊""
 • خلي البداية حلوة ومش رسمية
+• اعرض دايماً الخيارات دي أول ما تقابل الطالب:
+  🔹 نذاكر درس جديد
+  🔹 نشوف تقييمك الدراسي
+  🔹 ندور على أسئلة في بنك الأسئلة 🆕
+  🔹 نعرف مواعيد الامتحانات الجاية
 
 PROTOCOL 2 — المذاكرة
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -281,33 +311,43 @@ PROTOCOL 5 — التدريبات والتمارين 📝 (مهم جداً)
 
     private async Task<Domain.Entities.StudentEnrollment?> ResolveStudentContextAsync(UserContext context, CancellationToken ct)
     {
+        Domain.Entities.StudentEnrollment? enrollmentFirst = null;
+
         if (context.EnrollmentId.HasValue)
         {
-            var enrollment = await _unitOfWork.StudentEnrollments.GetByIdAsync(context.EnrollmentId.Value);
-            if (enrollment != null)
+            enrollmentFirst = await _unitOfWork.StudentEnrollments.GetByIdAsync(context.EnrollmentId.Value);
+            if (enrollmentFirst != null)
             {
-                context.ClassId ??= enrollment.ClassId;
-                context.StudentId ??= enrollment.StudentId;
-                return enrollment;
+                context.ClassId ??= enrollmentFirst.ClassId;
+                context.StudentId ??= enrollmentFirst.StudentId;
             }
         }
-
-        var student = (await _unitOfWork.Students.FindAsync(s => s.UserId == context.UserId && !s.IsDeleted)).FirstOrDefault();
-        if (student == null) return null;
-
-        context.StudentId = student.Id;
-
-        var enrollments = await _unitOfWork.StudentEnrollments.FindAsync(
-            e => e.StudentId == student.Id && !e.IsDeleted);
-        var enrollmentFirst = enrollments.FirstOrDefault();
-        if (enrollmentFirst != null)
+        else
         {
-            context.EnrollmentId = enrollmentFirst.Id;
-            context.ClassId = enrollmentFirst.ClassId;
+            var student = (await _unitOfWork.Students.FindAsync(s => s.UserId == context.UserId && !s.IsDeleted)).FirstOrDefault();
+            if (student == null) return null;
+
+            context.StudentId = student.Id;
+
+            var enrollments = await _unitOfWork.StudentEnrollments.FindAsync(
+                e => e.StudentId == student.Id && !e.IsDeleted);
+            enrollmentFirst = enrollments.FirstOrDefault();
+            if (enrollmentFirst != null)
+            {
+                context.EnrollmentId = enrollmentFirst.Id;
+                context.ClassId = enrollmentFirst.ClassId;
+            }
+
+            var activeYear = await _unitOfWork.AcademicYears.FindAsync(y => y.IsCurrent && !y.IsDeleted);
+            context.AcademicYearId = activeYear.FirstOrDefault()?.Id;
         }
 
-        var activeYear = await _unitOfWork.AcademicYears.FindAsync(y => y.IsCurrent && !y.IsDeleted);
-        context.AcademicYearId = activeYear.FirstOrDefault()?.Id;
+        if (context.ClassId.HasValue)
+        {
+            var classEntity = await _unitOfWork.Classes.GetByIdAsync(context.ClassId.Value);
+            if (classEntity != null)
+                context.GradeLevelId = classEntity.GradeLevelId;
+        }
 
         return enrollmentFirst;
     }
@@ -316,6 +356,12 @@ PROTOCOL 5 — التدريبات والتمارين 📝 (مهم جداً)
     {
         return lastToolCalled switch
         {
+            "search_question_bank" => new()
+            {
+                "عاوز أذاكر درس",
+                "تقييمي الدراسي",
+                "الامتحانات القادمة"
+            },
             "search_lessons" => new()
             {
                 "اختر درساً من القائمة",
@@ -351,7 +397,7 @@ PROTOCOL 5 — التدريبات والتمارين 📝 (مهم جداً)
                 "عاوز أذاكر درس",
                 "تقييمي الدراسي",
                 "الامتحانات القادمة",
-                "تمارين تدريبية"
+                "بنك الأسئلة"
             }
         };
     }

@@ -120,11 +120,11 @@
           </div>
           <div class="flex flex-col gap-1">
             <label class="font-label-md text-label-md" style="font-weight:600;">المادة</label>
-            <select class="glass-select" [value]="newSubject()" (change)="newSubject.set($any($event.target).value)"><option value="">اختر...</option>@for (s of subjects; track s) {<option [value]="s">{{ s }}</option>}</select>
+            <select class="glass-select" [ngModel]="newSubjectId()" (ngModelChange)="newSubjectId.set($event)"><option [ngValue]="null">اختر...</option>@for (s of subjects(); track s.id) {<option [ngValue]="s.id">{{ s.name }}</option>}</select>
           </div>
           <div class="flex flex-col gap-1">
             <label class="font-label-md text-label-md" style="font-weight:600;">الفصل</label>
-            <select class="glass-select" [value]="newClass()" (change)="newClass.set($any($event.target).value)"><option value="">اختر...</option>@for (c of classes; track c) {<option [value]="c">{{ c }}</option>}</select>
+            <select class="glass-select" [ngModel]="newClassId()" (ngModelChange)="newClassId.set($event)"><option [ngValue]="null">اختر...</option>@for (c of classes(); track c.id) {<option [ngValue]="c.id">{{ c.name }}</option>}</select>
           </div>
           <div class="flex flex-col gap-1">
             <label class="font-label-md text-label-md" style="font-weight:600;">التاريخ</label>
@@ -173,7 +173,7 @@
           </div>
           <h3 class="font-headline-md text-headline-md mb-4" style="font-weight:700;">الأسئلة</h3>
           <div class="flex flex-col gap-stack-md">
-            @for (q of getQuestionsForExam(e); track q.id) {
+            @for (q of e.questions; track q.id) {
               <div class="border border-white/40 bg-white/30 backdrop-blur-sm rounded-2xl p-stack-md">
                 <div class="flex items-center gap-3 mb-3">
                   <span class="bg-gradient-to-l from-primary to-blue-600 text-on-primary w-7 h-7 rounded-lg flex items-center justify-center font-bold text-label-sm">{{ $index + 1 }}</span>

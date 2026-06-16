@@ -6,6 +6,7 @@ import { buildApiUrl } from '../utils/api-url';
 export interface AiGenerateExamRequest {
   classSubjectTeacherId?: number | null;
   subjectId?: number | null;
+  gradeLevelId?: number | null;
   title: string;
   durationMinutes?: number;
   totalScore: number;
@@ -26,6 +27,7 @@ export interface GetExamDto {
   isPublished: boolean;
   category: number;
   classSubjectTeacherId: number | null;
+  gradeLevelId: number;
   subjectName: string;
   className: string;
   teacherName: string;
@@ -33,6 +35,7 @@ export interface GetExamDto {
   createdAt: string;
   groups: GetExamQuestionGroupDto[];
   standaloneQuestions: GetExamQuestionDto[];
+  gradeLevelName?: string;
 }
 
 export interface GetExamQuestionGroupDto {
@@ -76,6 +79,8 @@ export interface AiExamPreviewDto {
   totalScore: number;
   questionsCount: number;
   standaloneQuestions: AiExamPreviewQuestionDto[];
+  gradeLevelId?: number;
+  gradeLevelName?: string;
 }
 
 export interface AiExamPreviewQuestionDto {
@@ -104,6 +109,8 @@ export interface ExamSummaryDto {
   category: number;
   subjectName: string;
   questionsCount: number;
+  gradeLevelId?: number;
+  gradeLevelName?: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -134,8 +141,12 @@ export class ExamGeneratorService {
     return this.http.get(`${this.cstBase}/my-assignments/current-year`);
   }
 
-  getUnitsWithLessons(subjectId: number): Observable<any> {
-    return this.http.get(`${this.unitBase}/${subjectId}/units-with-lessons`);
+  getUnitsWithLessons(subjectId: number, gradeLevelId?: number): Observable<any> {
+    let url = `${this.unitBase}/${subjectId}/units-with-lessons`;
+    if (gradeLevelId) {
+      url += `?gradeLevelId=${gradeLevelId}`;
+    }
+    return this.http.get(url);
   }
 
   getExamById(id: number): Observable<any> {

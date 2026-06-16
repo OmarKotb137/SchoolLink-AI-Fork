@@ -1,8 +1,10 @@
 using System.Text.Json;
 using Project.BLL.AI.Interfaces;
 using Project.BLL.AI.Models;
+using Project.BLL.DTOs;
 using Project.BLL.Interfaces;
 using Project.DAL.Interfaces;
+using Project.BLL.Services;
 
 namespace Project.BLL.AI.Tools;
 
@@ -14,6 +16,7 @@ public class StudentToolService : IStudentToolService
     private readonly IExamService _examService;
     private readonly ISubjectService _subjectService;
     private readonly IUnitService _unitService;
+    private readonly IQuestionEmbeddingService _questionEmbeddingService;
 
     public StudentToolService(
         ILessonRepository lessonRepo,
@@ -21,7 +24,8 @@ public class StudentToolService : IStudentToolService
         IPeriodicAssessmentService periodicService,
         IExamService examService,
         ISubjectService subjectService,
-        IUnitService unitService)
+        IUnitService unitService,
+        IQuestionEmbeddingService questionEmbeddingService)
     {
         _lessonRepo = lessonRepo;
         _evalService = evalService;
@@ -29,6 +33,7 @@ public class StudentToolService : IStudentToolService
         _examService = examService;
         _subjectService = subjectService;
         _unitService = unitService;
+        _questionEmbeddingService = questionEmbeddingService;
     }
 
     public Dictionary<string, AiTool> CreateTools(UserContext context, CancellationToken ct = default)
@@ -73,7 +78,8 @@ public class StudentToolService : IStudentToolService
                 properties = new
                 {
                     subjectId = new { type = "integer", description = "معرف المادة (اختياري — لو مش معروف، استخدم اسم المادة)" },
-                    subjectName = new { type = "string", description = "اسم المادة (اختياري — بديل عن subjectId)" }
+                    subjectName = new { type = "string", description = "اسم المادة (اختياري — بديل عن subjectId)" },
+                    gradeLevelId = new { type = "integer", description = "معرف الصف الدراسي (اختياري — لتصفية الوحدات حسب الصف)" }
                 },
                 required = Array.Empty<string>()
             }),
@@ -94,13 +100,30 @@ public class StudentToolService : IStudentToolService
                 if (!subjectId.HasValue)
                     return JsonSerializer.Serialize(new { error = "لم يتم العثور على المادة. استخدم search_lessons للبحث." });
 
-                var result = await _unitService.GetUnitsWithLessonsBySubjectAsync(subjectId.Value);
+                int? gradeLevelId = null;
+                if (doc.RootElement.TryGetProperty("gradeLevelId", out var gl) && gl.ValueKind == JsonValueKind.Number)
+                    gradeLevelId = gl.GetInt32();
+
+                List<UnitDto>? unitsData;
+                if (gradeLevelId.HasValue)
+                {
+                    var result = await _unitService.GetUnitsByGradeLevelAndSubjectAsync(gradeLevelId.Value, subjectId.Value);
+                    unitsData = result.Data;
+                }
+                else
+                {
+                    var result = await _unitService.GetUnitsWithLessonsBySubjectAsync(subjectId.Value);
+                    unitsData = result.Data;
+                }
+
                 // أسماء فقط — بدون محتوى
-                var light = (result.Data ?? []).Select(u => new
+                var light = (unitsData ?? []).Select(u => new
                 {
                     id = u.Id,
                     name = u.Name,
-                    hasContent = !string.IsNullOrWhiteSpace(u.Content),
+                    gradeLevelId = u.GradeLevelId,
+                    hasContent = !string.IsNullOrWhiteSpace(u.Content) ||
+                                 (u.Lessons is not null && u.Lessons.Any(l => !string.IsNullOrWhiteSpace(l.Content))),
                     lessons = (u.Lessons ?? []).Select(l => new { id = l.Id, title = l.Title }).ToList()
                 }).ToList();
                 return JsonSerializer.Serialize(light, new JsonSerializerOptions { WriteIndented = true });
@@ -120,7 +143,8 @@ public class StudentToolService : IStudentToolService
                 properties = new
                 {
                     subjectId = new { type = "integer", description = "معرف المادة (من get_units)" },
-                    unitId = new { type = "integer", description = "معرف الوحدة (من get_units)" }
+                    unitId = new { type = "integer", description = "معرف الوحدة (من get_units)" },
+                    gradeLevelId = new { type = "integer", description = "معرف الصف الدراسي (اختياري)" }
                 },
                 required = new[] { "subjectId", "unitId" }
             }),
@@ -129,8 +153,24 @@ public class StudentToolService : IStudentToolService
                 using var doc = JsonDocument.Parse(args);
                 var subjectId = doc.RootElement.GetProperty("subjectId").GetInt32();
                 var unitId = doc.RootElement.GetProperty("unitId").GetInt32();
-                var result = await _unitService.GetUnitsWithLessonsBySubjectAsync(subjectId);
-                var unit = (result.Data ?? []).FirstOrDefault(u => u.Id == unitId);
+
+                int? gradeLevelId = null;
+                if (doc.RootElement.TryGetProperty("gradeLevelId", out var gl) && gl.ValueKind == JsonValueKind.Number)
+                    gradeLevelId = gl.GetInt32();
+
+                List<UnitDto>? unitsData;
+                if (gradeLevelId.HasValue)
+                {
+                    var result = await _unitService.GetUnitsByGradeLevelAndSubjectAsync(gradeLevelId.Value, subjectId);
+                    unitsData = result.Data;
+                }
+                else
+                {
+                    var result = await _unitService.GetUnitsWithLessonsBySubjectAsync(subjectId);
+                    unitsData = result.Data;
+                }
+
+                var unit = (unitsData ?? []).FirstOrDefault(u => u.Id == unitId);
                 if (unit is null)
                     return JsonSerializer.Serialize(new { error = "الوحدة غير موجودة" });
                 return JsonSerializer.Serialize(unit, new JsonSerializerOptions { WriteIndented = true });
@@ -232,6 +272,48 @@ public class StudentToolService : IStudentToolService
                 }
             });
         }
+
+        // ─────────────────────────────────────────
+        // TOOL: search_question_bank 🆕
+        // ─────────────────────────────────────────
+        list.Add(new AiTool
+        {
+            Name = "search_question_bank",
+            Description = "بحث عن أسئلة مشابهة في بنك الأسئلة. النتائج مُصفاة تلقائياً حسب صف الطالب الدراسي.",
+            Parameters = JsonSerializer.SerializeToElement(new
+            {
+                type = "object",
+                properties = new
+                {
+                    query = new { type = "string", description = "نص السؤال أو الموضوع المراد البحث عنه" },
+                    subjectId = new { type = "integer", description = "معرف المادة (اختياري)" },
+                    limit = new { type = "integer", description = "عدد النتائج (اختياري، افتراضي 10)" }
+                },
+                required = new[] { "query" }
+            }),
+            ExecuteAsync = async (args) =>
+            {
+                using var doc = JsonDocument.Parse(args);
+                var query = doc.RootElement.GetProperty("query").GetString() ?? "";
+                var subjectId = doc.RootElement.TryGetProperty("subjectId", out var si) ? si.GetInt32() : (int?)null;
+                var limit = doc.RootElement.TryGetProperty("limit", out var li) ? li.GetInt32() : 10;
+
+                var request = new SemanticSearchRequest
+                {
+                    Query = query,
+                    // Auto-filter by student's grade level from context
+                    GradeLevelId = context.GradeLevelId,
+                    SubjectId = subjectId,
+                    Limit = limit,
+                    MinScore = 0.4
+                };
+
+                var result = await _questionEmbeddingService.SemanticSearchAsync(request);
+                if (!result.IsSuccess || result.Data is null || result.Data.Count == 0)
+                    return JsonSerializer.Serialize(new { success = false, message = result.Message ?? "لا توجد نتائج" });
+                return JsonSerializer.Serialize(new { success = true, results = result.Data, message = result.Message });
+            }
+        });
 
         return list.ToDictionary(t => t.Name);
     }

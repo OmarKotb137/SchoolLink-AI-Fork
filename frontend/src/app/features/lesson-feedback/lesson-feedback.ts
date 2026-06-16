@@ -5,6 +5,7 @@ import { Topbar } from '../../layouts/topbar/topbar';
 import { AuthService } from '../../core/services/auth.service';
 import { RoleService } from '../../shared/role.service';
 import { LessonFeedbackService, ClassSubjectTeacherDto, LessonFeedbackDto } from './lesson-feedback.service';
+import { TimetableService } from '../../core/services/timetable.service';
 
 @Component({
   selector: 'app-lesson-feedback',
@@ -16,6 +17,7 @@ export class LessonFeedback implements OnInit {
   auth = inject(AuthService);
   private roleService = inject(RoleService);
   private service = inject(LessonFeedbackService);
+  private timetableService = inject(TimetableService);
 
   role = computed(() => this.roleService.currentRole());
   sidebarOpen = signal(false);
@@ -24,9 +26,13 @@ export class LessonFeedback implements OnInit {
   error = signal('');
 
   subjects = signal<ClassSubjectTeacherDto[]>([]);
+  subjectDaysMap = signal<Record<number, string[]>>({});
   feedbackHistory = signal<LessonFeedbackDto[]>([]);
   selectedSubjectId = signal<number | null>(null);
+  lessonDays = signal<string[]>([]);
+  private currentAcademicYearId: number | null = null;
   lessonDate = signal('');
+  selectedDay = signal<string>('');
   feedbackRating = signal(5);
   feedbackUnderstanding = signal<number>(1);
   feedbackComment = signal('');
@@ -76,11 +82,16 @@ export class LessonFeedback implements OnInit {
     const academicYear: any = await this.service.getCurrentAcademicYear().toPromise();
     if (!academicYear?.id) { this.error.set('السنة الدراسية غير موجودة'); return; }
 
+    this.currentAcademicYearId = academicYear.id;
+
     const enrollment: any = await this.service.getActiveEnrollment(student.id, academicYear.id).toPromise();
     if (!enrollment?.id) { this.error.set('التسجيل غير موجود'); return; }
 
     const subs = await this.service.getStudentSubjects(enrollment.classId, academicYear.id).toPromise();
     this.subjects.set(subs ?? []);
+
+    // Load lesson days for all subjects from the active timetable
+    await this.loadAllSubjectDays(enrollment.classId, academicYear.id);
 
     const feedback = await this.service.getMyFeedback(enrollment.id).toPromise();
     this.feedbackHistory.set(feedback ?? []);
@@ -93,20 +104,67 @@ export class LessonFeedback implements OnInit {
     this.feedbackUnderstanding.set(1);
     this.feedbackComment.set('');
     this.submitSuccess.set('');
+    this.lessonDays.set([]);
+    this.selectedDay.set('');
+    this.lessonDate.set('');
 
-    if (this.lessonDate()) {
-      await this.checkExistingFeedback(cstId, this.lessonDate());
-    }
+    await this.loadLessonDays(cstId);
   }
 
-  async onDateChange() {
-    const cstId = this.selectedSubjectId();
-    if (cstId && this.lessonDate()) {
-      this.submitSuccess.set('');
-      await this.checkExistingFeedback(cstId, this.lessonDate());
-    } else {
-      this.existingLessonFeedback.set(null);
+  private async loadAllSubjectDays(classId: number, academicYearId: number) {
+    try {
+      const res: any = await this.timetableService.getByClass(classId, academicYearId).toPromise();
+      const allTts: any[] = res?.data ?? res ?? [];
+      // Prefer draft (latest editable state) over active timetable
+      const tt = Array.isArray(allTts)
+        ? (allTts.find((t: any) => !t.isActive) || allTts.find((t: any) => t.isActive))
+        : null;
+      const slots: any[] = tt?.slots ?? [];
+      const map: Record<number, string[]> = {};
+      for (const slot of slots) {
+        if (slot.isBreak || !slot.classSubjectTeacherId) continue;
+        const cstId = slot.classSubjectTeacherId;
+        if (!map[cstId]) map[cstId] = [];
+        if (!map[cstId].includes(slot.dayOfWeek)) map[cstId].push(slot.dayOfWeek);
+      }
+      this.subjectDaysMap.set(map);
+    } catch { /* no timetable */ }
+  }
+
+  private async loadLessonDays(cstId: number) {
+    const existing = this.subjectDaysMap()[cstId];
+    if (existing) {
+      this.lessonDays.set(existing);
+      return;
     }
+    const sub = this.subjects().find(s => s.id === cstId);
+    if (!sub || !this.currentAcademicYearId) return;
+    await this.loadAllSubjectDays(sub.classId, this.currentAcademicYearId);
+    this.lessonDays.set(this.subjectDaysMap()[cstId] ?? []);
+  }
+
+  private getLastDateForDay(dayName: string): string {
+    const dayMap: Record<string, number> = {
+      Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4,
+    };
+    const target = dayMap[dayName];
+    if (target === undefined) return '';
+    const today = new Date();
+    const todayDay = today.getDay();
+    let diff = target - todayDay;
+    if (diff > 0) diff -= 7;
+    const last = new Date(today);
+    last.setDate(today.getDate() + diff);
+    return last.toISOString().split('T')[0];
+  }
+
+  async onDayChange() {
+    const day = this.selectedDay();
+    const cstId = this.selectedSubjectId();
+    if (!day || !cstId) { this.existingLessonFeedback.set(null); return; }
+    this.lessonDate.set(this.getLastDateForDay(day));
+    this.submitSuccess.set('');
+    await this.checkExistingFeedback(cstId, this.lessonDate());
   }
 
   private async checkExistingFeedback(cstId: number, date: string) {
@@ -216,6 +274,14 @@ export class LessonFeedback implements OnInit {
 
   toggleAdminView() {
     this.adminRawMode.set(!this.adminRawMode());
+  }
+
+  dayLabel(day: string): string {
+    const labels: Record<string, string> = {
+      Sunday: 'الأحد', Monday: 'الإثنين', Tuesday: 'الثلاثاء',
+      Wednesday: 'الأربعاء', Thursday: 'الخميس',
+    };
+    return labels[day] || day;
   }
 
   understandingLabel(v: any): string {

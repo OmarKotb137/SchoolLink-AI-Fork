@@ -25,12 +25,16 @@ public class QuestionBankService : IQuestionBankService
         _logger = logger;
     }
 
-    public async Task<OperationResult<List<QuestionBankItemDto>>> GetBySubjectAsync(int subjectId)
+    public async Task<OperationResult<List<QuestionBankItemDto>>> GetBySubjectAsync(int subjectId, int? gradeLevelId = null)
     {
         var items = await _unitOfWork.QuestionBank
             .FindAsync(q => q.SubjectId == subjectId && !q.IsDeleted);
 
-        var dtos = items.Select(MapToDto).ToList();
+        var filtered = items.AsEnumerable();
+        if (gradeLevelId.HasValue && gradeLevelId > 0)
+            filtered = filtered.Where(q => q.GradeLevelId == gradeLevelId.Value);
+
+        var dtos = filtered.Select(MapToDto).ToList();
         return OperationResult<List<QuestionBankItemDto>>.Success(dtos);
     }
 
@@ -58,6 +62,9 @@ public class QuestionBankService : IQuestionBankService
         if (dto.SubjectId.HasValue)
             filtered = filtered.Where(q => q.SubjectId == dto.SubjectId.Value);
 
+        if (dto.GradeLevelId.HasValue)
+            filtered = filtered.Where(q => q.GradeLevelId == dto.GradeLevelId.Value);
+
         if (dto.QuestionType.HasValue)
             filtered = filtered.Where(q => (int)q.QuestionType == dto.QuestionType.Value);
 
@@ -76,8 +83,15 @@ public class QuestionBankService : IQuestionBankService
 
     public async Task<OperationResult<QuestionBankItemDto>> AddQuestionAsync(AddToQuestionBankDto dto)
     {
+        if (dto.GradeLevelId > 0)
+        {
+            var gradeLevel = await _unitOfWork.GradeLevels.GetByIdAsync(dto.GradeLevelId);
+            if (gradeLevel == null || gradeLevel.IsDeleted)
+                return OperationResult<QuestionBankItemDto>.Failure("الصف الدراسي غير موجود", 404);
+        }
+
         var existing = await _unitOfWork.QuestionBank
-            .FindAsync(q => q.QuestionText == dto.QuestionText && q.SubjectId == dto.SubjectId && !q.IsDeleted);
+            .FindAsync(q => q.QuestionText == dto.QuestionText && q.SubjectId == dto.SubjectId && q.GradeLevelId == dto.GradeLevelId && !q.IsDeleted);
 
         var existingList = existing.ToList();
         if (existingList.Any())
@@ -107,6 +121,7 @@ public class QuestionBankService : IQuestionBankService
             CorrectAnswer = dto.CorrectAnswer,
             OptionsJson = optionsJson,
             SubjectId = dto.SubjectId,
+            GradeLevelId = dto.GradeLevelId,
             SourceExamId = dto.SourceExamId,
             UsageCount = 1
         };
@@ -127,12 +142,14 @@ public class QuestionBankService : IQuestionBankService
         if (exam is null)
             return OperationResult<int>.Failure("الامتحان غير موجود", 404);
 
-        var addedCount = 0;
+        var gradeLevelId = exam.GradeLevelId;
+        var newCount = 0;
+        var existingCount = 0;
 
         foreach (var question in exam.Questions.Where(q => !q.IsDeleted))
         {
             var existing = await _unitOfWork.QuestionBank
-                .FindAsync(q => q.QuestionText == question.QuestionText && q.SubjectId == subjectId && !q.IsDeleted);
+                .FindAsync(q => q.QuestionText == question.QuestionText && q.SubjectId == subjectId && q.GradeLevelId == gradeLevelId && !q.IsDeleted);
 
             QuestionBank bankItem;
             var existingList = existing.ToList();
@@ -141,6 +158,7 @@ public class QuestionBankService : IQuestionBankService
                 bankItem = existingList.First();
                 bankItem.UsageCount++;
                 _unitOfWork.QuestionBank.Update(bankItem);
+                existingCount++;
             }
             else
             {
@@ -160,10 +178,12 @@ public class QuestionBankService : IQuestionBankService
                     CorrectAnswer = question.CorrectAnswer,
                     OptionsJson = optionsJson,
                     SubjectId = subjectId,
+                    GradeLevelId = gradeLevelId,
                     SourceExamId = examId,
                     UsageCount = 1
                 };
                 await _unitOfWork.QuestionBank.AddAsync(bankItem);
+                newCount++;
             }
 
             await _unitOfWork.SaveChangesAsync();
@@ -182,15 +202,23 @@ public class QuestionBankService : IQuestionBankService
                 });
                 await _unitOfWork.SaveChangesAsync();
             }
-
-            addedCount++;
         }
 
-        _logger.LogInformation("Bulk added {Count} questions from exam {ExamId} to question bank",
-            addedCount, examId);
+        var totalCount = newCount + existingCount;
 
-        return OperationResult<int>.Success(addedCount,
-            $"تم إضافة {addedCount} سؤال إلى بنك الأسئلة بنجاح");
+        _logger.LogInformation("Bulk added from exam {ExamId}: {NewCount} new, {ExistingCount} existing",
+            examId, newCount, existingCount);
+
+        if (newCount == 0)
+        {
+            return OperationResult<int>.Success(totalCount,
+                $"جميع أسئلة الامتحان موجودة مسبقاً في بنك الأسئلة (تم زيادة عدد الاستخدامات لـ {existingCount} سؤال)");
+        }
+
+        return OperationResult<int>.Success(totalCount,
+            existingCount > 0
+                ? $"تم إضافة {newCount} سؤال جديد إلى بنك الأسئلة، و{existingCount} أسئلة موجودة مسبقاً (تم زيادة عدد الاستخدامات)"
+                : $"تم إضافة {newCount} سؤال إلى بنك الأسئلة بنجاح");
     }
 
     public async Task<OperationResult> DeleteAsync(int id)
@@ -227,6 +255,8 @@ public class QuestionBankService : IQuestionBankService
             CorrectAnswer = item.CorrectAnswer,
             Options = options,
             SubjectId = item.SubjectId,
+            GradeLevelId = item.GradeLevelId,
+            GradeLevelName = item.GradeLevel?.Name,
             UsageCount = item.UsageCount,
             CreatedAt = item.CreatedAt
         };

@@ -105,6 +105,7 @@ export class Chat implements OnInit, OnDestroy {
   userSearchTimeout: any = null;
 
   showAddParticipantModal = signal(false);
+  showGroupMembersModal = signal(false);
   searchUserQuery = signal('');
   searchUserResults = signal<any[]>([]);
   addingParticipant = signal(false);
@@ -1202,6 +1203,14 @@ export class Chat implements OnInit, OnDestroy {
     this.searchUserResults.set([]);
   }
 
+  openGroupMembersModal(): void {
+    this.showGroupMembersModal.set(true);
+  }
+
+  closeGroupMembersModal(): void {
+    this.showGroupMembersModal.set(false);
+  }
+
   searchUsers(): void {
     if (this.searchTimeout) clearTimeout(this.searchTimeout);
     const q = this.searchUserQuery().trim();
@@ -1515,8 +1524,12 @@ export class Chat implements OnInit, OnDestroy {
   private formatTime(dateStr: string): string {
     if (!dateStr) return '';
     const date = new Date(dateStr);
+    // Check for invalid date (e.g. 0001-01-01 or NaN)
+    if (isNaN(date.getTime()) || date.getFullYear() < 2000) return '';
     const now = new Date();
     const diff = now.getTime() - date.getTime();
+    // If diff is negative (future date), show time only
+    if (diff < 0) return date.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
     const days = Math.floor(diff / 86400000);
     if (days === 0) return date.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
     if (days === 1) return 'أمس';

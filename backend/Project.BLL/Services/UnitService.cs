@@ -34,9 +34,17 @@ public class UnitService : IUnitService
         if (subject == null || subject.IsDeleted)
             return OperationResult<UnitDto>.Failure("المادة غير موجودة", 404);
 
+        if (dto.GradeLevelId > 0)
+        {
+            var gradeLevel = await _unitOfWork.GradeLevels.GetByIdAsync(dto.GradeLevelId);
+            if (gradeLevel == null || gradeLevel.IsDeleted)
+                return OperationResult<UnitDto>.Failure("الصف الدراسي غير موجود", 404);
+        }
+
         var unit = new Unit
         {
             SubjectId = subjectId,
+            GradeLevelId = dto.GradeLevelId,
             Name = dto.Name,
             Content = dto.Content,
             DisplayOrder = dto.DisplayOrder,
@@ -97,6 +105,22 @@ public class UnitService : IUnitService
         return OperationResult<List<UnitDto>>.Success(dtos);
     }
 
+    public async Task<OperationResult<List<UnitDto>>> GetUnitsByGradeLevelAndSubjectAsync(int gradeLevelId, int subjectId)
+    {
+        var subject = await _unitOfWork.Subjects.GetByIdAsync(subjectId);
+        if (subject == null || subject.IsDeleted)
+            return OperationResult<List<UnitDto>>.Failure("المادة غير موجودة", 404);
+
+        var gradeLevel = await _unitOfWork.GradeLevels.GetByIdAsync(gradeLevelId);
+        if (gradeLevel == null || gradeLevel.IsDeleted)
+            return OperationResult<List<UnitDto>>.Failure("الصف الدراسي غير موجود", 404);
+
+        var units = await _unitOfWork.Units.FindAsync(u => u.SubjectId == subjectId && u.GradeLevelId == gradeLevelId && !u.IsDeleted);
+        var ordered = units.OrderBy(u => u.DisplayOrder).ToList();
+
+        return OperationResult<List<UnitDto>>.Success(ordered.Select(Map).ToList());
+    }
+
     public async Task<OperationResult<List<LessonDto>>> GetLessonsByUnitAsync(int unitId)
     {
         var unit = await _unitOfWork.Units.GetByIdAsync(unitId);
@@ -119,17 +143,16 @@ public class UnitService : IUnitService
             var allAssignments = await _unitOfWork.ClassSubjectTeachers.GetAllAsync();
             var result = new List<SubjectWithStructureDto>();
 
-            // Build subject -> grade level lookup
-            var subjectGradeLevel = new Dictionary<int, string>();
+            // Build subject -> grade level lookup (first assignment's grade level)
+            var subjectGradeLevel = new Dictionary<int, (string Name, int Id)>();
             foreach (var assignment in allAssignments.Where(a => !a.IsDeleted))
             {
                 var cls = allClasses.FirstOrDefault(c => c.Id == assignment.ClassId && !c.IsDeleted);
                 if (cls is null) continue;
                 var gl = allGradeLevels.FirstOrDefault(g => g.Id == cls.GradeLevelId);
                 if (gl is null) continue;
-                // Keep only the first grade level found per subject
                 if (!subjectGradeLevel.ContainsKey(assignment.SubjectId))
-                    subjectGradeLevel[assignment.SubjectId] = gl.Name;
+                    subjectGradeLevel[assignment.SubjectId] = (gl.Name, gl.Id);
             }
 
             foreach (var subject in subjects.Where(s => !s.IsDeleted))
@@ -144,13 +167,14 @@ public class UnitService : IUnitService
                     lessonCount += lessons.Count;
                 }
 
-                subjectGradeLevel.TryGetValue(subject.Id, out var gradeLevelName);
+                subjectGradeLevel.TryGetValue(subject.Id, out var glInfo);
 
                 result.Add(new SubjectWithStructureDto
                 {
                     Id = subject.Id,
                     Name = subject.Name,
-                    GradeLevelName = gradeLevelName,
+                    GradeLevelId = glInfo.Id,
+                    GradeLevelName = glInfo.Name,
                     UnitCount = units.Count,
                     LessonCount = lessonCount
                 });
@@ -264,12 +288,14 @@ public class UnitService : IUnitService
     {
         Id = u.Id,
         SubjectId = u.SubjectId,
+        GradeLevelId = u.GradeLevelId,
         Name = u.Name,
         Content = u.Content,
         DisplayOrder = u.DisplayOrder,
         PageStart = u.PageStart,
         PageEnd = u.PageEnd,
-        SubjectName = u.Subject?.Name
+        SubjectName = u.Subject?.Name,
+        GradeLevelName = u.GradeLevel?.Name
     };
 
     private static LessonDto MapLesson(Lesson l) => new()

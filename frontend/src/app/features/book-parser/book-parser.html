@@ -116,7 +116,7 @@
                   <span class="material-symbols-outlined text-[18px]">close</span>
                   إلغاء
                 </button>
-                <button (click)="save()" [disabled]="saving()"
+                <button (click)="save()" [disabled]="saving() || !selectedGradeLevelId()"
                         class="px-6 py-2 rounded-full bg-primary text-on-primary font-label-md text-label-md hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2 shadow-sm">
                   @if (saving()) {
                     <span class="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
@@ -439,7 +439,7 @@
           <!-- Save button (bottom, always visible) -->
           @if (step() === 'preview' && parsedUnits().length > 0) {
             <div class="flex justify-center mt-4">
-              <button (click)="save()" [disabled]="saving()"
+              <button (click)="save()" [disabled]="saving() || !selectedGradeLevelId()"
                       class="px-10 py-3.5 rounded-full bg-primary text-on-primary font-label-md text-label-md hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2 shadow-lg shadow-primary/20">
                 @if (saving()) {
                   <span class="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>

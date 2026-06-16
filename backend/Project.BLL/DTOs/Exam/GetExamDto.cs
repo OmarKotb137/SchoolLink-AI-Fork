@@ -15,7 +15,9 @@ namespace Project.BLL.DTOs.Exam
         public bool IsPublished { get; set; }
         public EvaluationCategory Category { get; set; }
         public int? ClassSubjectTeacherId { get; set; }
+        public int GradeLevelId { get; set; }
         public string SubjectName { get; set; } = string.Empty;
+        public string GradeLevelName { get; set; } = string.Empty;
         public string ClassName { get; set; } = string.Empty;
         public string TeacherName { get; set; } = string.Empty;
         public int QuestionsCount { get; set; }

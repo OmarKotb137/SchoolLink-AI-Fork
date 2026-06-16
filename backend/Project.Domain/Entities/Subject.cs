@@ -6,5 +6,6 @@
         public string? Code { get; set; }
 
         public ICollection<Unit> Units { get; set; } = new List<Unit>();
+        public ICollection<Exam> Exams { get; set; } = new List<Exam>();
     }
 }

@@ -91,6 +91,8 @@ public interface IUnitOfWork : IDisposable, IAsyncDisposable
 
     Task<int> SaveChangesAsync(CancellationToken ct = default);
 
+    void ClearChangeTracker();
+
     // Transaction Management
 
     Task BeginTransactionAsync(CancellationToken ct = default);
