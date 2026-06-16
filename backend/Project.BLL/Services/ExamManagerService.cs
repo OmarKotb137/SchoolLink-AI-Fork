@@ -237,8 +237,9 @@ public class ExamManagerService : IExamManagerService
         return OperationResult.Success("تم نشر الامتحان بنجاح");
     }
 
-    private static string GetStatus(Exam exam, DateTime now)
+    private static string GetStatus(Exam exam, DateTime nowUnused)
     {
+        var now = DateTime.UtcNow.AddHours(3); // Adjust to Egypt Standard Time for comparison
         if (!exam.IsPublished)
             return "draft";
         if (exam.StartTime == null || exam.EndTime == null)

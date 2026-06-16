@@ -48,7 +48,7 @@ public class AssignmentManagerService : IAssignmentManagerService
                 Title = a.Title,
                 Subject = a.ClassSubjectTeacher?.Subject?.Name ?? "",
                 Class = a.ClassSubjectTeacher?.Class?.Name ?? "",
-                Deadline = a.DueDate?.ToString("yyyy-MM-dd") ?? "",
+                Deadline = a.DueDate?.ToString("yyyy-MM-ddTHH:mm") ?? "",
                 Submitted = submitted,
                 Total = totalStudents,
                 Status = GetStatus(a)
@@ -84,7 +84,7 @@ public class AssignmentManagerService : IAssignmentManagerService
             Title = assignment.Title,
             Subject = assignment.ClassSubjectTeacher?.Subject?.Name ?? "",
             Class = assignment.ClassSubjectTeacher?.Class?.Name ?? "",
-            Deadline = assignment.DueDate?.ToString("yyyy-MM-dd") ?? "",
+            Deadline = assignment.DueDate?.ToString("yyyy-MM-ddTHH:mm") ?? "",
             Submitted = submitted,
             Total = totalStudents,
             Status = GetStatus(assignment),
@@ -187,7 +187,7 @@ public class AssignmentManagerService : IAssignmentManagerService
             Title = assignment.Title,
             Subject = cst.Subject?.Name ?? "",
             Class = cst.Class?.Name ?? "",
-            Deadline = dueDate?.ToString("yyyy-MM-dd") ?? "",
+            Deadline = dueDate?.ToString("yyyy-MM-ddTHH:mm") ?? "",
             Submitted = 0,
             Total = cst.Class?.Enrollments
                 .Count(e => !e.IsDeleted && e.AcademicYearId == year.Id) ?? 0,

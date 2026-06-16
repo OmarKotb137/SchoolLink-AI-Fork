@@ -45,7 +45,18 @@
               <article class="question-card" [id]="'question-' + question.id">
                 <div class="flex items-start justify-between gap-4 mb-4">
                   <div>
-                    <span class="question-number">سؤال {{ i + 1 }}</span>
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <span class="question-number">سؤال {{ i + 1 }}</span>
+                      @if (question.questionType === QuestionType.MultipleChoice) {
+                        <span class="type-badge type-mcq">اختيار من متعدد</span>
+                      } @else if (question.questionType === QuestionType.TrueFalse) {
+                        <span class="type-badge type-tf">صح أو خطأ</span>
+                      } @else if (question.questionType === QuestionType.FillBlank) {
+                        <span class="type-badge type-fill">أكمل الفراغ</span>
+                      } @else {
+                        <span class="type-badge type-essay">مقالي</span>
+                      }
+                    </div>
                     <h2 class="text-base md:text-lg font-bold text-gray-900 mt-2 leading-8">{{ question.questionText }}</h2>
                   </div>
                   <span class="points-chip">{{ question.points }} درجة</span>
@@ -71,18 +82,26 @@
                   <div class="options-grid two">
                     <label class="option-tile" [class.selected]="getAnswer(question.id)?.booleanAnswer === true">
                       <input type="radio" [name]="'q-' + question.id" [checked]="getAnswer(question.id)?.booleanAnswer === true" (change)="updateBoolean(question, true)" />
-                      <span>صح</span>
+                      <span>✓ صح</span>
                     </label>
-                    <label class="option-tile" [class.selected]="getAnswer(question.id)?.booleanAnswer === false">
+                    <label class="option-tile false-tile" [class.selected]="getAnswer(question.id)?.booleanAnswer === false">
                       <input type="radio" [name]="'q-' + question.id" [checked]="getAnswer(question.id)?.booleanAnswer === false" (change)="updateBoolean(question, false)" />
-                      <span>خطأ</span>
+                      <span>✗ خطأ</span>
                     </label>
                   </div>
+                } @else if (question.questionType === QuestionType.FillBlank) {
+                  <textarea
+                    class="answer-textarea"
+                    rows="2"
+                    placeholder="اكتب الإجابة الصحيحة في الفراغ..."
+                    [ngModel]="getAnswer(question.id)?.answerText || ''"
+                    (ngModelChange)="updateText(question, $event)">
+                  </textarea>
                 } @else {
                   <textarea
                     class="answer-textarea"
                     rows="5"
-                    placeholder="اكتب إجابتك هنا..."
+                    placeholder="اكتب إجابتك المقالية هنا..."
                     [ngModel]="getAnswer(question.id)?.answerText || ''"
                     (ngModelChange)="updateText(question, $event)">
                   </textarea>

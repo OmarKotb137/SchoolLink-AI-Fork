@@ -91,6 +91,25 @@ public class StudentAssignmentSubmissionRepository
             .Include(sub => sub.Assignment)
             .FirstOrDefaultAsync(sub => sub.Id == submissionId, ct);
 
+    public async Task<StudentAssignmentSubmission?> GetWithAnswersForEnrollmentAsync(
+        int submissionId,
+        int enrollmentId,
+        CancellationToken ct = default)
+        => await _context.StudentAssignmentSubmissions
+            .Include(sub => sub.Answers)
+                .ThenInclude(a => a.Question)
+                    .ThenInclude(q => q.Options
+                        .OrderBy(o => o.DisplayOrder))
+            .Include(sub => sub.Answers)
+                .ThenInclude(a => a.SelectedOption)
+            .Include(sub => sub.Assignment)
+                .ThenInclude(a => a.ClassSubjectTeacher)
+                    .ThenInclude(cst => cst.Subject)
+            .FirstOrDefaultAsync(sub =>
+                sub.Id == submissionId &&
+                sub.EnrollmentId == enrollmentId &&
+                !sub.IsDeleted, ct);
+
 
     public async Task<decimal> GetAverageScoreAsync(
         int assignmentId,

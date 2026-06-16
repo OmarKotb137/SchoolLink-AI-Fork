@@ -1,0 +1,127 @@
+.result-hero {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 1.25rem;
+  align-items: center;
+  border-radius: 1rem;
+  border: 1px solid #e0e7ff;
+  background: #eef2ff;
+  color: #3730a3;
+  padding: 1.5rem;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.05);
+}
+
+.result-hero.graded {
+  border-color: #bbf7d0;
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.result-icon {
+  display: inline-flex;
+  width: 4rem;
+  height: 4rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.65);
+}
+
+.result-icon .material-symbols-outlined {
+  font-size: 2rem;
+}
+
+.score-box {
+  display: flex;
+  min-width: 7rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.75);
+  padding: 1rem;
+}
+
+.score-box strong {
+  font-size: 1.5rem;
+  font-weight: 900;
+}
+
+.score-box span {
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.question-index,
+.grade-chip {
+  display: inline-flex;
+  min-height: 1.75rem;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.25rem 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.question-index {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.grade-chip {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.grade-chip.correct {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.grade-chip.wrong {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.answer-text,
+.feedback-text {
+  margin-top: 0.875rem;
+  border-radius: 0.875rem;
+  padding: 0.875rem 1rem;
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.answer-text {
+  background: #f9fafb;
+  color: #374151;
+}
+
+.feedback-text {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.back-action {
+  display: inline-flex;
+  min-height: 2.875rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.875rem;
+  background: #2563eb;
+  color: #ffffff;
+  padding: 0.75rem 1.25rem;
+  font-weight: 900;
+  box-shadow: 0 10px 20px rgba(37, 99, 235, 0.18);
+}
+
+@media (max-width: 768px) {
+  .result-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .score-box {
+    align-items: flex-start;
+  }
+}

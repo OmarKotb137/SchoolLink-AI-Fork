@@ -733,7 +733,7 @@ public static class SeedData
         // =================================================================
         // 21. Units + Lessons  (all 7 subjects)
         // =================================================================
-        await SeedUnitsAndLessons(ctx, S, now);
+        await SeedUnitsAndLessons(ctx, S, grade1.Id, now);
 
         // =================================================================
         // 22. Assignment + Question + Option + Submission + Answer
@@ -1176,6 +1176,7 @@ public static class SeedData
     private static async Task SeedUnitsAndLessons(
         AppDbContext ctx,
         Dictionary<string, Subject> S,
+        int gradeLevelId,
         DateTime now)
     {
         // Helper: add a unit with optional lessons
@@ -1185,6 +1186,7 @@ public static class SeedData
             var unit = new Unit
             {
                 SubjectId    = subject.Id,
+                GradeLevelId = gradeLevelId,
                 Name         = name,
                 DisplayOrder = order,
                 CreatedAt    = now, UpdatedAt = now

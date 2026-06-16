@@ -19,8 +19,11 @@ export class ExamManagement implements OnInit {
   activeTab = signal<string>('all');
   showAddModal = signal(false);
   showViewModal = signal(false);
+  showPublishConfirm = signal(false);
   viewingExam = signal<ExamDetail | null>(null);
   editingExam = signal<ExamItem | null>(null);
+  publishingExam = signal<ExamItem | null>(null);
+  formError = signal('');
 
   newName = signal('');
   newSubjectId = signal<number | null>(null);
@@ -39,6 +42,8 @@ export class ExamManagement implements OnInit {
     if (tab === 'all') return this.exams();
     return this.exams().filter(e => e.status === tab);
   });
+
+  calculatedDuration = computed(() => this.calculateDurationMinutes(this.newStart(), this.newEnd()));
 
   ngOnInit() {
     this.loadAll();
@@ -69,6 +74,7 @@ export class ExamManagement implements OnInit {
     this.newDate.set('');
     this.newStart.set('');
     this.newEnd.set('');
+    this.formError.set('');
     this.showAddModal.set(true);
   }
 
@@ -82,6 +88,7 @@ export class ExamManagement implements OnInit {
     this.newDate.set(e.date);
     this.newStart.set(e.startTime);
     this.newEnd.set(e.endTime);
+    this.formError.set('');
     this.showAddModal.set(true);
   }
 
@@ -95,18 +102,32 @@ export class ExamManagement implements OnInit {
   closeModals() {
     this.showAddModal.set(false);
     this.showViewModal.set(false);
+    this.showPublishConfirm.set(false);
     this.viewingExam.set(null);
+    this.publishingExam.set(null);
+    this.formError.set('');
   }
 
   saveExam() {
+    const durationMinutes = this.calculatedDuration();
+    if (!this.newName().trim() || !this.newSubjectId() || !this.newClassId() || !this.newDate() || !this.newStart() || !this.newEnd()) {
+      this.formError.set('من فضلك اكمل بيانات الامتحان قبل الحفظ');
+      return;
+    }
+
+    if (durationMinutes <= 0) {
+      this.formError.set('وقت النهاية يجب ان يكون بعد وقت البداية');
+      return;
+    }
+
     const payload = {
-      title: this.newName(),
+      title: this.newName().trim(),
       subjectId: this.newSubjectId() ?? 0,
       classId: this.newClassId() ?? 0,
       date: this.newDate(),
       startTime: this.newStart(),
       endTime: this.newEnd(),
-      durationMinutes: 0
+      durationMinutes
     };
 
     const existing = this.editingExam();
@@ -129,9 +150,30 @@ export class ExamManagement implements OnInit {
   }
 
   publishExam(id: number) {
-    this.api.publish(id).subscribe(r => {
+    const exam = this.exams().find(e => e.id === id);
+    if (!exam) return;
+    this.publishingExam.set(exam);
+    this.showPublishConfirm.set(true);
+  }
+
+  confirmPublish() {
+    const exam = this.publishingExam();
+    if (!exam) return;
+
+    this.api.publish(exam.id).subscribe(r => {
       if (r.isSuccess) this.loadAll();
+      this.closeModals();
     });
+  }
+
+  private calculateDurationMinutes(start: string, end: string): number {
+    if (!start || !end) return 0;
+
+    const [startHours, startMinutes] = start.split(':').map(Number);
+    const [endHours, endMinutes] = end.split(':').map(Number);
+    if ([startHours, startMinutes, endHours, endMinutes].some(value => Number.isNaN(value))) return 0;
+
+    return (endHours * 60 + endMinutes) - (startHours * 60 + startMinutes);
   }
 
   getStatusText(status: string): string {

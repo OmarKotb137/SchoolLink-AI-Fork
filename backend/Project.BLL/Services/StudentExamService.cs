@@ -251,7 +251,7 @@ public class StudentExamService : IStudentExamService
         if (!exam.IsPublished)
             return OperationResult.Failure("الامتحان غير منشور");
 
-        var now = DateTime.UtcNow;
+        var now = DateTime.UtcNow.AddHours(3);
         if (exam.StartTime.HasValue && now < exam.StartTime.Value)
             return OperationResult.Failure("الامتحان لم يبدأ بعد");
 
@@ -263,7 +263,7 @@ public class StudentExamService : IStudentExamService
 
     private static string GetExamStatus(Exam exam, StudentExamAttempt? attempt, bool isResultPublished)
     {
-        var now = DateTime.UtcNow;
+        var now = DateTime.UtcNow.AddHours(3);
 
         if (attempt?.SubmittedAt != null)
         {
@@ -287,18 +287,33 @@ public class StudentExamService : IStudentExamService
 
     private static StudentExamAttemptStartedDto MapStartedAttempt(StudentExamAttempt attempt, Exam exam)
     {
-        var endsAt = exam.DurationMinutes.HasValue
-            ? attempt.StartedAt.AddMinutes(exam.DurationMinutes.Value)
-            : exam.EndTime;
+        // Ensure StartedAt has Utc kind so it serializes with 'Z'
+        var startedAtUtc = DateTime.SpecifyKind(attempt.StartedAt, DateTimeKind.Utc);
+        
+        DateTime? endsAtUtc = null;
+        if (exam.DurationMinutes.HasValue)
+        {
+            endsAtUtc = startedAtUtc.AddMinutes(exam.DurationMinutes.Value);
+        }
+
+        // The exam.EndTime is stored as Egypt Local Time (UTC+3). Convert it to UTC for absolute comparison.
+        if (exam.EndTime.HasValue)
+        {
+            var examEndUtc = DateTime.SpecifyKind(exam.EndTime.Value.AddHours(-3), DateTimeKind.Utc);
+            if (endsAtUtc == null || examEndUtc < endsAtUtc.Value)
+            {
+                endsAtUtc = examEndUtc;
+            }
+        }
 
         return new StudentExamAttemptStartedDto
         {
             AttemptId = attempt.Id,
             ExamId = exam.Id,
-            StartedAt = attempt.StartedAt,
+            StartedAt = startedAtUtc,
             ServerNow = DateTime.UtcNow,
             DurationMinutes = exam.DurationMinutes,
-            EndsAt = endsAt
+            EndsAt = endsAtUtc
         };
     }
 

@@ -8,11 +8,12 @@ export type StudentExamStatus =
   | 'expired';
 
 export enum StudentQuestionType {
-  MultipleChoice = 1,
-  TrueFalse = 2,
-  FillBlank = 3,
-  Essay = 4
+  MultipleChoice = 'MultipleChoice',
+  TrueFalse = 'TrueFalse',
+  FillBlank = 'FillBlank',
+  Essay = 'Essay'
 }
+
 
 export interface StudentExamListItem {
   examId: number;

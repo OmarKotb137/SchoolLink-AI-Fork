@@ -63,16 +63,16 @@ export const PARENT_MENU: SidebarMenuItem[] = [
 
 export const STUDENT_MENU: SidebarMenuItem[] = [
   { label: 'لوحة القيادة', icon: 'dashboard', route: '/student' },
-  { label: 'حسابي', icon: 'account_circle', route: '/profile' },
-  { label: 'الواجبات', icon: 'assignment', route: '/my-assignments' },
+  { label: 'واجباتي', icon: 'assignment', route: '/my-assignments' },
   { label: 'امتحاناتي', icon: 'quiz', route: '/my-exams' },
   { label: 'جدولي', icon: 'calendar_month', route: '/class-schedule' },
-  { label: 'تقييم الحصص', icon: 'feedback', route: '/lesson-feedback' },
   { label: 'خطة المذاكرة', icon: 'calendar_view_month', route: '/study-planner' },
-  { label: 'المحادثات', icon: 'chat', route: '/chat' },
   { label: 'المكتبة', icon: 'library_books', route: '/digital-library' },
   { label: 'التقارير', icon: 'description', route: '/reports' },
+  { label: 'تقييم الحصص', icon: 'feedback', route: '/lesson-feedback' },
+  { label: 'المحادثات', icon: 'chat', route: '/chat' },
   { label: 'الإشعارات', icon: 'notifications', route: '/notifications' },
+  { label: 'حسابي', icon: 'account_circle', route: '/profile' },
 ];
 
 export const ROLE_MENUS: Record<string, SidebarMenuItem[]> = {
