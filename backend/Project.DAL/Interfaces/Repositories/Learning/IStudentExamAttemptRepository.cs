@@ -19,6 +19,7 @@ public interface IStudentExamAttemptRepository : IRepository<StudentExamAttempt>
     Task<IReadOnlyList<StudentExamAttempt>> GetUngradedByExamAsync(int examId, CancellationToken ct = default);
 
     Task<StudentExamAttempt?> GetWithAnswersAsync(int attemptId, CancellationToken ct = default);
+    Task<StudentExamAttempt?> GetWithAnswersForEnrollmentAsync(int attemptId, int enrollmentId, CancellationToken ct = default);
 
     Task<decimal>                           GetAverageScoreAsync(int examId, CancellationToken ct = default);
     Task<IReadOnlyList<StudentExamAttempt>> GetTopScorersAsync(int examId, int count, CancellationToken ct = default);

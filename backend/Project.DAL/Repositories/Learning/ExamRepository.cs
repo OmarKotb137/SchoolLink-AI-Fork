@@ -138,6 +138,60 @@ public class ExamRepository : Repository<Exam>, IExamRepository
                     .OrderBy(o => o.DisplayOrder))
             .FirstOrDefaultAsync(e => e.Id == examId, ct);
 
+    public async Task<IReadOnlyList<Exam>> GetPublishedForEnrollmentAsync(
+        int enrollmentId,
+        CancellationToken ct = default)
+    {
+        var enrollment = await _context.StudentEnrollments
+            .AsNoTracking()
+            .FirstOrDefaultAsync(e => e.Id == enrollmentId, ct);
+
+        if (enrollment == null)
+            return Array.Empty<Exam>();
+
+        return await _context.Exams
+            .Where(e =>
+                e.IsPublished &&
+                !e.IsDeleted &&
+                e.ClassSubjectTeacherId != null &&
+                e.ClassSubjectTeacher!.ClassId == enrollment.ClassId &&
+                e.ClassSubjectTeacher.AcademicYearId == enrollment.AcademicYearId)
+            .Include(e => e.ClassSubjectTeacher)
+                .ThenInclude(cst => cst.Subject)
+            .Include(e => e.Questions.Where(q => !q.IsDeleted))
+            .OrderByDescending(e => e.StartTime)
+            .ToListAsync(ct);
+    }
+
+    public async Task<Exam?> GetStudentExamDetailsAsync(
+        int examId,
+        int enrollmentId,
+        CancellationToken ct = default)
+    {
+        var enrollment = await _context.StudentEnrollments
+            .AsNoTracking()
+            .FirstOrDefaultAsync(e => e.Id == enrollmentId, ct);
+
+        if (enrollment == null)
+            return null;
+
+        return await _context.Exams
+            .Where(e =>
+                e.Id == examId &&
+                e.IsPublished &&
+                !e.IsDeleted &&
+                e.ClassSubjectTeacherId != null &&
+                e.ClassSubjectTeacher!.ClassId == enrollment.ClassId &&
+                e.ClassSubjectTeacher.AcademicYearId == enrollment.AcademicYearId)
+            .Include(e => e.ClassSubjectTeacher)
+                .ThenInclude(cst => cst.Subject)
+            .Include(e => e.ClassSubjectTeacher)
+                .ThenInclude(cst => cst.Class)
+            .Include(e => e.Questions.Where(q => !q.IsDeleted).OrderBy(q => q.DisplayOrder))
+                .ThenInclude(q => q.Options.Where(o => !o.IsDeleted).OrderBy(o => o.DisplayOrder))
+            .FirstOrDefaultAsync(ct);
+    }
+
     public async Task<Exam?> GetByUidAsync(Guid uid, CancellationToken ct = default)
         => await _context.Exams
             .FirstOrDefaultAsync(e => e.Uid == uid, ct);

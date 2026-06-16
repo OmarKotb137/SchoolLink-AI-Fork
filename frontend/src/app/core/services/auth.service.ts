@@ -162,4 +162,12 @@ export class AuthService {
   isAuthenticated(): boolean {
     return !!this.getToken();
   }
+
+  changePassword(currentPassword: string, newPassword: string, confirmNewPassword: string): Observable<any> {
+    return this.http.post<any>(`${this.base}/change-password`, {
+      currentPassword,
+      newPassword,
+      confirmNewPassword,
+    });
+  }
 }

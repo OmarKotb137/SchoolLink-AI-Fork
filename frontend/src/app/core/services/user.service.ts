@@ -194,4 +194,14 @@ export class UserService {
   verifyEmailOtp(email: string, code: string): Observable<OperationResult<unknown>> {
     return this.http.post<OperationResult<unknown>>(`${this.profileUrl}/email/verify-otp`, { email, code });
   }
+
+  uploadProfilePhoto(userId: number, file: File): Observable<{ photoUrl: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post<{ photoUrl: string }>(`${this.profileUrl}/upload-photo/${userId}`, formData);
+  }
+
+  deleteProfilePhoto(): Observable<OperationResult<unknown>> {
+    return this.http.delete<OperationResult<unknown>>(`${this.profileUrl}/photo`);
+  }
 }

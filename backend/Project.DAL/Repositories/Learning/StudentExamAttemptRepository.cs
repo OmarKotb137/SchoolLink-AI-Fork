@@ -104,6 +104,23 @@ public class StudentExamAttemptRepository
             .Include(a => a.Exam)
             .FirstOrDefaultAsync(a => a.Id == attemptId, ct);
 
+    public async Task<StudentExamAttempt?> GetWithAnswersForEnrollmentAsync(
+        int attemptId,
+        int enrollmentId,
+        CancellationToken ct = default)
+        => await _context.StudentExamAttempts
+            .Include(a => a.Answers)
+                .ThenInclude(ans => ans.Question)
+                    .ThenInclude(q => q.Options
+                        .OrderBy(o => o.DisplayOrder))
+            .Include(a => a.Exam)
+                .ThenInclude(e => e.Questions.Where(q => !q.IsDeleted))
+                    .ThenInclude(q => q.Options.Where(o => !o.IsDeleted))
+            .Include(a => a.Exam)
+                .ThenInclude(e => e.ClassSubjectTeacher)
+                    .ThenInclude(cst => cst.Subject)
+            .FirstOrDefaultAsync(a => a.Id == attemptId && a.EnrollmentId == enrollmentId, ct);
+
 
     public async Task<decimal> GetAverageScoreAsync(
         int examId,
