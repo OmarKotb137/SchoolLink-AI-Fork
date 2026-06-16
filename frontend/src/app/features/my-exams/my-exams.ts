@@ -1,106 +1,132 @@
-import { Component, signal, computed, inject } from '@angular/core';
+import { CommonModule, DatePipe } from '@angular/common';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
 import { Topbar } from '../../layouts/topbar/topbar';
+import { StudentExamListItem, StudentExamStatus } from '../../core/models/student-exam.models';
+import { StudentExamsService } from '../../core/services/student-exams.service';
 
-interface CurrentExam {
-  id: number;
-  subject: string;
-  name: string;
-  date: string;
-  time: string;
-  duration: number;
-  questionCount: number;
-  status: 'upcoming' | 'active' | 'ended';
-  score?: number;
-  totalScore?: number;
-}
-
-interface PastExam {
-  id: number;
-  name: string;
-  subject: string;
-  year: string;
-  questionCount: number;
-  tried: boolean;
-  score?: number;
-}
+type ExamTab = 'all' | 'available' | 'upcoming' | 'submitted' | 'results';
 
 @Component({
   selector: 'app-my-exams',
-  imports: [Sidebar, Topbar],
+  standalone: true,
+  imports: [CommonModule, Sidebar, Topbar, DatePipe],
   templateUrl: './my-exams.html',
   styleUrl: './my-exams.css'
 })
-export class MyExams {
+export class MyExams implements OnInit {
+  private examsService = inject(StudentExamsService);
   private router = inject(Router);
+
   sidebarOpen = signal(false);
-  activeTab = signal<string>('current');
-  currentFilter = signal<string>('all');
-  pastSubjectFilter = signal<string>('all');
-  pastYearFilter = signal<string>('all');
+  activeTab = signal<ExamTab>('all');
+  exams = signal<StudentExamListItem[]>([]);
+  isLoading = signal(false);
+  errorMessage = signal<string | null>(null);
+  successMessage = signal<string | null>(null);
 
-  currentExams = signal<CurrentExam[]>([
-    { id: 1, subject: 'الرياضيات', name: 'اختبار منتصف الفصل - المعادلات', date: '2026-06-10', time: '10:00 ص', duration: 90, questionCount: 15, status: 'upcoming' },
-    { id: 2, subject: 'العلوم', name: 'امتحان العلوم الشهري', date: '2026-06-05', time: '11:30 ص', duration: 60, questionCount: 20, status: 'upcoming' },
-    { id: 3, subject: 'اللغة العربية', name: 'اختبار قصير - النحو', date: '2026-06-03', time: '09:00 ص', duration: 45, questionCount: 10, status: 'active' },
-    { id: 4, subject: 'اللغة الإنجليزية', name: 'امتحان الاستماع والمحادثة', date: '2026-06-01', time: '10:00 ص', duration: 60, questionCount: 25, status: 'ended', score: 42, totalScore: 50 },
-    { id: 5, subject: 'الرياضيات', name: 'اختبار الأسبوع الماضي', date: '2026-05-28', time: '09:00 ص', duration: 45, questionCount: 10, status: 'ended', score: 18, totalScore: 20 },
-  ]);
+  totalCount = computed(() => this.exams().length);
+  availableCount = computed(() => this.exams().filter(e => e.status === 'available' || e.status === 'inProgress').length);
+  submittedCount = computed(() => this.exams().filter(e => e.status === 'submittedWaitingGrade' || e.status === 'gradedHidden').length);
+  resultCount = computed(() => this.exams().filter(e => e.status === 'resultVisible').length);
 
-  pastExams = signal<PastExam[]>([
-    { id: 1, name: 'امتحان الرياضيات - العام الماضي', subject: 'الرياضيات', year: '2025', questionCount: 20, tried: true, score: 85 },
-    { id: 2, name: 'اختبار العلوم - الفصل الأول', subject: 'العلوم', year: '2025', questionCount: 15, tried: false },
-    { id: 3, name: 'امتحان اللغة العربية', subject: 'اللغة العربية', year: '2025', questionCount: 25, tried: true, score: 72 },
-    { id: 4, name: 'اختبار الإنجليزي - نصف العام', subject: 'اللغة الإنجليزية', year: '2024', questionCount: 20, tried: false },
-    { id: 5, name: 'مسابقة الرياضيات', subject: 'الرياضيات', year: '2024', questionCount: 30, tried: true, score: 90 },
-    { id: 6, name: 'امتحان الدراسات - الترم الثاني', subject: 'الدراسات الاجتماعية', year: '2025', questionCount: 18, tried: false },
-  ]);
+  filteredExams = computed(() => {
+    const tab = this.activeTab();
+    const items = this.exams();
 
-  filteredCurrentExams = computed(() => {
-    const f = this.currentFilter();
-    const all = this.currentExams();
-    if (f === 'all') return all;
-    return all.filter(e => e.status === f);
+    if (tab === 'all') return items;
+    if (tab === 'available') return items.filter(e => e.status === 'available' || e.status === 'inProgress');
+    if (tab === 'upcoming') return items.filter(e => e.status === 'upcoming');
+    if (tab === 'submitted') return items.filter(e => e.status === 'submittedWaitingGrade' || e.status === 'gradedHidden');
+    return items.filter(e => e.status === 'resultVisible');
   });
 
-  filteredPastExams = computed(() => {
-    let items = this.pastExams();
-    const subj = this.pastSubjectFilter();
-    const year = this.pastYearFilter();
-    if (subj !== 'all') items = items.filter(e => e.subject === subj);
-    if (year !== 'all') items = items.filter(e => e.year === year);
-    return items;
-  });
+  ngOnInit() {
+    this.loadExams();
+  }
 
-  pastStats = computed(() => {
-    const all = this.pastExams();
-    const tried = all.filter(e => e.tried);
-    return {
-      total: all.length,
-      tried: tried.length,
-      avgScore: tried.length ? Math.round(tried.reduce((s, e) => s + (e.score || 0), 0) / tried.length) : 0,
+  loadExams() {
+    this.isLoading.set(true);
+    this.examsService.getMyExams().subscribe({
+      next: result => {
+        this.exams.set(result.data ?? []);
+        this.isLoading.set(false);
+      },
+      error: err => {
+        this.showError(this.extractErrorMessage(err, 'تعذر تحميل الامتحانات'));
+        this.isLoading.set(false);
+      }
+    });
+  }
+
+  startExam(exam: StudentExamListItem) {
+    if (exam.status === 'inProgress' && exam.attemptId) {
+      this.router.navigate(['/student-exams', exam.examId, 'take', exam.attemptId]);
+      return;
+    }
+
+    this.isLoading.set(true);
+    this.examsService.startExam(exam.examId).subscribe({
+      next: result => {
+        const attempt = result.data;
+        this.isLoading.set(false);
+        if (attempt) {
+          this.router.navigate(['/student-exams', exam.examId, 'take', attempt.attemptId]);
+        }
+      },
+      error: err => {
+        this.showError(this.extractErrorMessage(err, 'تعذر بدء الامتحان'));
+        this.isLoading.set(false);
+      }
+    });
+  }
+
+  openResult(exam: StudentExamListItem) {
+    if (!exam.attemptId) return;
+    this.router.navigate(['/student-exams/results', exam.attemptId]);
+  }
+
+  getStatusText(status: StudentExamStatus): string {
+    const map: Record<StudentExamStatus, string> = {
+      upcoming: 'قادم',
+      available: 'متاح الآن',
+      inProgress: 'قيد الحل',
+      submittedWaitingGrade: 'بانتظار التصحيح',
+      gradedHidden: 'لم تعلن النتيجة',
+      resultVisible: 'النتيجة متاحة',
+      expired: 'انتهى'
     };
-  });
 
-  pastSubjects = computed(() => [...new Set(this.pastExams().map(e => e.subject))]);
-  pastYears = computed(() => [...new Set(this.pastExams().map(e => e.year))]);
-
-  getStatusText(s: string): string {
-    const m: Record<string, string> = { upcoming: 'قادم', active: 'متاح الآن', ended: 'منتهٍ' };
-    return m[s] || s;
+    return map[status] ?? status;
   }
 
-  getStatusClass(s: string): string {
-    const m: Record<string, string> = { upcoming: 'bg-secondary/10 text-secondary', active: 'bg-green-50 text-green-700', ended: 'bg-surface-container-high text-outline' };
-    return m[s] || '';
+  getStatusClass(status: StudentExamStatus): string {
+    const map: Record<StudentExamStatus, string> = {
+      upcoming: 'bg-blue-50 text-blue-700 border-blue-100',
+      available: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+      inProgress: 'bg-amber-50 text-amber-700 border-amber-100',
+      submittedWaitingGrade: 'bg-slate-50 text-slate-700 border-slate-200',
+      gradedHidden: 'bg-indigo-50 text-indigo-700 border-indigo-100',
+      resultVisible: 'bg-green-50 text-green-700 border-green-100',
+      expired: 'bg-red-50 text-red-700 border-red-100'
+    };
+
+    return map[status] ?? 'bg-gray-50 text-gray-700 border-gray-100';
   }
 
-  startExam(id: number) {
-    this.router.navigate(['/exam-generator']);
+  canStart(exam: StudentExamListItem): boolean {
+    return exam.status === 'available' || exam.status === 'inProgress';
   }
 
-  startPastExam(id: number) {
-    this.router.navigate(['/exam-generator']);
+  private extractErrorMessage(err: unknown, fallback: string): string {
+    const error = err as { error?: { message?: string }; message?: string };
+    return error.error?.message || error.message || fallback;
+  }
+
+  private showError(message: string) {
+    this.errorMessage.set(message);
+    this.successMessage.set(null);
+    setTimeout(() => this.errorMessage.set(null), 5000);
   }
 }

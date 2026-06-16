@@ -170,8 +170,12 @@ public class ExamRepository : Repository<Exam>, IExamRepository
                 e.ClassSubjectTeacherId != null &&
                 e.ClassSubjectTeacher!.ClassId == enrollment.ClassId &&
                 e.ClassSubjectTeacher.AcademicYearId == enrollment.AcademicYearId)
+            .Include(e => e.Subject)
+            .Include(e => e.GradeLevel)
             .Include(e => e.ClassSubjectTeacher)
                 .ThenInclude(cst => cst.Subject)
+            .Include(e => e.ClassSubjectTeacher)
+                .ThenInclude(cst => cst.Class)
             .Include(e => e.Questions.Where(q => !q.IsDeleted))
             .OrderByDescending(e => e.StartTime)
             .ToListAsync(ct);
@@ -197,6 +201,8 @@ public class ExamRepository : Repository<Exam>, IExamRepository
                 e.ClassSubjectTeacherId != null &&
                 e.ClassSubjectTeacher!.ClassId == enrollment.ClassId &&
                 e.ClassSubjectTeacher.AcademicYearId == enrollment.AcademicYearId)
+            .Include(e => e.Subject)
+            .Include(e => e.GradeLevel)
             .Include(e => e.ClassSubjectTeacher)
                 .ThenInclude(cst => cst.Subject)
             .Include(e => e.ClassSubjectTeacher)

@@ -1,0 +1,73 @@
+<app-sidebar [(isOpen)]="sidebarOpen" />
+<div class="main-content">
+  <app-topbar userName="أحمد" />
+  <main class="pt-16 min-h-screen bg-gray-50" dir="rtl">
+    <div class="max-w-5xl mx-auto p-4 md:p-6 lg:p-8 space-y-6">
+      <section class="bg-white p-6 rounded-2xl border border-gray-100 shadow-lg">
+        <span class="text-sm font-medium text-blue-600 mb-1 block">نتيجة الامتحان</span>
+        <h1 class="text-2xl font-bold text-gray-900 mb-2">حالة التسليم والنتيجة</h1>
+        <p class="text-sm text-gray-500 max-w-2xl">تظهر الدرجة بعد مراجعة المعلم ونشر النتيجة. قبل ذلك سترى حالة التصحيح فقط.</p>
+      </section>
+
+      @if (errorMessage()) {
+        <div class="flex items-center gap-3 p-4 text-sm text-red-800 rounded-2xl bg-red-50 border border-red-200">
+          <span class="material-symbols-outlined text-lg">error</span>
+          <span class="font-medium">{{ errorMessage() }}</span>
+        </div>
+      }
+
+      @if (isLoading()) {
+        <div class="py-20 flex flex-col items-center gap-3 text-gray-500">
+          <span class="material-symbols-outlined animate-spin text-4xl text-blue-600">progress_activity</span>
+          <span class="font-medium">جاري تحميل النتيجة...</span>
+        </div>
+      } @else if (result(); as r) {
+        <section class="result-card">
+          @if (r.isResultPublished) {
+            <div class="score-circle">
+              <strong>{{ getScorePercent(r) }}%</strong>
+              <span>{{ r.score }}/{{ r.totalScore }}</span>
+            </div>
+            <h2>تم إعلان النتيجة</h2>
+            <p>{{ r.message }}</p>
+          } @else {
+            <div class="pending-icon">
+              <span class="material-symbols-outlined">{{ r.isGraded ? 'visibility_off' : 'hourglass_top' }}</span>
+            </div>
+            <h2>{{ r.isGraded ? 'النتيجة لم تعلن بعد' : 'في انتظار التصحيح' }}</h2>
+            <p>{{ r.message }}</p>
+          }
+
+          <button class="back-btn" type="button" (click)="backToExams()">
+            <span class="material-symbols-outlined">arrow_back</span>
+            الرجوع إلى امتحاناتي
+          </button>
+        </section>
+
+        @if (r.isResultPublished && r.answers.length > 0) {
+          <section class="bg-white rounded-2xl border border-gray-100 shadow-lg overflow-hidden">
+            <div class="p-5 border-b border-gray-100 bg-gray-50">
+              <h3 class="font-bold text-gray-900">تفاصيل الإجابات</h3>
+            </div>
+            <div class="divide-y divide-gray-100">
+              @for (answer of r.answers; track answer.questionId) {
+                <div class="p-5">
+                  <div class="flex items-start justify-between gap-4">
+                    <h4 class="font-bold text-gray-900">{{ answer.questionText }}</h4>
+                    <span class="answer-chip" [class.correct]="answer.isCorrect" [class.wrong]="answer.isCorrect === false">
+                      {{ answer.pointsEarned }}/{{ answer.questionPoints }}
+                    </span>
+                  </div>
+                  <p class="text-sm text-gray-500 mt-3">
+                    إجابتك:
+                    {{ answer.answerText || (answer.booleanAnswer === true ? 'صح' : answer.booleanAnswer === false ? 'خطأ' : answer.selectedOptionId || 'لم تتم الإجابة') }}
+                  </p>
+                </div>
+              }
+            </div>
+          </section>
+        }
+      }
+    </div>
+  </main>
+</div>

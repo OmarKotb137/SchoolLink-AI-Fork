@@ -22,6 +22,8 @@ export const routes: Routes = [
   { path: 'homework', canActivate: [authGuard], loadComponent: () => import('./features/homework/homework').then(c => c.Homework) },
   { path: 'my-assignments', canActivate: [authGuard], loadComponent: () => import('./features/my-assignments/my-assignments').then(c => c.MyAssignments) },
   { path: 'my-exams', canActivate: [authGuard], loadComponent: () => import('./features/my-exams/my-exams').then(c => c.MyExams) },
+  { path: 'student-exams/:examId/take/:attemptId', canActivate: [authGuard], data: { roles: ['student'] }, loadComponent: () => import('./features/take-exam/take-exam').then(c => c.TakeExam) },
+  { path: 'student-exams/results/:attemptId', canActivate: [authGuard], data: { roles: ['student'] }, loadComponent: () => import('./features/exam-result/exam-result').then(c => c.ExamResult) },
   { path: 'exam-management', canActivate: [authGuard], loadComponent: () => import('./features/exam-management/exam-management').then(c => c.ExamManagement) },
   { path: 'exam-generator', canActivate: [authGuard], loadComponent: () => import('./features/exam-generator/exam-generator').then(c => c.ExamGenerator) },
   { path: 'lesson-creator', canActivate: [authGuard], loadComponent: () => import('./features/lesson-creator/lesson-creator').then(c => c.LessonCreator) },

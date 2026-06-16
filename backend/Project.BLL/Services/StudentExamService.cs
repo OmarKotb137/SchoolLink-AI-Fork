@@ -39,7 +39,7 @@ public class StudentExamService : IStudentExamService
             {
                 ExamId = exam.Id,
                 Title = exam.Title,
-                SubjectName = exam.ClassSubjectTeacher?.Subject?.Name ?? string.Empty,
+                SubjectName = GetSubjectName(exam),
                 StartTime = exam.StartTime,
                 EndTime = exam.EndTime,
                 DurationMinutes = exam.DurationMinutes,
@@ -74,7 +74,7 @@ public class StudentExamService : IStudentExamService
         {
             ExamId = exam.Id,
             Title = exam.Title,
-            SubjectName = exam.ClassSubjectTeacher?.Subject?.Name ?? string.Empty,
+            SubjectName = GetSubjectName(exam),
             ClassName = exam.ClassSubjectTeacher?.Class?.Name ?? string.Empty,
             StartTime = exam.StartTime,
             EndTime = exam.EndTime,
@@ -379,4 +379,7 @@ public class StudentExamService : IStudentExamService
         // Result publishing for informal teacher exams will be added as a teacher-side feature.
         return false;
     }
+
+    private static string GetSubjectName(Exam exam)
+        => exam.Subject?.Name ?? exam.ClassSubjectTeacher?.Subject?.Name ?? string.Empty;
 }

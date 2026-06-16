@@ -117,6 +117,10 @@ public class StudentExamAttemptRepository
                 .ThenInclude(e => e.Questions.Where(q => !q.IsDeleted))
                     .ThenInclude(q => q.Options.Where(o => !o.IsDeleted))
             .Include(a => a.Exam)
+                .ThenInclude(e => e.Subject)
+            .Include(a => a.Exam)
+                .ThenInclude(e => e.GradeLevel)
+            .Include(a => a.Exam)
                 .ThenInclude(e => e.ClassSubjectTeacher)
                     .ThenInclude(cst => cst.Subject)
             .FirstOrDefaultAsync(a => a.Id == attemptId && a.EnrollmentId == enrollmentId, ct);
