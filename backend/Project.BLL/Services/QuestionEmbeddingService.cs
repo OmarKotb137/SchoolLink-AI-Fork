@@ -15,7 +15,7 @@ public interface IQuestionEmbeddingService
     /// <summary>بحث دلالي مع فلترة حسب الصف والمادة</summary>
     Task<OperationResult<List<SemanticSearchResult>>> SemanticSearchAsync(SemanticSearchRequest request, CancellationToken ct = default);
 
-    /// <summary>تضمين كل أسئلة بنك الأسئلة غير المضمنة</summary>
+    /// <summary>إضافة كل أسئلة بنك الأسئلة غير المضمنة</summary>
     Task<OperationResult<int>> EmbedAllUnembeddedAsync(CancellationToken ct = default);
 }
 
@@ -92,7 +92,7 @@ public class QuestionEmbeddingService : IQuestionEmbeddingService
             return OperationResult<int>.Success(qbItems.Count, "الأسئلة موجودة مسبقاً في البحث الذكي");
         }
 
-        _logger.LogInformation("تضمين {Count} سؤال جديد (تخطي {Skipped} موجود مسبقاً)", newItems.Count, existingSet.Count);
+        _logger.LogInformation("إضافة {Count} سؤال جديد (تخطي {Skipped} موجود مسبقاً)", newItems.Count, existingSet.Count);
 
         // Build texts for new items only
         var embedTexts = newItems.Select(q => BuildQuestionTextFromQb(q)).ToArray();
@@ -130,8 +130,8 @@ public class QuestionEmbeddingService : IQuestionEmbeddingService
         await Collection.InsertManyAsync(docs, cancellationToken: ct);
 
         var totalMsg = existingSet.Count > 0
-            ? $"تم تضمين {docs.Count} سؤال جديد (+{existingSet.Count} موجود مسبقاً)"
-            : $"تم تضمين {docs.Count} سؤال بنجاح";
+            ? $"تم إضافة {docs.Count} سؤال جديد (+{existingSet.Count} موجود مسبقاً)"
+            : $"تم إضافة {docs.Count} سؤال بنجاح";
 
         return OperationResult<int>.Success(docs.Count, totalMsg);
     }

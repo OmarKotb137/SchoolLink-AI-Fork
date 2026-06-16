@@ -51,6 +51,8 @@ public class MappingProfile : Profile
         CreateMap<Timetable, TimetableDto>()
             .ForMember(d => d.ClassName,
                 opt => opt.MapFrom(s => s.Class.Name));
+        CreateMap<Timetable, ChildScheduleDto>()
+            .IncludeBase<Timetable, TimetableDto>();
 
         // TimetableSlot
         CreateMap<TimetableSlot, TimetableSlotDto>()

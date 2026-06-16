@@ -111,14 +111,27 @@
                     [class.text-outline]="!conv.unread">
                     {{ conv.lastMessage }}
                   </p>
-                  <div class="flex items-center gap-2 mt-1">
-                    @if (conv.type === 'group') {
-                      <span class="text-label-sm text-outline text-[11px]">{{ conv.participants.length }} عضو</span>
-                    }
-                    @if (conv.unread) {
-                      <span class="bg-error text-on-error text-[11px] px-2 py-0.5 rounded-full font-bold">جديد</span>
-                    }
-                  </div>
+              <div class="flex items-center gap-2 mt-1">
+                @if (conv.type === 'group') {
+                  <span class="text-label-sm text-outline text-[11px]">{{ conv.participants.length }} عضو</span>
+                } @else {
+                  @let role = getOtherParticipantRole(conv);
+                  <span class="role-badge text-[10px]"
+                    [class.bg-tertiary-fixed]="role === 'مدرس'"
+                    [class.text-tertiary]="role === 'مدرس'"
+                    [class.bg-secondary-fixed]="role === 'ولي أمر'"
+                    [class.text-secondary]="role === 'ولي أمر'"
+                    [class.bg-surface-container]="role === 'طالب'"
+                    [class.text-outline]="role === 'طالب'"
+                    [class.bg-primary-fixed]="role === 'مدير'"
+                    [class.text-primary]="role === 'مدير'">
+                    {{ role }}
+                  </span>
+                }
+                @if (conv.unread) {
+                  <span class="bg-error text-on-error text-[11px] px-2 py-0.5 rounded-full font-bold">جديد</span>
+                }
+              </div>
                 </div>
               </div>
             </div>
@@ -167,10 +180,8 @@
                 }
               </div>
               <button class="p-2 rounded-full transition-colors hover:bg-white/40 text-outline"
-                (click)="toggleProfilePanel()" title="إدارة المجموعة">
-                <span class="material-symbols-outlined">
-                  {{ showProfilePanel() ? 'close' : 'info' }}
-                </span>
+                (click)="activeConversation()?.type === 'group' ? openGroupMembersModal() : toggleProfilePanel()" title="إدارة المجموعة">
+                <span class="material-symbols-outlined">info</span>
               </button>
             </div>
           </div>
@@ -332,7 +343,7 @@
                             </a>
                           }
                           @if (hasText) {
-                            <div class="mt-2 whitespace-pre-wrap break-words">{{ msg.content }}</div>
+                            <div class="mt-4 whitespace-pre-wrap break-words">{{ msg.content }}</div>
                           }
                         } @else {
                           {{ msg.content }}
@@ -545,72 +556,65 @@
       <section class="chat-profile-panel" [class.open]="showProfilePanel()">
         @if (activeConversation(); as conv) {
           <div>
-            <div class="flex items-center justify-between mb-4">
-              <h4 class="text-label-md font-bold">
-                @if (conv.type === 'group') { أعضاء المجموعة } @else { الملف الشخصي }
-              </h4>
-              @if (conv.type === 'group' && isAdminOrTeacher()) {
-                <button class="text-primary hover:bg-primary-fixed p-1.5 rounded-full transition-colors"
-                  (click)="openAddParticipantModal()" title="إضافة عضو">
-                  <span class="material-symbols-outlined" style="font-variation-settings:'FILL'1;">person_add</span>
-                </button>
-              }
-            </div>
-            <div class="space-y-1">
-              @for (p of conv.participants; track p.userId) {
-                <div class="flex items-center gap-2 p-2 rounded-lg transition-colors cursor-pointer"
-                  [class.hover:bg-white/40]="!isAdminOrTeacher() || p.userId === authService.user()?.userId"
-                  (click)="openDirectConversation(p.userId)">
-                  <div class="w-8 h-8 rounded-full bg-white/40 flex items-center justify-center text-label-sm font-bold text-outline flex-shrink-0">
-                    {{ p.userName.charAt(0) }}
-                  </div>
-                  <div class="min-w-0 flex-1">
-                    <div class="flex items-center gap-1.5">
-                      <span class="text-label-sm truncate">{{ p.userName }}</span>
-                      <span class="role-badge"
-                        [class.bg-primary-fixed]="p.role === 'Admin'"
-                        [class.text-primary]="p.role === 'Admin'"
-                        [class.bg-tertiary-fixed]="p.role === 'Teacher'"
-                        [class.text-tertiary]="p.role === 'Teacher'"
-                        [class.bg-secondary-fixed]="p.role === 'Parent'"
-                        [class.text-secondary]="p.role === 'Parent'"
-                        [class.bg-surface-container]="p.role === 'Student'"
-                        [class.text-outline]="p.role === 'Student'">
-                        {{ p.role === 'Admin' ? 'مدير' : p.role === 'Teacher' ? 'مدرس' : p.role === 'Parent' ? 'ولي أمر' : p.role === 'Student' ? 'طالب' : p.role }}
-                      </span>
-                    </div>
-                  </div>
-                  @if (p.userId !== authService.user()?.userId && canBlockUser(p.role)) {
-                    <div class="flex gap-1 flex-shrink-0" (click)="$event.stopPropagation()">
-                      @if (blockedByMe().has(p.userId)) {
-                        <button class="btn-unblock text-outline"
-                          (click)="unblockUserInConversation(p.userId)" title="إلغاء الحظر">
-                          <span class="material-symbols-outlined text-[14px]">check_circle</span>
-                          إلغاء الحظر
-                        </button>
-                      } @else {
-                        <button class="btn-block text-outline"
-                          (click)="blockUserInConversation(p.userId)" title="حظر">
-                          <span class="material-symbols-outlined text-[14px]">block</span>
-                          حظر
-                        </button>
-                      }
-                    </div>
-                  }
-                  @if (conv.type === 'group' && isAdminOrTeacher() && p.userId !== authService.user()?.userId) {
-                    <button class="text-error hover:bg-error-container/20 p-1 rounded-full transition-colors flex-shrink-0"
-                      (click)="removeParticipant(p.userId)" [disabled]="removingParticipantId() === p.userId"
-                      title="إزالة العضو">
-                      @if (removingParticipantId() === p.userId) {
-                        <span class="loading-spinner loading-sm"></span>
-                      } @else {
-                        <span class="material-symbols-outlined text-[18px]">remove_circle</span>
-                      }
-                    </button>
-                  }
+            @if (conv.type === 'group') {
+              <!-- Group summary with button to open modal -->
+              <div class="flex items-center justify-between mb-4">
+                <h4 class="text-label-md font-bold">المجموعة</h4>
+                @if (isAdminOrTeacher()) {
+                  <button class="text-primary hover:bg-primary-fixed p-1.5 rounded-full transition-colors"
+                    (click)="openAddParticipantModal()" title="إضافة عضو">
+                    <span class="material-symbols-outlined" style="font-variation-settings:'FILL'1;">person_add</span>
+                  </button>
+                }
+              </div>
+              <div class="text-center py-6">
+                <div class="w-16 h-16 rounded-full bg-primary-fixed/50 flex items-center justify-center mx-auto mb-3">
+                  <span class="material-symbols-outlined text-primary" style="font-size:32px;">group</span>
                 </div>
+                <p class="text-label-sm font-bold">{{ conv.name }}</p>
+                <p class="text-label-sm text-outline mt-1">{{ conv.participants.length }} مشارك</p>
+                <button class="w-full gradient-btn mt-4 py-2.5 rounded-xl flex items-center justify-center gap-2"
+                  (click)="openGroupMembersModal()">
+                  <span class="material-symbols-outlined" style="font-variation-settings:'FILL'1;">group</span>
+                  عرض جميع الأعضاء
+                </button>
+              </div>
+            } @else {
+              <!-- Individual profile info -->
+              <div class="flex items-center justify-between mb-4">
+                <h4 class="text-label-md font-bold">الملف الشخصي</h4>
+              </div>
+              <div class="text-center py-4">
+                <div class="w-16 h-16 rounded-full bg-secondary-fixed/50 flex items-center justify-center mx-auto mb-3">
+                  <span class="text-headline-sm font-bold text-secondary">{{ conv.name.charAt(0) }}</span>
+                </div>
+                <p class="text-label-md font-bold">{{ conv.name }}</p>
+                <p class="text-label-sm text-outline mt-1">{{ getOtherParticipantRole(conv) }}</p>
+              </div>
+              <!-- Block/Unblock buttons for individual chats -->
+              @if (conv.type === 'individual') {
+                @let otherUser = conv.participants.find(p => p.userId !== authService.user()?.userId);
+                @if (otherUser && canBlockUser(otherUser.role)) {
+                  <div class="text-center mt-2">
+                    @if (blockedByMe().has(otherUser.userId)) {
+                      <button class="w-full py-2.5 rounded-xl flex items-center justify-center gap-2 transition-colors"
+                        style="background:rgba(16,185,129,0.15);color:#059669;border:1px solid rgba(16,185,129,0.3);"
+                        (click)="unblockUserInConversation(otherUser.userId)">
+                        <span class="material-symbols-outlined text-[18px]">check_circle</span>
+                        إلغاء الحظر
+                      </button>
+                    } @else {
+                      <button class="w-full py-2.5 rounded-xl flex items-center justify-center gap-2 transition-colors"
+                        style="background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.2);"
+                        (click)="blockUserInConversation(otherUser.userId)">
+                        <span class="material-symbols-outlined text-[18px]">block</span>
+                        حظر
+                      </button>
+                    }
+                  </div>
+                }
               }
-            </div>
+            }
           </div>
         }
       </section>
@@ -768,6 +772,63 @@
           </div>
         }
       </div>
+    </div>
+  </div>
+}
+
+<!-- Group Members Modal -->
+@if (showGroupMembersModal()) {
+  <div class="modal-overlay" (click)="closeGroupMembersModal()">
+    <div class="modal-content glass-card" style="max-width:520px;" (click)="$event.stopPropagation()">
+      @if (activeConversation(); as conv) {
+        <div class="flex justify-between items-center mb-6">
+          <h3 class="text-headline-sm font-bold">أعضاء المجموعة</h3>
+          <button class="p-2 hover:bg-white/20 rounded-full transition-colors text-outline"
+            (click)="closeGroupMembersModal()">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <div class="flex items-center gap-2 mb-4 p-3 rounded-xl bg-white/30">
+          <div class="w-10 h-10 rounded-full bg-primary-fixed/50 flex items-center justify-center">
+            <span class="material-symbols-outlined text-primary" style="font-variation-settings:'FILL'1;">group</span>
+          </div>
+          <div>
+            <p class="text-label-sm font-bold">{{ conv.name }}</p>
+            <p class="text-label-sm text-outline">{{ conv.participants.length }} عضو</p>
+          </div>
+        </div>
+        <div class="space-y-1 max-h-60 overflow-y-auto custom-scrollbar">
+          @for (p of conv.participants; track p.userId) {
+            <div class="flex items-center gap-3 p-3 rounded-xl transition-colors cursor-pointer hover:bg-white/40"
+              (click)="openDirectConversation(p.userId)">
+              <div class="w-10 h-10 rounded-full bg-white/40 flex items-center justify-center text-label-md font-bold text-outline flex-shrink-0">
+                {{ p.userName.charAt(0) }}
+              </div>
+              <div class="min-w-0 flex-1">
+                <p class="text-label-sm font-bold">{{ p.userName }}</p>
+                <span class="role-badge text-[11px]"
+                  [class.bg-primary-fixed]="p.role === 'Admin'" [class.text-primary]="p.role === 'Admin'"
+                  [class.bg-tertiary-fixed]="p.role === 'Teacher'" [class.text-tertiary]="p.role === 'Teacher'"
+                  [class.bg-secondary-fixed]="p.role === 'Parent'" [class.text-secondary]="p.role === 'Parent'"
+                  [class.bg-surface-container]="p.role === 'Student'" [class.text-outline]="p.role === 'Student'">
+                  {{ p.role === 'Admin' ? 'مدير' : p.role === 'Teacher' ? 'مدرس' : p.role === 'Parent' ? 'ولي أمر' : p.role === 'Student' ? 'طالب' : p.role }}
+                </span>
+              </div>
+              @if (isAdminOrTeacher() && p.userId !== authService.user()?.userId) {
+                <button class="text-error hover:bg-error-container/20 p-1.5 rounded-full transition-colors flex-shrink-0"
+                  (click)="$event.stopPropagation(); removeParticipant(p.userId)"
+                  [disabled]="removingParticipantId() === p.userId" title="إزالة العضو">
+                  @if (removingParticipantId() === p.userId) {
+                    <span class="loading-spinner loading-sm"></span>
+                  } @else {
+                    <span class="material-symbols-outlined text-[18px]">remove_circle</span>
+                  }
+                </button>
+              }
+            </div>
+          }
+        </div>
+      }
     </div>
   </div>
 }

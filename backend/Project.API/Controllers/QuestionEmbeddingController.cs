@@ -79,7 +79,7 @@ public class QuestionEmbeddingController : ControllerBase
         return Ok(result);
     }
 
-    /// <summary>تضمين كل الأسئلة غير المضمنة في بنك الأسئلة</summary>
+    /// <summary>إضافة كل الأسئلة غير المضمنة في بنك الأسئلة</summary>
     [HttpPost("embed-all")]
     [Authorize(Roles = "Admin,Teacher")]
     public async Task<IActionResult> EmbedAll()
