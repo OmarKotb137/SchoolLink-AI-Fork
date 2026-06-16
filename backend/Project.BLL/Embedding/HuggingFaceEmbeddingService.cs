@@ -10,7 +10,7 @@ public class HuggingFaceEmbeddingService : IEmbeddingService
     private readonly HttpClient _httpClient;
     private readonly ILogger<HuggingFaceEmbeddingService> _logger;
     private readonly string _apiKey;
-    private const string EmbeddingUrl = "https://api-inference.huggingface.co/pipeline/feature-extraction/BAAI/bge-m3";
+    private readonly string _embeddingUrl;
     private const string PassagePrefix = "passage: ";
     private const string QueryPrefix = "query: ";
 
@@ -22,6 +22,8 @@ public class HuggingFaceEmbeddingService : IEmbeddingService
         _httpClient = httpClientFactory.CreateClient();
         _logger = logger;
         _apiKey = configuration["LlmSettings:HuggingFace:ApiKey"] ?? "";
+        _embeddingUrl = configuration["LlmSettings:HuggingFace:EmbeddingUrl"]
+            ?? "https://api-inference.huggingface.co/pipeline/feature-extraction/BAAI/bge-m3";
     }
 
     public async Task<float[]> GenerateEmbeddingAsync(string text, CancellationToken ct = default)
@@ -34,7 +36,7 @@ public class HuggingFaceEmbeddingService : IEmbeddingService
     {
         if (texts.Length == 0) return [];
 
-        var request = new HttpRequestMessage(HttpMethod.Post, EmbeddingUrl);
+        var request = new HttpRequestMessage(HttpMethod.Post, _embeddingUrl);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
 
         var payload = new { inputs = texts.Select(t => $"{PassagePrefix}{t}").ToArray() };
@@ -65,7 +67,7 @@ public class HuggingFaceEmbeddingService : IEmbeddingService
     /// <summary>توليد embedding لاستعلام البحث (query prefix)</summary>
     public async Task<float[]> GenerateQueryEmbeddingAsync(string query, CancellationToken ct = default)
     {
-        var request = new HttpRequestMessage(HttpMethod.Post, EmbeddingUrl);
+        var request = new HttpRequestMessage(HttpMethod.Post, _embeddingUrl);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
 
         var payload = new { inputs = new[] { $"{QueryPrefix}{query}" } };

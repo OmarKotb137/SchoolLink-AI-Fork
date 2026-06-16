@@ -498,7 +498,7 @@ public class TeacherToolService : ITeacherToolService
                         }
                     }
                 },
-                required = new[] { "subjectId", "questions" }
+                required = new[] { "subjectId", "gradeLevelId", "questions" }
             }),
             ExecuteAsync = async (args) =>
             {
@@ -602,7 +602,7 @@ public class TeacherToolService : ITeacherToolService
         list.Add(new AiTool
         {
             Name = "save_to_question_embeddings",
-            Description = "حفظ أسئلة امتحان في بنك الأسئلة مع إنشاء البحث الدلالي (embedding). يستخدم بعد توليد الامتحان لتمكين الطلاب من البحث عن أسئلة مشابهة.",
+            Description = "حفظ أسئلة امتحان في بنك الأسئلة مع تفعيل البحث الذكي للطلاب. يستخدم بعد توليد الامتحان لتمكين الطلاب من البحث عن أسئلة مشابهة.",
             Parameters = JsonSerializer.SerializeToElement(new
             {
                 type = "object",
@@ -628,8 +628,9 @@ public class TeacherToolService : ITeacherToolService
 
                 var examId = exam.Data.Id;
 
-                // 1. Save to QuestionBank
+                // 1. Save to QuestionBank (inline duplicate detection handles existing questions)
                 var saveResult = await _questionBankService.BulkAddFromExamAsync(examId, subjectId);
+                var examAlreadyInBank = saveResult.Message?.Contains("موجودة مسبقاً") == true;
 
                 // 2. Get QB IDs
                 var links = await _unitOfWork.ExamQuestionBankItems
@@ -641,14 +642,35 @@ public class TeacherToolService : ITeacherToolService
 
                 // 3. Embed
                 var embedResult = await _questionEmbeddingService.EmbedQuestionBankItemsAsync(qbIds);
+                var alreadyEmbedded = embedResult.Message?.Contains("موجودة مسبقاً") == true;
+
+                // Build response
+                string resultMessage;
+                if (examAlreadyInBank && alreadyEmbedded)
+                {
+                    resultMessage = "الامتحان موجود مسبقاً بالكامل في بنك الأسئلة والبحث الذكي ✅";
+                }
+                else if (examAlreadyInBank)
+                {
+                    resultMessage = $"تم تجهيز {embedResult.Data} سؤال للبحث الذكي (الأسئلة كانت موجودة مسبقاً في بنك الأسئلة)";
+                }
+                else if (alreadyEmbedded)
+                {
+                    resultMessage = $"تم حفظ {saveResult.Data} سؤال في بنك الأسئلة (كانت موجودة مسبقاً في البحث الذكي)";
+                }
+                else
+                {
+                    resultMessage = $"تم حفظ {saveResult.Data} سؤال في بنك الأسئلة وتجهيز {embedResult.Data} سؤال للبحث الذكي";
+                }
 
                 return JsonSerializer.Serialize(new
                 {
                     success = embedResult.IsSuccess,
                     savedCount = saveResult.Data,
                     embeddedCount = embedResult.Data,
+                    alreadyExists = examAlreadyInBank && alreadyEmbedded,
                     message = embedResult.IsSuccess
-                        ? $"تم حفظ {saveResult.Data} سؤال في بنك الأسئلة وتضمين {embedResult.Data} سؤال للبحث الدلالي"
+                        ? resultMessage
                         : embedResult.Message ?? "تم الحفظ لكن فشل التضمين"
                 }, new JsonSerializerOptions { WriteIndented = true });
             }

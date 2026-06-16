@@ -440,8 +440,7 @@ export class ExamGenerator implements OnInit {
     this.http.post(buildApiUrl(`question-embedding/from-exam/${examId}`), {}).subscribe({
       next: (r: any) => {
         this.embedding.set(false);
-        const count = r?.data || r?.embeddedCount || '';
-        this.embedMsg.set(`✅ تم حفظ ${count} سؤال في بنك الأسئلة`);
+        this.embedMsg.set(`✅ ${r?.message || 'تم الحفظ بنجاح'}`);
       },
       error: (err) => {
         this.embedding.set(false);

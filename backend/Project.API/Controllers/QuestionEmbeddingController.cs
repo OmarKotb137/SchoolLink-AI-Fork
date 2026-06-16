@@ -6,7 +6,7 @@ using Project.DAL.Interfaces;
 
 namespace Project.API.Controllers;
 
-[Route("api/[controller]")]
+[Route("api/question-embedding")]
 [ApiController]
 public class QuestionEmbeddingController : ControllerBase
 {
@@ -58,7 +58,7 @@ public class QuestionEmbeddingController : ControllerBase
         if (!result.IsSuccess)
             return BadRequest(result);
 
-        return Ok(new { isSuccess = true, data = result.Data, message = $"تم حفظ {qbIds.Count} سؤال في بنك الأسئلة وتضمينها للبحث الدلالي" });
+        return Ok(new { isSuccess = true, data = result.Data, message = result.Message });
     }
 
     /// <summary>تضمين أسئلة من بنك الأسئلة مباشرة (بـ IDs)</summary>

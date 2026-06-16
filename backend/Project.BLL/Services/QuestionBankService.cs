@@ -143,7 +143,8 @@ public class QuestionBankService : IQuestionBankService
             return OperationResult<int>.Failure("الامتحان غير موجود", 404);
 
         var gradeLevelId = exam.GradeLevelId;
-        var addedCount = 0;
+        var newCount = 0;
+        var existingCount = 0;
 
         foreach (var question in exam.Questions.Where(q => !q.IsDeleted))
         {
@@ -157,6 +158,7 @@ public class QuestionBankService : IQuestionBankService
                 bankItem = existingList.First();
                 bankItem.UsageCount++;
                 _unitOfWork.QuestionBank.Update(bankItem);
+                existingCount++;
             }
             else
             {
@@ -181,6 +183,7 @@ public class QuestionBankService : IQuestionBankService
                     UsageCount = 1
                 };
                 await _unitOfWork.QuestionBank.AddAsync(bankItem);
+                newCount++;
             }
 
             await _unitOfWork.SaveChangesAsync();
@@ -199,15 +202,23 @@ public class QuestionBankService : IQuestionBankService
                 });
                 await _unitOfWork.SaveChangesAsync();
             }
-
-            addedCount++;
         }
 
-        _logger.LogInformation("Bulk added {Count} questions from exam {ExamId} to question bank",
-            addedCount, examId);
+        var totalCount = newCount + existingCount;
 
-        return OperationResult<int>.Success(addedCount,
-            $"تم إضافة {addedCount} سؤال إلى بنك الأسئلة بنجاح");
+        _logger.LogInformation("Bulk added from exam {ExamId}: {NewCount} new, {ExistingCount} existing",
+            examId, newCount, existingCount);
+
+        if (newCount == 0)
+        {
+            return OperationResult<int>.Success(totalCount,
+                $"جميع أسئلة الامتحان موجودة مسبقاً في بنك الأسئلة (تم زيادة عدد الاستخدامات لـ {existingCount} سؤال)");
+        }
+
+        return OperationResult<int>.Success(totalCount,
+            existingCount > 0
+                ? $"تم إضافة {newCount} سؤال جديد إلى بنك الأسئلة، و{existingCount} أسئلة موجودة مسبقاً (تم زيادة عدد الاستخدامات)"
+                : $"تم إضافة {newCount} سؤال إلى بنك الأسئلة بنجاح");
     }
 
     public async Task<OperationResult> DeleteAsync(int id)

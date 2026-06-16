@@ -279,7 +279,7 @@ public class StudentToolService : IStudentToolService
         list.Add(new AiTool
         {
             Name = "search_question_bank",
-            Description = "بحث دلالي في بنك الأسئلة عن أسئلة مشابهة. النتائج مُصفاة تلقائياً حسب صف الطالب الدراسي.",
+            Description = "بحث عن أسئلة مشابهة في بنك الأسئلة. النتائج مُصفاة تلقائياً حسب صف الطالب الدراسي.",
             Parameters = JsonSerializer.SerializeToElement(new
             {
                 type = "object",
@@ -309,7 +309,9 @@ public class StudentToolService : IStudentToolService
                 };
 
                 var result = await _questionEmbeddingService.SemanticSearchAsync(request);
-                return JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
+                if (!result.IsSuccess || result.Data is null || result.Data.Count == 0)
+                    return JsonSerializer.Serialize(new { success = false, message = result.Message ?? "لا توجد نتائج" });
+                return JsonSerializer.Serialize(new { success = true, results = result.Data, message = result.Message });
             }
         });
 

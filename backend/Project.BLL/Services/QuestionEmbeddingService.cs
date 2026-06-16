@@ -77,14 +77,26 @@ public class QuestionEmbeddingService : IQuestionEmbeddingService
         if (qbItems.Count == 0)
             return OperationResult<int>.Failure("لم يتم العثور على أسئلة في بنك الأسئلة", 404);
 
-        // Remove old embeddings
-        await Collection.DeleteManyAsync(
-            Builders<QuestionEmbeddingDocument>.Filter.In(x => x.QuestionBankId, questionBankIds),
-            cancellationToken: ct);
+        // Check which IDs already have embeddings in MongoDB
+        var existingIds = await Collection
+            .Find(Builders<QuestionEmbeddingDocument>.Filter.In(x => x.QuestionBankId, qbItems.Select(q => q.Id)))
+            .Project(x => x.QuestionBankId)
+            .ToListAsync(ct);
 
-        // Build texts
-        var embedTexts = qbItems.Select(q => BuildQuestionTextFromQb(q)).ToArray();
-        var displayTexts = qbItems.Select(q => BuildDisplayTextFromQb(q)).ToArray();
+        var existingSet = new HashSet<int>(existingIds);
+
+        var newItems = qbItems.Where(q => !existingSet.Contains(q.Id)).ToList();
+
+        if (newItems.Count == 0)
+        {
+            return OperationResult<int>.Success(qbItems.Count, "الأسئلة موجودة مسبقاً في البحث الذكي");
+        }
+
+        _logger.LogInformation("تضمين {Count} سؤال جديد (تخطي {Skipped} موجود مسبقاً)", newItems.Count, existingSet.Count);
+
+        // Build texts for new items only
+        var embedTexts = newItems.Select(q => BuildQuestionTextFromQb(q)).ToArray();
+        var displayTexts = newItems.Select(q => BuildDisplayTextFromQb(q)).ToArray();
 
         float[][] embeddings;
         try
@@ -97,17 +109,17 @@ public class QuestionEmbeddingService : IQuestionEmbeddingService
             return OperationResult<int>.Failure($"فشل توليد embeddings: {ex.Message}");
         }
 
-        if (embeddings.Length != qbItems.Count)
+        if (embeddings.Length != newItems.Count)
             return OperationResult<int>.Failure("عدد embeddings لا يطابق عدد الأسئلة");
 
         var docs = new List<QuestionEmbeddingDocument>();
-        for (int i = 0; i < qbItems.Count; i++)
+        for (int i = 0; i < newItems.Count; i++)
         {
             docs.Add(new QuestionEmbeddingDocument
             {
-                QuestionBankId = qbItems[i].Id,
-                SubjectId = qbItems[i].SubjectId,
-                GradeLevelId = qbItems[i].GradeLevelId,
+                QuestionBankId = newItems[i].Id,
+                SubjectId = newItems[i].SubjectId,
+                GradeLevelId = newItems[i].GradeLevelId,
                 QuestionText = displayTexts[i],
                 EmbeddingText = embedTexts[i],
                 Embedding = embeddings[i],
@@ -116,7 +128,12 @@ public class QuestionEmbeddingService : IQuestionEmbeddingService
         }
 
         await Collection.InsertManyAsync(docs, cancellationToken: ct);
-        return OperationResult<int>.Success(docs.Count, $"تم تضمين {docs.Count} سؤال بنجاح");
+
+        var totalMsg = existingSet.Count > 0
+            ? $"تم تضمين {docs.Count} سؤال جديد (+{existingSet.Count} موجود مسبقاً)"
+            : $"تم تضمين {docs.Count} سؤال بنجاح";
+
+        return OperationResult<int>.Success(docs.Count, totalMsg);
     }
 
     public async Task<OperationResult<List<SemanticSearchResult>>> SemanticSearchAsync(
@@ -163,33 +180,43 @@ public class QuestionEmbeddingService : IQuestionEmbeddingService
             scored.Add((doc, sim));
         }
 
-        var results = scored
+        var topResults = scored
             .Where(s => s.Score >= request.MinScore)
             .OrderByDescending(s => s.Score)
             .Take(request.Limit)
-            .Select(async s =>
-            {
-                // Fetch full question data from SQL
-                var qb = await _unitOfWork.QuestionBank.GetByIdAsync(s.Doc.QuestionBankId);
-                return new SemanticSearchResult
-                {
-                    QuestionBankId = s.Doc.QuestionBankId,
-                    SubjectId = s.Doc.SubjectId,
-                    GradeLevelId = s.Doc.GradeLevelId,
-                    QuestionText = s.Doc.QuestionText,
-                    CorrectAnswer = qb?.CorrectAnswer,
-                    OptionsJson = qb?.OptionsJson,
-                    Score = Math.Round(s.Score, 4)
-                };
-            })
             .ToList();
 
-        // Wait for all the SQL lookups
-        var finalResults = await Task.WhenAll(results);
+        if (topResults.Count == 0)
+            return OperationResult<List<SemanticSearchResult>>.Success([], "لا توجد نتائج");
+
+        // Batch-fetch all QuestionBank items from SQL (single query, no concurrency)
+        var qbIds = topResults.Select(s => s.Doc.QuestionBankId).Distinct().ToList();
+        var qbMap = new Dictionary<int, Domain.Entities.QuestionBank>();
+        foreach (var qid in qbIds)
+        {
+            var item = await _unitOfWork.QuestionBank.GetByIdAsync(qid);
+            if (item != null)
+                qbMap[qid] = item;
+        }
+
+        var finalResults = topResults.Select(s =>
+        {
+            qbMap.TryGetValue(s.Doc.QuestionBankId, out var found);
+            return new SemanticSearchResult
+            {
+                QuestionBankId = s.Doc.QuestionBankId,
+                SubjectId = s.Doc.SubjectId,
+                GradeLevelId = s.Doc.GradeLevelId,
+                QuestionText = s.Doc.QuestionText,
+                CorrectAnswer = found?.CorrectAnswer,
+                OptionsJson = found?.OptionsJson,
+                Score = Math.Round(s.Score, 4)
+            };
+        }).ToList();
 
         return OperationResult<List<SemanticSearchResult>>.Success(
             finalResults.OrderByDescending(r => r.Score).ToList(),
-            $"تم العثور على {finalResults.Length} نتيجة");
+            $"تم العثور على {finalResults.Count} نتيجة");
     }
 
     public async Task<OperationResult<int>> EmbedAllUnembeddedAsync(CancellationToken ct = default)
@@ -217,7 +244,12 @@ public class QuestionEmbeddingService : IQuestionEmbeddingService
 
     #region Helpers
 
-    /// <summary>نص الـ embedding: فقط نص السؤال + الاختيارات (بدون IDs ولا metadata)</summary>
+    private static readonly System.Text.Json.JsonSerializerOptions _jsonOpts = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
+    /// <summary>نص الـ embedding: نص السؤال + الاختيارات (للبحث الدلالي)</summary>
     private static string BuildQuestionTextFromQb(Domain.Entities.QuestionBank qb)
     {
         var sb = new System.Text.StringBuilder();
@@ -227,7 +259,7 @@ public class QuestionEmbeddingService : IQuestionEmbeddingService
         {
             try
             {
-                var options = System.Text.Json.JsonSerializer.Deserialize<List<QbOptionParse>>(qb.OptionsJson);
+                var options = System.Text.Json.JsonSerializer.Deserialize<List<QbOptionParse>>(qb.OptionsJson, _jsonOpts);
                 if (options is not null && options.Count > 0)
                 {
                     sb.AppendLine("الاختيارات:");
@@ -241,10 +273,10 @@ public class QuestionEmbeddingService : IQuestionEmbeddingService
         return sb.ToString().Trim();
     }
 
-    /// <summary>نص العرض: نفس المحتوى لكن للعرض للطالب</summary>
+    /// <summary>نص العرض: نص السؤال فقط (بدون اختيارات) للعرض النظيف</summary>
     private static string BuildDisplayTextFromQb(Domain.Entities.QuestionBank qb)
     {
-        return BuildQuestionTextFromQb(qb);
+        return qb.QuestionText.Trim();
     }
 
     private class QbOptionParse
