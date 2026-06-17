@@ -26,14 +26,14 @@
         <div class="avatar-ring">
           @if (isLoadingAvatar()) {
             <span class="avatar-spinner material-symbols-outlined">progress_activity</span>
-          } @else if (profilePictureUrl()) {
-            <img [src]="profilePictureUrl()" alt="User avatar" class="avatar-img" />
+          } @else if (displayAvatar()) {
+            <img [src]="displayAvatar()" alt="User avatar" class="avatar-img" />
           } @else {
-            <span class="avatar-placeholder">{{ (userName() || '؟').slice(0, 1) }}</span>
+            <span class="avatar-placeholder">{{ (displayName() || '؟').slice(0, 1) }}</span>
           }
         </div>
         <div class="hidden md:block">
-          <p class="text-label-sm font-bold text-on-surface leading-tight">{{ userName() }}</p>
+          <p class="text-label-sm font-bold text-on-surface leading-tight">{{ displayName() }}</p>
           @if (userRole()) {
             <p class="text-[10px] text-outline leading-tight">{{ userRole() }}</p>
           }

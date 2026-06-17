@@ -29,6 +29,9 @@ export class Topbar implements OnInit {
   profilePictureUrl = signal<string | null>(null);
   isLoadingAvatar = signal(false);
 
+  displayName = computed(() => this.authService.user()?.fullName || this.userName());
+  displayAvatar = computed(() => this.authService.user()?.profilePictureUrl || this.profilePictureUrl());
+
   userRole = computed(() => {
     const roleLabels: Record<string, string> = {
       admin: 'مدير النظام',
@@ -49,7 +52,6 @@ export class Topbar implements OnInit {
     return { home: homeItem, chat: chatItem, notif: notifItem };
   });
 
-  // Use the service's unread count as the real badge value (overrides input)
   realNotifCount = computed(() => {
     return this.notifService.unreadCount();
   });
@@ -69,8 +71,14 @@ export class Topbar implements OnInit {
     this.isLoadingAvatar.set(true);
     this.userService.getMyProfile().subscribe({
       next: res => {
-        const user = res.data;
-        this.profilePictureUrl.set(user?.profilePictureUrl ?? null);
+        const data = res.data;
+        this.profilePictureUrl.set(data?.profilePictureUrl ?? null);
+        if (data?.profilePictureUrl || data?.fullName) {
+          this.authService.updateUserInfo(
+            data.fullName || user.fullName,
+            data.profilePictureUrl
+          );
+        }
         this.isLoadingAvatar.set(false);
       },
       error: () => {
