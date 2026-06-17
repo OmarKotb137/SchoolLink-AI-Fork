@@ -12,14 +12,30 @@ export interface ParentDashboardChild {
   relationship: string;
 }
 
-@Injectable({
-  providedIn: 'root'
-})
+export interface ParentChildStats {
+  name: string;
+  grade: string;
+  class: string;
+  performance: number;
+  grades: { last: string; total: string };
+  absences: number;
+}
+
+export interface ParentDashboardData {
+  children: ParentChildStats[];
+  recentActivities: string[];
+}
+
+@Injectable({ providedIn: 'root' })
 export class ParentDashboardService {
   private http = inject(HttpClient);
   private apiUrl = buildApiUrl('parent-dashboard');
 
   getMyChildren(): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/my-children`);
+  }
+
+  getDashboard(): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}`);
   }
 }

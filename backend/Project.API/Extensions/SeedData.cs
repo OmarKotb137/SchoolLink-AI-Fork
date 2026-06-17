@@ -29,6 +29,9 @@ public static class SeedData
         }
         await ctx.Database.MigrateAsync();
 
+        // ── Seed current-week activity so charts always have data ─────────
+        await SeedCurrentWeekActivity(ctx);
+
         // ── Guard: seed only once ──────────────────────────────────────────
         if (await ctx.Users.IgnoreQueryFilters().AnyAsync()) return;
 
@@ -1285,5 +1288,82 @@ public static class SeedData
             ("مقدمة في البرمجة", "البرمجة: كتابة تعليمات للحاسب باستخدام لغة برمجة.", 1),
             ("المتغيرات",        "المتغير: مكان في الذاكرة يُخزّن فيه قيمة يمكن تغييرها.", 2),
         });
+    }
+
+    /// <summary>
+    /// Seeds absence & feedback records for the current week so dashboard
+    /// charts always show meaningful data even if the main seed is old.
+    /// Runs on every startup.
+    /// </summary>
+    private static async Task SeedCurrentWeekActivity(AppDbContext ctx)
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var weekStart = today.AddDays(-(int)today.DayOfWeek);
+
+        // Skip if current week already has absence records
+        if (await ctx.DailyAbsences.AnyAsync(a => a.AbsenceDate >= weekStart)) return;
+
+        var enrollments = await ctx.StudentEnrollments
+            .Where(e => !e.IsDeleted && e.LeftAt == null)
+            .OrderBy(e => e.Id)
+            .Take(15)
+            .ToListAsync();
+        if (enrollments.Count == 0) return;
+
+        var csts = await ctx.ClassSubjectTeachers
+            .Where(c => !c.IsDeleted)
+            .OrderBy(c => c.Id)
+            .Take(5)
+            .ToListAsync();
+        if (csts.Count == 0) return;
+
+        var periods = await ctx.EvaluationPeriods
+            .Where(p => !p.IsDeleted)
+            .OrderBy(p => p.Id)
+            .Take(3)
+            .ToListAsync();
+        if (periods.Count == 0) return;
+
+        var teacherIds = await ctx.Users
+            .Where(u => u.Role == UserRole.Teacher && !u.IsDeleted)
+            .OrderBy(u => u.Id)
+            .Select(u => u.Id)
+            .Take(3)
+            .ToListAsync();
+
+        var existing = await ctx.DailyAbsences
+            .Where(a => a.AbsenceDate >= weekStart)
+            .Select(a => new { a.EnrollmentId, CstId = (int?)a.ClassSubjectTeacherId, a.AbsenceDate })
+            .ToListAsync();
+        var existingSet = new HashSet<(int, int?, DateOnly)>(
+            existing.Select(e => (e.EnrollmentId, e.CstId, e.AbsenceDate)));
+
+        var now = DateTime.UtcNow;
+        var rng = new Random(99);
+        var absences = new List<DailyAbsence>();
+
+        foreach (var enr in enrollments)
+        {
+            var cst = csts[rng.Next(csts.Count)];
+            var dayOffset = rng.Next(0, 7);
+            var date = weekStart.AddDays(dayOffset);
+            var key = (enr.Id, (int?)cst.Id, date);
+            if (existingSet.Contains(key)) continue;
+            existingSet.Add(key);
+            absences.Add(new DailyAbsence
+            {
+                EnrollmentId          = enr.Id,
+                ClassSubjectTeacherId = cst.Id,
+                AbsenceDate           = date,
+                IsAbsent              = true,
+                Reason                = rng.Next(2) == 0 ? "مرض" : "ظرف عائلي",
+                PeriodId              = periods[rng.Next(periods.Count)].Id,
+                RecordedById          = teacherIds.Count > 0 ? teacherIds[rng.Next(teacherIds.Count)] : 0,
+                CreatedAt = now, UpdatedAt = now
+            });
+        }
+
+        ctx.DailyAbsences.AddRange(absences);
+        await ctx.SaveChangesAsync();
     }
 }

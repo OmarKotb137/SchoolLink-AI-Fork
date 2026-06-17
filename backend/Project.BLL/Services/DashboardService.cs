@@ -111,17 +111,23 @@ public class DashboardService : IDashboardService
             var absences = await _unitOfWork.DailyAbsences
                 .FindAsync(a => a.AbsenceDate >= weekStart && a.AbsenceDate <= today && a.IsAbsent && !a.IsDeleted);
 
+            var feedbacks = await _unitOfWork.LessonFeedbacks
+                .FindAsync(f => f.CreatedAt >= weekStart.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc)
+                             && f.CreatedAt <= today.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc)
+                             && !f.IsDeleted);
+
             var dayNames = new[] { "السبت", "الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة" };
             var result = new List<WeeklyActivityDto>();
 
             for (int i = 0; i < 7; i++)
             {
                 var date = weekStart.AddDays(i);
-                var count = absences.Count(a => a.AbsenceDate == date);
+                var absCount = absences.Count(a => a.AbsenceDate == date);
+                var fbCount = feedbacks.Count(f => DateOnly.FromDateTime(f.CreatedAt) == date);
                 result.Add(new WeeklyActivityDto
                 {
                     Day = dayNames[i],
-                    Count = count
+                    Count = absCount + fbCount
                 });
             }
 
