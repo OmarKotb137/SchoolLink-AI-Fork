@@ -6,6 +6,8 @@ import { Sidebar } from '../../layouts/sidebar/sidebar';
 import { Topbar } from '../../layouts/topbar/topbar';
 import { GradeMonitorService, Template, ClassItem, Student, SchoolProfile, EvaluationPeriod, Criteria } from './grade-monitor.service';
 import { GradeLevelService, GradeLevel } from '../../core/services/grade-level.service';
+import { AcademicYearService } from '../../core/services/academic-year.service';
+import { RoleService } from '../../shared/role.service';
 import { WordGeneratorService } from './word-generator.service';
 
 @Component({
@@ -19,6 +21,8 @@ export class GradeMonitor implements OnInit {
   private gradeLevelService = inject(GradeLevelService);
   private wg = inject(WordGeneratorService);
   private cdr = inject(ChangeDetectorRef);
+  private academicYearService = inject(AcademicYearService);
+  private roleService = inject(RoleService);
 
   sidebarOpen = signal(false);
   activeSection = signal<'dash' | 'tmpl' | 'cls' | 'entry' | 'exp'>('dash');
@@ -33,6 +37,7 @@ export class GradeMonitor implements OnInit {
   schoolProfile = signal<SchoolProfile | null>(null);
   periods = signal<EvaluationPeriod[]>([]);
   subjects = signal<{ id: number; name: string }[]>([]);
+  teacherSubjects = signal<{ id: number; name: string }[]>([]);
   studentCount = signal(0);
   academicYearId = signal<number>(1);
   selectedGradeLevelId = signal<number>(1);
@@ -47,6 +52,7 @@ export class GradeMonitor implements OnInit {
 
   entryClassId = signal<number | null>(null);
   entryType = signal<'grades' | 'absence' | 'exams' | 'final'>('grades');
+  entryTerm = signal<number>(1); // 1 = first semester, 2 = second semester
   entryWeek = signal<number>(1);
   entryTemplateId = signal<number | null>(null); // لاختيار قالب/مادة مختلف
   enrollmentMap = signal<Record<number, number>>({}); // studentId → enrollmentId
@@ -71,7 +77,12 @@ export class GradeMonitor implements OnInit {
 
   currentPeriodId = computed(() => {
     const weekNum = Number(this.entryWeek());
-    const p = this.periods().find(p => p.periodType === 'Weekly' && p.orderNum === weekNum);
+    const term = this.entryTerm();
+    const p = this.periods().find(p =>
+      p.periodType === 'Weekly' &&
+      p.orderNum === weekNum &&
+      (term == null || p.semesterNumber == null || p.semesterNumber === term)
+    );
     return p?.id ?? null;
   });
 
@@ -87,7 +98,7 @@ export class GradeMonitor implements OnInit {
   entryWeeksForQuick = computed(() => {
     const cid = this.quickEntryClassId();
     if (!cid) return [];
-    const cls = this.classes().find(c => c.id === cid);
+    const cls = this.visibleClasses().find(c => c.id === cid);
     if (!cls) return [];
     const tmpl = this.templates().find(t => t.id === cls.template_id);
     if (!tmpl) return [];
@@ -102,9 +113,26 @@ export class GradeMonitor implements OnInit {
   //  INIT
   // ══════════════════════════════════════
   ngOnInit() {
+    // Auto-detect teacher role → show only their classes
+    const role = this.roleService.currentRole();
+    if (role === 'teacher') {
+      this.isTeacherMode.set(true);
+    }
+
     this.loadFromLocalStorage();
     this.loadGrades();
     this.loadApiClasses();
+    this.loadTeacherSubjects();
+
+    this.academicYearService.getCurrentTerm().subscribe({
+      next: (res) => {
+        if (res?.data != null) {
+          // Map enum string to number (FirstSemester=1, SecondSemester=2, Final=3)
+          const termMap: Record<string, number> = { FirstSemester: 1, SecondSemester: 2, Final: 3 };
+          this.entryTerm.set(termMap[res.data as string] ?? 1);
+        }
+      }
+    });
 
     // Load current academic year first, then use it
     this.api.getCurrentAcademicYear().subscribe({
@@ -182,6 +210,7 @@ export class GradeMonitor implements OnInit {
     { id: 'final_total', name: 'المجموع النهائي', max: 100 },
   ]);
   tAbsentDays = signal<string[]>(['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس']);
+  tTerm = signal<number>(1); // 1 = الترم الأول, 2 = الترم الثاني
   tmplModalOpen = signal(false);
 
   private async loadTemplatesAsync(academicYearId?: number) {
@@ -253,6 +282,34 @@ export class GradeMonitor implements OnInit {
   }
 
   onTmplConfigChange() {
+    this.updateSuggestedCols();
+  }
+
+  onTmplTermChange(term: number) {
+    this.tTerm.set(term);
+    this.academicYearService.getCurrent().subscribe({
+        next: (res) => {
+          if (res?.isSuccess && res.data) {
+            const year = res.data;
+            const startStr = term === 1 ? year.firstSemesterStartDate : year.secondSemesterStartDate;
+            const endStr = term === 1 ? year.firstSemesterEndDate : year.secondSemesterEndDate;
+            if (startStr) {
+              this.tStart.set(startStr);
+            }
+            if (startStr && endStr) {
+              const start = new Date(startStr);
+              const end = new Date(endStr);
+              const diffDays = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+              const weeks = Math.max(1, Math.round((diffDays + 6) / 7));
+              this.tWeeks.set(weeks);
+            }
+            this.updateSuggestedCols();
+          }
+        }
+      });
+  }
+
+  private updateSuggestedCols() {
     const startDateStr = this.tStart();
     const weeksCount = Number(this.tWeeks()) || 12;
     if (!startDateStr) return;
@@ -289,8 +346,16 @@ export class GradeMonitor implements OnInit {
     const p = this.schoolProfile();
     const weekNames = ['الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس', 'السابع',
       'الثامن', 'التاسع', 'العاشر', 'الحادي عشر', 'الثاني عشر'];
-    const weeks = this.periods().filter((p: any) => p.periodType === 'Weekly');
-    const wNames = weeks.map((w: any, i: number) => w.name || weekNames[i] || '');
+    // Filter periods by the template's term if specified
+    const term = t.term;
+    let weeks = this.periods().filter((p: any) => p.periodType === 'Weekly');
+    if (term != null) {
+      weeks = weeks.filter(w => w.semesterNumber == null || w.semesterNumber === this.normalizeTerm(term));
+    }
+    // If term is specified, re-number weeks sequentially (1,2,3…) instead of using DB names (19,20,21…)
+    const wNames = weeks.map((w: any, i: number) =>
+      term != null ? ('الأسبوع ' + (i + 1)) : (w.name || weekNames[i] || '')
+    );
     const wDates = weeks.map((w: any) => {
       if (!w.startDate) return '';
       const d = new Date(w.startDate);
@@ -329,6 +394,7 @@ export class GradeMonitor implements OnInit {
       absent_days: t.absent_days?.length ? t.absent_days : ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'],
       weekly_max: weeklyMax,
       month_groups: mGroups,
+      term: t.term,
     };
   }
 
@@ -344,6 +410,7 @@ export class GradeMonitor implements OnInit {
     this.tDir.set(t?.directorate || profile?.directorate || '');
     this.tAdm.set(t?.administration || profile?.educationalAdministration || '');
     this.tAbsentDays.set(t?.absent_days?.length ? t.absent_days : ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس']);
+    this.tTerm.set(t?.term ?? 1);
 
     const criteria = t?.criteria?.length ? t.criteria : [
       { id: 'default_1', name: 'الأداء المنزلي', max: 10, autoCalcType: 0, absenceMax: undefined },
@@ -401,6 +468,7 @@ export class GradeMonitor implements OnInit {
       absent_days: this.tAbsentDays(),
       weekly_max: this.tCriteria().reduce((a, c) => a + c.max, 0),
       month_groups: monthGroups,
+      term: this.tTerm(),
     };
 
     const existing = this.editTmplId() ? this.templates().find(t => t.id === this.editTmplId()) : null;
@@ -485,7 +553,7 @@ export class GradeMonitor implements OnInit {
     };
 
     if (apiId) {
-      this.api.updateTemplate(apiId, { id: apiId, name: data.name, calculationType: 1, isActive: true, weeks: this.tWeeks() || 12 }).subscribe({
+      this.api.updateTemplate(apiId, { id: apiId, name: data.name, calculationType: 1, isActive: true, weeks: this.tWeeks() || 12, term: this.tTerm() }).subscribe({
         next: () => saveItems(apiId),
         error: () => saveLocal(),
       });
@@ -497,7 +565,8 @@ export class GradeMonitor implements OnInit {
         academicYearId: this.academicYearId(),
         name: data.name,
         calculationType: 1,
-        weeks: this.tWeeks() || 12
+        weeks: this.tWeeks() || 12,
+        term: this.tTerm()
       }).subscribe({
         next: (res) => saveItems(res.data.id),
         error: () => saveLocal(),
@@ -644,7 +713,7 @@ export class GradeMonitor implements OnInit {
     this.api.getMySubjectsCurrentYear().subscribe({
       next: (res) => {
         const data = Array.isArray(res) ? res : (res?.data ?? []);
-        if (data.length) this.subjects.set(data);
+        if (data.length) this.teacherSubjects.set(data);
       },
     });
   }
@@ -725,6 +794,14 @@ export class GradeMonitor implements OnInit {
     return this.apiClasses().filter(c => c.gradeLevelId === gradeId);
   });
 
+  /** الفصول الظاهرة للمستخدم — لو هو مدرس بنحصرها في فصوله وموادّه بس */
+  visibleClasses = computed(() => {
+    const all = this.classes();
+    if (!this.isTeacherMode()) return all;
+    const teacherSubjectNames = new Set(this.teacherSubjects().map(s => s.name));
+    return all.filter(c => teacherSubjectNames.has(c.subject));
+  });
+
   openClsForm(c?: ClassItem) {
     this.editClsId.set(c ? c.id : null);
     if (c) {
@@ -789,7 +866,7 @@ export class GradeMonitor implements OnInit {
   }
 
   delCls(id: number) {
-    const item = this.classes().find(c => c.id === id);
+    const item = this.visibleClasses().find(c => c.id === id);
     if (!item || !item.linkId) return;
     this.api.deleteLink(item.linkId).subscribe({
       next: () => {
@@ -811,7 +888,7 @@ export class GradeMonitor implements OnInit {
     }
     const cid = this.entryClassId();
     if (!cid) return null;
-    const cls = this.classes().find(c => c.id === Number(cid));
+    const cls = this.visibleClasses().find(c => c.id === Number(cid));
     if (!cls) return null;
     return this.templates().find(t => t.id === cls.template_id)
       || (cls.subject ? this.templates().find(t => t.subjectName === cls.subject) : null)
@@ -821,7 +898,7 @@ export class GradeMonitor implements OnInit {
   currentCls = computed(() => {
     const cid = this.entryClassId();
     if (!cid) return null;
-    return this.classes().find(c => c.id === Number(cid)) || null;
+    return this.visibleClasses().find(c => c.id === Number(cid)) || null;
   });
 
   weeklyMax = computed(() => {
@@ -853,9 +930,9 @@ export class GradeMonitor implements OnInit {
 
   loadTopStudents(classId: number) {
     this.loadingTopStudents.set(true);
-    this.api.recalculateFinalGrades(classId).subscribe({
+    this.api.recalculateFinalGrades(classId, this.entryTerm()).subscribe({
       next: () => {
-        this.api.getTopStudents(classId).subscribe({
+        this.api.getTopStudents(classId, 10, this.entryTerm()).subscribe({
           next: (res) => {
             const data = res?.isSuccess ? res.data : (Array.isArray(res) ? res : []);
             this.topStudentsData.set(data ?? []);
@@ -871,9 +948,9 @@ export class GradeMonitor implements OnInit {
 
   loadNeedingSupport(classId: number) {
     this.loadingNeedingSupport.set(true);
-    this.api.recalculateFinalGrades(classId).subscribe({
+    this.api.recalculateFinalGrades(classId, this.entryTerm()).subscribe({
       next: () => {
-        this.api.getStudentsNeedingSupport(classId).subscribe({
+        this.api.getStudentsNeedingSupport(classId, 50, this.entryTerm()).subscribe({
           next: (res) => {
             const data = res?.isSuccess ? res.data : (Array.isArray(res) ? res : []);
             this.needingSupportData.set(data ?? []);
@@ -904,6 +981,12 @@ export class GradeMonitor implements OnInit {
     this.entryClassId.set(+cid);
     this.entryWeek.set(1);
     this.entryTemplateId.set(null); // إعادة تعيين القالب اليدوي
+
+    // تعيين الترم تلقائياً من القالب المرتبط
+    const cls = this.visibleClasses().find(c => c.id === Number(cid));
+    const tmpl = cls ? (this.templates().find(t => t.id === cls.template_id) || null) : null;
+    this.entryTerm.set(this.normalizeTerm(tmpl?.term) ?? 1);
+
     this.activeSection.set('entry');
     this.clearGrades();
     if (this.dataReady()) this.loadEvaluations();
@@ -914,7 +997,7 @@ export class GradeMonitor implements OnInit {
   availableTemplatesForEntry = computed(() => {
     const cid = this.entryClassId();
     if (!cid) return [];
-    const cls = this.classes().find(c => c.id === Number(cid));
+    const cls = this.visibleClasses().find(c => c.id === Number(cid));
     if (!cls) return [];
     // ابحث عن القالب المرتبط أولاً، ثم كل القوالب التي لها نفس المادة
     const linked = this.templates().find(t => t.id === cls.template_id);
@@ -957,15 +1040,50 @@ export class GradeMonitor implements OnInit {
   // ══════════════════════════════════════
   //  WEEK HELPERS
   // ══════════════════════════════════════
+
+  /** Normalize AcademicTerm string/number to a number (1=First, 2=Second) */
+  private normalizeTerm(val: any): number | null | undefined {
+    if (val == null || val === undefined) return val;
+    if (typeof val === 'number') return val;
+    if (typeof val === 'string') {
+      const map: Record<string, number> = { FirstSemester: 1, SecondSemester: 2, Final: 3, الأول: 1, الثاني: 2 };
+      if (val in map) return map[val];
+      const n = Number(val);
+      if (!isNaN(n)) return n;
+    }
+    return null;
+  }
+
+  /** Weekly periods filtered by current term (if any) */
+  private termWeeks = computed(() => {
+    const term = this.entryTerm();
+    let periods = this.periods().filter(p => p.periodType === 'Weekly');
+    if (term != null) {
+      periods = periods.filter(p => p.semesterNumber == null || p.semesterNumber === term);
+    }
+    return periods;
+  });
+
   entryWeeks = computed(() => {
+    const periods = this.termWeeks();
     const tmpl = this.currentTmpl();
-    if (!tmpl) return [];
-    const periods = this.periods().filter(p => p.periodType === 'Weekly');
+    if (!tmpl) {
+      return periods.length > 0
+        ? Array.from({ length: periods.length }, (_, i) => i + 1)
+        : [];
+    }
     const maxWeeks = Math.min(tmpl.weeks, periods.length);
     return Array.from({ length: maxWeeks }, (_, i) => i + 1);
   });
 
   weekLabel(wn: number): string {
+    const periods = this.termWeeks();
+    const idx = Number(wn) - 1;
+    if (idx >= 0 && idx < periods.length) {
+      const period = periods[idx];
+      const pDate = period.startDate ? ' (' + period.startDate + ')' : '';
+      return 'الأسبوع ' + (idx + 1) + pDate;
+    }
     const tmpl = this.currentTmpl();
     if (!tmpl) return 'الأسبوع ' + wn;
     const num = Number(wn);
@@ -975,15 +1093,18 @@ export class GradeMonitor implements OnInit {
   }
 
   private getPeriodId(weekNum: number): number | null {
-    const num = Number(weekNum);
-    const period = this.periods().find(p => p.periodType === 'Weekly' && p.orderNum === num);
-    return period?.id ?? null;
+    const periods = this.termWeeks();
+    const idx = Number(weekNum) - 1;
+    if (idx >= 0 && idx < periods.length) {
+      return periods[idx].id ?? null;
+    }
+    return null;
   }
 
   exportTmpl = computed(() => {
     const cid = this.exportClassId();
     if (!cid) return null;
-    const cls = this.classes().find(c => c.id === Number(cid));
+    const cls = this.visibleClasses().find(c => c.id === Number(cid));
     if (!cls) return null;
     return this.templates().find(t => t.id === cls.template_id)
       || (cls.subject ? this.templates().find(t => t.subjectName === cls.subject) : null)
@@ -993,7 +1114,7 @@ export class GradeMonitor implements OnInit {
   exportCls = computed(() => {
     const cid = this.exportClassId();
     if (!cid) return null;
-    return this.classes().find(c => c.id === Number(cid)) || null;
+    return this.visibleClasses().find(c => c.id === Number(cid)) || null;
   });
 
   getExportMonthAverage(studentId: number, monthGroup: { name: string; weeks: number[] }): string {
@@ -1053,8 +1174,9 @@ export class GradeMonitor implements OnInit {
     const wn = Number(this.entryWeek());
     const tmpl = this.currentTmpl();
     if (!tmpl) return 0;
-    return tmpl.criteria.reduce((sum, c) =>
+    const total = tmpl.criteria.reduce((sum, c) =>
       sum + (this.gradeValues()[sid + '_' + wn + '_' + c.id] || 0), 0);
+    return Math.round(total * 10) / 10;
   }
 
   toggleAbs(sid: number, day: string) {
@@ -1099,11 +1221,11 @@ export class GradeMonitor implements OnInit {
   }
 
   finalWritten(sid: number): number {
-    return this.getFinal(sid, 'ma') + this.getFinal(sid, 'e1') + this.getFinal(sid, 'e2');
+    return Math.round((this.getFinal(sid, 'ma') + this.getFinal(sid, 'e1') + this.getFinal(sid, 'e2')) * 10) / 10;
   }
 
   finalTotal(sid: number): number {
-    return this.finalWritten(sid) + this.getFinal(sid, 'fe');
+    return Math.round((this.finalWritten(sid) + this.getFinal(sid, 'fe')) * 10) / 10;
   }
 
   isFinalComplete(sid: number): boolean {
@@ -1240,7 +1362,7 @@ export class GradeMonitor implements OnInit {
     const students = cls.students;
     if (!students.length) { this.loadingWeek.set(false); return; }
 
-    this.api.getAssessmentsByClass(cls.id)
+    this.api.getAssessmentsByClass(cls.id, this.entryTerm())
       .pipe(takeUntil(this.cancelLoad$))
       .subscribe({
         next: (res) => {
@@ -1282,7 +1404,7 @@ export class GradeMonitor implements OnInit {
   }
 
   private autoCalcFinalGrades(cls: ClassItem) {
-    this.api.recalculateFinalGrades(cls.id).subscribe({
+    this.api.recalculateFinalGrades(cls.id, this.entryTerm()).subscribe({
       next: (res) => {
         this.loadingWeek.set(false);
         if (res.isSuccess && res.data?.length) {
@@ -1335,6 +1457,9 @@ export class GradeMonitor implements OnInit {
     const periodId = this.currentPeriodId();
     if (!periodId || tmpl.absent_days.length === 0) { this.loadingWeek.set(false); return; }
 
+    const period = this.periods().find(p => p.id === periodId);
+    if (!period || !period.startDate || !period.endDate) { this.loadingWeek.set(false); return; }
+
     const students = cls.students;
     const enrollmentIds: number[] = [];
     const stIdByEnrollment: Record<number, number> = {};
@@ -1345,8 +1470,8 @@ export class GradeMonitor implements OnInit {
     }
     if (enrollmentIds.length === 0) { this.loadingWeek.set(false); return; }
 
-    const firstDay = this.getDateForDay(wn, tmpl.absent_days[0]);
-    const lastDay = this.getDateForDay(wn, tmpl.absent_days[tmpl.absent_days.length - 1]);
+    const firstDay = period.startDate;
+    const lastDay = period.endDate;
 
     this.api.getAbsencesByEnrollments(enrollmentIds, firstDay, lastDay)
       .pipe(takeUntil(this.cancelLoad$))
@@ -1384,8 +1509,11 @@ export class GradeMonitor implements OnInit {
       stIdByEnrollment[enrollmentId] = st.id;
     }
     if (enrollmentIds.length === 0) return;
-    const firstDay = this.getDateForDay(wn, tmpl.absent_days[0]);
-    const lastDay = this.getDateForDay(wn, tmpl.absent_days[tmpl.absent_days.length - 1]);
+
+    const period = this.periods().find(p => p.id === periodId);
+    if (!period || !period.startDate || !period.endDate) return;
+    const firstDay = period.startDate;
+    const lastDay = period.endDate;
     this.api.getAbsencesByEnrollments(enrollmentIds, firstDay, lastDay).subscribe({
       next: (res) => {
         if (!res.isSuccess || !res.data?.length) return;
@@ -1620,7 +1748,7 @@ export class GradeMonitor implements OnInit {
       const classId = cls.id;
 
       // أولا نجلب التقييمات الموجودة لنعرف ماذا ننشئ وماذا نحدث
-      this.api.getAssessmentsByClass(classId).pipe(takeUntil(this.cancelLoad$)).subscribe({
+      this.api.getAssessmentsByClass(classId, this.entryTerm()).pipe(takeUntil(this.cancelLoad$)).subscribe({
         next: (existingRes) => {
           const existingMap: Record<string, number> = {};
           if (existingRes.isSuccess && existingRes.data?.length) {
@@ -1723,7 +1851,7 @@ export class GradeMonitor implements OnInit {
         students.push(entry);
       }
 
-      this.api.calculateFullFinalGrades(classId, { students }).subscribe({
+      this.api.calculateFullFinalGrades(classId, { students, term: this.entryTerm() }).subscribe({
         next: (res) => {
           this.saving.set(false);
           if (res.isSuccess) {
@@ -1759,6 +1887,23 @@ export class GradeMonitor implements OnInit {
   }
 
   private getDateForDay(weekNum: number, dayName: string): string {
+    const periodId = this.currentPeriodId();
+    if (periodId) {
+      const period = this.periods().find(p => p.id === periodId);
+      if (period?.startDate) {
+        const start = new Date(period.startDate);
+        const dayMap: Record<string, number> = {
+          'الأحد': 0, 'الاثنين': 1, 'الثلاثاء': 2, 'الأربعاء': 3,
+          'الخميس': 4, 'الجمعة': 5, 'السبت': 6
+        };
+        const targetDay = dayMap[dayName] ?? 0;
+        const currentDay = start.getDay();
+        let diff = targetDay - currentDay;
+        if (diff < 0) diff += 7; // next occurrence within the same week
+        start.setDate(start.getDate() + diff);
+        return start.toISOString().split('T')[0];
+      }
+    }
     const tmpl = this.currentTmpl();
     const num = Number(weekNum);
     if (!tmpl?.start_date) {
@@ -1774,7 +1919,8 @@ export class GradeMonitor implements OnInit {
     };
     const targetDay = dayMap[dayName] ?? 0;
     const currentDay = start.getDay();
-    const diff = targetDay - currentDay;
+    let diff = targetDay - currentDay;
+    if (diff < 0) diff += 7;
     start.setDate(start.getDate() + diff);
     return start.toISOString().split('T')[0];
   }
@@ -1795,13 +1941,52 @@ export class GradeMonitor implements OnInit {
       school: tmpl.school || profile?.schoolName || '',
     };
 
-    const wkCount = Math.min(tmpl.weeks, this.periods().filter(p => p.periodType === 'Weekly').length);
-    const weeks = tmpl.week_names.slice(0, wkCount).map((name, i) => ({
-      name,
-      date: tmpl.week_dates[i] || '',
-    })).filter(w => w.name);
+    let exportPeriods = this.periods().filter(p => p.periodType === 'Weekly');
+    if (tmpl.term != null) {
+      exportPeriods = exportPeriods.filter(p => p.semesterNumber == null || p.semesterNumber === this.normalizeTerm(tmpl.term));
+    }
+    // Fetch periods from API if not yet loaded
+    if (!exportPeriods.length) {
+      try {
+        const ayId = this.academicYearId();
+        const periodsRes: any = await firstValueFrom(this.api.getPeriodsByAcademicYear(ayId));
+        if (periodsRes?.isSuccess && periodsRes.data?.length) {
+          this.periods.set(periodsRes.data);
+          exportPeriods = periodsRes.data.filter((p: any) => p.periodType === 'Weekly');
+          if (tmpl.term != null) {
+            exportPeriods = exportPeriods.filter((p: any) => p.semesterNumber == null || p.semesterNumber === this.normalizeTerm(tmpl.term));
+          }
+        }
+      } catch { }
+    }
+
+    // Build weeks — use exportPeriods if available, otherwise fall back to template week_names
+    const wkCount = exportPeriods.length > 0
+      ? Math.min(tmpl.weeks, exportPeriods.length)
+      : (tmpl.weeks || 12);
+    let weeks: { name: string; date: string }[] = [];
+    if (exportPeriods.length > 0) {
+      weeks = exportPeriods.slice(0, wkCount).map((p, i) => ({
+        name: tmpl.week_names[i] || p.name || 'الأسبوع ' + (i + 1),
+        date: p.startDate ? '(' + p.startDate + ')' : (tmpl.week_dates[i] || ''),
+      }));
+    } else {
+      // Fallback: generate virtual week names from template data
+      weeks = Array.from({ length: wkCount }, (_, i) => ({
+        name: tmpl.week_names[i] || 'الأسبوع ' + (i + 1),
+        date: tmpl.week_dates[i] ? '(' + tmpl.week_dates[i] + ')' : '',
+      }));
+    }
 
     const type = this.exportType();
+
+    // Build extra header fields
+    const gradeLevel = tmpl.stage || '';
+    const termNum = this.normalizeTerm(tmpl.term);
+    const termName = termNum === 1 ? 'الفصل الدراسي الأول'
+      : termNum === 2 ? 'الفصل الدراسي الثاني'
+      : 'الفصل الدراسي';
+    const academicYearName = this.periods()[0]?.academicYearName || this.periods().find(p => p.academicYearName)?.academicYearName || '';
 
     try {
       let blob: Blob;
@@ -1824,6 +2009,7 @@ export class GradeMonitor implements OnInit {
         }
         blob = await this.wg.generateWeeklyGrades({
           schoolInfo, title: tmpl.name, subject: cls.subject, classRoom: cls.name,
+          gradeLevel, termName, academicYearName,
           students: cls.students, weeks, criteria: tmpl.criteria,
           gradeData, weeklyMax: tmpl.weekly_max,
         });
@@ -1843,15 +2029,16 @@ export class GradeMonitor implements OnInit {
         }
         blob = await this.wg.generateAttendanceSheet({
           schoolInfo, title: 'كشف الغياب الأسبوعي', subject: cls.subject, classRoom: cls.name,
+          gradeLevel, termName, academicYearName,
           students: cls.students, weeks, days: tmpl.absent_days,
           absenceData, avgMax: 5,
         });
 
       } else {
-        await firstValueFrom(this.api.recalculateFinalGrades(cls.id));
+        await firstValueFrom(this.api.recalculateFinalGrades(cls.id, this.entryTerm()));
         const [assessmentsRes, finalsRes] = await Promise.all([
-          firstValueFrom(this.api.getAssessmentsByClass(cls.id)),
-          firstValueFrom(this.api.getFinalGradesByClass(cls.id))
+          firstValueFrom(this.api.getAssessmentsByClass(cls.id, this.entryTerm())),
+          firstValueFrom(this.api.getFinalGradesByClass(cls.id, this.entryTerm()))
         ]);
 
         const examData: Record<number, { exam1: number; exam2: number }> = {};
@@ -1902,6 +2089,7 @@ export class GradeMonitor implements OnInit {
 
         blob = await this.wg.generateSummaryGrades({
           schoolInfo, title: 'السجل المجمع', subject: cls.subject, classRoom: cls.name,
+          gradeLevel, termName, academicYearName,
           students: cls.students, gradeColumns: tmpl.summary_columns.map(c => ({ id: c.id, label: c.name, max: c.max })),
           monthAverages, examData, finalData,
           monthGroups: tmpl.month_groups, gradeData,
@@ -1924,26 +2112,76 @@ export class GradeMonitor implements OnInit {
 
   private async loadAllWeeksGrades(cls: ClassItem, tmpl: Template): Promise<Record<string, Record<string, number>>> {
     const result: Record<string, Record<string, number>> = {};
-    const periods = this.periods().filter(p => p.periodType === 'Weekly');
-    const weeksCount = Math.min(tmpl.weeks, periods.length);
-    for (let wn = 1; wn <= weeksCount; wn++) {
-      const period = periods.find(p => p.orderNum === wn);
-      if (!period) continue;
-      try {
-        const res: any = await firstValueFrom(this.api.getEvaluationsByClassPeriod(cls.id, period.id));
-        if (!res?.isSuccess || !res.data?.length) continue;
-        for (const ce of res.data) {
-          const st = cls.students.find(s => s.name === ce.studentName)
-            || cls.students.find(s => (s.enrollmentId ?? s.id) === ce.enrollmentId);
-          if (!st) continue;
-          const key = `${st.id}_${wn}`;
-          if (!result[key]) result[key] = {};
-          for (const ev of (ce.evaluations || [])) {
-            if (ev.score != null) result[key]['c' + ev.evaluationItemId] = ev.score;
+    console.log('loadAllWeeksGrades: start', { classId: cls.id, studentsCount: cls.students.length, term: tmpl.term, weeks: tmpl.weeks });
+
+    // 1) Try API: fetch periods then evaluations per period
+    try {
+      const ayId = this.academicYearId();
+      const periodsRes: any = await firstValueFrom(this.api.getPeriodsByAcademicYear(ayId));
+      console.log('loadAllWeeksGrades: periods API success', { isSuccess: periodsRes?.isSuccess, count: periodsRes?.data?.length });
+      if (periodsRes?.isSuccess && periodsRes.data?.length) {
+        this.periods.set(periodsRes.data);
+        let periods = periodsRes.data.filter((p: any) => p.periodType === 'Weekly');
+        console.log('loadAllWeeksGrades: after Weekly filter', { count: periods.length });
+        if (tmpl.term != null) {
+          periods = periods.filter((p: any) => p.semesterNumber == null || p.semesterNumber === this.normalizeTerm(tmpl.term));
+          console.log('loadAllWeeksGrades: after term filter', { count: periods.length, term: tmpl.term });
+        }
+        const weeksCount = Math.min(tmpl.weeks, periods.length);
+        console.log('loadAllWeeksGrades: weeksCount', weeksCount);
+        for (let wn = 1; wn <= weeksCount; wn++) {
+          const period = periods[wn - 1];
+          if (!period) continue;
+          try {
+            console.log('loadAllWeeksGrades: fetching evaluations', { classId: cls.id, periodId: period.id, weekNum: wn });
+            const res: any = await firstValueFrom(this.api.getEvaluationsByClassPeriod(cls.id, period.id));
+            console.log('loadAllWeeksGrades: eval response', { isSuccess: res?.isSuccess, dataCount: res?.data?.length, periodId: period.id });
+            if (res?.isSuccess && Array.isArray(res.data)) {
+              for (const ce of res.data) {
+                // Match by enrollmentId (more reliable than name)
+                const st = cls.students.find(s => (s.enrollmentId ?? s.id) === ce.enrollmentId)
+                  || cls.students.find(s => s.name === ce.studentName);
+                if (!st) continue;
+                const key = `${st.id}_${wn}`;
+                if (!result[key]) result[key] = {};
+                for (const ev of (ce.evaluations || [])) {
+                  if (ev.score != null) result[key]['c' + ev.evaluationItemId] = ev.score;
+                }
+              }
+            }
+          } catch (e) {
+            console.error(`loadAllWeeksGrades: period ${period.id} eval fetch failed`, e);
           }
         }
-      } catch { }
+      }
+    } catch (e) {
+      console.error('loadAllWeeksGrades: periods fetch failed', e);
     }
+
+    console.log('loadAllWeeksGrades: API result keys count', Object.keys(result).length);
+
+    // 2) If API returned nothing, try local gradeValues (what user sees on screen)
+    if (!Object.keys(result).length) {
+      const gv = this.gradeValues();
+      console.log('loadAllWeeksGrades: trying gradeValues fallback', { gradeValuesCount: Object.keys(gv).length });
+      if (Object.keys(gv).length) {
+        for (const st of cls.students) {
+          for (let wn = 1; wn <= tmpl.weeks; wn++) {
+            let hasData = false;
+            const entry: Record<string, number> = {};
+            for (const c of tmpl.criteria) {
+              const val = gv[st.id + '_' + wn + '_' + c.id];
+              if (val != null) { entry[c.id] = val; hasData = true; }
+            }
+            if (hasData) result[`${st.id}_${wn}`] = entry;
+          }
+        }
+      } else {
+        console.warn('loadAllWeeksGrades: no data from API and no local gradeValues');
+      }
+    }
+
+    console.log('loadAllWeeksGrades: final result keys count', Object.keys(result).length);
     return result;
   }
 

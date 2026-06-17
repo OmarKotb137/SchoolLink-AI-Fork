@@ -62,8 +62,12 @@ export class StudentDashboardService {
       .pipe(map(r => r.data), catchError(() => of(null)));
   }
 
-  loadStats(enrollmentId: number) {
-    const averages$ = this.http.get<OperationResult<any[]>>(buildApiUrl(`PeriodAverages/by-enrollment/${enrollmentId}`))
+  loadStats(enrollmentId: number, term?: number | null) {
+    let averagesUrl = buildApiUrl(`PeriodAverages/by-enrollment/${enrollmentId}`);
+    if (term != null) {
+      averagesUrl += `?term=${term}`;
+    }
+    const averages$ = this.http.get<OperationResult<any[]>>(averagesUrl)
       .pipe(map(r => r.data ?? []), catchError(() => of([])));
 
     const submissions$ = this.http.get<OperationResult<any[]>>(buildApiUrl(`assignment-submissions/by-student/${enrollmentId}`))

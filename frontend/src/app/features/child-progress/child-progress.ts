@@ -2,6 +2,7 @@ import { Component, signal, OnInit, inject } from '@angular/core';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
 import { Topbar } from '../../layouts/topbar/topbar';
 import { ChildProgressService, ChildProgressItem } from './child-progress.service';
+import { AcademicYearService } from '../../core/services/academic-year.service';
 
 interface AssignmentView {
   id: number;
@@ -30,6 +31,7 @@ interface ExamView {
 })
 export class ChildProgress implements OnInit {
   private service = inject(ChildProgressService);
+  private academicYearService = inject(AcademicYearService);
 
   sidebarOpen = signal(false);
   activeTab = signal<'assignments' | 'exams'>('assignments');
@@ -40,10 +42,24 @@ export class ChildProgress implements OnInit {
   exams = signal<ExamView[]>([]);
 
   loading = signal(false);
+  selectedTerm = signal<number>(1);
 
   ngOnInit() {
+    this.loadData();
+
+    this.academicYearService.getCurrentTerm().subscribe({
+      next: (res) => {
+        if (res?.data != null && this.selectedTerm() !== res.data) {
+          this.selectedTerm.set(res.data);
+          this.loadData();
+        }
+      }
+    });
+  }
+
+  loadData() {
     this.loading.set(true);
-    this.service.get().subscribe({
+    this.service.get(this.selectedTerm()).subscribe({
       next: (items: ChildProgressItem[]) => {
         this.loading.set(false);
         if (items.length === 0) return;
@@ -74,6 +90,12 @@ export class ChildProgress implements OnInit {
       },
       error: () => this.loading.set(false),
     });
+  }
+
+  onTermChange(event: Event) {
+    const value = (event.target as HTMLSelectElement).value;
+    this.selectedTerm.set(Number(value));
+    this.loadData();
   }
 
   getStatusText(s: string): string {

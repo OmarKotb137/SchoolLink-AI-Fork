@@ -21,6 +21,3 @@ public interface IPeriodAverageRepository : IRepository<PeriodAverage>
     Task   UpsertAsync(PeriodAverage periodAverage, CancellationToken ct = default);
     Task   BulkUpsertAsync(IEnumerable<PeriodAverage> periodAverages, CancellationToken ct = default);
 }
-
-
-

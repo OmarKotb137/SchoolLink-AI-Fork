@@ -10,6 +10,7 @@ using Project.BLL.AI.Interfaces;
 using Project.BLL.AI.Models;
 using Project.BLL.DTOs;
 using Project.BLL.Interfaces;
+using Project.Domain.Enums;
 
 namespace Project.BLL.AI.Services;
 
@@ -117,7 +118,7 @@ public class BookParserService : IBookParserService
     }
 
     public async Task<OperationResult<List<UnitDto>>> SaveBookStructureAsync(
-        int subjectId, int gradeLevelId, List<CreateUnitDto> units)
+        int subjectId, int gradeLevelId, List<CreateUnitDto> units, AcademicTerm? term = null)
     {
         try
         {
@@ -125,6 +126,7 @@ public class BookParserService : IBookParserService
             foreach (var unit in units)
             {
                 unit.GradeLevelId = gradeLevelId;
+                unit.Term = term;
                 var result = await _unitService.CreateUnitAsync(subjectId, unit);
                 if (result.IsSuccess && result.Data is not null)
                     createdUnits.Add(result.Data);

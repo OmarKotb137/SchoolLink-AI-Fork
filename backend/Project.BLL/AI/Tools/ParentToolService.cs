@@ -2,6 +2,7 @@ using System.Text.Json;
 using Project.BLL.AI.Interfaces;
 using Project.BLL.AI.Models;
 using Project.BLL.Interfaces;
+using Project.Domain.Enums;
 
 namespace Project.BLL.AI.Tools;
 
@@ -62,7 +63,8 @@ public class ParentToolService : IParentToolService
                 properties = new
                 {
                     enrollmentId = new { type = "integer", description = "معرف تسجيل الطالب" },
-                    periodId = new { type = "integer", description = "معرف فترة التقييم (اختياري)" }
+                    periodId = new { type = "integer", description = "معرف فترة التقييم (اختياري)" },
+                    term = new { type = "integer", description = "الفصل الدراسي (اختياري): 1 = الترم الأول, 2 = الترم الثاني, 3 = النهائي (افتراضي = الترم الحالي)" }
                 },
                 required = new[] { "enrollmentId" }
             }),
@@ -72,8 +74,12 @@ public class ParentToolService : IParentToolService
                 var eId = doc.RootElement.GetProperty("enrollmentId").GetInt32();
                 var pId = doc.RootElement.TryGetProperty("periodId", out var periodEl) ? periodEl.GetInt32() : 0;
 
-                var academic = await _evalService.GetByEnrollmentAndPeriodAsync(eId, pId);
-                var training = await _periodicService.GetByEnrollmentAsync(eId);
+                AcademicTerm? term = context.CurrentTerm;
+                if (doc.RootElement.TryGetProperty("term", out var termEl) && termEl.ValueKind == JsonValueKind.Number)
+                    term = (AcademicTerm)termEl.GetInt32();
+
+                var academic = await _evalService.GetByEnrollmentAndPeriodAsync(eId, pId, term);
+                var training = await _periodicService.GetByEnrollmentAsync(eId, term);
                 return JsonSerializer.Serialize(new
                 {
                     academicEvaluations = academic.Data,
@@ -91,7 +97,8 @@ public class ParentToolService : IParentToolService
                 type = "object",
                 properties = new
                 {
-                    enrollmentId = new { type = "integer", description = "معرف تسجيل الطالب" }
+                    enrollmentId = new { type = "integer", description = "معرف تسجيل الطالب" },
+                    term = new { type = "integer", description = "الفصل الدراسي (اختياري): 1 = الترم الأول, 2 = الترم الثاني, 3 = النهائي (افتراضي = الترم الحالي)" }
                 },
                 required = new[] { "enrollmentId" }
             }),
@@ -99,7 +106,12 @@ public class ParentToolService : IParentToolService
             {
                 using var doc = JsonDocument.Parse(args);
                 var eId = doc.RootElement.GetProperty("enrollmentId").GetInt32();
-                var result = await _periodAverageService.GetByEnrollmentAsync(eId);
+
+                AcademicTerm? term = context.CurrentTerm;
+                if (doc.RootElement.TryGetProperty("term", out var termEl) && termEl.ValueKind == JsonValueKind.Number)
+                    term = (AcademicTerm)termEl.GetInt32();
+
+                var result = await _periodAverageService.GetByEnrollmentAsync(eId, term);
                 return JsonSerializer.Serialize(result.Data, new JsonSerializerOptions { WriteIndented = true });
             }
         });

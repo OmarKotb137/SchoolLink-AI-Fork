@@ -17,6 +17,7 @@ export interface ParsedUnitDto {
   pageEnd: number | null;
   displayOrder: number;
   gradeLevelId?: number;
+  term?: number | null;
   lessons: ParsedLessonDto[];
 }
 
@@ -27,6 +28,7 @@ export interface CreateUnitDto {
   pageStart: number | null;
   pageEnd: number | null;
   displayOrder: number;
+  term?: number | null;
   lessons: {
     title: string;
     content?: string;
@@ -47,6 +49,7 @@ export interface UnitDto {
   displayOrder: number;
   subjectName?: string;
   gradeLevelName?: string;
+  term?: number | null;
   lessons: {
     id: number;
     title: string;
@@ -55,6 +58,16 @@ export interface UnitDto {
     pageEnd: number | null;
     displayOrder: number;
   }[];
+}
+
+export interface SubjectWithStructureDto {
+  id: number;
+  name: string;
+  gradeLevelId: number;
+  gradeLevelName?: string;
+  unitCount: number;
+  lessonCount: number;
+  term?: number | null;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -68,9 +81,10 @@ export class BookParserService {
     return this.http.post<any>(`${this.parserBase}/preview`, formData);
   }
 
-  save(subjectId: number, gradeLevelId: number, units: CreateUnitDto[]): Observable<any> {
-    return this.http.post<any>(
-      `${this.parserBase}/save?subjectId=${subjectId}&gradeLevelId=${gradeLevelId}`, units);
+  save(subjectId: number, gradeLevelId: number, units: CreateUnitDto[], term?: number | null): Observable<any> {
+    let url = `${this.parserBase}/save?subjectId=${subjectId}&gradeLevelId=${gradeLevelId}`;
+    if (term != null) url += `&term=${term}`;
+    return this.http.post<any>(url, units);
   }
 
   generateLessonContent(rawContent: string, title: string): Observable<any> {
@@ -98,12 +112,16 @@ export class BookParserService {
     });
   }
 
-  getParsedSubjects(): Observable<any> {
-    return this.http.get<any>(`${this.parserBase}/subjects`);
+  getParsedSubjects(term?: number | null): Observable<any> {
+    let url = `${this.parserBase}/subjects`;
+    if (term != null) url += `?term=${term}`;
+    return this.http.get<any>(url);
   }
 
-  getSubjectStructure(subjectId: number): Observable<any> {
-    return this.http.get<any>(`${this.parserBase}/subjects/${subjectId}`);
+  getSubjectStructure(subjectId: number, term?: number | null): Observable<any> {
+    let url = `${this.parserBase}/subjects/${subjectId}`;
+    if (term != null) url += `?term=${term}`;
+    return this.http.get<any>(url);
   }
 
   updateUnit(unitId: number, name: string, content?: string): Observable<any> {

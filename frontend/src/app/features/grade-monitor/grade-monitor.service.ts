@@ -36,6 +36,7 @@ export interface Template {
   absent_days: string[];
   weekly_max: number;
   month_groups: { name: string; weeks: number[] }[];
+  term?: number | null;
 }
 
 export interface Student {
@@ -70,6 +71,8 @@ export interface EvaluationPeriod {
   startDate: string;
   endDate: string;
   monthName: string;
+  semesterNumber?: number | null;
+  academicYearName?: string;
 }
 
 export interface EvaluationItem {
@@ -273,8 +276,10 @@ export class GradeMonitorService {
   }
 
   /** جلب تقييمات الامتحانات الشهرية لكل طلاب الفصل دفعة واحدة */
-  getAssessmentsByClass(classId: number) {
-    return this.http.get<any>(`${this.base}/PeriodicAssessments/by-class/${classId}`);
+  getAssessmentsByClass(classId: number, term?: number | null) {
+    let url = `${this.base}/PeriodicAssessments/by-class/${classId}`;
+    if (term) url += `?term=${term}`;
+    return this.http.get<any>(url);
   }
 
   // ─── Period Averages ──────────────────────────────────
@@ -299,28 +304,36 @@ export class GradeMonitorService {
     return this.http.post<any>(`${this.base}/FinalGrades/calculate-all/${classId}`, {});
   }
 
-  calculateFullFinalGrades(classId: number, request: { students: { enrollmentId: number; monthlyExam1Score?: number | null; monthlyExam2Score?: number | null; semesterExamScore?: number | null }[] }) {
+  calculateFullFinalGrades(classId: number, request: { students: { enrollmentId: number; monthlyExam1Score?: number | null; monthlyExam2Score?: number | null; semesterExamScore?: number | null }[], term?: number | null }) {
     return this.http.post<any>(`${this.base}/FinalGrades/calculate-full/${classId}`, request);
   }
 
-  recalculateFinalGrades(classId: number) {
-    return this.http.post<any>(`${this.base}/FinalGrades/recalculate/${classId}`, {});
+  recalculateFinalGrades(classId: number, term?: number | null) {
+    let url = `${this.base}/FinalGrades/recalculate/${classId}`;
+    if (term) url += `?term=${term}`;
+    return this.http.post<any>(url, {});
   }
 
   getFinalGradeByEnrollment(enrollmentId: number) {
     return this.http.get<any>(`${this.base}/FinalGrades/by-enrollment/${enrollmentId}`);
   }
 
-  getFinalGradesByClass(classId: number) {
-    return this.http.get<any>(`${this.base}/FinalGrades/by-class/${classId}`);
+  getFinalGradesByClass(classId: number, term?: number | null) {
+    let url = `${this.base}/FinalGrades/by-class/${classId}`;
+    if (term) url += `?term=${term}`;
+    return this.http.get<any>(url);
   }
 
-  getTopStudents(classId: number, count: number = 10) {
-    return this.http.get<any>(`${this.base}/FinalGrades/top-students/${classId}?count=${count}`);
+  getTopStudents(classId: number, count: number = 10, term?: number | null) {
+    let url = `${this.base}/FinalGrades/top-students/${classId}?count=${count}`;
+    if (term) url += `&term=${term}`;
+    return this.http.get<any>(url);
   }
 
-  getStudentsNeedingSupport(classId: number, threshold: number = 50) {
-    return this.http.get<any>(`${this.base}/FinalGrades/needing-support/${classId}?threshold=${threshold}`);
+  getStudentsNeedingSupport(classId: number, threshold: number = 50, term?: number | null) {
+    let url = `${this.base}/FinalGrades/needing-support/${classId}?threshold=${threshold}`;
+    if (term) url += `&term=${term}`;
+    return this.http.get<any>(url);
   }
 
   publishGrades(data: any) {

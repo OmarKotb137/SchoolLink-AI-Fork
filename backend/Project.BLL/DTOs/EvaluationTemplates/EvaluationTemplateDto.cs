@@ -12,6 +12,7 @@ public class EvaluationTemplateDto
     public EvaluationCalculationType CalculationType { get; set; }
     public bool IsActive { get; set; }
     public int Weeks { get; set; }
+    public AcademicTerm? Term { get; set; }
     public string? GradeLevelName { get; set; }
     public string? SubjectName { get; set; }
     public string? AcademicYearName { get; set; }

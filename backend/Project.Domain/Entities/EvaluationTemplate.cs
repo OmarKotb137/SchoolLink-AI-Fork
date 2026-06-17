@@ -11,6 +11,7 @@ namespace Project.Domain.Entities
         public EvaluationCalculationType CalculationType { get; set; }
         public bool IsActive { get; set; } = true;
         public int Weeks { get; set; } = 12;
+        public AcademicTerm? Term { get; set; }  // null = whole-year, 1 = FirstSemester, 2 = SecondSemester
 
         // Navigation Properties
         public GradeLevel GradeLevel { get; set; } = null!;

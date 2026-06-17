@@ -54,6 +54,7 @@ export class StudentProgression implements OnInit {
   accountFilter = signal<AccountFilter>('all');
   gradeFilter = signal<GradeFilter>('all');
   sortMode = signal<SortMode>('name');
+  selectedTerm = signal<number>(1);
 
   isBootstrapping = signal(false);
   isLoadingCandidates = signal(false);
@@ -198,6 +199,14 @@ export class StudentProgression implements OnInit {
 
   ngOnInit(): void {
     this.loadPageData();
+    this.academicYearService.getCurrentTerm().subscribe({
+      next: (res) => {
+        if (res?.data != null && this.selectedTerm() !== res.data) {
+          this.selectedTerm.set(res.data);
+          this.loadCandidates();
+        }
+      }
+    });
   }
 
   loadPageData() {
@@ -245,7 +254,7 @@ export class StudentProgression implements OnInit {
     this.lastResult.set(null);
     this.selectedEnrollmentIds.set([]);
 
-    this.studentProgressionService.getCandidates(sourceGradeId, sourceYearId)
+    this.studentProgressionService.getCandidates(sourceGradeId, sourceYearId, this.selectedTerm())
       .pipe(finalize(() => this.isLoadingCandidates.set(false)))
       .subscribe({
         next: res => {
@@ -271,6 +280,12 @@ export class StudentProgression implements OnInit {
     this.selectedTargetClassId.set(null);
     this.lastResult.set(null);
     this.clearMessages();
+  }
+
+  onTermChange(event: Event) {
+    const value = (event.target as HTMLSelectElement).value;
+    this.selectedTerm.set(Number(value));
+    this.loadCandidates();
   }
 
   onActionChanged(action: ProgressionAction) {

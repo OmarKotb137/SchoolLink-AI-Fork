@@ -103,7 +103,48 @@ public class EvaluationPeriodRepository : Repository<EvaluationPeriod>, IEvaluat
                 p.StartDate <= date &&
                 p.EndDate >= date)
             .FirstOrDefaultAsync(ct);
+
+    // ---- Semester support ----
+
+    public async Task<IReadOnlyList<EvaluationPeriod>> GetWeeksByYearAndSemesterAsync(
+        int academicYearId,
+        int semesterNumber,
+        CancellationToken ct = default)
+        => await _context.EvaluationPeriods
+            .Where(p =>
+                p.AcademicYearId == academicYearId &&
+                p.PeriodType == PeriodType.Weekly &&
+                p.SemesterNumber == semesterNumber)
+            .OrderBy(p => p.OrderNum)
+            .ToListAsync(ct);
+
+    public async Task<IReadOnlyList<EvaluationPeriod>> GetByTypeAndYearAndSemesterAsync(
+        int academicYearId,
+        PeriodType periodType,
+        int semesterNumber,
+        CancellationToken ct = default)
+        => await _context.EvaluationPeriods
+            .Where(p =>
+                p.AcademicYearId == academicYearId &&
+                p.PeriodType == periodType &&
+                p.SemesterNumber == semesterNumber)
+            .OrderBy(p => p.OrderNum)
+            .ToListAsync(ct);
+
+    public async Task<EvaluationPeriod?> GetCurrentTermAsync(
+        int academicYearId,
+        CancellationToken ct = default)
+    {
+        var today = DateOnly.FromDateTime(DateTime.Today);
+
+        return await _context.EvaluationPeriods
+            .Where(p =>
+                p.AcademicYearId == academicYearId &&
+                p.PeriodType == PeriodType.Semester &&
+                p.StartDate != null &&
+                p.EndDate != null &&
+                p.StartDate <= today &&
+                p.EndDate >= today)
+            .FirstOrDefaultAsync(ct);
+    }
 }
-
-
-

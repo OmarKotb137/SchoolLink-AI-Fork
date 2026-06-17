@@ -5,6 +5,7 @@ using Project.BLL.DTOs;
 using Project.BLL.Interfaces;
 using Project.DAL.Interfaces;
 using Project.BLL.Services;
+using Project.Domain.Enums;
 
 namespace Project.BLL.AI.Tools;
 
@@ -83,38 +84,38 @@ public class StudentToolService : IStudentToolService
                 },
                 required = Array.Empty<string>()
             }),
-            ExecuteAsync = async (args) =>
-            {
-                using var doc = JsonDocument.Parse(args);
-                int? subjectId = null;
-                if (doc.RootElement.TryGetProperty("subjectId", out var sid) && sid.ValueKind == JsonValueKind.Number)
-                    subjectId = sid.GetInt32();
-
-                if (!subjectId.HasValue && doc.RootElement.TryGetProperty("subjectName", out var sn) && sn.ValueKind == JsonValueKind.String)
+                ExecuteAsync = async (args) =>
                 {
-                    var subjects = await _subjectService.GetAllSubjectsAsync();
-                    var match = (subjects.Data ?? []).FirstOrDefault(s => s.Name.Contains(sn.GetString()!, StringComparison.OrdinalIgnoreCase));
-                    subjectId = match?.Id;
-                }
+                    using var doc = JsonDocument.Parse(args);
+                    int? subjectId = null;
+                    if (doc.RootElement.TryGetProperty("subjectId", out var sid) && sid.ValueKind == JsonValueKind.Number)
+                        subjectId = sid.GetInt32();
 
-                if (!subjectId.HasValue)
-                    return JsonSerializer.Serialize(new { error = "لم يتم العثور على المادة. استخدم search_lessons للبحث." });
+                    if (!subjectId.HasValue && doc.RootElement.TryGetProperty("subjectName", out var sn) && sn.ValueKind == JsonValueKind.String)
+                    {
+                        var subjects = await _subjectService.GetAllSubjectsAsync();
+                        var match = (subjects.Data ?? []).FirstOrDefault(s => s.Name.Contains(sn.GetString()!, StringComparison.OrdinalIgnoreCase));
+                        subjectId = match?.Id;
+                    }
 
-                int? gradeLevelId = null;
-                if (doc.RootElement.TryGetProperty("gradeLevelId", out var gl) && gl.ValueKind == JsonValueKind.Number)
-                    gradeLevelId = gl.GetInt32();
+                    if (!subjectId.HasValue)
+                        return JsonSerializer.Serialize(new { error = "لم يتم العثور على المادة. استخدم search_lessons للبحث." });
 
-                List<UnitDto>? unitsData;
-                if (gradeLevelId.HasValue)
-                {
-                    var result = await _unitService.GetUnitsByGradeLevelAndSubjectAsync(gradeLevelId.Value, subjectId.Value);
-                    unitsData = result.Data;
-                }
-                else
-                {
-                    var result = await _unitService.GetUnitsWithLessonsBySubjectAsync(subjectId.Value);
-                    unitsData = result.Data;
-                }
+                    int? gradeLevelId = null;
+                    if (doc.RootElement.TryGetProperty("gradeLevelId", out var gl) && gl.ValueKind == JsonValueKind.Number)
+                        gradeLevelId = gl.GetInt32();
+
+                    List<UnitDto>? unitsData;
+                    if (gradeLevelId.HasValue)
+                    {
+                        var result = await _unitService.GetUnitsByGradeLevelAndSubjectAsync(gradeLevelId.Value, subjectId.Value, context.CurrentTerm);
+                        unitsData = result.Data;
+                    }
+                    else
+                    {
+                        var result = await _unitService.GetUnitsWithLessonsBySubjectAsync(subjectId.Value, context.CurrentTerm);
+                        unitsData = result.Data;
+                    }
 
                 // أسماء فقط — بدون محتوى
                 var light = (unitsData ?? []).Select(u => new
@@ -161,12 +162,12 @@ public class StudentToolService : IStudentToolService
                 List<UnitDto>? unitsData;
                 if (gradeLevelId.HasValue)
                 {
-                    var result = await _unitService.GetUnitsByGradeLevelAndSubjectAsync(gradeLevelId.Value, subjectId);
+                    var result = await _unitService.GetUnitsByGradeLevelAndSubjectAsync(gradeLevelId.Value, subjectId, context.CurrentTerm);
                     unitsData = result.Data;
                 }
                 else
                 {
-                    var result = await _unitService.GetUnitsWithLessonsBySubjectAsync(subjectId);
+                    var result = await _unitService.GetUnitsWithLessonsBySubjectAsync(subjectId, context.CurrentTerm);
                     unitsData = result.Data;
                 }
 
@@ -217,7 +218,8 @@ public class StudentToolService : IStudentToolService
                     type = "object",
                     properties = new
                     {
-                        periodId = new { type = "integer", description = "معرف فترة التقييم" }
+                        periodId = new { type = "integer", description = "معرف فترة التقييم" },
+                        term = new { type = "integer", description = "الفصل الدراسي (اختياري): 1 = الترم الأول, 2 = الترم الثاني, 3 = النهائي (افتراضي = الترم الحالي)" }
                     },
                     required = new[] { "periodId" }
                 }),
@@ -225,7 +227,12 @@ public class StudentToolService : IStudentToolService
                 {
                     using var doc = JsonDocument.Parse(args);
                     var pId = doc.RootElement.GetProperty("periodId").GetInt32();
-                    var result = await _evalService.GetByEnrollmentAndPeriodAsync(eId, pId);
+
+                    AcademicTerm? term = context.CurrentTerm;
+                    if (doc.RootElement.TryGetProperty("term", out var termEl) && termEl.ValueKind == JsonValueKind.Number)
+                        term = (AcademicTerm)termEl.GetInt32();
+
+                    var result = await _evalService.GetByEnrollmentAndPeriodAsync(eId, pId, term);
                     return JsonSerializer.Serialize(result.Data, new JsonSerializerOptions { WriteIndented = true });
                 }
             });
@@ -237,12 +244,20 @@ public class StudentToolService : IStudentToolService
                 Parameters = JsonSerializer.SerializeToElement(new
                 {
                     type = "object",
-                    properties = new object(),
+                    properties = new
+                    {
+                        term = new { type = "integer", description = "الفصل الدراسي (اختياري): 1 = الترم الأول, 2 = الترم الثاني, 3 = النهائي (افتراضي = الترم الحالي)" }
+                    },
                     required = Array.Empty<string>()
                 }),
                 ExecuteAsync = async (args) =>
                 {
-                    var result = await _periodicService.GetByEnrollmentAsync(eId);
+                    AcademicTerm? term = context.CurrentTerm;
+                    using var doc = JsonDocument.Parse(args);
+                    if (doc.RootElement.TryGetProperty("term", out var termEl) && termEl.ValueKind == JsonValueKind.Number)
+                        term = (AcademicTerm)termEl.GetInt32();
+
+                    var result = await _periodicService.GetByEnrollmentAsync(eId, term);
                     return JsonSerializer.Serialize(result.Data, new JsonSerializerOptions { WriteIndented = true });
                 }
             });

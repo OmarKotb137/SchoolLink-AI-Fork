@@ -4,6 +4,7 @@ using Project.BLL.DTOs.PeriodicAssessments;
 using Project.BLL.Interfaces;
 using Project.DAL.Interfaces;
 using Project.Domain.Entities;
+using Project.Domain.Enums;
 
 namespace Project.BLL.Services;
 
@@ -26,7 +27,7 @@ public class PeriodicAssessmentService : IPeriodicAssessmentService
             return OperationResult<PeriodicAssessmentDto>.Failure("القيد غير موجود أو غير نشط");
 
         var existing = await _unitOfWork.PeriodicAssessments.GetByEnrollmentAndTypeAsync(
-            request.EnrollmentId, request.AssessmentType);
+            request.EnrollmentId, request.AssessmentType, request.Term);
         if (existing is not null && !existing.IsDeleted)
             return OperationResult<PeriodicAssessmentDto>.Failure("هذا التقييم مسجل مسبقاً لهذا الطالب");
 
@@ -76,13 +77,15 @@ public class PeriodicAssessmentService : IPeriodicAssessmentService
         return OperationResult.Success("تم حذف التقييم الدوري بنجاح");
     }
 
-    public async Task<OperationResult<IEnumerable<PeriodicAssessmentDto>>> GetByEnrollmentAsync(int enrollmentId)
+    public async Task<OperationResult<IEnumerable<PeriodicAssessmentDto>>> GetByEnrollmentAsync(int enrollmentId, AcademicTerm? term = null)
     {
         var enrollment = await _unitOfWork.StudentEnrollments.GetByIdAsync(enrollmentId);
         if (enrollment is null || enrollment.IsDeleted)
             return OperationResult<IEnumerable<PeriodicAssessmentDto>>.Failure("القيد غير موجود");
 
         var assessments = await _unitOfWork.PeriodicAssessments.GetByEnrollmentIdAsync(enrollmentId);
+        if (term.HasValue)
+            assessments = assessments.Where(a => a.Term == term.Value).ToList();
         return OperationResult<IEnumerable<PeriodicAssessmentDto>>.Success(
             _mapper.Map<IEnumerable<PeriodicAssessmentDto>>(assessments),
             "تم جلب التقييمات الدورية بنجاح");
@@ -99,7 +102,7 @@ public class PeriodicAssessmentService : IPeriodicAssessmentService
             "تم جلب التقييم الدوري بنجاح");
     }
 
-    public async Task<OperationResult<IEnumerable<PeriodicAssessmentDto>>> GetByClassAsync(int classId)
+    public async Task<OperationResult<IEnumerable<PeriodicAssessmentDto>>> GetByClassAsync(int classId, AcademicTerm? term = null)
     {
         var classEntity = await _unitOfWork.Classes.GetByIdAsync(classId);
         if (classEntity is null || classEntity.IsDeleted)
@@ -118,6 +121,8 @@ public class PeriodicAssessmentService : IPeriodicAssessmentService
         foreach (var eid in enrollmentIds)
         {
             var assessments = await _unitOfWork.PeriodicAssessments.GetByEnrollmentIdAsync(eid);
+            if (term.HasValue)
+                assessments = assessments.Where(a => a.Term == term.Value).ToList();
             allAssessments.AddRange(assessments);
         }
 

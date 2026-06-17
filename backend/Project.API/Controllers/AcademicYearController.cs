@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Project.BLL.DTOs;
 using Project.BLL.Interfaces;
+using Project.Domain.Enums;
 
 namespace Project.API.Controllers;
 
@@ -31,6 +32,13 @@ public class AcademicYearController : ControllerBase
         if (!result.IsSuccess)
             return NotFound(result);
         return Ok(result);
+    }
+
+    [HttpGet("current-term")]
+    public async Task<IActionResult> GetCurrentTerm()
+    {
+        var result = await _academicYearService.GetCurrentTermAsync();
+        return result.IsSuccess ? Ok(result) : NotFound(result);
     }
 
     [HttpGet("{id:int}")]

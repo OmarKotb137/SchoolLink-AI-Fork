@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Project.BLL.Interfaces;
+using Project.Domain.Enums;
 
 namespace Project.API.Controllers;
 

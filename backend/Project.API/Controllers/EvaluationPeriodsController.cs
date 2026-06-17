@@ -94,4 +94,13 @@ public class EvaluationPeriodsController : ControllerBase
         var result = await _service.GetPeriodsByMonthAsync(academicYearId, monthName);
         return Ok(result);
     }
+
+    [HttpGet("current-term/{academicYearId:int}")]
+    public async Task<IActionResult> GetCurrentTerm(int academicYearId)
+    {
+        var result = await _service.GetCurrentTermAsync(academicYearId);
+        if (!result.IsSuccess)
+            return NotFound(result);
+        return Ok(result);
+    }
 }

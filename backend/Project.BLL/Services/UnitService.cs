@@ -4,6 +4,7 @@ using Project.BLL.DTOs;
 using Project.BLL.Interfaces;
 using Project.DAL.Interfaces;
 using Project.Domain.Entities;
+using Project.Domain.Enums;
 
 namespace Project.BLL.Services;
 
@@ -18,13 +19,14 @@ public class UnitService : IUnitService
         _logger = logger;
     }
 
-    public async Task<OperationResult<UnitDto>> CreateUnitAsync(int subjectId, string name, int displayOrder, List<CreateLessonDto>? lessons = null)
+    public async Task<OperationResult<UnitDto>> CreateUnitAsync(int subjectId, string name, int displayOrder, List<CreateLessonDto>? lessons = null, AcademicTerm? term = null)
     {
         return await CreateUnitAsync(subjectId, new CreateUnitDto
         {
             Name = name,
             DisplayOrder = displayOrder,
-            Lessons = lessons
+            Lessons = lessons,
+            Term = term
         });
     }
 
@@ -49,7 +51,8 @@ public class UnitService : IUnitService
             Content = dto.Content,
             DisplayOrder = dto.DisplayOrder,
             PageStart = dto.PageStart,
-            PageEnd = dto.PageEnd
+            PageEnd = dto.PageEnd,
+            Term = dto.Term
         };
 
         if (dto.Lessons?.Count > 0)
@@ -72,25 +75,29 @@ public class UnitService : IUnitService
         return OperationResult<UnitDto>.Success(Map(unit));
     }
 
-    public async Task<OperationResult<List<UnitDto>>> GetUnitsBySubjectAsync(int subjectId)
+    public async Task<OperationResult<List<UnitDto>>> GetUnitsBySubjectAsync(int subjectId, AcademicTerm? term = null)
     {
         var subject = await _unitOfWork.Subjects.GetByIdAsync(subjectId);
         if (subject == null || subject.IsDeleted)
             return OperationResult<List<UnitDto>>.Failure("المادة غير موجودة", 404);
 
         var units = await _unitOfWork.Units.FindAsync(u => u.SubjectId == subjectId && !u.IsDeleted);
+        if (term.HasValue)
+            units = units.Where(u => u.Term == term.Value).ToList();
         var ordered = units.OrderBy(u => u.DisplayOrder).ToList();
 
         return OperationResult<List<UnitDto>>.Success(ordered.Select(Map).ToList());
     }
 
-    public async Task<OperationResult<List<UnitDto>>> GetUnitsWithLessonsBySubjectAsync(int subjectId)
+    public async Task<OperationResult<List<UnitDto>>> GetUnitsWithLessonsBySubjectAsync(int subjectId, AcademicTerm? term = null)
     {
         var subject = await _unitOfWork.Subjects.GetByIdAsync(subjectId);
         if (subject == null || subject.IsDeleted)
             return OperationResult<List<UnitDto>>.Failure("المادة غير موجودة", 404);
 
         var units = await _unitOfWork.Units.FindAsync(u => u.SubjectId == subjectId && !u.IsDeleted);
+        if (term.HasValue)
+            units = units.Where(u => u.Term == term.Value).ToList();
         var ordered = units.OrderBy(u => u.DisplayOrder).ToList();
         var dtos = new List<UnitDto>();
 
@@ -105,7 +112,7 @@ public class UnitService : IUnitService
         return OperationResult<List<UnitDto>>.Success(dtos);
     }
 
-    public async Task<OperationResult<List<UnitDto>>> GetUnitsByGradeLevelAndSubjectAsync(int gradeLevelId, int subjectId)
+    public async Task<OperationResult<List<UnitDto>>> GetUnitsByGradeLevelAndSubjectAsync(int gradeLevelId, int subjectId, AcademicTerm? term = null)
     {
         var subject = await _unitOfWork.Subjects.GetByIdAsync(subjectId);
         if (subject == null || subject.IsDeleted)
@@ -116,6 +123,8 @@ public class UnitService : IUnitService
             return OperationResult<List<UnitDto>>.Failure("الصف الدراسي غير موجود", 404);
 
         var units = await _unitOfWork.Units.FindAsync(u => u.SubjectId == subjectId && u.GradeLevelId == gradeLevelId && !u.IsDeleted);
+        if (term.HasValue)
+            units = units.Where(u => u.Term == term.Value).ToList();
         var ordered = units.OrderBy(u => u.DisplayOrder).ToList();
 
         return OperationResult<List<UnitDto>>.Success(ordered.Select(Map).ToList());
@@ -133,7 +142,7 @@ public class UnitService : IUnitService
         return OperationResult<List<LessonDto>>.Success(ordered.Select(MapLesson).ToList());
     }
 
-    public async Task<OperationResult<List<SubjectWithStructureDto>>> GetParsedSubjectsWithStructureAsync()
+    public async Task<OperationResult<List<SubjectWithStructureDto>>> GetParsedSubjectsWithStructureAsync(AcademicTerm? term = null)
     {
         try
         {
@@ -158,6 +167,8 @@ public class UnitService : IUnitService
             foreach (var subject in subjects.Where(s => !s.IsDeleted))
             {
                 var units = await _unitOfWork.Units.FindAsync(u => u.SubjectId == subject.Id && !u.IsDeleted);
+                if (term.HasValue)
+                    units = units.Where(u => u.Term == term.Value).ToList();
                 if (units.Count == 0) continue;
 
                 var lessonCount = 0;
@@ -176,7 +187,8 @@ public class UnitService : IUnitService
                     GradeLevelId = glInfo.Id,
                     GradeLevelName = glInfo.Name,
                     UnitCount = units.Count,
-                    LessonCount = lessonCount
+                    LessonCount = lessonCount,
+                    Term = units.FirstOrDefault()?.Term
                 });
             }
 
@@ -189,7 +201,7 @@ public class UnitService : IUnitService
         }
     }
 
-    public async Task<OperationResult<UnitDto>> UpdateUnitAsync(int id, string name, string? content = null, int? pageStart = null, int? pageEnd = null)
+    public async Task<OperationResult<UnitDto>> UpdateUnitAsync(int id, string name, string? content = null, int? pageStart = null, int? pageEnd = null, AcademicTerm? term = null)
     {
         var unit = await _unitOfWork.Units.GetByIdAsync(id);
         if (unit is null || unit.IsDeleted)
@@ -199,6 +211,7 @@ public class UnitService : IUnitService
         if (content is not null) unit.Content = content;
         if (pageStart is not null) unit.PageStart = pageStart;
         if (pageEnd is not null) unit.PageEnd = pageEnd;
+        if (term is not null) unit.Term = term;
         unit.UpdatedAt = DateTime.UtcNow;
 
         _unitOfWork.Units.Update(unit);
@@ -295,7 +308,8 @@ public class UnitService : IUnitService
         PageStart = u.PageStart,
         PageEnd = u.PageEnd,
         SubjectName = u.Subject?.Name,
-        GradeLevelName = u.GradeLevel?.Name
+        GradeLevelName = u.GradeLevel?.Name,
+        Term = u.Term
     };
 
     private static LessonDto MapLesson(Lesson l) => new()

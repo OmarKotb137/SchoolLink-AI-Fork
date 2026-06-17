@@ -4,6 +4,7 @@ using Project.BLL.DTOs.PeriodAverages;
 using Project.BLL.Interfaces;
 using Project.DAL.Interfaces;
 using Project.Domain.Entities;
+using Project.Domain.Enums;
 
 namespace Project.BLL.Services;
 
@@ -103,13 +104,22 @@ public class PeriodAverageService : IPeriodAverageService
         return OperationResult.Success("تم حذف متوسط الفترة بنجاح");
     }
 
-    public async Task<OperationResult<IEnumerable<PeriodAverageDto>>> GetByEnrollmentAsync(int enrollmentId)
+    public async Task<OperationResult<IEnumerable<PeriodAverageDto>>> GetByEnrollmentAsync(int enrollmentId, AcademicTerm? term = null)
     {
         var enrollment = await _unitOfWork.StudentEnrollments.GetByIdAsync(enrollmentId);
         if (enrollment is null || enrollment.IsDeleted)
             return OperationResult<IEnumerable<PeriodAverageDto>>.Failure("القيد غير موجود");
 
         var averages = await _unitOfWork.PeriodAverages.GetByEnrollmentIdAsync(enrollmentId);
+        if (term.HasValue)
+        {
+            var semesterNumber = (int)term.Value;
+            var termPeriodIds = (await _unitOfWork.EvaluationPeriods
+                .FindAsync(p => p.SemesterNumber == semesterNumber))
+                .Select(p => p.Id)
+                .ToHashSet();
+            averages = averages.Where(a => termPeriodIds.Contains(a.PeriodId)).ToList();
+        }
         return OperationResult<IEnumerable<PeriodAverageDto>>.Success(
             _mapper.Map<IEnumerable<PeriodAverageDto>>(averages),
             "تم جلب متوسطات الفترات بنجاح");

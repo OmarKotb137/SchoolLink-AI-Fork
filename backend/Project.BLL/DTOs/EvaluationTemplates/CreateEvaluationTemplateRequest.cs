@@ -10,4 +10,5 @@ public class CreateEvaluationTemplateRequest
     public string Name { get; set; } = string.Empty;
     public EvaluationCalculationType CalculationType { get; set; }
     public int Weeks { get; set; } = 12;
+    public AcademicTerm? Term { get; set; }
 }

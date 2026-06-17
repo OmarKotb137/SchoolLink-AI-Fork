@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Project.DAL.Interfaces.Repositories.Evaluation;
 using Project.Domain.Entities;
+using Project.Domain.Enums;
 using Project.DAL.Context;
 
 namespace Project.DAL.Repositories.Evaluation;
@@ -14,27 +15,45 @@ public class EvaluationTemplateRepository : Repository<EvaluationTemplate>, IEva
         int gradeLevelId,
         int subjectId,
         int academicYearId,
+        AcademicTerm? term = null,
         CancellationToken ct = default)
-        => await _context.EvaluationTemplates
+    {
+        var query = _context.EvaluationTemplates
             .Include(t => t.GradeLevel)
             .Include(t => t.Subject)
-            .FirstOrDefaultAsync(t =>
+            .Where(t =>
                 t.GradeLevelId == gradeLevelId &&
                 t.SubjectId == subjectId &&
-                t.AcademicYearId == academicYearId, ct);
+                t.AcademicYearId == academicYearId);
+
+        if (term.HasValue)
+            query = query.Where(t => t.Term == term.Value);
+        else
+            query = query.Where(t => t.Term == null);
+
+        return await query.FirstOrDefaultAsync(ct);
+    }
 
 
     public async Task<IReadOnlyList<EvaluationTemplate>> GetByGradeLevelAndYearAsync(
         int gradeLevelId,
         int academicYearId,
+        AcademicTerm? term = null,
         CancellationToken ct = default)
-        => await _context.EvaluationTemplates
+    {
+        var query = _context.EvaluationTemplates
             .Where(t =>
                 t.GradeLevelId == gradeLevelId &&
-                t.AcademicYearId == academicYearId)
+                t.AcademicYearId == academicYearId);
+
+        if (term.HasValue)
+            query = query.Where(t => t.Term == term.Value);
+
+        return await query
             .Include(t => t.Subject)
             .OrderBy(t => t.Subject.Name)
             .ToListAsync(ct);
+    }
 
     public async Task<IReadOnlyList<EvaluationTemplate>> GetByAcademicYearAsync(
         int academicYearId,
@@ -74,14 +93,21 @@ public class EvaluationTemplateRepository : Repository<EvaluationTemplate>, IEva
         int gradeLevelId,
         int subjectId,
         int academicYearId,
+        AcademicTerm? term = null,
         CancellationToken ct = default)
-        => await _context.EvaluationTemplates
-            .AnyAsync(t =>
+    {
+        var query = _context.EvaluationTemplates
+            .Where(t =>
                 t.GradeLevelId == gradeLevelId &&
                 t.SubjectId == subjectId &&
                 t.AcademicYearId == academicYearId &&
-                !t.IsDeleted, ct);
+                !t.IsDeleted);
+
+        if (term.HasValue)
+            query = query.Where(t => t.Term == term.Value);
+        else
+            query = query.Where(t => t.Term == null);
+
+        return await query.AnyAsync(ct);
+    }
 }
-
-
-

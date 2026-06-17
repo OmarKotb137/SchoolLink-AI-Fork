@@ -35,7 +35,15 @@
         <!-- Step 1: Upload -->
         @if (step() === 'upload') {
           <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-6 md:p-8 shadow-sm">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div>
+                <label class="block text-label-md font-label-md text-on-surface mb-2">الترم الدراسي</label>
+                <select [ngModel]="selectedTerm()" (ngModelChange)="selectedTerm.set($event)"
+                        class="w-full bg-surface-container border border-outline-variant rounded-xl px-4 py-3 text-body-md font-body-md focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all">
+<option [ngValue]="1">الترم الأول</option>
+<option [ngValue]="2">الترم الثاني</option>
+                </select>
+              </div>
               <div>
                 <label class="block text-label-md font-label-md text-on-surface mb-2">الصف الدراسي <span class="text-red-500">*</span></label>
                 <select [ngModel]="selectedGradeLevelId()" (ngModelChange)="selectedGradeLevelId.set($event); onGradeLevelChange()"
@@ -456,9 +464,14 @@
         <!-- Previously saved subjects -->
         <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant overflow-hidden shadow-sm">
           <div class="flex items-center justify-between p-5 border-b border-outline-variant">
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-3">
               <span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">library_books</span>
               <h3 class="text-headline-sm font-headline-sm font-bold text-on-surface">المواد المضافة سابقاً</h3>
+              <select [ngModel]="selectedTerm()" (ngModelChange)="selectedTerm.set($event); onTermChange()"
+                      class="bg-surface-container border border-outline-variant rounded-xl px-3 py-1.5 text-label-sm font-label-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all">
+                <option [ngValue]="1">الترم الأول</option>
+                <option [ngValue]="2">الترم الثاني</option>
+              </select>
             </div>
             @if (loadingSubjects()) {
               <span class="material-symbols-outlined animate-spin text-on-surface-variant text-[20px]">progress_activity</span>

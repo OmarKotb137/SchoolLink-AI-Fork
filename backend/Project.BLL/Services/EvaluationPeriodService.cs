@@ -63,6 +63,7 @@ public class EvaluationPeriodService : IEvaluationPeriodService
         entity.StartDate = request.StartDate;
         entity.EndDate = request.EndDate;
         entity.MonthName = request.MonthName;
+        entity.SemesterNumber = request.SemesterNumber;
         entity.UpdatedAt = DateTime.UtcNow;
 
         _unitOfWork.EvaluationPeriods.Update(entity);
@@ -153,5 +154,16 @@ public class EvaluationPeriodService : IEvaluationPeriodService
         return OperationResult<EvaluationPeriodDto>.Success(
             _mapper.Map<EvaluationPeriodDto>(period),
             "تم جلب الفترة النشطة بنجاح");
+    }
+
+    public async Task<OperationResult<EvaluationPeriodDto>> GetCurrentTermAsync(int academicYearId)
+    {
+        var period = await _unitOfWork.EvaluationPeriods.GetCurrentTermAsync(academicYearId);
+        if (period is null)
+            return OperationResult<EvaluationPeriodDto>.Failure("لا يوجد ترم دراسي حالي");
+
+        return OperationResult<EvaluationPeriodDto>.Success(
+            _mapper.Map<EvaluationPeriodDto>(period),
+            "تم جلب الترم الحالي بنجاح");
     }
 }

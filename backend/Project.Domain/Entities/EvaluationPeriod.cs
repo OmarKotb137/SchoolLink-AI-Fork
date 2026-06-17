@@ -11,6 +11,7 @@ namespace Project.Domain.Entities
         public DateOnly? StartDate { get; set; }
         public DateOnly? EndDate { get; set; }
         public string? MonthName { get; set; }
+        public int? SemesterNumber { get; set; }  // 1 = First semester, 2 = Second semester
 
         // Navigation Properties
         public AcademicYear AcademicYear { get; set; } = null!;

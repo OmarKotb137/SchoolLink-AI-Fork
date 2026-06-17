@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Project.DAL.Interfaces.Repositories.Evaluation;
 using Project.Domain.Entities;
+using Project.Domain.Enums;
 using Project.DAL.Context;
 
 namespace Project.DAL.Repositories.Evaluation;
@@ -12,73 +13,118 @@ public class FinalGradeRepository : Repository<FinalGrade>, IFinalGradeRepositor
 
     public async Task<FinalGrade?> GetByEnrollmentIdAsync(
         int enrollmentId,
+        AcademicTerm? term = null,
         CancellationToken ct = default)
-        => await _context.FinalGrades
-            .FirstOrDefaultAsync(fg => fg.EnrollmentId == enrollmentId, ct);
+    {
+        var query = _context.FinalGrades.Where(fg => fg.EnrollmentId == enrollmentId);
+
+        if (term.HasValue)
+            query = query.Where(fg => fg.Term == term.Value);
+
+        return await query.FirstOrDefaultAsync(ct);
+    }
 
 
     public async Task<IReadOnlyList<FinalGrade>> GetByClassIdAsync(
         int classId,
+        AcademicTerm? term = null,
         CancellationToken ct = default)
-        => await _context.FinalGrades
+    {
+        var query = _context.FinalGrades
             .Where(fg =>
                 fg.Enrollment.ClassId == classId &&
-                fg.Enrollment.LeftAt  == null)
+                fg.Enrollment.LeftAt == null);
+
+        if (term.HasValue)
+            query = query.Where(fg => fg.Term == term.Value);
+
+        return await query
             .Include(fg => fg.Enrollment)
                 .ThenInclude(e => e.Student)
             .OrderByDescending(fg => fg.Total)
             .ToListAsync(ct);
+    }
 
     public async Task<IReadOnlyList<FinalGrade>> GetPublishedByClassIdAsync(
         int classId,
+        AcademicTerm? term = null,
         CancellationToken ct = default)
-        => await _context.FinalGrades
+    {
+        var query = _context.FinalGrades
             .Where(fg =>
-                fg.Enrollment.ClassId == classId  &&
-                fg.Enrollment.LeftAt  == null      &&
-                fg.IsPublished)
+                fg.Enrollment.ClassId == classId &&
+                fg.Enrollment.LeftAt == null &&
+                fg.IsPublished);
+
+        if (term.HasValue)
+            query = query.Where(fg => fg.Term == term.Value);
+
+        return await query
             .Include(fg => fg.Enrollment)
                 .ThenInclude(e => e.Student)
             .OrderByDescending(fg => fg.Total)
             .ToListAsync(ct);
+    }
 
 
     public async Task<IReadOnlyList<FinalGrade>> GetTopStudentsByClassAsync(
         int classId,
         int count,
+        AcademicTerm? term = null,
         CancellationToken ct = default)
-        => await _context.FinalGrades
+    {
+        var query = _context.FinalGrades
             .Where(fg =>
                 fg.Enrollment.ClassId == classId &&
-                fg.Enrollment.LeftAt  == null)
+                fg.Enrollment.LeftAt == null);
+
+        if (term.HasValue)
+            query = query.Where(fg => fg.Term == term.Value);
+
+        return await query
             .Include(fg => fg.Enrollment)
                 .ThenInclude(e => e.Student)
             .OrderByDescending(fg => fg.Total)
             .Take(count)
             .ToListAsync(ct);
+    }
 
     public async Task<IReadOnlyList<FinalGrade>> GetStudentsNeedingSupportAsync(
         int classId,
         decimal threshold,
+        AcademicTerm? term = null,
         CancellationToken ct = default)
-        => await _context.FinalGrades
+    {
+        var query = _context.FinalGrades
             .Where(fg =>
                 fg.Enrollment.ClassId == classId &&
-                fg.Enrollment.LeftAt  == null     &&
-                fg.Total < threshold)
+                fg.Enrollment.LeftAt == null &&
+                fg.Total < threshold);
+
+        if (term.HasValue)
+            query = query.Where(fg => fg.Term == term.Value);
+
+        return await query
             .Include(fg => fg.Enrollment)
                 .ThenInclude(e => e.Student)
             .OrderBy(fg => fg.Total)
             .ToListAsync(ct);
+    }
 
     public async Task<decimal> GetClassAverageAsync(
         int classId,
+        AcademicTerm? term = null,
         CancellationToken ct = default)
     {
-        var result = await _context.FinalGrades
+        var query = _context.FinalGrades
             .Where(fg =>
                 fg.Enrollment.ClassId == classId &&
-                fg.Enrollment.LeftAt  == null)
+                fg.Enrollment.LeftAt == null);
+
+        if (term.HasValue)
+            query = query.Where(fg => fg.Term == term.Value);
+
+        var result = await query
             .Select(fg => (decimal?)fg.Total)
             .AverageAsync(ct);
 
@@ -89,22 +135,32 @@ public class FinalGradeRepository : Repository<FinalGrade>, IFinalGradeRepositor
     public async Task<IReadOnlyList<FinalGrade>> GetStudentsBelowThresholdAsync(
         int classId,
         decimal threshold,
+        AcademicTerm? term = null,
         CancellationToken ct = default)
-        => await _context.FinalGrades
+    {
+        var query = _context.FinalGrades
             .Where(fg =>
                 fg.Enrollment.ClassId == classId &&
-                fg.Enrollment.LeftAt  == null     &&
-                fg.Total < threshold)
+                fg.Enrollment.LeftAt == null &&
+                fg.Total < threshold);
+
+        if (term.HasValue)
+            query = query.Where(fg => fg.Term == term.Value);
+
+        return await query
             .Include(fg => fg.Enrollment)
                 .ThenInclude(e => e.Student)
             .OrderBy(fg => fg.Total)
             .ToListAsync(ct);
+    }
 
 
     public async Task UpsertAsync(FinalGrade finalGrade, CancellationToken ct = default)
     {
         var existing = await _context.FinalGrades
-            .FirstOrDefaultAsync(fg => fg.EnrollmentId == finalGrade.EnrollmentId, ct);
+            .FirstOrDefaultAsync(fg =>
+                fg.EnrollmentId == finalGrade.EnrollmentId &&
+                fg.Term == finalGrade.Term, ct);
 
         if (existing is null)
             await _context.FinalGrades.AddAsync(finalGrade, ct);
@@ -127,7 +183,8 @@ public class FinalGradeRepository : Repository<FinalGrade>, IFinalGradeRepositor
         var list = finalGrades.ToList();
         if (!list.Any()) return;
 
-        var enrollmentIds = list.Select(fg => fg.EnrollmentId).Distinct().ToList();
+        var keys = list.Select(fg => new { fg.EnrollmentId, fg.Term }).Distinct().ToList();
+        var enrollmentIds = keys.Select(k => k.EnrollmentId).Distinct().ToList();
 
         var existing = await _context.FinalGrades
             .Where(fg => enrollmentIds.Contains(fg.EnrollmentId))
@@ -135,7 +192,9 @@ public class FinalGradeRepository : Repository<FinalGrade>, IFinalGradeRepositor
 
         foreach (var grade in list)
         {
-            var ex = existing.FirstOrDefault(fg => fg.EnrollmentId == grade.EnrollmentId);
+            var ex = existing.FirstOrDefault(fg =>
+                fg.EnrollmentId == grade.EnrollmentId &&
+                fg.Term == grade.Term);
 
             if (ex is null)
                 await _context.FinalGrades.AddAsync(grade, ct);
@@ -153,24 +212,35 @@ public class FinalGradeRepository : Repository<FinalGrade>, IFinalGradeRepositor
     }
 
 
-    public async Task BulkPublishByClassAsync(int classId, CancellationToken ct = default)
-        => await _context.FinalGrades
+    public async Task BulkPublishByClassAsync(int classId, AcademicTerm? term = null, CancellationToken ct = default)
+    {
+        var query = _context.FinalGrades
             .Where(fg =>
                 fg.Enrollment.ClassId == classId &&
-                fg.Enrollment.LeftAt  == null)
+                fg.Enrollment.LeftAt == null);
+
+        if (term.HasValue)
+            query = query.Where(fg => fg.Term == term.Value);
+
+        await query
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(fg => fg.IsPublished, true)
-                .SetProperty(fg => fg.UpdatedAt,   DateTime.UtcNow), ct);
+                .SetProperty(fg => fg.UpdatedAt, DateTime.UtcNow), ct);
+    }
 
-    public async Task BulkUnpublishByClassAsync(int classId, CancellationToken ct = default)
-        => await _context.FinalGrades
+    public async Task BulkUnpublishByClassAsync(int classId, AcademicTerm? term = null, CancellationToken ct = default)
+    {
+        var query = _context.FinalGrades
             .Where(fg =>
                 fg.Enrollment.ClassId == classId &&
-                fg.Enrollment.LeftAt  == null)
+                fg.Enrollment.LeftAt == null);
+
+        if (term.HasValue)
+            query = query.Where(fg => fg.Term == term.Value);
+
+        await query
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(fg => fg.IsPublished, false)
-                .SetProperty(fg => fg.UpdatedAt,   DateTime.UtcNow), ct);
+                .SetProperty(fg => fg.UpdatedAt, DateTime.UtcNow), ct);
+    }
 }
-
-
-

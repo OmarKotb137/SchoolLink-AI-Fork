@@ -3,7 +3,7 @@ import {
   Document, Packer, Paragraph, TextRun, PageBreak,
   Table, TableRow, TableCell,
   AlignmentType, PageOrientation, BorderStyle, WidthType,
-  ShadingType, VerticalAlign, TableLayoutType,
+  ShadingType, VerticalAlign, TableLayoutType, UnderlineType,
 } from 'docx';
 
 export interface WordGenParams {
@@ -11,6 +11,9 @@ export interface WordGenParams {
   title: string;
   subject: string;
   classRoom: string;
+  gradeLevel: string;
+  termName: string;
+  academicYearName: string;
   students: { id: number; name: string }[];
 }
 
@@ -120,10 +123,11 @@ export class WordGeneratorService {
     return { top: b, bottom: b, left: b, right: b };
   }
 
-  private titlePara(title: string) {
+  private titlePara(recordType: string, gradeLevel: string, termName: string, academicYearName: string) {
+    const text = `سجل رصد ${recordType} ${gradeLevel} ${termName} ${academicYearName}م`;
     return new Paragraph({
       alignment: AlignmentType.CENTER, bidirectional: true, spacing: { before: 20, after: 20 },
-      children: [t(title, { bold: true, size: 28 })],
+      children: [t(text, { bold: true, size: 28 })],
     });
   }
 
@@ -131,9 +135,11 @@ export class WordGeneratorService {
     return new Paragraph({
       alignment: AlignmentType.CENTER, bidirectional: true, spacing: { before: 0, after: 40 },
       children: [
-        t('مادة / ' + subject, { bold: true, size: 24 }),
-        new TextRun({ text: '          ' }),
-        t(classRoom, { bold: true, size: 24 }),
+        t('مادة / ', { bold: true, size: 24 }),
+        t(subject || '..................................................', { bold: true, size: 24, underline: { type: UnderlineType.SINGLE } }),
+        new TextRun({ text: '          ', font: 'Traditional Arabic' }),
+        t('فصل ', { bold: true, size: 24 }),
+        t(classRoom, { bold: true, size: 24, underline: { type: UnderlineType.SINGLE } }),
       ],
     });
   }
@@ -156,7 +162,7 @@ export class WordGeneratorService {
   //  WEEKLY GRADES
   // ═══════════════════════════════════════════════════════
   generateWeeklyGrades(params: WeeklyGradesParams): Promise<Blob> {
-    const { schoolInfo, title, subject, classRoom, students, weeks, criteria, gradeData, weeklyMax, studentsPerPage } = params;
+    const { schoolInfo, title, subject, classRoom, gradeLevel, termName, academicYearName, students, weeks, criteria, gradeData, weeklyMax, studentsPerPage } = params;
     const spc = studentsPerPage || 42;
     const HEADER_BG = 'EAEAEA', SCORE_BG = 'FFFFFF';
     const critCount = criteria.length;
@@ -240,7 +246,7 @@ export class WordGeneratorService {
           properties: { page: this.pageProps() },
           children: [
             this.headerTable(schoolInfo), new Paragraph({ text: '' }),
-            this.titlePara(title),
+            this.titlePara('درجات', gradeLevel, termName, academicYearName),
             this.subTitlePara(subject, classRoom),
             new Table({ width: { size: TABLE_W, type: WidthType.DXA }, layout: TableLayoutType.FIXED, columnWidths: allColWidths, rows: [row1, row2, row3, ...pageStudentRows] }),
             this.footerPara(),
@@ -256,7 +262,7 @@ export class WordGeneratorService {
   //  ATTENDANCE SHEET
   // ═══════════════════════════════════════════════════════
   generateAttendanceSheet(params: AttendanceSheetParams): Promise<Blob> {
-    const { schoolInfo, title, subject, classRoom, students, weeks, absenceData, days, avgMax, studentsPerPage } = params;
+    const { schoolInfo, title, subject, classRoom, gradeLevel, termName, academicYearName, students, weeks, absenceData, days, avgMax, studentsPerPage } = params;
     const spc = studentsPerPage || 21;
     const HEADER_BG = 'EAEAEA';
     const WEEKS_PER_PAGE = 4;
@@ -328,7 +334,12 @@ export class WordGeneratorService {
           let absSum = 0, absCnt = 0;
           for (let wi = 0; wi < weeks.length; wi++) {
             const a = absenceData[`${wi + 1}_${st.id}`];
-            if (a?.total != null) { absSum += a.total; absCnt++; }
+            if (a?.total != null) { 
+              // Score per week = maxScore (avgMax) minus the number of absences that week
+              const weekScore = Math.max(0, avgMax - a.total);
+              absSum += weekScore; 
+              absCnt++; 
+            }
           }
           studentRows.push(new TableRow({
             height: { value: 300, rule: 'exact' },
@@ -350,7 +361,7 @@ export class WordGeneratorService {
           properties: { page: this.pageProps() },
           children: [
             this.headerTable(schoolInfo), new Paragraph({ text: '' }),
-            this.titlePara(title),
+            this.titlePara('غياب', gradeLevel, termName, academicYearName),
             this.subTitlePara(subject, classRoom),
             new Table({ width: { size: TABLE_W, type: WidthType.DXA }, layout: TableLayoutType.FIXED, columnWidths: allColWidths, rows: [row1, row2, ...studentRows] }),
             this.footerPara(),
@@ -366,7 +377,7 @@ export class WordGeneratorService {
   //  SUMMARY GRADES
   // ═══════════════════════════════════════════════════════
   generateSummaryGrades(params: SummaryGradesParams): Promise<Blob> {
-    const { schoolInfo, title, subject, classRoom, students, gradeColumns, monthAverages, examData, finalData, monthGroups, gradeData, studentsPerPage } = params;
+    const { schoolInfo, title, subject, classRoom, gradeLevel, termName, academicYearName, students, gradeColumns, monthAverages, examData, finalData, monthGroups, gradeData, studentsPerPage } = params;
     const spc = studentsPerPage || 21;
     const HEADER_BG = 'EAEAEA', SCORE_BG = 'FFFFFF';
 
@@ -472,7 +483,7 @@ export class WordGeneratorService {
 
       pages.push(
         this.headerTable(schoolInfo), new Paragraph({ text: '' }),
-        this.titlePara(title), this.subTitlePara(subject, classRoom),
+        this.titlePara('الدرجات', gradeLevel, termName, academicYearName), this.subTitlePara(subject, classRoom),
         table, this.footerPara(),
       );
       if (end < students.length) pages.push(new Paragraph({ children: [new PageBreak()] }));

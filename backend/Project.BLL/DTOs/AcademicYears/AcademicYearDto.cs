@@ -7,5 +7,9 @@ public class AcademicYearDto
     public DateOnly StartDate { get; set; }
     public DateOnly EndDate   { get; set; }
     public bool     IsCurrent { get; set; }
+    public DateOnly? FirstSemesterStartDate { get; set; }
+    public DateOnly? FirstSemesterEndDate { get; set; }
+    public DateOnly? SecondSemesterStartDate { get; set; }
+    public DateOnly? SecondSemesterEndDate { get; set; }
     public DateTime CreatedAt { get; set; }
 }

@@ -38,6 +38,15 @@
         </div>
       </div>
 
+      <!-- Term Selector -->
+      <div class="flex items-center gap-3">
+        <label class="font-label-sm text-label-sm text-outline">الفصل الدراسي:</label>
+        <select (change)="onTermChange($event)" class="glass-select" style="padding:8px 16px;border-radius:12px;border:1px solid var(--outline-variant, #e0e0e0);background:rgba(255,255,255,0.7);backdrop-filter:blur(8px);">
+<option value="1">الترم الأول</option>
+<option value="2">الترم الثاني</option>
+        </select>
+      </div>
+
       <!-- Tabs -->
       <div class="glass-tabs">
         <button class="glass-tab" [class.active]="activeTab() === 'assignments'" (click)="activeTab.set('assignments')">الواجبات</button>

@@ -12,5 +12,6 @@ public class EvaluationPeriodDto
     public DateOnly? StartDate { get; set; }
     public DateOnly? EndDate { get; set; }
     public string? MonthName { get; set; }
+    public int? SemesterNumber { get; set; }
     public string? AcademicYearName { get; set; }
 }

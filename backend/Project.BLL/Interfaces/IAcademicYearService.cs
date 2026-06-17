@@ -1,5 +1,6 @@
 using Common.Results;
 using Project.BLL.DTOs;
+using Project.Domain.Enums;
 
 namespace Project.BLL.Interfaces;
 
@@ -14,4 +15,5 @@ public interface IAcademicYearService
     Task<OperationResult<IEnumerable<AcademicYearDto>>> GetAllAcademicYearsAsync();
     Task<OperationResult<AcademicYearDto>>              GetAcademicYearByDateAsync(DateTime date);
     Task<OperationResult>                               ArchiveAcademicYearAsync(int id);
+    Task<OperationResult<AcademicTerm?>>                GetCurrentTermAsync();
 }

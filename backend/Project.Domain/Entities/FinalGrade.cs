@@ -1,8 +1,11 @@
-﻿namespace Project.Domain.Entities
+﻿using Project.Domain.Enums;
+
+namespace Project.Domain.Entities
 {
     public class FinalGrade : BaseEntity
     {
         public int EnrollmentId { get; set; }
+        public AcademicTerm Term { get; set; }  // FirstSemester, SecondSemester
         public decimal PeriodAvgScore { get; set; }
         public decimal Assessment1Score { get; set; }
         public decimal Assessment2Score { get; set; }

@@ -9,6 +9,7 @@ namespace Project.Domain.Entities
         public decimal Score { get; set; }
         public decimal MaxScore { get; set; }
         public DateOnly? AssessmentDate { get; set; }
+        public AcademicTerm? Term { get; set; }  // FirstSemester or SecondSemester
 
         // Navigation Properties
         public StudentEnrollment Enrollment { get; set; } = null!;

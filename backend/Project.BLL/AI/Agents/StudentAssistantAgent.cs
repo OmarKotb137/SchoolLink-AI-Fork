@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Project.BLL.AI.Interfaces;
 using Project.BLL.AI.Models;
 using Project.DAL.Interfaces;
+using Project.Domain.Enums;
 
 namespace Project.BLL.AI.Agents;
 
@@ -93,8 +94,9 @@ TOOL 4 — get_lesson_content
 TOOL 5 — get_academic_evaluations
 ────────────────────────────────────
 ● جلب التقييمات الدراسية للطالب (غياب، سلوك، واجبات، تفاعل)
-● Arguments: periodId (int) — معرف فترة التقييم
+● Arguments: periodId (int) — معرف فترة التقييم، term (int — اختياري): 1 = الترم الأول, 2 = الترم الثاني
 ● الاستخدام: لما الطالب يسأل عن مستواه الدراسي أو تقييمه
+● ملاحظة: term يتم اكتشافه تلقائياً — لا تسأل الطالب عنه
 ● ماذا تفعل بعدها:
    ✅ حلّل نقاط القوة والضعف وقدم نصائح
    ❌ خطأ → اعتذر واقترح يرجع للإدارة
@@ -103,8 +105,9 @@ TOOL 5 — get_academic_evaluations
 TOOL 6 — get_training_assessments
 ────────────────────────────────────
 ● جلب نتائج الامتحانات والواجبات السابقة للطالب
-● لا يحتاج باراميترز (بيستخدم سياق الجلسة)
+● Arguments: term (int — اختياري): 1 = الترم الأول, 2 = الترم الثاني
 ● الاستخدام: لما الطالب عاوز يعرف نتائجه أو درجاته
+● ملاحظة: term يتم اكتشافه تلقائياً — لا تسأل الطالب عنه
 ● ماذا تفعل بعدها:
    ✅ اعرض النتائج بأسلوب مشجّع + حلّل الأداء
    ❌ مفيش نتائج → ""لسه مفيش نتائج مسجلة — أول امتحان هيبقى بداية قوية! 💪""
@@ -402,9 +405,10 @@ PROTOCOL 5 — التدريبات والتمارين 📝 (مهم جداً)
         };
     }
 
-    public async Task<OperationResult<AgentResponse>> AnswerQuestionAsync(AiQuestionRequest request, CancellationToken ct = default)
+    public async Task<OperationResult<AgentResponse>> AnswerQuestionAsync(AiQuestionRequest request, AcademicTerm? term = null, CancellationToken ct = default)
     {
-        var prompt = $"المادة: {request.Subject}\nالموضوع: {request.Topic}\nالصف: {request.GradeLevel}\nالمستوى: {request.Difficulty}\n\nالسؤال: {request.QuestionText}";
+        var termInfo = term.HasValue ? $"\nالفصل الدراسي: {term.Value}" : "";
+        var prompt = $"المادة: {request.Subject}\nالموضوع: {request.Topic}\nالصف: {request.GradeLevel}\nالمستوى: {request.Difficulty}{termInfo}\n\nالسؤال: {request.QuestionText}";
         var result = await _router.GenerateAsync(SystemPrompt, prompt, ct: ct);
         return OperationResult<AgentResponse>.Success(new AgentResponse
         {
@@ -413,27 +417,30 @@ PROTOCOL 5 — التدريبات والتمارين 📝 (مهم جداً)
         });
     }
 
-    public async Task<OperationResult<AgentResponse>> ExplainConceptAsync(string concept, string subject, string gradeLevel, CancellationToken ct = default)
+    public async Task<OperationResult<AgentResponse>> ExplainConceptAsync(string concept, string subject, string gradeLevel, AcademicTerm? term = null, CancellationToken ct = default)
     {
-        var prompt = $"اشرح مفهوم '{concept}' في مادة '{subject}' لطالب في {gradeLevel}. استخدم أمثلة من الحياة اليومية.";
+        var termInfo = term.HasValue ? $" في الفصل الدراسي {term.Value}" : "";
+        var prompt = $"اشرح مفهوم '{concept}' في مادة '{subject}' لطالب في {gradeLevel}{termInfo}. استخدم أمثلة من الحياة اليومية.";
         var result = await _router.GenerateAsync(SystemPrompt, prompt, ct: ct);
         return OperationResult<AgentResponse>.Success(new AgentResponse { Text = result });
     }
 
-    public async Task<OperationResult<AgentResponse>> GeneratePracticeExerciseAsync(string subject, string topic, int count = 5, CancellationToken ct = default)
+    public async Task<OperationResult<AgentResponse>> GeneratePracticeExerciseAsync(string subject, string topic, int count = 5, AcademicTerm? term = null, CancellationToken ct = default)
     {
-        var prompt = $"ولّد {count} تمرين تدريبي في مادة '{subject}' عن موضوع '{topic}' مع نموذج الإجابة.";
+        var termInfo = term.HasValue ? $" للفصل الدراسي {term.Value}" : "";
+        var prompt = $"ولّد {count} تمرين تدريبي في مادة '{subject}' عن موضوع '{topic}'{termInfo} مع نموذج الإجابة.";
         var result = await _router.GenerateAsync(SystemPrompt, prompt, ct: ct);
         return OperationResult<AgentResponse>.Success(new AgentResponse { Text = result });
     }
 
-    public async Task<OperationResult<AgentResponse>> AnalyzeAnswerAsync(string questionText, string studentAnswer, string? modelAnswer = null, CancellationToken ct = default)
+    public async Task<OperationResult<AgentResponse>> AnalyzeAnswerAsync(string questionText, string studentAnswer, string? modelAnswer = null, AcademicTerm? term = null, CancellationToken ct = default)
     {
         var prompt = $"السؤال: {questionText}\nإجابة الطالب: {studentAnswer}";
         if (!string.IsNullOrEmpty(modelAnswer))
             prompt += $"\nالإجابة النموذجية: {modelAnswer}";
 
-        prompt += "\n\nحلّل الإجابة وقدم تغذية راجعة مفصلة.";
+        var termInfo = term.HasValue ? $"\nالفصل الدراسي: {term.Value}" : "";
+        prompt += $"{termInfo}\n\nحلّل الإجابة وقدم تغذية راجعة مفصلة.";
         var result = await _router.GenerateAsync(SystemPrompt, prompt, ct: ct);
         return OperationResult<AgentResponse>.Success(new AgentResponse { Text = result });
     }

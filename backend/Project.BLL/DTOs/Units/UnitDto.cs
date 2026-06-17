@@ -1,3 +1,5 @@
+using Project.Domain.Enums;
+
 namespace Project.BLL.DTOs;
 
 public class UnitDto
@@ -12,6 +14,7 @@ public class UnitDto
     public int? PageEnd { get; set; }
     public string? SubjectName { get; set; }
     public string? GradeLevelName { get; set; }
+    public AcademicTerm? Term { get; set; }
     public List<LessonDto>? Lessons { get; set; }
 }
 
@@ -43,6 +46,7 @@ public class CreateUnitDto
     public int DisplayOrder { get; set; }
     public int? PageStart { get; set; }
     public int? PageEnd { get; set; }
+    public AcademicTerm? Term { get; set; }
     public List<CreateLessonDto>? Lessons { get; set; }
 }
 
@@ -54,6 +58,7 @@ public class SubjectWithStructureDto
     public string? GradeLevelName { get; set; }
     public int UnitCount { get; set; }
     public int LessonCount { get; set; }
+    public AcademicTerm? Term { get; set; }
 }
 
 public class BookPreviewResult
@@ -70,6 +75,7 @@ public class ParsedUnitDto
     public int? PageStart { get; set; }
     public int? PageEnd { get; set; }
     public int? GradeLevelId { get; set; }
+    public AcademicTerm? Term { get; set; }
     public List<ParsedLessonDto>? Lessons { get; set; }
 }
 

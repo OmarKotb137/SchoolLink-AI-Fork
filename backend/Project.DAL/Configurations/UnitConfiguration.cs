@@ -17,10 +17,13 @@ namespace Project.DAL.Configurations
             builder.Property(x => x.DisplayOrder)
                 .HasDefaultValue(0);
 
-builder.HasOne(x => x.Subject)
-    .WithMany(s => s.Units)
-    .HasForeignKey(x => x.SubjectId)
-    .OnDelete(DeleteBehavior.Cascade);
+            builder.Property(x => x.Term)
+                .HasConversion<int>();
+
+            builder.HasOne(x => x.Subject)
+                .WithMany(s => s.Units)
+                .HasForeignKey(x => x.SubjectId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             builder.HasOne(x => x.GradeLevel)
                 .WithMany()

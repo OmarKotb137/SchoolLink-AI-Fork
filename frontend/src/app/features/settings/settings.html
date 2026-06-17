@@ -151,20 +151,53 @@
             </div>
 
             <!-- Add / Edit Year Form -->
-            <div class="flex flex-col md:flex-row gap-4 mb-6 bg-gray-50 p-4 rounded-2xl border border-gray-100 items-end">
-              <div class="flex-1 w-full">
-                <label class="block mb-2 text-sm font-medium text-gray-900">اسم السنة (مثال: 2025/2026)</label>
-                <input type="text" [(ngModel)]="newYear.name" class="bg-white border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5">
+            <div class="flex flex-col gap-4 mb-6 bg-gray-50 p-4 rounded-2xl border border-gray-100">
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="w-full">
+                  <label class="block mb-2 text-sm font-medium text-gray-900">اسم السنة (مثال: 2025/2026)</label>
+                  <input type="text" [(ngModel)]="newYear.name" class="bg-white border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5">
+                </div>
+                <div class="w-full">
+                  <label class="block mb-2 text-sm font-medium text-gray-900">تاريخ بداية السنة</label>
+                  <input type="date" [(ngModel)]="newYear.startDate" class="bg-white border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5">
+                </div>
+                <div class="w-full">
+                  <label class="block mb-2 text-sm font-medium text-gray-900">تاريخ نهاية السنة</label>
+                  <input type="date" [(ngModel)]="newYear.endDate" class="bg-white border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5">
+                </div>
               </div>
-              <div class="flex-1 w-full">
-                <label class="block mb-2 text-sm font-medium text-gray-900">تاريخ البداية</label>
-                <input type="date" [(ngModel)]="newYear.startDate" class="bg-white border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5">
+              <div class="border-t border-gray-200 pt-3">
+                <h4 class="text-sm font-bold text-blue-700 mb-3">إعدادات الترمين الدراسيين</h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div class="bg-white p-3 rounded-2xl border border-blue-100">
+                    <p class="text-sm font-medium text-blue-800 mb-2">الترم الأول</p>
+                    <div class="flex gap-3">
+                      <div class="flex-1">
+                        <label class="block mb-1 text-xs font-medium text-gray-700">تاريخ البداية</label>
+                        <input type="date" [(ngModel)]="newYear.firstSemesterStartDate" class="bg-white border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2">
+                      </div>
+                      <div class="flex-1">
+                        <label class="block mb-1 text-xs font-medium text-gray-700">تاريخ النهاية</label>
+                        <input type="date" [(ngModel)]="newYear.firstSemesterEndDate" class="bg-white border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2">
+                      </div>
+                    </div>
+                  </div>
+                  <div class="bg-white p-3 rounded-2xl border border-green-100">
+                    <p class="text-sm font-medium text-green-800 mb-2">الترم الثاني</p>
+                    <div class="flex gap-3">
+                      <div class="flex-1">
+                        <label class="block mb-1 text-xs font-medium text-gray-700">تاريخ البداية</label>
+                        <input type="date" [(ngModel)]="newYear.secondSemesterStartDate" class="bg-white border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2">
+                      </div>
+                      <div class="flex-1">
+                        <label class="block mb-1 text-xs font-medium text-gray-700">تاريخ النهاية</label>
+                        <input type="date" [(ngModel)]="newYear.secondSemesterEndDate" class="bg-white border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2">
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div class="flex-1 w-full">
-                <label class="block mb-2 text-sm font-medium text-gray-900">تاريخ النهاية</label>
-                <input type="date" [(ngModel)]="newYear.endDate" class="bg-white border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5">
-              </div>
-              <div class="flex gap-2 w-full md:w-auto mt-2 md:mt-0">
+              <div class="flex gap-2 w-full md:w-auto mt-2">
                 <button *ngIf="editingYearId()" (click)="cancelYearEdit()" class="flex-1 md:flex-none text-gray-900 bg-white border border-gray-200 hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 font-medium rounded-2xl text-sm px-4 py-2.5 transition-colors">إلغاء</button>
                 <button (click)="addAcademicYear()" class="flex-1 md:flex-none text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-lg transform transition-all hover:-translate-y-0.5 font-medium rounded-2xl text-sm px-5 py-2.5 transition-colors flex items-center justify-center gap-2">
                   <span class="material-symbols-outlined text-lg">save</span>
@@ -185,6 +218,12 @@
                   </div>
                   <div class="text-sm text-gray-500 mt-1">
                     {{ year.startDate | date }} - {{ year.endDate | date }}
+                    <span *ngIf="year.firstSemesterStartDate" class="mr-3 text-blue-600">
+                      | الترم الأول: {{ year.firstSemesterStartDate | date }} - {{ year.firstSemesterEndDate | date }}
+                    </span>
+                    <span *ngIf="year.secondSemesterStartDate" class="mr-3 text-green-600">
+                      | الترم الثاني: {{ year.secondSemesterStartDate | date }} - {{ year.secondSemesterEndDate | date }}
+                    </span>
                   </div>
                 </div>
                 <div class="flex flex-wrap gap-2">

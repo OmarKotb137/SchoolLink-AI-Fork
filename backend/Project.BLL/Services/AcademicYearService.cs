@@ -4,6 +4,7 @@ using Project.BLL.DTOs;
 using Project.BLL.Interfaces;
 using Project.DAL.Interfaces;
 using Project.Domain.Entities;
+using Project.Domain.Enums;
 
 namespace Project.BLL.Services;
 
@@ -75,9 +76,13 @@ public class AcademicYearService : IAcademicYearService
                 "الفترة الزمنية تتداخل مع سنة دراسية موجودة");
 
         // 5. Apply updates
-        entity.Name      = request.Name;
-        entity.StartDate = request.StartDate;
-        entity.EndDate   = request.EndDate;
+        entity.Name                     = request.Name;
+        entity.StartDate                = request.StartDate;
+        entity.EndDate                  = request.EndDate;
+        entity.FirstSemesterStartDate   = request.FirstSemesterStartDate;
+        entity.FirstSemesterEndDate     = request.FirstSemesterEndDate;
+        entity.SecondSemesterStartDate  = request.SecondSemesterStartDate;
+        entity.SecondSemesterEndDate    = request.SecondSemesterEndDate;
         entity.UpdatedAt = DateTime.UtcNow;
 
         _unitOfWork.AcademicYears.Update(entity);
@@ -192,5 +197,43 @@ public class AcademicYearService : IAcademicYearService
         await _unitOfWork.SaveChangesAsync();
 
         return OperationResult.Success("تم أرشفة السنة الدراسية بنجاح");
+    }
+
+    public async Task<OperationResult<AcademicTerm?>> GetCurrentTermAsync()
+    {
+        var year = await _unitOfWork.AcademicYears.GetCurrentAsync();
+        if (year is null)
+            return OperationResult<AcademicTerm?>.Failure("لا توجد سنة دراسية حالية محددة");
+
+        var today = DateOnly.FromDateTime(DateTime.Today);
+
+        // Check if today falls within first semester
+        if (year.FirstSemesterStartDate.HasValue && year.FirstSemesterEndDate.HasValue &&
+            today >= year.FirstSemesterStartDate.Value && today <= year.FirstSemesterEndDate.Value)
+        {
+            return OperationResult<AcademicTerm?>.Success(
+                AcademicTerm.FirstSemester,
+                "الترم الأول");
+        }
+
+        // Check if today falls within second semester
+        if (year.SecondSemesterStartDate.HasValue && year.SecondSemesterEndDate.HasValue &&
+            today >= year.SecondSemesterStartDate.Value && today <= year.SecondSemesterEndDate.Value)
+        {
+            return OperationResult<AcademicTerm?>.Success(
+                AcademicTerm.SecondSemester,
+                "الترم الثاني");
+        }
+
+        // Fallback: if we're past first semester end, assume second semester
+        if (year.FirstSemesterEndDate.HasValue && today > year.FirstSemesterEndDate.Value)
+        {
+            return OperationResult<AcademicTerm?>.Success(
+                AcademicTerm.SecondSemester,
+                "الترم الثاني (افتراضي)");
+        }
+
+        // Before first semester or after second semester — can't determine
+        return OperationResult<AcademicTerm?>.Success(null, "لم يتم تحديد الترم الحالي");
     }
 }

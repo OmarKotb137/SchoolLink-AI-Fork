@@ -35,20 +35,72 @@ public class EvaluationTemplateService : IEvaluationTemplateService
             return OperationResult<EvaluationTemplateDto>.Failure("السنة الدراسية غير موجودة");
 
         if (await _unitOfWork.EvaluationTemplates.ExistsByGradeLevelSubjectAndYearAsync(
-                request.GradeLevelId, request.SubjectId, request.AcademicYearId))
+                request.GradeLevelId, request.SubjectId, request.AcademicYearId, request.Term))
             return OperationResult<EvaluationTemplateDto>.Failure("يوجد قالب تقييم لهذا الصف والمادة والسنة بالفعل");
 
-        var existingPeriods = await _unitOfWork.EvaluationPeriods.GetByAcademicYearAsync(request.AcademicYearId);
-        if (existingPeriods.Count == 0)
+        int weeks;
+        if (request.Term.HasValue)
         {
-            var periods = Project.Domain.Helpers.EvaluationPeriodGenerator.GeneratePeriods(
-                request.AcademicYearId, year.StartDate, year.EndDate);
-            foreach (var p in periods)
-                await _unitOfWork.EvaluationPeriods.AddAsync(p);
+            // ── Semester-specific template ──
+            DateOnly semStart, semEnd;
+            if (request.Term.Value == AcademicTerm.FirstSemester)
+            {
+                semStart = year.FirstSemesterStartDate ?? year.StartDate;
+                semEnd   = year.FirstSemesterEndDate   ?? year.EndDate;
+            }
+            else // SecondSemester
+            {
+                semStart = year.SecondSemesterStartDate ?? year.StartDate;
+                semEnd   = year.SecondSemesterEndDate   ?? year.EndDate;
+            }
+
+            // Auto-calculate weeks from semester duration
+            var totalDays = semEnd.DayNumber - semStart.DayNumber;
+            weeks = Math.Max(1, (totalDays + 6) / 7);
+
+            // Generate periods only for this semester if not already created
+            var semesterPeriods = await _unitOfWork.EvaluationPeriods.GetByTypeAndYearAndSemesterAsync(
+                request.AcademicYearId, PeriodType.Weekly, (int)request.Term.Value);
+            if (semesterPeriods.Count == 0)
+            {
+                var periods = Project.Domain.Helpers.EvaluationPeriodGenerator.GeneratePeriodsForSemester(
+                    request.AcademicYearId, semStart, semEnd, (int)request.Term.Value);
+                foreach (var p in periods)
+                    await _unitOfWork.EvaluationPeriods.AddAsync(p);
+            }
+        }
+        else
+        {
+            // ── Whole-year template (fallback) ──
+            var existingPeriods = await _unitOfWork.EvaluationPeriods.GetByAcademicYearAsync(request.AcademicYearId);
+            if (existingPeriods.Count == 0)
+            {
+                IReadOnlyList<EvaluationPeriod> periods;
+                if (year.FirstSemesterStartDate.HasValue && year.FirstSemesterEndDate.HasValue &&
+                    year.SecondSemesterStartDate.HasValue && year.SecondSemesterEndDate.HasValue)
+                {
+                    periods = Project.Domain.Helpers.EvaluationPeriodGenerator.GeneratePeriods(
+                        request.AcademicYearId, year.StartDate,
+                        year.FirstSemesterStartDate, year.FirstSemesterEndDate,
+                        year.SecondSemesterStartDate, year.SecondSemesterEndDate);
+                }
+                else
+                {
+                    periods = Project.Domain.Helpers.EvaluationPeriodGenerator.GeneratePeriods(
+                        request.AcademicYearId, year.StartDate, year.EndDate);
+                }
+
+                foreach (var p in periods)
+                    await _unitOfWork.EvaluationPeriods.AddAsync(p);
+            }
+
+            weeks = request.Weeks > 0 ? request.Weeks : 12;
         }
 
         var entity = _mapper.Map<EvaluationTemplate>(request);
         entity.IsActive = true;
+        entity.Term = request.Term;
+        entity.Weeks = weeks;
 
         await _unitOfWork.EvaluationTemplates.AddAsync(entity);
         await _unitOfWork.SaveChangesAsync();
@@ -69,6 +121,7 @@ public class EvaluationTemplateService : IEvaluationTemplateService
         entity.CalculationType = request.CalculationType;
         entity.IsActive = request.IsActive;
         entity.Weeks = request.Weeks;
+        entity.Term = request.Term;
         entity.UpdatedAt = DateTime.UtcNow;
 
         _unitOfWork.EvaluationTemplates.Update(entity);
@@ -151,7 +204,7 @@ public class EvaluationTemplateService : IEvaluationTemplateService
             return OperationResult<EvaluationTemplateDto>.Failure("قالب التقييم غير موجود");
 
         if (await _unitOfWork.EvaluationTemplates.ExistsByGradeLevelSubjectAndYearAsync(
-                source.GradeLevelId, source.SubjectId, source.AcademicYearId))
+                source.GradeLevelId, source.SubjectId, source.AcademicYearId, source.Term))
             return OperationResult<EvaluationTemplateDto>.Failure("يوجد قالب تقييم لهذا الصف والمادة والسنة بالفعل");
 
         var duplicate = new EvaluationTemplate
@@ -161,6 +214,7 @@ public class EvaluationTemplateService : IEvaluationTemplateService
             AcademicYearId = source.AcademicYearId,
             Name = source.Name + " (نسخة)",
             CalculationType = source.CalculationType,
+            Term = source.Term,
             IsActive = false
         };
 

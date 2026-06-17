@@ -1,3 +1,5 @@
+using Project.Domain.Enums;
+
 namespace Project.BLL.DTOs.FinalGrades;
 
 public class FinalGradeDto
@@ -6,6 +8,7 @@ public class FinalGradeDto
     public int EnrollmentId { get; set; }
     public int StudentId { get; set; }
     public string StudentName { get; set; } = string.Empty;
+    public AcademicTerm Term { get; set; }
     public decimal PeriodAvgScore { get; set; }
     public decimal Assessment1Score { get; set; }
     public decimal Assessment2Score { get; set; }
