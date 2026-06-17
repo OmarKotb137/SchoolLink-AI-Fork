@@ -11,10 +11,14 @@ namespace Project.API.Controllers;
 public class ParentDashboardController : ControllerBase
 {
     private readonly IParentStudentService _parentStudentService;
+    private readonly IParentDashboardService _parentDashboardService;
 
-    public ParentDashboardController(IParentStudentService parentStudentService)
+    public ParentDashboardController(
+        IParentStudentService parentStudentService,
+        IParentDashboardService parentDashboardService)
     {
         _parentStudentService = parentStudentService;
+        _parentDashboardService = parentDashboardService;
     }
 
     [HttpGet("my-children")]
@@ -24,6 +28,17 @@ public class ParentDashboardController : ControllerBase
         var result = await _parentStudentService.GetDashboardChildrenByParentAsync(parentId);
         if (!result.IsSuccess)
             return NotFound(result);
+
+        return Ok(result);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetDashboard()
+    {
+        var parentId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var result = await _parentDashboardService.GetParentDashboardAsync(parentId);
+        if (!result.IsSuccess)
+            return BadRequest(result);
 
         return Ok(result);
     }

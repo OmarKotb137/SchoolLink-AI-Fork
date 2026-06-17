@@ -3,109 +3,171 @@
       <app-topbar [userName]="userName" />
       <main class="p-gutter-desktop">
         <div class="flex flex-col gap-gutter-desktop">
-          <!-- Stats Cards -->
+
+          <!-- Row 1: Stats Cards -->
           <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div class="bg-surface-container-lowest rounded-2xl p-widget-padding shadow-sm border border-outline-variant/20">
+            <div class="stat-card">
               <div class="flex items-center gap-4">
                 <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
                   <span class="material-symbols-outlined text-primary">school</span>
                 </div>
                 <div>
                   <p class="text-on-surface-variant text-label-sm">إجمالي الطلاب</p>
-                  <p class="text-headline-md font-bold text-on-surface" style="font-size: 25px;">{{ data()?.totalStudents ?? '—' }}</p>
+                  <p class="stat-value text-primary">{{ data()?.totalStudents ?? '—' }}</p>
+                  <p class="stat-trend up">
+                    <span class="material-symbols-outlined text-xs">trending_up</span>
+                    12% هذا الأسبوع
+                  </p>
                 </div>
               </div>
             </div>
-            <div class="bg-surface-container-lowest rounded-2xl p-widget-padding shadow-sm border border-outline-variant/20">
+            <div class="stat-card">
               <div class="flex items-center gap-4">
-                <div class="w-12 h-12 rounded-xl bg-secondary/10 flex items-center justify-center">
-                  <span class="material-symbols-outlined text-secondary">group</span>
+                <div class="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center">
+                  <span class="material-symbols-outlined text-emerald-600">group</span>
                 </div>
                 <div>
                   <p class="text-on-surface-variant text-label-sm">إجمالي المعلمين</p>
-                  <p class="text-headline-md font-bold text-on-surface" style="font-size: 25px;">{{ data()?.totalTeachers ?? '—' }}</p>
+                  <p class="stat-value text-emerald-600">{{ data()?.totalTeachers ?? '—' }}</p>
+                  <p class="stat-trend up">
+                    <span class="material-symbols-outlined text-xs">trending_up</span>
+                    3% هذا الأسبوع
+                  </p>
                 </div>
               </div>
             </div>
-            <div class="bg-surface-container-lowest rounded-2xl p-widget-padding shadow-sm border border-outline-variant/20">
+            <div class="stat-card">
               <div class="flex items-center gap-4">
                 <div class="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center">
                   <span class="material-symbols-outlined text-amber-600">business</span>
                 </div>
                 <div>
                   <p class="text-on-surface-variant text-label-sm">الفصول الدراسية</p>
-                  <p class="text-headline-md font-bold text-on-surface" style="font-size: 25px;">{{ data()?.totalClasses ?? '—' }}</p>
+                  <p class="stat-value text-amber-600">{{ data()?.totalClasses ?? '—' }}</p>
+                  <p class="stat-trend neutral">
+                    <span class="material-symbols-outlined text-xs">horizontal_rule</span>
+                    مستقر
+                  </p>
                 </div>
               </div>
             </div>
-            <div class="bg-surface-container-lowest rounded-2xl p-widget-padding shadow-sm border border-outline-variant/20">
+            <div class="stat-card">
               <div class="flex items-center gap-4">
-                <div class="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center">
-                  <span class="material-symbols-outlined text-green-600">trending_up</span>
+                <div class="w-12 h-12 rounded-xl bg-sky-100 flex items-center justify-center">
+                  <span class="material-symbols-outlined text-sky-600">trending_up</span>
                 </div>
                 <div>
                   <p class="text-on-surface-variant text-label-sm">نسبة النجاح</p>
-                  <p class="text-headline-md font-bold text-on-surface" style="font-size: 25px;">{{ data()?.successRate ?? '—' }}%</p>
+                  <p class="stat-value text-sky-600">{{ data()?.successRate ?? '—' }}%</p>
+                  <p class="stat-trend up">
+                    <span class="material-symbols-outlined text-xs">trending_up</span>
+                    {{ (data()?.successRate ?? 0) > 50 ? 'جيد' : 'بحاجة لتحسين' }}
+                  </p>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- Charts & Activity -->
+          <!-- Row 2: Bar Chart + Doughnut -->
           <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div class="lg:col-span-2 bg-surface-container-lowest rounded-2xl p-widget-padding shadow-sm border border-outline-variant/20">
-              <h3 class="font-headline-md mb-4">النشاط الأكاديمي</h3>
-              <div class="h-64 flex items-end justify-between gap-2">
-                @for (h of barHeights(); track $index) {
-                  <div class="flex-1 rounded-t-lg transition-all duration-500"
-                    [class]="$index === 2 || $index === 4 ? 'bg-primary' : 'bg-primary/20'"
-                    [style.height.%]="h">
-                  </div>
-                }
+            <div class="lg:col-span-2 chart-card">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="font-headline-md">النشاط الأكاديمي الأسبوعي</h3>
+                <span class="text-label-sm text-outline flex items-center gap-1">
+                  <span class="material-symbols-outlined text-sm">bar_chart</span>
+                  آخر 7 أيام
+                </span>
               </div>
-              <div class="flex justify-between mt-2 text-label-sm text-outline">
-                @for (day of data()?.weeklyActivity ?? []; track $index) {
-                  <span>{{ day.day }}</span>
-                }
+              <div class="chart-container">
+                <canvas #activityChart></canvas>
               </div>
             </div>
-            <div class="bg-surface-container-lowest rounded-2xl p-widget-padding shadow-sm border border-outline-variant/20">
-              <h3 class="font-headline-md mb-4">أحدث الأنشطة</h3>
-              <div class="space-y-4">
-                @for (activity of data()?.recentActivities; track $index) {
-                  <div class="flex items-center gap-3 p-3 bg-surface-container-low rounded-xl">
-                    <span class="material-symbols-outlined text-primary">circle</span>
-                    <div>
-                      <p class="text-label-sm font-bold">{{ activity }}</p>
-                      <p class="text-[11px] text-outline">منذ قليل</p>
-                    </div>
-                  </div>
-                }
+            <div class="chart-card">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="font-headline-md">توزيع المنظومة</h3>
+                <span class="text-label-sm text-outline flex items-center gap-1">
+                  <span class="material-symbols-outlined text-sm">pie_chart</span>
+                  إحصائيات
+                </span>
+              </div>
+              <div class="chart-container-sm">
+                <canvas #distributionChart></canvas>
               </div>
             </div>
           </div>
 
-          <!-- Recent Users Table -->
-          <div class="bg-surface-container-lowest rounded-2xl p-widget-padding shadow-sm border border-outline-variant/20">
-            <h3 class="font-headline-md mb-4">آخر المستخدمين المسجلين</h3>
-            <div class="overflow-x-auto">
-              <table class="w-full text-right">
-                <thead class="text-label-sm text-outline border-b border-outline-variant/30">
-                  <tr><th class="pb-3 px-2">الاسم</th><th class="pb-3 px-2">الدور</th><th class="pb-3 px-2">البريد</th><th class="pb-3 px-2">الحالة</th></tr>
-                </thead>
-                <tbody>
-                  @for (user of data()?.recentUsers; track $index) {
-                    <tr class="border-b border-outline-variant/10">
-                      <td class="py-3 px-2 text-label-sm">{{ user.name }}</td>
-                      <td class="py-3 px-2 text-label-sm text-outline">{{ user.role }}</td>
-                      <td class="py-3 px-2 text-label-sm text-outline">{{ user.email }}</td>
-                      <td class="py-3 px-2"><span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-[11px] font-bold">{{ user.status }}</span></td>
+          <!-- Row 3: Trend Chart + Recent Users -->
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="chart-card">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="font-headline-md">اتجاه النشاط</h3>
+                <span class="text-label-sm text-outline">تحليل</span>
+              </div>
+              <div class="chart-container-sm">
+                <canvas #trendChart></canvas>
+              </div>
+            </div>
+            <div class="lg:col-span-2 chart-card">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="font-headline-md">آخر المستخدمين المسجلين</h3>
+                <span class="text-label-sm text-outline flex items-center gap-1">
+                  <span class="material-symbols-outlined text-sm">groups</span>
+                  {{ data()?.recentUsers?.length ?? 0 }} مستخدم
+                </span>
+              </div>
+              <div class="overflow-x-auto">
+                <table class="w-full text-right">
+                  <thead class="text-label-sm text-outline border-b border-outline-variant/30">
+                    <tr>
+                      <th class="pb-3 px-2">الاسم</th>
+                      <th class="pb-3 px-2">الدور</th>
+                      <th class="pb-3 px-2">البريد</th>
+                      <th class="pb-3 px-2">الحالة</th>
                     </tr>
-                  }
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    @for (user of data()?.recentUsers; track $index) {
+                      <tr class="border-b border-outline-variant/10 hover:bg-surface-container-low transition-colors">
+                        <td class="py-3 px-2 text-label-sm font-bold">{{ user.name }}</td>
+                        <td class="py-3 px-2 text-label-sm text-outline">{{ user.role }}</td>
+                        <td class="py-3 px-2 text-label-sm text-outline ltr text-left">{{ user.email }}</td>
+                        <td class="py-3 px-2">
+                          <span class="status-badge"
+                                [class.active]="user.status === 'نشط' || user.status === 'Active'"
+                                [class.inactive]="user.status !== 'نشط' && user.status !== 'Active'">
+                            {{ user.status }}
+                          </span>
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
+
+          <!-- Row 4: Recent Activities -->
+          <div class="chart-card">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="font-headline-md">أحدث الأنشطة</h3>
+              <span class="text-label-sm text-outline flex items-center gap-1">
+                <span class="material-symbols-outlined text-sm">timeline</span>
+                آخر التحديثات
+              </span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              @for (activity of data()?.recentActivities; track $index) {
+                <div class="activity-item">
+                  <div class="activity-dot" [class]="$index === 0 ? 'bg-primary' : $index === 1 ? 'bg-emerald-500' : $index === 2 ? 'bg-amber-500' : 'bg-sky-500'"></div>
+                  <div class="flex-1">
+                    <p class="text-label-sm font-bold">{{ activity }}</p>
+                    <p class="text-[11px] text-outline mt-1">منذ {{ $index === 0 ? 'دقيقة' : $index === 1 ? '5 دقائق' : $index === 2 ? 'ساعة' : '3 ساعات' }}</p>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+
         </div>
       </main>
     </div>

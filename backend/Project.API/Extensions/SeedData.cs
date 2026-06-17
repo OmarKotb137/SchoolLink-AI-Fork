@@ -29,6 +29,9 @@ public static class SeedData
         }
         await ctx.Database.MigrateAsync();
 
+        // ── Seed current-week activity so charts always have data ─────────
+        await SeedCurrentWeekActivity(ctx);
+
         // ── Guard: seed only once ──────────────────────────────────────────
         bool hasExistingData = await ctx.Users.IgnoreQueryFilters().AnyAsync();
         if (hasExistingData)
