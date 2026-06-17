@@ -20,6 +20,18 @@ namespace Project.DAL.Configurations
             builder.Property(x => x.EndDate)
                 .HasColumnType("date");
 
+            builder.Property(x => x.FirstSemesterStartDate)
+                .HasColumnType("date");
+
+            builder.Property(x => x.FirstSemesterEndDate)
+                .HasColumnType("date");
+
+            builder.Property(x => x.SecondSemesterStartDate)
+                .HasColumnType("date");
+
+            builder.Property(x => x.SecondSemesterEndDate)
+                .HasColumnType("date");
+
             builder.HasIndex(x => x.Name)
                 .IsUnique()
                 .HasFilter("[IsDeleted] = 0");

@@ -16,7 +16,9 @@ public interface IEvaluationPeriodRepository : IRepository<EvaluationPeriod>
 
     Task<EvaluationPeriod?> GetCurrentWeekAsync(int academicYearId, CancellationToken ct = default);
     Task<EvaluationPeriod?> GetByDateAsync(int academicYearId, DateOnly date, CancellationToken ct = default);
+
+    // Semester support
+    Task<IReadOnlyList<EvaluationPeriod>> GetWeeksByYearAndSemesterAsync(int academicYearId, int semesterNumber, CancellationToken ct = default);
+    Task<IReadOnlyList<EvaluationPeriod>> GetByTypeAndYearAndSemesterAsync(int academicYearId, PeriodType periodType, int semesterNumber, CancellationToken ct = default);
+    Task<EvaluationPeriod?> GetCurrentTermAsync(int academicYearId, CancellationToken ct = default);
 }
-
-
-

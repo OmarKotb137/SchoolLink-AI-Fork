@@ -34,7 +34,7 @@ export class Settings implements OnInit {
   successMessage = signal<string | null>(null);
 
   // Forms
-  newYear = { name: '', startDate: '', endDate: '' };
+  newYear = { name: '', startDate: '', endDate: '', firstSemesterStartDate: '', firstSemesterEndDate: '', secondSemesterStartDate: '', secondSemesterEndDate: '' };
   newGrade: { name: string; stage: string | null; levelOrder: number } = {
     name: '',
     stage: null,
@@ -125,13 +125,17 @@ export class Settings implements OnInit {
       name: year.name,
       startDate: year.startDate,
       endDate: year.endDate,
+      firstSemesterStartDate: year.firstSemesterStartDate ?? '',
+      firstSemesterEndDate: year.firstSemesterEndDate ?? '',
+      secondSemesterStartDate: year.secondSemesterStartDate ?? '',
+      secondSemesterEndDate: year.secondSemesterEndDate ?? '',
     };
     this.yearError.set(null);
   }
 
   cancelYearEdit() {
     this.editingYearId.set(null);
-    this.newYear = { name: '', startDate: '', endDate: '' };
+    this.newYear = { name: '', startDate: '', endDate: '', firstSemesterStartDate: '', firstSemesterEndDate: '', secondSemesterStartDate: '', secondSemesterEndDate: '' };
     this.yearError.set(null);
   }
 

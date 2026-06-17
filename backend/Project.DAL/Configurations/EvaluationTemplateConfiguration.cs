@@ -14,7 +14,10 @@ namespace Project.DAL.Configurations
                 .IsRequired()
                 .HasMaxLength(200);
 
-            builder.HasIndex(x => new { x.GradeLevelId, x.SubjectId, x.AcademicYearId })
+            builder.Property(x => x.Term)
+                .HasConversion<int>();
+
+            builder.HasIndex(x => new { x.GradeLevelId, x.SubjectId, x.AcademicYearId, x.Term })
                 .IsUnique()
                 .HasFilter("[IsDeleted] = 0");
 

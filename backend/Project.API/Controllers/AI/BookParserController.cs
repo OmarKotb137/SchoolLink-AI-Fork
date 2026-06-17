@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Project.BLL.AI.Interfaces;
 using Project.BLL.DTOs;
 using Project.BLL.Interfaces;
+using Project.Domain.Enums;
 
 namespace Project.API.Controllers.AI;
 
@@ -56,12 +57,13 @@ public class BookParserController : ControllerBase
     }
 
     [HttpPost("save")]
-    public async Task<IActionResult> Save(int subjectId, [FromQuery] int gradeLevelId, [FromBody] List<CreateUnitDto> units)
+    public async Task<IActionResult> Save(int subjectId, [FromQuery] int gradeLevelId, [FromBody] List<CreateUnitDto> units, [FromQuery] int? term = null)
     {
         if (units is null || units.Count == 0)
             return BadRequest(new { message = "يجب إدخال وحدات على الأقل" });
 
-        var result = await _bookParserService.SaveBookStructureAsync(subjectId, gradeLevelId, units);
+        AcademicTerm? termEnum = term.HasValue ? (AcademicTerm)term.Value : null;
+        var result = await _bookParserService.SaveBookStructureAsync(subjectId, gradeLevelId, units, termEnum);
         return result.IsSuccess ? Ok(result) : BadRequest(result);
     }
 
@@ -76,16 +78,16 @@ public class BookParserController : ControllerBase
     }
 
     [HttpGet("subjects")]
-    public async Task<IActionResult> GetParsedSubjects()
+    public async Task<IActionResult> GetParsedSubjects([FromQuery] AcademicTerm? term = null)
     {
-        var result = await _unitService.GetParsedSubjectsWithStructureAsync();
+        var result = await _unitService.GetParsedSubjectsWithStructureAsync(term);
         return result.IsSuccess ? Ok(result) : BadRequest(result);
     }
 
     [HttpGet("subjects/{subjectId}")]
-    public async Task<IActionResult> GetSubjectStructure(int subjectId)
+    public async Task<IActionResult> GetSubjectStructure(int subjectId, [FromQuery] AcademicTerm? term = null)
     {
-        var result = await _unitService.GetUnitsWithLessonsBySubjectAsync(subjectId);
+        var result = await _unitService.GetUnitsWithLessonsBySubjectAsync(subjectId, term);
         return result.IsSuccess ? Ok(result) : BadRequest(result);
     }
 

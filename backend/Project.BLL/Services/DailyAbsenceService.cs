@@ -135,7 +135,7 @@ public class DailyAbsenceService : IDailyAbsenceService
         if (enrollmentIds == null || enrollmentIds.Count == 0)
             return OperationResult<IEnumerable<DailyAbsenceDto>>.Failure("معرفات القيد مطلوبة");
 
-        if (fromDate >= toDate)
+        if (fromDate > toDate)
             return OperationResult<IEnumerable<DailyAbsenceDto>>.Failure("تاريخ البداية يجب أن يكون قبل تاريخ النهاية");
 
         var absences = await _unitOfWork.DailyAbsences.GetByEnrollmentsAndDateRangeAsync(
@@ -211,7 +211,7 @@ public class DailyAbsenceService : IDailyAbsenceService
     public async Task<OperationResult<IEnumerable<DailyAbsenceDto>>> GetAbsencesByDateRangeAsync(
         DateOnly fromDate, DateOnly toDate, int? classSubjectTeacherId = null)
     {
-        if (fromDate >= toDate)
+        if (fromDate > toDate)
             return OperationResult<IEnumerable<DailyAbsenceDto>>.Failure("تاريخ البداية يجب أن يكون قبل تاريخ النهاية");
 
         IReadOnlyList<DailyAbsence> absences;

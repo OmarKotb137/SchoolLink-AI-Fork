@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Project.BLL.AI.Interfaces;
 using Project.BLL.AI.Models;
 using Project.DAL.Interfaces;
+using Project.Domain.Enums;
 
 namespace Project.BLL.AI.Agents;
 
@@ -49,8 +50,9 @@ TOOL 1 — get_my_children
 TOOL 2 — get_child_evaluations
 ────────────────────────────────────
 ● جلب تقييمات الابن (دراسية: سلوك، تفاعل، واجبات، أعمال سنة + تدريبية: نتائج الامتحانات)
-● Arguments: enrollmentId (int — مطلوب), periodId (int — اختياري)
+● Arguments: enrollmentId (int — مطلوب), periodId (int — اختياري), term (int — اختياري): 1 = الترم الأول, 2 = الترم الثاني
 ● الاستخدام: لما ولي الأمر عاوز يتأكد من مستوى الابن
+● ملاحظة: term يتم اكتشافه تلقائياً — لا تسأل ولي الأمر عنه
 ● ماذا تفعل بعدها:
    ✅ حلّل التقييمات وحدد نقاط القوة والضعف
    ❌ خطأ → اعتذر واطلب المحاولة لاحقاً
@@ -59,8 +61,9 @@ TOOL 2 — get_child_evaluations
 TOOL 3 — get_child_performance_trend
 ────────────────────────────────────
 ● جلب مؤشرات الأداء عبر الفترات المختلفة لكشف الانخفاض أو التحسن
-● Arguments: enrollmentId (int) — معرف تسجيل الطالب
+● Arguments: enrollmentId (int) — معرف تسجيل الطالب, term (int — اختياري): 1 = الترم الأول, 2 = الترم الثاني
 ● الاستخدام: لمقارنة أداء الابن بين الفترات الدراسية
+● ملاحظة: term يتم اكتشافه تلقائياً — لا تسأل ولي الأمر عنه
 ● ماذا تفعل بعدها:
    ✅ لو في انخفاض → نبّه ولي الأمر فوراً بأسلوب مهذب
    ✅ لو في تحسن → امدح ولي الأمر على متابعته
@@ -193,7 +196,7 @@ PROTOCOL 4 — متابعة الامتحانات
         };
     }
 
-    public async Task<OperationResult<AgentResponse>> GetProgressSummaryAsync(int studentId, CancellationToken ct = default)
+    public async Task<OperationResult<AgentResponse>> GetProgressSummaryAsync(int studentId, AcademicTerm? term = null, CancellationToken ct = default)
     {
         var student = await _unitOfWork.Students.GetByIdAsync(studentId);
         if (student == null || student.IsDeleted)
@@ -207,7 +210,8 @@ PROTOCOL 4 — متابعة الامتحانات
         var evaluations = await _unitOfWork.StudentEvaluations.FindAsync(e => e.EnrollmentId == enrollment.Id && !e.IsDeleted);
         var absences = await _unitOfWork.DailyAbsences.FindAsync(a => a.EnrollmentId == enrollment.Id && !a.IsDeleted);
 
-        var summary = $"الطالب: {student.User?.FullName ?? "غير معروف"}\nعدد التقييمات: {evaluations.Count}\nعدد مرات الغياب: {absences.Count}";
+        var termLabel = term.HasValue ? $"الفصل الدراسي: {term.Value}" : "جميع الفصول";
+        var summary = $"الطالب: {student.User?.FullName ?? "غير معروف"}\nعدد التقييمات: {evaluations.Count}\nعدد مرات الغياب: {absences.Count}\n{termLabel}";
 
         var result = await _router.GenerateAsync(SystemPrompt,
             $"قدّم تقريراً عن تقدم الطالب بناءً على:\n{summary}", ct: ct);
@@ -219,23 +223,26 @@ PROTOCOL 4 — متابعة الامتحانات
         });
     }
 
-    public async Task<OperationResult<AgentResponse>> SuggestLearningActivitiesAsync(int studentId, CancellationToken ct = default)
+    public async Task<OperationResult<AgentResponse>> SuggestLearningActivitiesAsync(int studentId, AcademicTerm? term = null, CancellationToken ct = default)
     {
-        var prompt = $"اقترح أنشطة تعليمية منزلية مناسبة لطالب (ID: {studentId}) في المواد المختلفة.";
+        var termInfo = term.HasValue ? $" في الفصل الدراسي {term.Value}" : "";
+        var prompt = $"اقترح أنشطة تعليمية منزلية مناسبة لطالب (ID: {studentId}) في المواد المختلفة{termInfo}.";
         var result = await _router.GenerateAsync(SystemPrompt, prompt, ct: ct);
         return OperationResult<AgentResponse>.Success(new AgentResponse { Text = result });
     }
 
-    public async Task<OperationResult<AgentResponse>> IdentifyWeakAreasAsync(int studentId, CancellationToken ct = default)
+    public async Task<OperationResult<AgentResponse>> IdentifyWeakAreasAsync(int studentId, AcademicTerm? term = null, CancellationToken ct = default)
     {
-        var prompt = $"حلل أداء الطالب (ID: {studentId}) وحدد نقاط الضعف الأكاديمية واقترح خطة تحسين.";
+        var termInfo = term.HasValue ? $" في الفصل الدراسي {term.Value}" : "";
+        var prompt = $"حلل أداء الطالب (ID: {studentId}){termInfo} وحدد نقاط الضعف الأكاديمية واقترح خطة تحسين.";
         var result = await _router.GenerateAsync(SystemPrompt, prompt, ct: ct);
         return OperationResult<AgentResponse>.Success(new AgentResponse { Text = result });
     }
 
-    public async Task<OperationResult<AgentResponse>> RecommendResourcesAsync(string subject, string gradeLevel, CancellationToken ct = default)
+    public async Task<OperationResult<AgentResponse>> RecommendResourcesAsync(string subject, string gradeLevel, AcademicTerm? term = null, CancellationToken ct = default)
     {
-        var prompt = $"أوصِ بمصادر تعليمية (كتب، فيديوهات، تطبيقات) لمادة '{subject}' للصف '{gradeLevel}'.";
+        var termInfo = term.HasValue ? $" للفصل الدراسي {term.Value}" : "";
+        var prompt = $"أوصِ بمصادر تعليمية (كتب، فيديوهات، تطبيقات) لمادة '{subject}' للصف '{gradeLevel}'{termInfo}.";
         var result = await _router.GenerateAsync(SystemPrompt, prompt, ct: ct);
         return OperationResult<AgentResponse>.Success(new AgentResponse { Text = result });
     }

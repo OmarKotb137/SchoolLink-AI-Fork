@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Project.BLL.AI.Interfaces;
 using Project.BLL.AI.Models;
+using Project.BLL.Interfaces;
+using Project.Domain.Enums;
 
 namespace Project.API.Controllers.AI;
 
@@ -13,12 +15,23 @@ namespace Project.API.Controllers.AI;
 public class TeacherAgentController : ControllerBase
 {
     private readonly ITeacherAssistantAgent _agent;
+    private readonly IAcademicYearService _academicYearService;
     private readonly ILogger<TeacherAgentController> _logger;
 
-    public TeacherAgentController(ITeacherAssistantAgent agent, ILogger<TeacherAgentController> logger)
+    public TeacherAgentController(
+        ITeacherAssistantAgent agent,
+        IAcademicYearService academicYearService,
+        ILogger<TeacherAgentController> logger)
     {
         _agent = agent;
+        _academicYearService = academicYearService;
         _logger = logger;
+    }
+
+    private async Task<AcademicTerm?> ResolveCurrentTermAsync()
+    {
+        var result = await _academicYearService.GetCurrentTermAsync();
+        return result.IsSuccess ? result.Data : null;
     }
 
     [HttpPost("lesson-plan")]
@@ -64,10 +77,12 @@ public class TeacherAgentController : ControllerBase
 
         try
         {
+            var term = await ResolveCurrentTermAsync();
             var context = new UserContext
             {
                 UserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value),
-                UserRole = "Teacher"
+                UserRole = "Teacher",
+                CurrentTerm = term
             };
 
             var result = await _agent.ChatAsync(request.Message, request.ConversationId, context, ct);

@@ -55,10 +55,14 @@ export class StudentProgressionService {
   private http = inject(HttpClient);
   private apiUrl = buildApiUrl('student-progression');
 
-  getCandidates(gradeLevelId: number, academicYearId: number): Observable<any> {
-    const params = new HttpParams()
+  getCandidates(gradeLevelId: number, academicYearId: number, term?: number | null): Observable<any> {
+    let params = new HttpParams()
       .set('gradeLevelId', gradeLevelId)
       .set('academicYearId', academicYearId);
+
+    if (term != null) {
+      params = params.set('term', term);
+    }
 
     return this.http.get<any>(`${this.apiUrl}/candidates`, { params });
   }

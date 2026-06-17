@@ -1,101 +1,164 @@
 <app-sidebar [(isOpen)]="sidebarOpen" />
 <div class="main-content">
-  <app-topbar [userName]="displayUserName()" />
+  <app-topbar [userName]="displayUserName" />
   <main class="p-gutter-desktop">
     <div class="flex flex-col gap-gutter-desktop">
-      <section class="bg-surface-container-lowest rounded-3xl p-widget-padding shadow-sm border border-outline-variant/20">
+
+      <!-- Header -->
+      <section class="dash-card">
         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <p class="text-label-sm text-primary font-bold mb-2">لوحة ولي الأمر</p>
-            <h1 class="font-headline-lg font-bold mb-2">بيانات الأبناء المرتبطين بحسابك</h1>
-            <p class="text-label-md text-outline">البيانات المعروضة هنا يتم جلبها مباشرة من قاعدة البيانات حسب الحساب الحالي.</p>
+            <p class="text-label-sm text-primary font-bold mb-1">لوحة ولي الأمر</p>
+            <h1 class="font-headline-lg font-bold">بيانات الأبناء</h1>
           </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 min-w-full md:min-w-[420px]">
-            <div class="bg-surface-container-low rounded-2xl p-4 text-center">
-              <p class="text-label-sm text-outline mb-1">إجمالي الأبناء</p>
-              <p class="text-2xl font-bold text-primary">{{ totalChildren() }}</p>
+          <div class="grid grid-cols-3 gap-3 min-w-full md:min-w-[360px]">
+            <div class="stat-box">
+              <p class="text-label-sm text-outline mb-1">الإجمالي</p>
+              <p class="stat-number text-primary">{{ totalChildren() }}</p>
             </div>
-            <div class="bg-surface-container-low rounded-2xl p-4 text-center">
+            <div class="stat-box">
               <p class="text-label-sm text-outline mb-1">النشطون</p>
-              <p class="text-2xl font-bold text-green-600">{{ activeChildren() }}</p>
+              <p class="stat-number text-green-600">{{ activeChildren() }}</p>
             </div>
-            <div class="bg-surface-container-low rounded-2xl p-4 text-center">
+            <div class="stat-box">
               <p class="text-label-sm text-outline mb-1">غير النشطين</p>
-              <p class="text-2xl font-bold text-amber-600">{{ inactiveChildren() }}</p>
+              <p class="stat-number text-amber-600">{{ inactiveChildren() }}</p>
             </div>
           </div>
         </div>
       </section>
 
       @if (isLoading()) {
-        <div class="bg-surface-container-lowest rounded-3xl p-widget-padding shadow-sm border border-outline-variant/20 text-center">
+        <div class="dash-card text-center py-12">
           <span class="material-symbols-outlined text-4xl text-primary animate-spin mb-3">progress_activity</span>
-          <p class="font-bold">جار تحميل بيانات الأبناء...</p>
+          <p class="font-bold">جار تحميل البيانات...</p>
         </div>
       }
 
       @if (errorMessage()) {
-        <div class="bg-red-50 text-red-700 rounded-3xl p-widget-padding border border-red-200 flex items-center justify-between gap-4">
+        <div class="bg-red-50 text-red-700 rounded-2xl p-6 border border-red-200 flex items-center justify-between gap-4">
           <div class="flex items-center gap-3">
             <span class="material-symbols-outlined">error</span>
             <p class="font-medium">{{ errorMessage() }}</p>
           </div>
-          <button type="button" (click)="loadChildren()" class="px-4 py-2 rounded-xl bg-red-600 text-white font-bold text-sm">
-            إعادة المحاولة
-          </button>
+          <button (click)="loadData()" class="px-4 py-2 rounded-xl bg-red-600 text-white font-bold text-sm">إعادة المحاولة</button>
         </div>
       }
 
       @if (!isLoading() && !errorMessage() && children().length === 0) {
-        <div class="bg-surface-container-lowest rounded-3xl p-widget-padding shadow-sm border border-outline-variant/20 text-center">
+        <div class="dash-card text-center py-12">
           <span class="material-symbols-outlined text-5xl text-outline mb-3">family_restroom</span>
           <h3 class="font-headline-md font-bold mb-2">لا يوجد أبناء مرتبطون بهذا الحساب</h3>
-          <p class="text-label-md text-outline">يرجى مراجعة الإدارة لربط حساب ولي الأمر بالطالب من النظام.</p>
+          <p class="text-label-md text-outline">يرجى مراجعة الإدارة لربط حساب ولي الأمر بالطالب.</p>
         </div>
       }
 
       @if (!isLoading() && !errorMessage() && children().length > 0) {
+        <!-- Charts Row -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div class="chart-card">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="font-headline-md">أداء الأبناء</h3>
+              <span class="text-label-sm text-outline flex items-center gap-1">
+                <span class="material-symbols-outlined text-sm">pie_chart</span>
+                نسب مئوية
+              </span>
+            </div>
+            <div class="chart-container">
+              <canvas #performanceChart></canvas>
+            </div>
+          </div>
+          <div class="chart-card">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="font-headline-md">الغيابات</h3>
+              <span class="text-label-sm text-outline flex items-center gap-1">
+                <span class="material-symbols-outlined text-sm">bar_chart</span>
+                عدد الأيام
+              </span>
+            </div>
+            <div class="chart-container">
+              <canvas #absencesChart></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Children Cards -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           @for (child of children(); track child.studentId) {
-            <div class="bg-surface-container-lowest rounded-3xl p-widget-padding shadow-sm border border-outline-variant/20">
-              <div class="flex items-start justify-between gap-4 mb-5">
+            @let stats = dashboardData()?.children?.find(c => c.name === child.studentName);
+            <div class="dash-card">
+              <div class="flex items-start justify-between gap-4 mb-4">
                 <div class="flex items-center gap-4">
                   <div class="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
                     <span class="material-symbols-outlined text-primary text-2xl">school</span>
                   </div>
                   <div>
                     <h3 class="font-headline-md font-bold">{{ child.studentName }}</h3>
-                    <p class="text-label-sm text-outline">{{ getChildClassLine(child) }}</p>
+                    <p class="text-label-sm text-outline">{{ child.gradeLevelName }}{{ child.className ? ' - ' + child.className : '' }}</p>
                   </div>
                 </div>
-
-                <span class="px-3 py-1 rounded-full text-xs font-bold"
-                      [class.bg-green-50]="child.isActive"
-                      [class.text-green-700]="child.isActive"
-                      [class.bg-amber-50]="!child.isActive"
-                      [class.text-amber-700]="!child.isActive">
+                <span class="status-pill" [class.active]="child.isActive" [class.inactive]="!child.isActive">
                   {{ child.isActive ? 'نشط' : 'غير نشط' }}
                 </span>
               </div>
 
-              <div class="grid grid-cols-2 gap-3">
-                <div class="bg-surface-container-low rounded-2xl p-4">
+              <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div class="child-stat">
                   <p class="text-[11px] text-outline mb-1">صلة القرابة</p>
-                  <p class="font-bold text-primary">{{ getRelationshipLabel(child.relationship) }}</p>
+                  <p class="font-bold text-primary">{{ child.relationship === 'Father' ? 'الأب' : child.relationship === 'Mother' ? 'الأم' : 'ولي الأمر' }}</p>
                 </div>
-                <div class="bg-surface-container-low rounded-2xl p-4">
-                  <p class="text-[11px] text-outline mb-1">الفصل الحالي</p>
-                  <p class="font-bold text-primary">{{ child.className || 'غير مسجل' }}</p>
+                <div class="child-stat">
+                  <p class="text-[11px] text-outline mb-1">الأداء</p>
+                  <p class="font-bold">{{ stats?.performance ?? '—' }}{{ stats?.performance ? '%' : '' }}</p>
                 </div>
-                <div class="bg-surface-container-low rounded-2xl p-4 col-span-2">
-                  <p class="text-[11px] text-outline mb-1">الصف الدراسي</p>
-                  <p class="font-bold text-primary">{{ child.gradeLevelName || 'غير محدد' }}</p>
+                <div class="child-stat">
+                  <p class="text-[11px] text-outline mb-1">الغيابات</p>
+                  <p class="font-bold text-amber-600">{{ stats?.absences ?? '—' }}</p>
+                </div>
+                <div class="child-stat">
+                  <p class="text-[11px] text-outline mb-1">آخر تقييم</p>
+                  <p class="font-bold">{{ stats?.grades?.last ?? '—' }}</p>
                 </div>
               </div>
+
+              @if (stats?.performance) {
+                <div class="mt-4">
+                  <div class="flex justify-between text-label-sm mb-1">
+                    <span class="text-outline">نسبة الأداء</span>
+                    <span class="font-bold">{{ stats!.performance }}%</span>
+                  </div>
+                  <div class="progress-bar">
+                    <div class="progress-fill" [style.width.%]="stats!.performance"
+                         [class.bg-green-500]="stats!.performance >= 75"
+                         [class.bg-amber-500]="stats!.performance >= 50 && stats!.performance < 75"
+                         [class.bg-red-500]="stats!.performance < 50"></div>
+                  </div>
+                </div>
+              }
             </div>
           }
         </div>
+
+        <!-- Recent Activities -->
+        @if (dashboardData()?.recentActivities?.length) {
+          <div class="dash-card">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="font-headline-md">أحدث الأنشطة</h3>
+              <span class="text-label-sm text-outline flex items-center gap-1">
+                <span class="material-symbols-outlined text-sm">timeline</span>
+                آخر التحديثات
+              </span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              @for (activity of dashboardData()?.recentActivities; track $index) {
+                <div class="activity-item">
+                  <div class="activity-dot" [class]="$index === 0 ? 'bg-primary' : $index === 1 ? 'bg-emerald-500' : $index === 2 ? 'bg-amber-500' : 'bg-sky-500'"></div>
+                  <p class="text-label-sm font-bold">{{ activity }}</p>
+                </div>
+              }
+            </div>
+          </div>
+        }
       }
     </div>
   </main>

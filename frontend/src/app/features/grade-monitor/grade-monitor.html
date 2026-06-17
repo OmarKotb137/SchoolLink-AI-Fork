@@ -50,7 +50,7 @@
                 <label class="text-label-sm text-on-surface-variant">الفصل</label>
                 <select class="grade-inp" #quickClass (change)="quickEntryClassId.set(+quickClass.value)">
                   <option value="">-- اختر الفصل --</option>
-                  @for (c of classes(); track c.id) {
+                  @for (c of visibleClasses(); track c.id + '_' + c.subject) {
                     <option [value]="c.id">{{ c.name }} – {{ c.subject }}</option>
                   }
                 </select>
@@ -75,7 +75,7 @@
             </div>
             <div class="p-5">
               @if (recentClasses().length) {
-                @for (c of recentClasses(); track c.id) {
+                @for (c of recentClasses(); track c.id + '_' + (c.template_id ?? '')) {
                   <div class="grade-recent-item" (click)="goEntry(c.id)">
                     <div>
                       <div class="font-medium text-sm text-on-surface">{{ c.name }}</div>
@@ -122,6 +122,14 @@
                 <p>
                   <span class="material-symbols-outlined text-sm">business</span> {{ t.school }}
                 </p>
+                @if (t.term != null) {
+                  <p>
+                    <span class="material-symbols-outlined text-sm">auto_stories</span>
+                    <span class="grade-badge" [class.bg-primary-fixed]="t.term === 1" [class.bg-secondary-fixed]="t.term === 2">
+                      {{ t.term === 1 ? 'الترم الأول' : 'الترم الثاني' }}
+                    </span>
+                  </p>
+                }
                 <span class="grade-badge">{{ t.criteria.map(c => c.name).join(' · ') }}</span>
                 <div class="ca">
                   <button class="grade-btn-outline-sm" (click)="openTmplForm(t)">
@@ -154,9 +162,9 @@
             <span class="material-symbols-outlined text-2xl text-primary" style="animation: spin 1s linear infinite">progress_activity</span>
             <span class="text-sm">جاري تحميل الفصول...</span>
           </div>
-        } @else if (classes().length) {
+        } @else if (visibleClasses().length) {
           <div class="grade-grid">
-            @for (c of classes(); track c.id) {
+            @for (c of visibleClasses(); track c.id + '_' + c.subject) {
               <div class="grade-card">
                 <h4>
                   <span class="material-symbols-outlined text-primary" style="font-size:18px">school</span> {{ c.name }}
@@ -207,7 +215,7 @@
                 <label class="text-label-sm text-on-surface-variant block mb-1">الفصل</label>
                 <select class="grade-inp" [ngModel]="entryClassId()" (ngModelChange)="entryClassId.set($event); entryTemplateId.set(null); onClassOrWeekChange()">
                   <option [ngValue]="null">-- اختر الفصل --</option>
-                  @for (c of classes(); track c.id) {
+                  @for (c of visibleClasses(); track c.id + '_' + c.subject) {
                     <option [ngValue]="c.id">{{ c.name }} – {{ c.subject }}</option>
                   }
                 </select>
@@ -221,10 +229,13 @@
                   <option value="final">نتائج نهائية</option>
                 </select>
               </div>
-              @if (entryType() === 'grades' || entryType() === 'absence') {
+              @if ((entryType() === 'grades' || entryType() === 'absence') && entryClassId()) {
                 <div class="min-w-[160px]">
                   <label class="text-label-sm text-on-surface-variant block mb-1">الأسبوع</label>
                   <select class="grade-inp" (change)="onWeekChange($event)">
+                    @if (entryWeeks().length === 0) {
+                      <option value="">لا توجد أسابيع متاحة</option>
+                    }
                     @for (w of entryWeeks(); track w) {
                       <option [value]="w" [selected]="w === entryWeek()">{{ weekLabel(w) }}</option>
                     }
@@ -451,7 +462,7 @@
                 <label class="text-label-sm text-on-surface-variant block mb-1">الفصل</label>
                 <select class="grade-inp" [ngModel]="exportClassId()" (ngModelChange)="exportClassId.set($event)">
                   <option [ngValue]="null">-- اختر الفصل --</option>
-                  @for (c of classes(); track c.id) {
+                  @for (c of visibleClasses(); track c.id + '_' + c.subject) {
                     <option [ngValue]="c.id">{{ c.name }} – {{ c.subject }}</option>
                   }
                 </select>
@@ -581,6 +592,13 @@
           <div>
             <label class="grade-label">تاريخ بداية الفصل</label>
             <input class="grade-inp" type="date" [ngModel]="tStart()" (ngModelChange)="tStart.set($event); onTmplConfigChange()" />
+          </div>
+          <div>
+            <label class="grade-label">الترم الدراسي</label>
+            <select class="grade-inp" [ngModel]="tTerm()" (ngModelChange)="onTmplTermChange($event)">
+              <option [ngValue]="1">الترم الأول</option>
+              <option [ngValue]="2">الترم الثاني</option>
+            </select>
           </div>
           <div>
             <label class="grade-label">اسم المدرسة</label>

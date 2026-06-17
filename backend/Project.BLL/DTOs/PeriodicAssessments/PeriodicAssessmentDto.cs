@@ -10,4 +10,5 @@ public class PeriodicAssessmentDto
     public decimal Score { get; set; }
     public decimal MaxScore { get; set; }
     public DateOnly? AssessmentDate { get; set; }
+    public AcademicTerm? Term { get; set; }
 }

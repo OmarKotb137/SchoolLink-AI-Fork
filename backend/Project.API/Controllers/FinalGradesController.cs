@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Project.BLL.DTOs.FinalGrades;
 using Project.BLL.Interfaces;
+using Project.Domain.Enums;
 
 namespace Project.API.Controllers;
 
@@ -19,9 +20,9 @@ public class FinalGradesController : ControllerBase
     }
 
     [HttpPost("calculate-all/{classId:int}")]
-    public async Task<IActionResult> CalculateAllForClass(int classId)
+    public async Task<IActionResult> CalculateAllForClass(int classId, [FromQuery] AcademicTerm? term = null)
     {
-        var result = await _service.CalculateFinalGradesForClassAsync(classId);
+        var result = await _service.CalculateFinalGradesForClassAsync(classId, term);
         if (!result.IsSuccess)
             return BadRequest(result);
         return Ok(result);
@@ -46,16 +47,16 @@ public class FinalGradesController : ControllerBase
     }
 
     [HttpGet("by-academic-year/{academicYearId:int}")]
-    public async Task<IActionResult> GetByAcademicYear(int academicYearId)
+    public async Task<IActionResult> GetByAcademicYear(int academicYearId, [FromQuery] AcademicTerm? term = null)
     {
-        var result = await _service.GetFinalGradesByAcademicYearAsync(academicYearId);
+        var result = await _service.GetFinalGradesByAcademicYearAsync(academicYearId, term);
         return Ok(result);
     }
 
     [HttpPost("calculate/{enrollmentId:int}")]
-    public async Task<IActionResult> Calculate(int enrollmentId)
+    public async Task<IActionResult> Calculate(int enrollmentId, [FromQuery] AcademicTerm? term = null)
     {
-        var result = await _service.CalculateFinalGradeAsync(enrollmentId);
+        var result = await _service.CalculateFinalGradeAsync(enrollmentId, term);
         if (!result.IsSuccess)
             return BadRequest(result);
         return Ok(result);
@@ -72,32 +73,32 @@ public class FinalGradesController : ControllerBase
     }
 
     [HttpGet("by-enrollment/{enrollmentId:int}")]
-    public async Task<IActionResult> GetByEnrollment(int enrollmentId)
+    public async Task<IActionResult> GetByEnrollment(int enrollmentId, [FromQuery] AcademicTerm? term = null)
     {
-        var result = await _service.GetFinalGradeByEnrollmentAsync(enrollmentId);
+        var result = await _service.GetFinalGradeByEnrollmentAsync(enrollmentId, term);
         if (!result.IsSuccess)
             return NotFound(result);
         return Ok(result);
     }
 
     [HttpGet("by-class/{classId:int}")]
-    public async Task<IActionResult> GetByClass(int classId)
+    public async Task<IActionResult> GetByClass(int classId, [FromQuery] AcademicTerm? term = null)
     {
-        var result = await _service.GetFinalGradesByClassAsync(classId);
+        var result = await _service.GetFinalGradesByClassAsync(classId, term);
         return Ok(result);
     }
 
     [HttpGet("top-students/{classId:int}")]
-    public async Task<IActionResult> GetTopStudents(int classId, [FromQuery] int count = 10)
+    public async Task<IActionResult> GetTopStudents(int classId, [FromQuery] int count = 10, [FromQuery] AcademicTerm? term = null)
     {
-        var result = await _service.GetTopStudentsAsync(classId, count);
+        var result = await _service.GetTopStudentsAsync(classId, count, term);
         return Ok(result);
     }
 
     [HttpGet("needing-support/{classId:int}")]
-    public async Task<IActionResult> GetStudentsNeedingSupport(int classId, [FromQuery] decimal threshold = 50)
+    public async Task<IActionResult> GetStudentsNeedingSupport(int classId, [FromQuery] decimal threshold = 50, [FromQuery] AcademicTerm? term = null)
     {
-        var result = await _service.GetStudentsNeedingSupportAsync(classId, threshold);
+        var result = await _service.GetStudentsNeedingSupportAsync(classId, threshold, term);
         return Ok(result);
     }
 }

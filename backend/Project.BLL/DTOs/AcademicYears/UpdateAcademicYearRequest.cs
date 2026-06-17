@@ -16,4 +16,9 @@ public class UpdateAcademicYearRequest
 
     [Required]
     public DateOnly EndDate { get; set; }
+
+    public DateOnly? FirstSemesterStartDate { get; set; }
+    public DateOnly? FirstSemesterEndDate { get; set; }
+    public DateOnly? SecondSemesterStartDate { get; set; }
+    public DateOnly? SecondSemesterEndDate { get; set; }
 }

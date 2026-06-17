@@ -10,6 +10,9 @@ namespace Project.DAL.Configurations
         {
             builder.HasKey(x => x.Id);
 
+            builder.Property(x => x.Term)
+                .HasConversion<int>();
+
             builder.Property(x => x.PeriodAvgScore)
                 .HasColumnType("decimal(5,2)");
 
@@ -31,7 +34,7 @@ namespace Project.DAL.Configurations
             builder.Property(x => x.MaxTotal)
                 .HasColumnType("decimal(5,2)");
 
-            builder.HasIndex(x => x.EnrollmentId)
+            builder.HasIndex(x => new { x.EnrollmentId, x.Term })
                 .IsUnique();
 
             builder.HasOne(x => x.Enrollment)

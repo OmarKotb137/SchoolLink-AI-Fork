@@ -29,8 +29,17 @@ public static class SeedData
         }
         await ctx.Database.MigrateAsync();
 
+        // ── Seed current-week activity so charts always have data ─────────
+        await SeedCurrentWeekActivity(ctx);
+
         // ── Guard: seed only once ──────────────────────────────────────────
-        if (await ctx.Users.IgnoreQueryFilters().AnyAsync()) return;
+        bool hasExistingData = await ctx.Users.IgnoreQueryFilters().AnyAsync();
+        if (hasExistingData)
+        {
+            // Database has old data — run upgrade seeding for new sections
+            await SeedUpgrades(ctx);
+            return;
+        }
 
         var now = DateTime.UtcNow;
         var rng = new Random(42);
@@ -42,8 +51,12 @@ public static class SeedData
         {
             Name      = "2025/2026",
             StartDate = new DateOnly(2025, 9, 21),
-            EndDate   = new DateOnly(2026, 6, 11),
+            EndDate   = new DateOnly(2026, 7, 11),
             IsCurrent = true,
+            FirstSemesterStartDate = new DateOnly(2025, 9, 21),
+            FirstSemesterEndDate   = new DateOnly(2026, 1, 22),
+            SecondSemesterStartDate = new DateOnly(2026, 4, 4),
+            SecondSemesterEndDate   = new DateOnly(2026, 7, 11),
             CreatedAt = now, UpdatedAt = now
         };
         ctx.AcademicYears.Add(year);
@@ -324,7 +337,9 @@ public static class SeedData
         // 11. EvaluationPeriods
         // =================================================================
         var periodsList = Project.Domain.Helpers.EvaluationPeriodGenerator
-            .GeneratePeriods(year.Id, year.StartDate, year.EndDate)
+            .GeneratePeriods(year.Id, year.StartDate,
+                year.FirstSemesterStartDate, year.FirstSemesterEndDate,
+                year.SecondSemesterStartDate, year.SecondSemesterEndDate)
             .ToList();
         ctx.EvaluationPeriods.AddRange(periodsList);
         await ctx.SaveChangesAsync();
@@ -337,42 +352,48 @@ public static class SeedData
             GradeLevelId = grade1.Id, SubjectId = S["MTH"].Id, AcademicYearId = year.Id,
             Name = "تقييم الرياضيات - الأول الإعدادي",
             CalculationType = EvaluationCalculationType.MiddleSchool,
-            IsActive = true, Weeks = 12, CreatedAt = now, UpdatedAt = now
+            IsActive = true, Weeks = 14, Term = AcademicTerm.SecondSemester,
+            CreatedAt = now, UpdatedAt = now
         };
         var templateArb = new EvaluationTemplate
         {
             GradeLevelId = grade1.Id, SubjectId = S["ARB"].Id, AcademicYearId = year.Id,
             Name = "تقييم اللغة العربية - الأول الإعدادي",
             CalculationType = EvaluationCalculationType.MiddleSchool,
-            IsActive = true, Weeks = 12, CreatedAt = now, UpdatedAt = now
+            IsActive = true, Weeks = 14, Term = AcademicTerm.SecondSemester,
+            CreatedAt = now, UpdatedAt = now
         };
         var templateMath2 = new EvaluationTemplate
         {
             GradeLevelId = grade2.Id, SubjectId = S["MTH"].Id, AcademicYearId = year.Id,
             Name = "تقييم الرياضيات - الثاني الإعدادي",
             CalculationType = EvaluationCalculationType.MiddleSchool,
-            IsActive = true, Weeks = 12, CreatedAt = now, UpdatedAt = now
+            IsActive = true, Weeks = 14, Term = AcademicTerm.SecondSemester,
+            CreatedAt = now, UpdatedAt = now
         };
         var templateArb2 = new EvaluationTemplate
         {
             GradeLevelId = grade2.Id, SubjectId = S["ARB"].Id, AcademicYearId = year.Id,
             Name = "تقييم اللغة العربية - الثاني الإعدادي",
             CalculationType = EvaluationCalculationType.MiddleSchool,
-            IsActive = true, Weeks = 12, CreatedAt = now, UpdatedAt = now
+            IsActive = true, Weeks = 14, Term = AcademicTerm.SecondSemester,
+            CreatedAt = now, UpdatedAt = now
         };
         var templateMath3 = new EvaluationTemplate
         {
             GradeLevelId = grade3.Id, SubjectId = S["MTH"].Id, AcademicYearId = year.Id,
             Name = "تقييم الرياضيات - الثالث الإعدادي",
             CalculationType = EvaluationCalculationType.MiddleSchool,
-            IsActive = true, Weeks = 12, CreatedAt = now, UpdatedAt = now
+            IsActive = true, Weeks = 14, Term = AcademicTerm.SecondSemester,
+            CreatedAt = now, UpdatedAt = now
         };
         var templateArb3 = new EvaluationTemplate
         {
             GradeLevelId = grade3.Id, SubjectId = S["ARB"].Id, AcademicYearId = year.Id,
             Name = "تقييم اللغة العربية - الثالث الإعدادي",
             CalculationType = EvaluationCalculationType.MiddleSchool,
-            IsActive = true, Weeks = 12, CreatedAt = now, UpdatedAt = now
+            IsActive = true, Weeks = 14, Term = AcademicTerm.SecondSemester,
+            CreatedAt = now, UpdatedAt = now
         };
         ctx.EvaluationTemplates.AddRange(
             templateMath, templateArb,
@@ -383,58 +404,43 @@ public static class SeedData
         // EvaluationItems — grade 1
         var mathItems = BuildItems(templateMath.Id, now, new[]
         {
-            ("السلوك والحضور",    5m,  ItemType.Number, AutoCalcType.Attendance),
-            ("الواجب المنزلي",    5m,  ItemType.Number, AutoCalcType.None),
-            ("النشاط الصفي",      5m,  ItemType.Number, AutoCalcType.None),
-            ("التقييم الأسبوعي", 10m, ItemType.Number, AutoCalcType.None),
-            ("الاختبار القصير",   5m,  ItemType.Number, AutoCalcType.None),
+            ("الأداء المنزلي",    10m, ItemType.Number, AutoCalcType.None),
+            ("التقييم الأسبوعي", 20m, ItemType.Number, AutoCalcType.None),
+            ("السلوك والمواظبة",  10m, ItemType.Number, AutoCalcType.Attendance),
         });
         var arbItems = BuildItems(templateArb.Id, now, new[]
         {
-            ("السلوك والحضور",    3m,  ItemType.Number, AutoCalcType.Attendance),
-            ("الواجب المنزلي",    5m,  ItemType.Number, AutoCalcType.None),
-            ("الإملاء",           2m,  ItemType.Number, AutoCalcType.None),
-            ("النشاط الصفي",      5m,  ItemType.Number, AutoCalcType.None),
-            ("التقييم الأسبوعي", 10m, ItemType.Number, AutoCalcType.None),
-            ("الاختبار القصير",   5m,  ItemType.Number, AutoCalcType.None),
+            ("الأداء المنزلي",    10m, ItemType.Number, AutoCalcType.None),
+            ("التقييم الأسبوعي", 20m, ItemType.Number, AutoCalcType.None),
+            ("السلوك والمواظبة",  10m, ItemType.Number, AutoCalcType.Attendance),
         });
 
         // EvaluationItems — grade 2
         var mathItems2 = BuildItems(templateMath2.Id, now, new[]
         {
-            ("السلوك والحضور",    5m,  ItemType.Number, AutoCalcType.Attendance),
-            ("الواجب المنزلي",    5m,  ItemType.Number, AutoCalcType.None),
-            ("النشاط الصفي",      5m,  ItemType.Number, AutoCalcType.None),
-            ("التقييم الأسبوعي", 10m, ItemType.Number, AutoCalcType.None),
-            ("الاختبار القصير",   5m,  ItemType.Number, AutoCalcType.None),
+            ("الأداء المنزلي",    10m, ItemType.Number, AutoCalcType.None),
+            ("التقييم الأسبوعي", 20m, ItemType.Number, AutoCalcType.None),
+            ("السلوك والمواظبة",  10m, ItemType.Number, AutoCalcType.Attendance),
         });
         var arbItems2 = BuildItems(templateArb2.Id, now, new[]
         {
-            ("السلوك والحضور",    3m,  ItemType.Number, AutoCalcType.Attendance),
-            ("الواجب المنزلي",    5m,  ItemType.Number, AutoCalcType.None),
-            ("الإملاء",           2m,  ItemType.Number, AutoCalcType.None),
-            ("النشاط الصفي",      5m,  ItemType.Number, AutoCalcType.None),
-            ("التقييم الأسبوعي", 10m, ItemType.Number, AutoCalcType.None),
-            ("الاختبار القصير",   5m,  ItemType.Number, AutoCalcType.None),
+            ("الأداء المنزلي",    10m, ItemType.Number, AutoCalcType.None),
+            ("التقييم الأسبوعي", 20m, ItemType.Number, AutoCalcType.None),
+            ("السلوك والمواظبة",  10m, ItemType.Number, AutoCalcType.Attendance),
         });
 
         // EvaluationItems — grade 3
         var mathItems3 = BuildItems(templateMath3.Id, now, new[]
         {
-            ("السلوك والحضور",    5m,  ItemType.Number, AutoCalcType.Attendance),
-            ("الواجب المنزلي",    5m,  ItemType.Number, AutoCalcType.None),
-            ("النشاط الصفي",      5m,  ItemType.Number, AutoCalcType.None),
-            ("التقييم الأسبوعي", 10m, ItemType.Number, AutoCalcType.None),
-            ("الاختبار القصير",   5m,  ItemType.Number, AutoCalcType.None),
+            ("الأداء المنزلي",    10m, ItemType.Number, AutoCalcType.None),
+            ("التقييم الأسبوعي", 20m, ItemType.Number, AutoCalcType.None),
+            ("السلوك والمواظبة",  10m, ItemType.Number, AutoCalcType.Attendance),
         });
         var arbItems3 = BuildItems(templateArb3.Id, now, new[]
         {
-            ("السلوك والحضور",    3m,  ItemType.Number, AutoCalcType.Attendance),
-            ("الواجب المنزلي",    5m,  ItemType.Number, AutoCalcType.None),
-            ("الإملاء",           2m,  ItemType.Number, AutoCalcType.None),
-            ("النشاط الصفي",      5m,  ItemType.Number, AutoCalcType.None),
-            ("التقييم الأسبوعي", 10m, ItemType.Number, AutoCalcType.None),
-            ("الاختبار القصير",   5m,  ItemType.Number, AutoCalcType.None),
+            ("الأداء المنزلي",    10m, ItemType.Number, AutoCalcType.None),
+            ("التقييم الأسبوعي", 20m, ItemType.Number, AutoCalcType.None),
+            ("السلوك والمواظبة",  10m, ItemType.Number, AutoCalcType.Attendance),
         });
 
         var allEvalItems = mathItems.Concat(arbItems)
@@ -471,7 +477,7 @@ public static class SeedData
         await ctx.SaveChangesAsync();
 
         // =================================================================
-        // 14. Students (10 per class × 6 classes = 60) + User accounts + Enrollments
+        // 14. Students (30 per class × 6 classes = 180) + User accounts + Enrollments
         // =================================================================
         var firstNames  = new[] { "أحمد","محمد","علي","عمر","خالد","يوسف","محمود","كريم","حسن","حسين","إبراهيم","عبد الله","أمير","بسام","جمال","حمزة","سامي","صالح","عادل","طارق","زياد","شادي","نادر","هاني","وائل","باهر","رامي","فادي","مازن","ياسر" };
         var middleNames = new[] { "عبد الرحمن","سامح","جابر","إسماعيل","فتحي","أنور","حمدي","رفعت","سمير","جلال","نبيل","كامل","رشاد","بهجت","نعيم","وجيه","قاسم","مبشر","رؤوف","وديع","بهاء","سعيد","لطفي","نزيه","هشام","أكرم","بطرس","ثروت","جورج","حبيب" };
@@ -482,7 +488,7 @@ public static class SeedData
         int seq = 0;
         foreach (var cls in new[] { class1, class2, class3, class4, class5, class6 })
         {
-            for (int i = 0; i < 10; i++)
+            for (int i = 0; i < 30; i++)
             {
                 seq++;
                 var st = new Student
@@ -522,7 +528,7 @@ public static class SeedData
         seq = 0;
         foreach (var cls in new[] { class1, class2, class3, class4, class5, class6 })
         {
-            for (int i = 0; i < 10; i++)
+            for (int i = 0; i < 30; i++)
             {
                 var enr = new StudentEnrollment
                 {
@@ -597,7 +603,7 @@ public static class SeedData
                     var maxD  = (double)item.MaxScore;
                     var score = item.AutoCalcType == AutoCalcType.Attendance
                         ? maxD
-                        : Math.Round(rng.NextDouble() * maxD * 0.6 + maxD * 0.4, 2);
+                        : Math.Round((rng.NextDouble() * maxD * 0.6 + maxD * 0.4) * 2, MidpointRounding.AwayFromZero) / 2;
 
                     evalBatch.Add(new StudentEvaluation
                     {
@@ -655,7 +661,8 @@ public static class SeedData
             {
                 EnrollmentId   = enr.Id,
                 AssessmentType = PeriodicAssessmentType.MonthlyExam1,
-                Score          = (decimal)Math.Round(rng.NextDouble() * 6 + 9, 2),
+                Term           = AcademicTerm.FirstSemester,
+                Score          = rng.Next(9, 16),
                 MaxScore       = 15,
                 AssessmentDate = new DateOnly(2026, 3, 15),
                 CreatedAt = now, UpdatedAt = now
@@ -664,7 +671,8 @@ public static class SeedData
             {
                 EnrollmentId   = enr.Id,
                 AssessmentType = PeriodicAssessmentType.MonthlyExam2,
-                Score          = (decimal)Math.Round(rng.NextDouble() * 6 + 9, 2),
+                Term           = AcademicTerm.FirstSemester,
+                Score          = rng.Next(9, 16),
                 MaxScore       = 15,
                 AssessmentDate = new DateOnly(2026, 4, 15),
                 CreatedAt = now, UpdatedAt = now
@@ -683,18 +691,23 @@ public static class SeedData
             var asms = asmByEnr.GetValueOrDefault(enr.Id) ?? new();
             var e1   = asms.FirstOrDefault(a => a.AssessmentType == PeriodicAssessmentType.MonthlyExam1)?.Score ?? 0;
             var e2   = asms.FirstOrDefault(a => a.AssessmentType == PeriodicAssessmentType.MonthlyExam2)?.Score ?? 0;
-            var written  = e1 + e2;
-            var finalExam= (decimal)Math.Round(rng.NextDouble() * 10 + 20, 2);
+            var periodAvg = rng.Next(25, 41);
+            var written  = periodAvg + e1 + e2;
+            var finalExam= rng.Next(20, 31);
             var total    = written + finalExam;
+            var isComplete = e1 > 0 && e2 > 0 && finalExam > 0;
             return new FinalGrade
             {
                 EnrollmentId     = enr.Id,
-                PeriodAvgScore   = (decimal)Math.Round(rng.NextDouble() * 15 + 25, 2),
+                Term             = AcademicTerm.FirstSemester,
+                PeriodAvgScore   = periodAvg,
                 Assessment1Score = e1,
                 Assessment2Score = e2,
                 WrittenTotal     = written,
                 FinalExamScore   = finalExam,
                 Total            = total > 100 ? 100 : total,
+                MaxTotal         = 100,
+                IsComplete       = isComplete,
                 IsPublished      = true,
                 CreatedAt = now, UpdatedAt = now
             };
@@ -733,10 +746,52 @@ public static class SeedData
         // =================================================================
         // 21. Units + Lessons  (all 7 subjects)
         // =================================================================
-        await SeedUnitsAndLessons(ctx, S, grade1.Id, now);
+        await SeedUnitsAndLessons(ctx, S, now, grade1, grade2, grade3);
 
         // =================================================================
-        // 22. Assignment + Question + Option + Submission + Answer
+        // 22. QuestionBank  (sample questions for Math + Arabic, Grade 1)
+        // =================================================================
+        var qbSubjects = new[] { S["MTH"], S["ARB"] };
+        var qbGrade = grade1;
+        var qbQuestions = new (string text, QuestionType type, string correct, string? options, Subject subj)[]
+        {
+            // ── الرياضيات ───────────────────────────────────────────────
+            ("ما ناتج 5 + 3؟",                       QuestionType.MultipleChoice, "8",  @"[""4"",""7"",""8"",""10""]", S["MTH"]),
+            ("10 - 4 = ...",                         QuestionType.FillBlank,      "6",  null,                     S["MTH"]),
+            ("العدد 12 هو عدد زوجي",                 QuestionType.TrueFalse,      "True", null,                    S["MTH"]),
+            ("ما ناتج 2 × 6 = ...",                  QuestionType.MultipleChoice, "12", @"[""8"",""12"",""14"",""16""]", S["MTH"]),
+            ("اجمع: 15 + 7 = ...",                   QuestionType.FillBlank,      "22", null,                     S["MTH"]),
+            ("العدد الأولي هو عدد يقبل القسمة على 1 ونفسه فقط",
+                                                      QuestionType.TrueFalse,      "True", null,                    S["MTH"]),
+            ("ما ناتج 36 ÷ 6؟",                     QuestionType.MultipleChoice, "6",  @"[""4"",""6"",""8"",""9""]",  S["MTH"]),
+            ("المربع له 4 أضلاع متساوية",           QuestionType.TrueFalse,      "True", null,                    S["MTH"]),
+            // ── اللغة العربية ────────────────────────────────────────────
+            ("الفعل الماضي من 'يكتب' هو 'كتب'",     QuestionType.TrueFalse,      "True", null,                    S["ARB"]),
+            ("ما مرادف كلمة 'جميل'؟",               QuestionType.MultipleChoice, "حسن", @"[""قبيح"",""حسن"",""سريع"",""كبير""]", S["ARB"]),
+            ("المبتدأ ... في أول الجملة الاسمية",    QuestionType.FillBlank,      "مرفوع", null,                   S["ARB"]),
+            ("جمع كلمة 'كتاب' هو 'كُتب'",           QuestionType.TrueFalse,      "True", null,                    S["ARB"]),
+            ("ما ضد كلمة 'طويل'؟",                  QuestionType.MultipleChoice, "قصير",@"[""جميل"",""قصير"",""عريض"",""ثقيل""]", S["ARB"]),
+            ("الحرف الناسخ 'إنّ' ينصب ... ويرفع ...",
+                                                      QuestionType.FillBlank,      "الاسم والخبر", null,           S["ARB"]),
+        };
+
+        foreach (var (text, type, correct, options, subj) in qbQuestions)
+        {
+            ctx.QuestionBank.Add(new QuestionBank
+            {
+                QuestionText  = text,
+                QuestionType  = type,
+                CorrectAnswer = correct,
+                OptionsJson   = options,
+                SubjectId     = subj.Id,
+                GradeLevelId  = qbGrade.Id,
+                CreatedAt = now, UpdatedAt = now
+            });
+        }
+        await ctx.SaveChangesAsync();
+
+        // =================================================================
+        // 23. Assignment + Question + Option + Submission + Answer
         // =================================================================
         var mathCst1 = cstList.First(c => c.ClassId == class1.Id && c.SubjectId == S["MTH"].Id);
         var assignment = new Assignment
@@ -811,6 +866,7 @@ public static class SeedData
         var exam = new Exam
         {
             ClassSubjectTeacherId = mathCst1.Id,
+            GradeLevelId = grade1.Id,
             Title           = "اختبار الرياضيات القصير",
             StartTime       = now.AddDays(1),
             EndTime         = now.AddDays(1).AddMinutes(30),
@@ -884,6 +940,26 @@ public static class SeedData
             PointsEarned     = 10,
             CreatedAt = now, UpdatedAt = now
         });
+        await ctx.SaveChangesAsync();
+
+        // ── Link QuestionBank questions to the exam ─────────────────────────
+        var qbMathLinks = await ctx.QuestionBank
+            .Where(q => q.SubjectId == S["MTH"].Id)
+            .OrderBy(q => q.Id)
+            .Take(3)
+            .ToListAsync();
+        int linkOrder = 1;
+        foreach (var qb in qbMathLinks)
+        {
+            ctx.ExamQuestionBankItems.Add(new ExamQuestionBankItem
+            {
+                ExamId         = exam.Id,
+                QuestionBankId = qb.Id,
+                Points         = 10,
+                DisplayOrder   = linkOrder++,
+                CreatedAt = now, UpdatedAt = now
+            });
+        }
         await ctx.SaveChangesAsync();
 
         // =================================================================
@@ -1143,11 +1219,6 @@ public static class SeedData
             CreatedAt = now, UpdatedAt = now
         });
         await ctx.SaveChangesAsync();
-
-        // =================================================================
-        // 34. QuestionBank (20 أسئلة لكل مادة) + امتحان شامل لكل مادة + ExamQuestionBankItems
-        // =================================================================
-        await SeedQuestionBankAndExams(ctx, S, cstList, class1, now);
     }
 
     // =========================================================================
@@ -1172,23 +1243,28 @@ public static class SeedData
             CreatedAt = now, UpdatedAt = now
         }).ToList();
 
-    /// <summary>Seeds Units and Lessons for all 7 subjects.</summary>
+    /// <summary>Seeds Units and Lessons for all 7 subjects with rich real-world content.</summary>
     private static async Task SeedUnitsAndLessons(
         AppDbContext ctx,
         Dictionary<string, Subject> S,
-        int gradeLevelId,
-        DateTime now)
+        DateTime now,
+        GradeLevel grade1,
+        GradeLevel grade2,
+        GradeLevel grade3)
     {
         // Helper: add a unit with optional lessons
         async Task<Unit> AddUnit(Subject subject, string name, int order,
-                                  (string title, string content, int dispOrder)[]? lessons = null)
+                                  AcademicTerm? term = null,
+                                  (string title, string content, int dispOrder)[]? lessons = null,
+                                  GradeLevel? gradeLevel = null)
         {
             var unit = new Unit
             {
                 SubjectId    = subject.Id,
-                GradeLevelId = gradeLevelId,
+                GradeLevelId = (gradeLevel ?? grade1).Id,
                 Name         = name,
                 DisplayOrder = order,
+                Term         = term,
                 CreatedAt    = now, UpdatedAt = now
             };
             ctx.Units.Add(unit);
@@ -1210,538 +1286,1092 @@ public static class SeedData
         }
 
         // ── الرياضيات ──────────────────────────────────────────────────────
-        await AddUnit(S["MTH"], "الوحدة الأولى: الأعداد والجبر", 1, new[]
+        await AddUnit(S["MTH"], "الوحدة الأولى: الأعداد والجبر", 1,
+            AcademicTerm.FirstSemester, new[]
         {
             ("المعادلات التربيعية",
-             "المعادلة التربيعية: ax²+bx+c=0 حيث a≠0.\nالقانون العام: x = (-b ± √(b²-4ac)) / 2a\nالمميز = b²-4ac.",
+             "المعادلة التربيعية هي معادلة من الدرجة الثانية تأخذ الصورة: ax² + bx + c = 0 حيث a ≠ 0.\n\n" +
+             "طرق حل المعادلة التربيعية:\n" +
+             "أولاً: التحليل إلى العوامل:\n" +
+             "- نبحث عن عددين حاصل ضربهما = a × c ومجموعهما = b\n" +
+             "- مثال: حل المعادلة x² + 5x + 6 = 0\n" +
+             "  a=1, b=5, c=6 → العددان 2 و 3 (2×3=6, 2+3=5)\n" +
+             "  (x+2)(x+3)=0 → x=-2 أو x=-3\n\n" +
+             "ثانياً: القانون العام:\n" +
+             "x = (-b ± √(b² - 4ac)) / 2a\n" +
+             "المقدار (b² - 4ac) يسمى المميز ويرمز له بالرمز Δ\n\n" +
+             "حالات المميز Δ:\n" +
+             "- إذا كان Δ > 0: للمعادلة حلان حقيقيان مختلفان\n" +
+             "- إذا كان Δ = 0: للمعادلة حل حقيقي واحد (مكرر)\n" +
+             "- إذا كان Δ < 0: لا يوجد حلول حقيقية (حلان مركبان)\n\n" +
+             "مثال تطبيقي:\n" +
+             "حل المعادلة 2x² - 4x - 6 = 0\n" +
+             "a=2, b=-4, c=-6\n" +
+             "Δ = (-4)² - 4(2)(-6) = 16 + 48 = 64\n" +
+             "x = (4 ± √64) / 4 = (4 ± 8) / 4\n" +
+             "x₁ = (4+8)/4 = 3    ,    x₂ = (4-8)/4 = -1",
              1),
             ("الدوال الخطية",
-             "الدالة الخطية: f(x)=mx+b\nم = الميل، ب = المقطع الصادي.\nميل الخط = (y₂-y₁)/(x₂-x₁).",
+             "الدالة الخطية هي دالة من الدرجة الأولى تأخذ الصورة: f(x) = mx + b\n" +
+             "حيث m هو ميل الخط المستقيم و b هو المقطع الصادي (نقطة تقاطع الخط مع محور الصادات).\n\n" +
+             "خصائص الدالة الخطية:\n" +
+             "- تمثيلها البياني خط مستقيم\n" +
+             "- إذا كان m > 0: الدالة متزايدة (تتجه لأعلى)\n" +
+             "- إذا كان m < 0: الدالة متناقصة (تتجه لأسفل)\n" +
+             "- إذا كان m = 0: الدالة ثابتة (خط أفقي)\n\n" +
+             "حساب الميل:\n" +
+             "ميل الخط المار بالنقطتين (x₁,y₁) و (x₂,y₂) هو:\n" +
+             "m = (y₂ - y₁) / (x₂ - x₁)\n\n" +
+             "مثال:\n" +
+             "أوجد ميل الدالة الخطية المارة بالنقطتين (1,3) و (4,9):\n" +
+             "m = (9-3) / (4-1) = 6/3 = 2\n" +
+             "إذا كانت b = 1 فإن f(x) = 2x + 1\n\n" +
+             "تطبيقات على الدوال الخطية:\n" +
+             "- العلاقة بين المسافة والزمن في الحركة المنتظمة\n" +
+             "- التحويل بين درجات الحرارة (فهرنهايت وسلسيوس)\n" +
+             "- حساب التكلفة الكلية = تكلفة ثابتة + (سعر الوحدة × العدد)",
              2),
+            ("الأعداد الحقيقية",
+             "الأعداد الحقيقية تنقسم إلى:\n\n" +
+             "أولاً: الأعداد النسبية (Q):\n" +
+             "- هي الأعداد التي يمكن كتابتها على صورة كسر a/b حيث b ≠ 0\n" +
+             "- تشمل: الأعداد الصحيحة (Z) والأعداد العشرية المنتهية والدورية\n" +
+             "- مثال: ½, 0.75, -3, 2.333...\n\n" +
+             "ثانياً: الأعداد غير النسبية (Q'):\n" +
+             "- هي الأعداد التي لا يمكن كتابتها على صورة كسر\n" +
+             "- أرقامها العشرية لا نهائية وغير دورية\n" +
+             "- مثال: π = 3.14159..., √2 = 1.41421..., e = 2.71828...\n\n" +
+             "خصائص الأعداد الحقيقية:\n" +
+             "- خاصية الإبدال: a + b = b + a و a × b = b × a\n" +
+             "- خاصية التجميع: (a+b)+c = a+(b+c) و (a×b)×c = a×(b×c)\n" +
+             "- خاصية التوزيع: a × (b+c) = a×b + a×c\n" +
+             "- العنصر المحايد: a + 0 = a و a × 1 = a\n" +
+             "- النظير: a + (-a) = 0 و a × (1/a) = 1 حيث a ≠ 0",
+             3),
         });
-        await AddUnit(S["MTH"], "الوحدة الثانية: الهندسة", 2, new[]
+        await AddUnit(S["MTH"], "الوحدة الثانية: الهندسة", 2,
+            AcademicTerm.SecondSemester, new[]
         {
-            ("نظرية فيثاغورس",    "في المثلث القائم: a²+b²=c² حيث c هو الوتر.", 1),
-            ("مساحات الأشكال",    "مساحة المثلث = ½×القاعدة×الارتفاع.\nمساحة الدائرة = π×r².", 2),
+            ("نظرية فيثاغورس",
+             "نظرية فيثاغورس من أشهر النظريات في الرياضيات، وتتعلق بالمثلث قائم الزاوية.\n\n" +
+             "النظرية:\n" +
+             "في أي مثلث قائم الزاوية، مربع طول الوتر يساوي مجموع مربعي طولي الضلعين الآخرين.\n\n" +
+             "الصيغة: a² + b² = c²\n" +
+             "حيث c هو طول الوتر (أطول ضلع)، a و b هما طولا الضلعين القائمين.\n\n" +
+             "مثال 1:\n" +
+             "إذا كان a = 3 سم، b = 4 سم، فإن:\n" +
+             "c² = 3² + 4² = 9 + 16 = 25\n" +
+             "c = √25 = 5 سم\n\n" +
+             "مثال 2:\n" +
+             "سلم طوله 10 أمتار يستند إلى حائط، قاعدته تبعد 6 أمتار عن الحائط.\n" +
+             "كم ارتفاع الحائط الذي يصل إليه السلم؟\n" +
+             "a² + 6² = 10² → a² + 36 = 100 → a² = 64 → a = 8 أمتار\n\n" +
+             "عكس نظرية فيثاغورس:\n" +
+             "إذا كان في مثلث: a² + b² = c² فإن المثلث قائم الزاوية.\n\n" +
+             "تطبيقات حياتية:\n" +
+             "- حساب الأبعاد في البناء والهندسة المعمارية\n" +
+             "- تحديد المسافات في الملاحة والخرائط\n" +
+             "- تصميم السلالم والأسطح المائلة",
+             1),
+            ("مساحات الأشكال الهندسية",
+             "المساحة هي المنطقة المحصورة داخل شكل هندسي، وتُقاس بالوحدات المربعة.\n\n" +
+             "مساحات الأشكال الأساسية:\n\n" +
+             "1. المربع:\n" +
+             "   المساحة = طول الضلع × نفسه = s²\n" +
+             "   مثال: مربع طول ضلعه 5 سم → المساحة = 25 سم²\n\n" +
+             "2. المستطيل:\n" +
+             "   المساحة = الطول × العرض = L × W\n" +
+             "   مثال: مستطيل طوله 8 سم وعرضه 3 سم → المساحة = 24 سم²\n\n" +
+             "3. المثلث:\n" +
+             "   المساحة = ½ × القاعدة × الارتفاع\n" +
+             "   مثال: مثلث قاعدته 10 سم وارتفاعه 6 سم → المساحة = 30 سم²\n\n" +
+             "4. الدائرة:\n" +
+             "   المساحة = π × r² (حيث π ≈ 3.14)\n" +
+             "   مثال: دائرة نصف قطرها 7 سم → المساحة = 3.14 × 49 = 153.86 سم²\n\n" +
+             "5. شبه المنحرف:\n" +
+             "   المساحة = ½ × (مجموع القاعدتين) × الارتفاع\n\n" +
+             "6. متوازي الأضلاع:\n" +
+             "   المساحة = القاعدة × الارتفاع\n\n" +
+             "مثال تطبيقي:\n" +
+             "غرفة مستطيلة طولها 6 م وعرضها 4 م، نريد تغطية أرضيتها بالسجاد.\n" +
+             "المساحة = 6 × 4 = 24 متراً مربعاً",
+             2),
+            ("حساب الحجم",
+             "الحجم هو مقدار الفراغ الذي يشغله جسم ثلاثي الأبعاد، ويُقاس بالوحدات المكعبة.\n\n" +
+             "أحجام المجسمات الأساسية:\n\n" +
+             "1. المكعب:\n" +
+             "   الحجم = طول الضلع³ = s³\n" +
+             "   مثال: مكعب طول ضلعه 4 سم → الحجم = 64 سم³\n\n" +
+             "2. متوازي المستطيلات:\n" +
+             "   الحجم = الطول × العرض × الارتفاع\n" +
+             "   مثال: صندوق طوله 10 سم، عرضه 6 سم، ارتفاعه 4 سم → الحجم = 240 سم³\n\n" +
+             "3. الأسطوانة:\n" +
+             "   الحجم = π × r² × h (حيث r نصف القطر، h الارتفاع)\n" +
+             "   مثال: أسطوانة نصف قطرها 5 سم وارتفاعها 10 سم → الحجم = 3.14 × 25 × 10 = 785 سم³\n\n" +
+             "4. الكرة:\n" +
+             "   الحجم = 4/3 × π × r³\n\n" +
+             "5. المخروط:\n" +
+             "   الحجم = 1/3 × π × r² × h\n\n" +
+             "تطبيقات حياتية:\n" +
+             "- حساب سعة خزانات المياه\n" +
+             "- تقدير كمية المواد اللازمة للبناء\n" +
+             "- حساب حجم العبوات والتغليف",
+             3),
         });
 
         // ── العلوم ─────────────────────────────────────────────────────────
-        await AddUnit(S["SCI"], "الوحدة الأولى: الكيمياء", 1, new[]
+        await AddUnit(S["SCI"], "الوحدة الأولى: الكيمياء", 1,
+            AcademicTerm.FirstSemester, new[]
         {
-            ("المادة وخصائصها",    "المادة: كل ما له كتلة ويشغل حيزاً. توجد صلبة وسائلة وغازية.", 1),
-            ("التفاعلات الكيميائية","التفاعل الكيميائي: تحوّل مادة إلى مادة جديدة بخصائص مختلفة.", 2),
-        });
-        await AddUnit(S["SCI"], "الوحدة الثانية: الأحياء", 2, new[]
-        {
-            ("الميتوز والميوز",
-             "الميتوز: ينتج خليتين (2n).\nالميوز: ينتج أربع خلايا (n).",
+            ("المادة وخصائصها",
+             "المادة هي كل شيء له كتلة ويشغل حيزاً من الفراغ. تتكون المادة من جسيمات صغيرة جداً تسمى الذرات والجزيئات.\n\n" +
+             "حالات المادة:\n" +
+             "1. الحالة الصلبة: جسيماتها متراصة ومنتظمة، لها شكل وحجم ثابتان.\n" +
+             "   - مثال: الثلج، الحديد، الخشب\n" +
+             "2. الحالة السائلة: جسيماتها متحركة وغير منتظمة، تأخذ شكل الإناء الذي توضع فيه.\n" +
+             "   - مثال: الماء، الزيت، الحليب\n" +
+             "3. الحالة الغازية: جسيماتها متباعدة جداً وتتحرك بحرية، ليس لها شكل أو حجم ثابت.\n" +
+             "   - مثال: الهواء، الأكسجين، ثاني أكسيد الكربون\n\n" +
+             "الخصائص الفيزيائية للمادة:\n" +
+             "- الكثافة = الكتلة ÷ الحجم (جم/سم³)\n" +
+             "- درجة الانصهار: درجة الحرارة التي تتحول عندها المادة من صلبة إلى سائلة\n" +
+             "- درجة الغليان: درجة الحرارة التي تتحول عندها المادة من سائلة إلى غازية\n" +
+             "- التوصيل الكهربائي والحراري\n" +
+             "- الذوبان: قدرة المادة على الذوبان في مذيب\n\n" +
+             "الخصائص الكيميائية للمادة:\n" +
+             "- القابلية للاشتعال\n" +
+             "- التفاعل مع الأحماض والقواعد\n" +
+             "- التأكسد والاختزال\n" +
+             "- التحلل الكهربائي",
              1),
+            ("التفاعلات الكيميائية",
+             "التفاعل الكيميائي هو عملية تحوّل مادة أو أكثر (تُسمى المتفاعلات) إلى مادة أو أكثر جديدة (تُسمى النواتج) تختلف في خصائصها.\n\n" +
+             "علامات حدوث التفاعل الكيميائي:\n" +
+             "1. تغير في اللون\n" +
+             "2. انبعاث غازات (ظهور فقاعات)\n" +
+             "3. تغير في درجة الحرارة (امتصاص أو انبعاث حرارة)\n" +
+             "4. تكون راسب (مادة صلبة)\n" +
+             "5. انبعاث ضوء أو رائحة\n\n" +
+             "أنواع التفاعلات الكيميائية:\n\n" +
+             "1. تفاعل الاتحاد: A + B → AB\n" +
+             "   مثال: 2H₂ + O₂ → 2H₂O (اتحاد الهيدروجين مع الأكسجين لتكوين الماء)\n\n" +
+             "2. تفاعل التحلل: AB → A + B\n" +
+             "   مثال: 2H₂O → 2H₂ + O₂ (تحلل الماء بالكهرباء)\n\n" +
+             "3. تفاعل الإحلال البسيط: A + BC → AC + B\n" +
+             "   مثال: Zn + 2HCl → ZnCl₂ + H₂\n\n" +
+             "4. تفاعل الإحلال المزدوج: AB + CD → AD + CB\n" +
+             "   مثال: NaCl + AgNO₃ → AgCl↓ + NaNO₃\n\n" +
+             "قانون حفظ الكتلة:\n" +
+             "في أي تفاعل كيميائي، مجموع كتل المتفاعلات = مجموع كتل النواتج.\n" +
+             "اكتشف هذا القانون العالم الفرنسي لافوازييه.",
+             2),
+            ("الذرة والجزيئات",
+             "الذرة هي أصغر وحدة بنائية للمادة وتحافظ على الخصائص الكيميائية للعنصر.\n\n" +
+             "تركيب الذرة:\n" +
+             "1. النواة: في مركز الذرة وتحتوي على:\n" +
+             "   - البروتونات (شحنة موجبة +)\n" +
+             "   - النيوترونات (شحنة متعادلة)\n" +
+             "2. الإلكترونات (شحنة سالبة -): تدور حول النواة في مدارات (مستويات طاقة)\n\n" +
+             "العدد الذري = عدد البروتونات\n" +
+             "العدد الكتلي = عدد البروتونات + عدد النيوترونات\n\n" +
+             "مثال: ذرة الكربون\n" +
+             "- العدد الذري = 6 (6 بروتونات)\n" +
+             "- العدد الكتلي = 12 (6 بروتونات + 6 نيوترونات)\n" +
+             "- عدد الإلكترونات = 6\n\n" +
+             "الجزيء:\n" +
+             "- هو مجموعة من ذرتين أو أكثر مرتبطة بروابط كيميائية\n" +
+             "- مثال: جزيء الماء H₂O (ذرتا هيدروجين + ذرة أكسجين)\n" +
+             "- مثال: جزيء الأكسجين O₂ (ذرتا أكسجين)\n\n" +
+             "الجدول الدوري:\n" +
+             "- ترتيب العناصر حسب العدد الذري\n" +
+             "- يحتوي على 118 عنصراً معروفاً\n" +
+             "- العناصر في نفس العمود لها خصائص متشابهة",
+             3),
+        });
+        await AddUnit(S["SCI"], "الوحدة الثانية: الأحياء", 2,
+            AcademicTerm.SecondSemester, new[]
+        {
+            ("انقسام الخلايا: الميتوز والميوز",
+             "الخلية هي الوحدة الأساسية للحياة، وتنقسم لنمو الكائن الحي وتعويض الخلايا التالفة.\n\n" +
+             "أولاً: الانقسام الميتوزي (الانقسام المتساوي):\n" +
+             "يحدث في الخلايا الجسدية وينتج خليتين متماثلتين (2n).\n\n" +
+             "مراحل الميتوز:\n" +
+             "1. الطور التمهيدي: تتكثف الكروموسومات، يختفي الغشاء النووي\n" +
+             "2. الطور الاستوائي: تصطف الكروموسومات في منتصف الخلية\n" +
+             "3. الطور الانفصالي: تنفصل الكروماتيدات الشقيقة وتتجه لأقطاب الخلية\n" +
+             "4. الطور النهائي: يتكون غشاء نووي جديد، ينقسم السيتوبلازم\n\n" +
+             "أهمية الميتوز:\n" +
+             "- نمو الكائن الحي\n" +
+             "- تعويض الخلايا التالفة\n" +
+             "- التكاثر اللاجنسي\n\n" +
+             "ثانياً: الانقسام الميوزي (الانقسام الاختزالي):\n" +
+             "يحدث في الخلايا التناسلية وينتج أربع خلايا غير متماثلة (n).\n\n" +
+             "مراحل الميوز:\n" +
+             "- انقسام أول: يفصل الكروموسومات المتماثلة\n" +
+             "- انقسام ثان: يفصل الكروماتيدات الشقيقة\n" +
+             "- الناتج: 4 خلايا أحادية المجموعة الكروموسومية (n)\n\n" +
+             "أهمية الميوز:\n" +
+             "- إنتاج الأمشاج (الحيوانات المنوية والبويضات)\n" +
+             "- زيادة التنوع الوراثي من خلال العبور الجيني\n\n" +
+             "الفرق بين الميتوز والميوز:\n" +
+             "- الميتوز: خليتين (2n) ← يستخدم للنمو\n" +
+             "- الميوز: أربع خلايا (n) ← يستخدم للتكاثر الجنسي",
+             1),
+            ("التركيب الضوئي",
+             "التركيب الضوئي (البناء الضوئي) هو العملية التي تستخدم فيها النباتات الخضراء الطاقة الضوئية لتحويل ثاني أكسيد الكربون والماء إلى غذاء (جلوكوز) وأكسجين.\n\n" +
+             "المعادلة العامة:\n" +
+             "6CO₂ + 6H₂O + طاقة ضوئية → C₆H₁₂O₆ + 6O₂\n\n" +
+             "أهمية عملية التركيب الضوئي:\n" +
+             "1. إنتاج الغذاء للنبات والكائنات الحية الأخرى\n" +
+             "2. إنتاج الأكسجين اللازم للتنفس\n" +
+             "3. استهلاك ثاني أكسيد الكربون من الجو\n" +
+             "4. المصدر الأساسي للطاقة في السلسلة الغذائية\n\n" +
+             "العوامل المؤثرة على التركيب الضوئي:\n" +
+             "- شدة الإضاءة: كلما زادت شدة الإضاءة زاد معدل التركيب الضوئي حتى حد معين\n" +
+             "- تركيز ثاني أكسيد الكربون: يزيد التركيز يزيد المعدل\n" +
+             "- درجة الحرارة: المعدل الأمثل بين 25-30°م\n" +
+             "- توفر الماء: نقص الماء يقلل المعدل\n\n" +
+             "أجزاء النبات المسؤولة:\n" +
+             "- البلاستيدات الخضراء (الكلوروفيل): تمتص الطاقة الضوئية\n" +
+             "- الثغور: تدخل ثاني أكسيد الكربون وتخرج الأكسجين\n" +
+             "- الجذور: تمتص الماء والأملاح المعدنية",
+             2),
         });
 
         // ── اللغة العربية ──────────────────────────────────────────────────
-        await AddUnit(S["ARB"], "الوحدة الأولى: القراءة والنصوص", 1, new[]
+        await AddUnit(S["ARB"], "الوحدة الأولى: القراءة والنصوص", 1,
+            AcademicTerm.FirstSemester, new[]
         {
-            ("النصوص الأدبية", "النص الأدبي عمل فني يهدف إلى التعبير عن المشاعر بلغة جمالية.", 1),
+            ("النصوص الأدبية",
+             "النص الأدبي هو عمل فني يهدف إلى التعبير عن المشاعر والأفكار بلغة جمالية مؤثرة.\n\n" +
+             "خصائص النص الأدبي:\n" +
+             "1. العاطفة: المشاعر التي يثيرها الكاتب في نفسه وينقلها للقارئ\n" +
+             "2. الأفكار: المعاني والأهداف التي يسعى الكاتب لتوصيلها\n" +
+             "3. الصور الفنية: استخدام التشبيه والاستعارة والكناية\n" +
+             "4. الأسلوب: طريقة التعبير المميزة لكل كاتب\n" +
+             "5. الإيقاع الموسيقي: الجرس الموسيقي للألفاظ والعبارات\n\n" +
+             "أنواع النصوص الأدبية:\n" +
+             "1. الشعر: كلام موزون مقفّى يعبر عن المشاعر\n" +
+             "   مثال: قصيدة 'ولد الهدى' لأحمد شوقي\n" +
+             "2. القصة: سرد أحداث متصلة بشخصيات ومكان وزمان\n" +
+             "3. المسرحية: نص يُكتب ليمثَّل على المسرح\n" +
+             "4. المقال: نص نثري يعرض فكرة أو رأياً بأسلوب منهجي\n\n" +
+             "عناصر القصة:\n" +
+             "- الشخصيات: أبطال القصة\n" +
+             "- الأحداث: ما يحدث في القصة\n" +
+             "- الزمان والمكان: زمن ومكان الأحداث\n" +
+             "- العقدة: المشكلة الرئيسية\n" +
+             "- الحل: نهاية القصة\n\n" +
+             "مثال من الشعر العربي:\n" +
+             "قال المتنبي:\n" +
+             "إذا رأيت نيوب الليث بارزةً    فلا تظنن أن الليث يبتسم",
+             1),
+            ("القراءة التحليلية",
+             "القراءة التحليلية هي قراءة متعمقة تهدف إلى فهم النص فهماً كاملاً وتذوقه واستخراج أفكاره.\n\n" +
+             "خطوات القراءة التحليلية:\n" +
+             "1. القراءة الاستطلاعية: قراءة سريعة للتعرف على موضوع النص\n" +
+             "2. فهم المفردات: البحث عن معاني الكلمات الصعبة\n" +
+             "3. تحديد الأفكار الرئيسية: الفكرة العامة التي يدور حولها النص\n" +
+             "4. تحديد الأفكار الفرعية: الأفكار التي تدعم الفكرة الرئيسية\n" +
+             "5. تحليل الصور الفنية: دراسة التشبيهات والاستعارات\n" +
+             "6. استخلاص العبر والدروس: المغزى من النص\n\n" +
+             "أدوات التحليل الأدبي:\n" +
+             "- التشبيه: إشراك أمرين في صفة معينة (مثل: كأنه القمر في الجمال)\n" +
+             "- الاستعارة: تشبيه حذف أحد طرفيه (مثال: زارني الأسد في مكتبه)\n" +
+             "- الكناية: تعبير لا يقصد به المعنى الحرفي (مثال: فلان طويل النجاد = طويل القامة)\n" +
+             "- الطباق: الجمع بين ضدين (مثال: الليل والنهار)\n" +
+             "- المقابلة: الجمع بين معنيين متقابلين\n\n" +
+             "تطبيق:\n" +
+             "قال تعالى: {وَمَن يُؤْتَ الْحِكْمَةَ فَقَدْ أُوتِيَ خَيْراً كَثِيراً}\n" +
+             "- الفكرة: فضل الحكمة\n" +
+             "- الأسلوب: شرط وجواب شرط\n" +
+             "- البلاغة: أسلوب القصر",
+             2),
         });
-        await AddUnit(S["ARB"], "الوحدة الثانية: النحو والصرف", 2, new[]
+        await AddUnit(S["ARB"], "الوحدة الثانية: النحو والصرف", 2,
+            AcademicTerm.SecondSemester, new[]
         {
-            ("أقسام الكلام",   "الكلمة تنقسم إلى: اسم، فعل، حرف.", 1),
-            ("المبتدأ والخبر", "المبتدأ: اسم مرفوع في أول الجملة الاسمية.\nالخبر: ما يتمّ به المعنى مع المبتدأ.", 2),
+            ("أقسام الكلام",
+             "الكلمة في اللغة العربية تنقسم إلى ثلاثة أقسام رئيسية:\n\n" +
+             "أولاً: الاسم\n" +
+             "- هو كلمة تدل على إنسان أو حيوان أو نبات أو جماد أو مكان أو زمان أو صفة أو معنى مجرد\n" +
+             "- علامات الاسم: يقبل النداء (يا محمد)، يقبل التنوين (محمدٌ)، يقبل أل التعريف (الكتاب)\n" +
+             "- أنواع الاسم: اسم علم (محمد)، اسم جنس (رجل)، اسم إشارة (هذا)، اسم موصول (الذي)\n\n" +
+             "ثانياً: الفعل\n" +
+             "- هو كلمة تدل على حدث مرتبط بزمن\n" +
+             "- علامات الفعل: يقبل تاء الفاعل (ذهبتُ)، ويقبل سوف (سوف يكتب)\n" +
+             "- أنواع الفعل:\n" +
+             "  أ. الفعل الماضي: حدث في الزمن الماضي (ذهب، كتب، أكل)\n" +
+             "  ب. الفعل المضارع: حدث في الزمن الحالي أو المستقبل (يذهب، يكتب)\n" +
+             "  ج. فعل الأمر: طلب حدوث الفعل في المستقبل (اذهب، اكتب)\n\n" +
+             "ثالثاً: الحرف\n" +
+             "- هو كلمة تدل على معنى في غيرها\n" +
+             "- لا تقبل علامات الاسم ولا الفعل\n" +
+             "- أمثلة: من، إلى، عن، في، على، هل، لم، لعلّ\n" +
+             "- الحروف العاملة: إنّ وأخواتها، كان وأخواتها، حروف الجر\n\n" +
+             "مثال تطبيقي:\n" +
+             "جملة: 'يكتب الطالب الدرس بقلمه'\n" +
+             "- يكتب: فعل مضارع\n" +
+             "- الطالب: اسم (فاعل)\n" +
+             "- الدرس: اسم (مفعول به)\n" +
+             "- بقلمه: الباء حرف جر، قلم اسم مجرور",
+             1),
+            ("المبتدأ والخبر",
+             "الجملة الاسمية هي الجملة التي تبدأ باسم، وتتكون من ركنين أساسيين: المبتدأ والخبر.\n\n" +
+             "المبتدأ:\n" +
+             "- اسم مرفوع في أول الجملة الاسمية\n" +
+             "- يأتي غالباً معرفة (بأل التعريف أو بالإضافة)\n" +
+             "- مثال: العلمُ نورٌ (العلم: مبتدأ مرفوع بالضمة)\n\n" +
+             "الخبر:\n" +
+             "- ما يتم به المعنى مع المبتدأ\n" +
+             "- يكون مرفوعاً\n" +
+             "- مثال: العلمُ نورٌ (نور: خبر مرفوع بالضمة)\n\n" +
+             "أنواع الخبر:\n" +
+             "1. خبر مفرد: كلمة واحدة (السماء صافية)\n" +
+             "2. خبر جملة (اسمية أو فعلية):\n" +
+             "   - جملة اسمية: الطالب أخلاقه حسنة\n" +
+             "   - جملة فعلية: الطالب يدرس بجد\n" +
+             "3. خبر شبه جملة:\n" +
+             "   - جار ومجرور: الكتاب في الحقيبة\n" +
+             "   - ظرف: الحديقة أمام المنزل\n\n" +
+             "حالات المبتدأ والخبر:\n" +
+             "- يجب أن يتطابق المبتدأ والخبر في النوع (تذكير وتأنيث)\n" +
+             "- يجب أن يتطابقا في العدد (مفرد، مثنى، جمع)\n\n" +
+             "أمثلة تطبيقية:\n" +
+             "1. المعلمُ مخلصٌ (معلم: مبتدأ مرفوع، مخلص: خبر مرفوع)\n" +
+             "2. المدرسةُ واسعةٌ (مدرسة: مبتدأ مرفوع، واسعة: خبر مرفوع)\n" +
+             "3. الفلاحون يعملون في الحقل (فلاحون: مبتدأ، جملة يعملون: خبر)",
+             2),
         });
 
         // ── اللغة الإنجليزية ───────────────────────────────────────────────
-        await AddUnit(S["ENG"], "Unit 1: Greetings and Introductions", 1, new[]
+        await AddUnit(S["ENG"], "Unit 1: Greetings and Introductions", 1,
+            AcademicTerm.FirstSemester, new[]
         {
-            ("Hello and Goodbye", "Greetings: Hello, Hi, Good morning, Goodbye, Bye.", 1),
+            ("Hello and Goodbye",
+             "Greetings are the first step in any conversation. Learning how to greet people properly is essential.\n\n" +
+             "Formal Greetings:\n" +
+             "- Good morning (used before 12 PM)\n" +
+             "- Good afternoon (used from 12 PM to 6 PM)\n" +
+             "- Good evening (used after 6 PM)\n" +
+             "- How do you do? (very formal)\n\n" +
+             "Informal Greetings:\n" +
+             "- Hello!\n" +
+             "- Hi!\n" +
+             "- Hey! (very casual)\n" +
+             "- What's up? (casual)\n" +
+             "- How's it going?\n\n" +
+             "Farewells:\n" +
+             "- Goodbye\n" +
+             "- Bye!\n" +
+             "- See you later!\n" +
+             "- See you tomorrow!\n" +
+             "- Take care!\n" +
+             "- Have a nice day!\n\n" +
+             "Example Dialogue:\n" +
+             "Ahmed: Good morning, Mr. Smith!\n" +
+             "Mr. Smith: Good morning, Ahmed! How are you today?\n" +
+             "Ahmed: I'm fine, thank you. And you?\n" +
+             "Mr. Smith: I'm very well, thanks.\n\n" +
+             "Self-Introduction:\n" +
+             "- My name is...\n" +
+             "- I am from...\n" +
+             "- Nice to meet you!\n" +
+             "- Pleased to meet you!\n\n" +
+             "Practice Exercise:\n" +
+             "Fill in the blanks:\n" +
+             "1. ___ morning! (Answer: Good)\n" +
+             "2. Nice to ___ you! (Answer: meet)\n" +
+             "3. See you ___! (Answer: later/tomorrow)",
+             1),
+            ("Introducing Yourself and Others",
+             "Introducing yourself and others is an important social skill. Here's how to do it correctly.\n\n" +
+             "Introducing Yourself:\n" +
+             "- Hello, I'm Ahmed. I'm a student at Al-Nile School.\n" +
+             "- Hi, my name is Sara. I'm from Cairo.\n" +
+             "- I'm 13 years old. I live in Giza.\n\n" +
+             "Introducing Others:\n" +
+             "- This is my friend, Omar.\n" +
+             "- I'd like you to meet my teacher, Mr. Hassan.\n" +
+             "- Meet my classmate, Layla.\n" +
+             "- Have you met Ahmed? He's in my class.\n\n" +
+             "Personal Information Questions:\n" +
+             "- What's your name?\n" +
+             "- How old are you?\n" +
+             "- Where are you from?\n" +
+             "- What school do you go to?\n" +
+             "- What grade are you in?\n" +
+             "- What's your phone number?\n\n" +
+             "Possessive Adjectives:\n" +
+             "- I → my (my book)\n" +
+             "- You → your (your pen)\n" +
+             "- He → his (his bag)\n" +
+             "- She → her (her desk)\n" +
+             "- It → its (its color)\n" +
+             "- We → our (our school)\n" +
+             "- They → their (their classroom)\n\n" +
+             "Example:\n" +
+             "Ali: Hello! I'm Ali. What's your name?\n" +
+             "Mona: Hi Ali! My name is Mona. Nice to meet you!\n" +
+             "Ali: Nice to meet you too, Mona! This is my friend, Khaled.",
+             2),
+            ("The Verb 'To Be'",
+             "The verb 'to be' is the most important verb in English. It is used to describe states, identities, and conditions.\n\n" +
+             "Forms of 'To Be':\n" +
+             "- I am (I'm)\n" +
+             "- You are (You're)\n" +
+             "- He is (He's)\n" +
+             "- She is (She's)\n" +
+             "- It is (It's)\n" +
+             "- We are (We're)\n" +
+             "- They are (They're)\n\n" +
+             "Uses of 'To Be':\n\n" +
+             "1. Identity: I am a student. / She is a doctor.\n" +
+             "2. Description: The sky is blue. / He is tall.\n" +
+             "3. Location: The book is on the table. / We are in the classroom.\n" +
+             "4. Age: I am 12 years old. / She is 14.\n" +
+             "5. Feeling: I am happy. / They are tired.\n\n" +
+             "Negative Form:\n" +
+             "- I am not (I'm not)\n" +
+             "- You are not (You aren't)\n" +
+             "- He/She/It is not (He isn't)\n" +
+             "- We/They are not (We aren't)\n\n" +
+             "Question Form:\n" +
+             "- Am I...?\n" +
+             "- Are you...?\n" +
+             "- Is he/she/it...?\n" +
+             "- Are we/they...?\n\n" +
+             "Example:\n" +
+             "Affirmative: He is a teacher.\n" +
+             "Negative: He is not (isn't) a teacher.\n" +
+             "Question: Is he a teacher? Yes, he is. / No, he isn't.\n\n" +
+             "Practice:\n" +
+             "Complete with am/is/are:\n" +
+             "1. I ___ happy. (am)\n" +
+             "2. She ___ a student. (is)\n" +
+             "3. They ___ from Egypt. (are)\n" +
+             "4. The cat ___ on the sofa. (is)\n" +
+             "5. We ___ friends. (are)",
+             3),
         });
-        await AddUnit(S["ENG"], "Unit 2: Daily Routines",    2);
-        await AddUnit(S["ENG"], "Unit 3: Food and Drinks",   3);
-        await AddUnit(S["ENG"], "Unit 4: Travel and Tourism",4);
+        await AddUnit(S["ENG"], "Unit 2: Daily Routines", 2,
+            AcademicTerm.FirstSemester, new[]
+        {
+            ("My Daily Schedule",
+             "Talking about daily routines is essential for everyday communication. We use the Simple Present Tense to describe habits and routines.\n\n" +
+             "Simple Present Tense:\n" +
+             "- I/You/We/They + verb (I wake up at 6 AM)\n" +
+             "- He/She/It + verb + s/es (He wakes up at 6 AM)\n\n" +
+             "My Typical Day:\n" +
+             "- I wake up at 6:00 AM\n" +
+             "- I brush my teeth and wash my face\n" +
+             "- I eat breakfast at 6:30 AM\n" +
+             "- I go to school at 7:00 AM\n" +
+             "- School starts at 7:30 AM\n" +
+             "- I have lunch at 1:00 PM\n" +
+             "- I go home at 2:00 PM\n" +
+             "- I do my homework at 4:00 PM\n" +
+             "- I play with my friends at 5:00 PM\n" +
+             "- I have dinner at 7:00 PM\n" +
+             "- I watch TV at 8:00 PM\n" +
+             "- I go to bed at 9:00 PM\n\n" +
+             "Telling Time:\n" +
+             "- 6:00 → six o'clock\n" +
+             "- 6:15 → quarter past six\n" +
+             "- 6:30 → half past six\n" +
+             "- 6:45 → quarter to seven\n" +
+             "- 7:10 → ten past seven\n" +
+             "- 7:50 → ten to eight\n\n" +
+             "Adverbs of Frequency:\n" +
+             "- always (100%): I always brush my teeth.\n" +
+             "- usually (90%): I usually wake up at 6 AM.\n" +
+             "- often (70%): I often play football.\n" +
+             "- sometimes (50%): I sometimes watch TV.\n" +
+             "- rarely (10%): I rarely eat fast food.\n" +
+             "- never (0%): I never skip breakfast.\n\n" +
+             "Example Paragraph:\n" +
+             "Ahmed is a student. He wakes up at 6 o'clock every day. He usually eats eggs for breakfast. He always goes to school on time. He sometimes plays football after school. He never goes to bed late.",
+             1),
+        });
+        await AddUnit(S["ENG"], "Unit 3: Food and Drinks", 3,
+            AcademicTerm.SecondSemester, new[]
+        {
+            ("Food Vocabulary and Preferences",
+             "Food is a common topic in everyday conversations. Learn how to talk about food and express your preferences.\n\n" +
+             "Food Categories:\n\n" +
+             "Fruits: apple, banana, orange, grape, strawberry, watermelon, mango\n" +
+             "Vegetables: carrot, tomato, potato, onion, cucumber, lettuce, pepper\n" +
+             "Meat & Protein: chicken, fish, beef, eggs, beans, lentils\n" +
+             "Dairy: milk, cheese, yogurt, butter, cream\n" +
+             "Grains: rice, bread, pasta, wheat, oats, corn\n" +
+             "Drinks: water, juice, tea, coffee, milk, soda\n" +
+             "Desserts: cake, ice cream, chocolate, cookies, pudding\n\n" +
+             "Expressing Likes and Dislikes:\n" +
+             "- I like... / I love... / I enjoy...\n" +
+             "- I don't like... / I hate... / I can't stand...\n" +
+             "- I prefer... / I'd rather have...\n\n" +
+             "Examples:\n" +
+             "- I like apples but I don't like bananas.\n" +
+             "- She loves chocolate ice cream.\n" +
+             "- He hates spicy food.\n" +
+             "- We prefer orange juice to soda.\n\n" +
+             "Countable and Uncountable Nouns:\n" +
+             "Countable (can count): apple, egg, cookie, sandwich\n" +
+             "  → one apple, two apples, many apples\n" +
+             "Uncountable (cannot count): water, rice, milk, bread\n" +
+             "  → some water, a glass of water, much water\n\n" +
+             "Quantifiers:\n" +
+             "- some (affirmative): I want some water.\n" +
+             "- any (negative/question): Is there any milk? No, there isn't any.\n" +
+             "- a lot of / many / much\n\n" +
+             "Dialogue:\n" +
+             "Waiter: What would you like to order?\n" +
+             "Customer: I'd like a chicken sandwich and some orange juice, please.\n" +
+             "Waiter: Would you like anything else?\n" +
+             "Customer: Yes, a piece of chocolate cake, please.\n" +
+             "Waiter: Certainly! Coming right up.",
+             1),
+        });
+        await AddUnit(S["ENG"], "Unit 4: Travel and Tourism", 4,
+            AcademicTerm.SecondSemester, new[]
+        {
+            ("Transportation and Directions",
+             "Travel vocabulary helps you navigate places and ask for directions.\n\n" +
+             "Modes of Transportation:\n" +
+             "- car, bus, train, plane, ship, boat, bicycle, motorcycle, taxi, metro\n\n" +
+             "Travel Verbs:\n" +
+             "- go, travel, take, ride, drive, fly, sail, walk, catch, miss\n\n" +
+             "Examples:\n" +
+             "- I take the bus to school every day.\n" +
+             "- We flew to London last summer.\n" +
+             "- She rides her bicycle to the park.\n\n" +
+             "Asking for Directions:\n" +
+             "- Excuse me, how do I get to the museum?\n" +
+             "- Where is the nearest hospital?\n" +
+             "- Is there a bank near here?\n" +
+             "- Could you tell me the way to the station?\n" +
+             "- How far is the airport?\n\n" +
+             "Giving Directions:\n" +
+             "- Go straight ahead.\n" +
+             "- Turn left / right at the corner.\n" +
+             "- Take the first street on your left.\n" +
+             "- It's next to the pharmacy.\n" +
+             "- It's on the corner of Main Street and Park Avenue.\n" +
+             "- It's across from the supermarket.\n" +
+             "- It's between the school and the hospital.\n\n" +
+             "Places in a City:\n" +
+             "- hospital, school, bank, post office, supermarket, pharmacy, park, museum, library, restaurant, hotel, airport, bus station, train station\n\n" +
+             "Example:\n" +
+             "Tourist: Excuse me, how do I get to the library?\n" +
+             "Local: Go straight ahead for two blocks. Turn left at the traffic lights. The library is on your right, next to the park.\n" +
+             "Tourist: Thank you very much!\n" +
+             "Local: You're welcome! Have a nice day!",
+             1),
+        });
 
         // ── الدراسات الاجتماعية ─────────────────────────────────────────────
-        await AddUnit(S["SOC"], "الوحدة الأولى: الجغرافيا", 1, new[]
+        await AddUnit(S["SOC"], "الوحدة الأولى: الجغرافيا", 1,
+            AcademicTerm.FirstSemester, new[]
         {
             ("الموقع الجغرافي لمصر",
-             "تقع مصر في شمال شرق أفريقيا، يحدها شمالاً البحر المتوسط وشرقاً البحر الأحمر.",
+             "تقع مصر في شمال شرق قارة أفريقيا، وتمتد أجزاء منها إلى قارة آسيا (شبه جزيرة سيناء).\n\n" +
+             "حدود مصر:\n" +
+             "- شمالاً: البحر المتوسط (بطول 995 كم)\n" +
+             "- شرقاً: البحر الأحمر وفلسطين (قطاع غزة)\n" +
+             "- غرباً: ليبيا\n" +
+             "- جنوباً: السودان\n\n" +
+             "أهمية الموقع الجغرافي لمصر:\n" +
+             "1. موقع استراتيجي: تربط بين قارتي أفريقيا وآسيا\n" +
+             "2. قناة السويس: أهم ممر ملاحي في العالم يربط البحر المتوسط بالبحر الأحمر\n" +
+             "3. إشراف على بحرين: البحر المتوسط والبحر الأحمر\n" +
+             "4. مناخ متنوع: من البحر المتوسط شمالاً إلى الصحراوي جنوباً\n\n" +
+             "المساحة:\n" +
+             "- تبلغ مساحة مصر حوالي 1,002,000 كم²\n" +
+             "- يشكل وادي النيل والدلتا حوالي 4% من المساحة\n" +
+             "- الصحراء الغربية تغطي حوالي 68% من المساحة\n" +
+             "- الصحراء الشرقية وشبه جزيرة سيناء تغطي حوالي 28%\n\n" +
+             "التقسيمات الإدارية:\n" +
+             "- تنقسم مصر إلى 27 محافظة\n" +
+             "- أكبر المحافظات: الوادي الجديد\n" +
+             "- أصغر المحافظات: القاهرة (من حيث المساحة)\n" +
+             "- عاصمة مصر: القاهرة (أكبر مدينة في أفريقيا والشرق الأوسط)",
              1),
+            ("المناخ والنبات الطبيعي",
+             "يتأثر مناخ مصر بعدة عوامل أهمها الموقع الفلكي والموقع الجغرافي والتضاريس.\n\n" +
+             "العوامل المؤثرة في المناخ:\n" +
+             "1. الموقع الفلكي: تقع مصر بين دائرتي عرض 22° و 32° شمالاً\n" +
+             "2. الموقع الجغرافي: إشرافها على البحر المتوسط والبحر الأحمر\n" +
+             "3. الرياح السائدة: الرياح الشمالية الغربية\n" +
+             "4. التضاريس: وجود المنخفضات والمرتفعات\n\n" +
+             "خصائص المناخ في مصر:\n" +
+             "1. مناخ البحر المتوسط: في السواحل الشمالية (شتاء معتدل ممطر، صيف حار جاف)\n" +
+             "2. مناخ صحراوي: في باقي المناطق (حار نهاراً، بارد ليلاً)\n" +
+             "3. الأمطار: قليلة وتتركز في فصل الشتاء على السواحل الشمالية\n" +
+             "4. درجات الحرارة: تتراوح بين 10°م شتاءً و 40°م صيفاً\n\n" +
+             "النبات الطبيعي:\n" +
+             "1. نباتات البحر المتوسط: الحلفاء، الخزامى، إكليل الجبل\n" +
+             "2. نباتات وادي النيل: البردي، اللوتس، السنط\n" +
+             "3. نباتات صحراوية: التين الشوكي، الأثل، السمر\n" +
+             "4. نباتات ساحلية: المانجروف (على ساحل البحر الأحمر)",
+             2),
         });
-        await AddUnit(S["SOC"], "الوحدة الثانية: التاريخ", 2, new[]
+        await AddUnit(S["SOC"], "الوحدة الثانية: التاريخ", 2,
+            AcademicTerm.SecondSemester, new[]
         {
             ("الحضارة المصرية القديمة",
-             "تُعدّ الحضارة المصرية القديمة من أقدم الحضارات وتتميز ببناء الأهرامات.",
+             "تُعدّ الحضارة المصرية القديمة واحدة من أعرق الحضارات في تاريخ البشرية، واستمرت لأكثر من 3000 عام.\n\n" +
+             "عوامل قيام الحضارة المصرية:\n" +
+             "1. نهر النيل: مصدر المياه والخصوبة\n" +
+             "2. الموقع الجغرافي: حماية طبيعية بالصحاري والبحار\n" +
+             "3. المناخ المناسب: اعتدال المناخ\n" +
+             "4. الموارد الطبيعية: الحجر والذهب والنحاس\n\n" +
+             "العصور التاريخية:\n" +
+             "1. العصر العتيق (3100-2686 ق.م): توحيد مصر على يد الملك مينا\n" +
+             "2. الدولة القديمة (2686-2181 ق.م): عصر بناء الأهرامات\n" +
+             "3. الدولة الوسطى (2055-1650 ق.م): عصر الازدهار الأدبي\n" +
+             "4. الدولة الحديثة (1550-1069 ق.م): عصر الإمبراطورية المصرية\n\n" +
+             "إنجازات الحضارة المصرية القديمة:\n\n" +
+             "1. الهندسة والعمارة:\n" +
+             "   - بناء الأهرامات (خوفو، خفرع، منقرع)\n" +
+             "   - معابد الكرنك وأبو سمبل والأقصر\n" +
+             "   - المسلات والتماثيل العملاقة\n\n" +
+             "2. الكتابة:\n" +
+             "   - اختراع الكتابة الهيروغليفية\n" +
+             "   - استخدام ورق البردي\n" +
+             "   - حجر رشيد: مفتاح فك رموز الكتابة المصرية القديمة\n\n" +
+             "3. العلوم:\n" +
+             "   - الطب: عمليات جراحية وعلاج العيون\n" +
+             "   - الرياضيات: حساب المساحات والأحجام\n" +
+             "   - الفلك: التقويم الشمسي (365 يوماً)",
              1),
+            ("شخصيات تاريخية مصرية",
+             "على مر العصور، أنجبت مصر شخصيات عظيمة تركت بصمة في التاريخ.\n\n" +
+             "1. الملك مينا (نارمر):\n" +
+             "- أول من وحد مصر الشمالية والجنوبية حوالي 3100 ق.م\n" +
+             "- أسس أول أسرة حاكمة\n" +
+             "- بنى العاصمة منف (قرب الجيزة)\n\n" +
+             "2. الملك خوفو:\n" +
+             "- باني الهرم الأكبر بالجيزة\n" +
+             "- حكم في الأسرة الرابعة خلال الدولة القديمة\n" +
+             "- الهرم الأكبر أحد عجائب الدنيا السبع\n\n" +
+             "3. الملكة حتشبسوت:\n" +
+             "- أول ملكة تحكم مصر (الأسرة الثامنة عشرة)\n" +
+             "- أرسلت بعثة تجارية إلى بلاد بونت\n" +
+             "- بنت معبد الدير البحري بالأقصر\n\n" +
+             "4. الملك أخناتون:\n" +
+             "- دعا إلى عبادة إله واحد (آتون)\n" +
+             "- بنى مدينة أخيتاتون (تل العمارنة)\n" +
+             "- عُرف بالفن الواقعي في النحت والتصوير\n\n" +
+             "5. الملك رمسيس الثاني:\n" +
+             "- أحد أشهر فراعنة مصر\n" +
+             "- حكم 66 عاماً (الأسرة التاسعة عشرة)\n" +
+             "- بنى معبد أبو سمبل وتوسع في بناء المعابد\n" +
+             "- وقع أول معاهدة سلام في التاريخ مع الحيثيين",
+             2),
         });
 
         // ── التربية الإسلامية ───────────────────────────────────────────────
-        await AddUnit(S["ISL"], "الوحدة الأولى: القرآن الكريم", 1, new[]
+        await AddUnit(S["ISL"], "الوحدة الأولى: القرآن الكريم", 1,
+            AcademicTerm.FirstSemester, new[]
         {
-            ("سورة الفاتحة", "سورة الفاتحة أعظم سورة في القرآن وتُسمى السبع المثاني.", 1),
+            ("سورة الفاتحة",
+             "سورة الفاتحة هي أعظم سورة في القرآن الكريم، وتُسمى السبع المثاني وأم الكتاب.\n\n" +
+             "فضائل سورة الفاتحة:\n" +
+             "- هي ركن أساسي في الصلاة (لا صلاة لمن لم يقرأ بفاتحة الكتاب)\n" +
+             "- أعظم سورة في القرآن\n" +
+             "- فيها الشفاء (الرقية الشرعية)\n" +
+             "- نزلت من كنز تحت العرش\n\n" +
+             "عدد آياتها: 7 آيات\n" +
+             "ترتيبها في المصحف: الأولى\n" +
+             "نوعها: مكية\n\n" +
+             "نص السورة:\n" +
+             "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ\n" +
+             "الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ\n" +
+             "الرَّحْمَٰنِ الرَّحِيمِ\n" +
+             "مَالِكِ يَوْمِ الدِّينِ\n" +
+             "إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ\n" +
+             "اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ\n" +
+             "صِرَاطَ الَّذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ الْمَغْضُوبِ عَلَيْهِمْ وَلَا الضَّالِّينَ\n\n" +
+             "تفسير الآيات:\n" +
+             "1. {بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ}: أبدأ قراءتي مستعيناً بالله متبركاً باسمه\n" +
+             "2. {الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ}: الثناء على الله بصفات الكمال\n" +
+             "3. {الرَّحْمَٰنِ الرَّحِيمِ}: ذو الرحمة الواسعة\n" +
+             "4. {مَالِكِ يَوْمِ الدِّينِ}: المالك الحقيقي ليوم القيامة\n" +
+             "5. {إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ}: نخصك بالعبادة ونطلب منك العون\n" +
+             "6. {اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ}: دلنا على طريق الحق\n" +
+             "7. {صِرَاطَ الَّذِينَ أَنْعَمْتَ عَلَيْهِمْ...}: طريق الأنبياء والصديقين",
+             1),
+            ("سورة الإخلاص",
+             "سورة الإخلاص من أعظم سور القرآن، وتعدل ثلث القرآن.\n\n" +
+             "سبب التسمية:\n" +
+             "- سُميت بالإخلاص لأنها تخلّص القلب من الشرك\n" +
+             "- وتسمى سورة التوحيد وسورة الصمد\n\n" +
+             "عدد آياتها: 4 آيات\n" +
+             "ترتيبها: 112\n" +
+             "نوعها: مكية\n\n" +
+             "نص السورة:\n" +
+             "قُلْ هُوَ اللَّهُ أَحَدٌ\n" +
+             "اللَّهُ الصَّمَدُ\n" +
+             "لَمْ يَلِدْ وَلَمْ يُولَدْ\n" +
+             "وَلَمْ يَكُن لَّهُ كُفُواً أَحَدٌ\n\n" +
+             "التفسير:\n" +
+             "1. {قُلْ هُوَ اللَّهُ أَحَدٌ}: الله واحد أحد لا شريك له\n" +
+             "2. {اللَّهُ الصَّمَدُ}: السيد الذي يُصمد إليه في الحاجات\n" +
+             "3. {لَمْ يَلِدْ وَلَمْ يُولَدْ}: ليس له والد ولا ولد\n" +
+             "4. {وَلَمْ يَكُن لَّهُ كُفُواً أَحَدٌ}: لا مثيل له ولا شبيه\n\n" +
+             "فضلها:\n" +
+             "- قال النبي صلى الله عليه وسلم: 'والذي نفسي بيده إنها لتعدل ثلث القرآن'\n" +
+             "- من قرأها في صلاة الوتر كانت له نوراً",
+             2),
         });
-        await AddUnit(S["ISL"], "الوحدة الثانية: الحديث النبوي", 2, new[]
+        await AddUnit(S["ISL"], "الوحدة الثانية: الحديث النبوي", 2,
+            AcademicTerm.SecondSemester, new[]
         {
-            ("أحاديث الرحمة", "الرحماء يرحمهم الرحمن، ارحموا من في الأرض يرحمكم من في السماء.", 1),
+            ("أحاديث الرحمة",
+             "الرحمة من أعظم صفات الله تعالى، وقد حثّ النبي صلى الله عليه وسلم على التراحم بين الناس.\n\n" +
+             "الحديث الأول:\n" +
+             "قال رسول الله صلى الله عليه وسلم:\n" +
+             "『الرَّاحِمُونَ يَرْحَمُهُمُ الرَّحْمَنُ، ارْحَمُوا مَنْ فِي الْأَرْضِ يَرْحَمْكُمْ مَنْ فِي السَّمَاءِ』\n" +
+             "رواه أبو داود والترمذي\n\n" +
+             "شرح الحديث:\n" +
+             "- الراحمون: الذين يتحلون بصفة الرحمة\n" +
+             "- يرحمهم الرحمن: جزاء من جنس العمل\n" +
+             "- ارحموا من في الأرض: شملت جميع الخلق (الإنسان والحيوان)\n" +
+             "- من في السماء: الملائكة أو الله تعالى\n\n" +
+             "الحديث الثاني:\n" +
+             "『مَنْ لَا يَرْحَمُ النَّاسَ لَا يَرْحَمْهُ اللَّهُ』\n" +
+             "متفق عليه\n\n" +
+             "الحديث الثالث:\n" +
+             "『الرَّحْمَةُ مِائَةُ جُزْءٍ، أَنْزَلَ اللَّهُ مِنْهَا جُزْءاً وَاحِداً فِي الْأَرْضِ، فَبِذَلِكَ يَتَرَاحَمُ الْخَلْقُ』\n\n" +
+             "تطبيقات عملية:\n" +
+             "1. رحمة الوالدين: برهما والإحسان إليهما\n" +
+             "2. رحمة الصغار: العطف على الأطفال\n" +
+             "3. رحمة الحيوان: إطعامه وعدم إيذائه\n" +
+             "4. رحمة الجار: تفقّد أحواله ومساعدته\n" +
+             "5. رحمة الفقير: الصدقة ومساعدة المحتاجين",
+             1),
+            ("الأخلاق الحسنة",
+             "الأخلاق الحسنة من أهم مقاصد الإسلام، وقد بُعث النبي ﷺ ليتمّم مكارم الأخلاق.\n\n" +
+             "حديث: 『إنما بُعثت لأُتمّم مكارم الأخلاق』\n\n" +
+             "حديث: 『أكمل المؤمنين إيماناً أحسنهم خُلُقاً』\n\n" +
+             "أهم الأخلاق الحسنة:\n\n" +
+             "1. الصدق:\n" +
+             "- هو مطابقة القول للواقع\n" +
+             "- قال النبي ﷺ: 『عليكم بالصدق، فإن الصدق يهدي إلى البرِّ، وإن البرَّ يهدي إلى الجنة』\n" +
+             "- الصدق في الأقوال والأفعال والمعاملات\n\n" +
+             "2. الأمانة:\n" +
+             "- أداء الحقوق إلى أصحابها\n" +
+             "- قال النبي ﷺ: 『آية المنافق ثلاث: إذا حدث كذب، وإذا اؤتمن خان، وإذا عاهد غدر』\n" +
+             "- الأمانة في العمل والدراسة والمال\n\n" +
+             "3. التسامح:\n" +
+             "- العفو عند المقدرة\n" +
+             "- قال تعالى: {فَاعْفُوا وَاصْفَحُوا حَتَّىٰ يَأْتِيَ اللَّهُ بِأَمْرِهِ}\n" +
+             "- التسامح يزيد المحبة بين الناس\n\n" +
+             "4. الكرم:\n" +
+             "- بذل الخير للآخرين\n" +
+             "- قال النبي ﷺ: 『السَّخِيُّ قَرِيبٌ مِنَ اللَّهِ قَرِيبٌ مِنَ الْجَنَّةِ』",
+             2),
         });
 
         // ── الحاسب الآلي ────────────────────────────────────────────────────
-        await AddUnit(S["CMP"], "الوحدة الأولى: أساسيات الحاسب", 1, new[]
+        await AddUnit(S["CMP"], "الوحدة الأولى: أساسيات الحاسب", 1,
+            AcademicTerm.FirstSemester, new[]
         {
-            ("مكونات الحاسب", "الحاسب يتكون من: وحدة معالجة، ذاكرة، أجهزة إدخال وإخراج.", 1),
+            ("مكونات الحاسب",
+             "الحاسب الآلي (الكمبيوتر) هو جهاز إلكتروني يمكن برمجته لمعالجة البيانات وتخزينها واسترجاعها.\n\n" +
+             "المكونات المادية (Hardware):\n\n" +
+             "أولاً: وحدة المعالجة المركزية (CPU):\n" +
+             "- تُعتبر عقل الحاسب\n" +
+             "- مسؤولة عن تنفيذ التعليمات والعمليات الحسابية والمنطقية\n" +
+             "- تقاس سرعتها بالجيجاهرتز (GHz)\n" +
+             "- أنواع: Intel Core i3/i5/i7/i9, AMD Ryzen\n\n" +
+             "ثانياً: الذاكرة العشوائية (RAM):\n" +
+             "- تخزين مؤقت للبيانات أثناء التشغيل\n" +
+             "- تفقد محتوياتها عند إيقاف التشغيل\n" +
+             "- كلما زادت سعتها زادت سرعة الحاسب\n" +
+             "- تُقاس بالجيجابايت (GB)\n\n" +
+             "ثالثاً: وحدات التخزين:\n" +
+             "- القرص الصلب (HDD): سعة كبيرة، سرعة أقل\n" +
+             "- القرص الصلب (SSD): سعة أقل، سرعة عالية جداً\n" +
+             "- التخزين السحابي: Google Drive, OneDrive, iCloud\n\n" +
+             "رابعاً: أجهزة الإدخال:\n" +
+             "- لوحة المفاتيح (Keyboard)\n" +
+             "- الفأرة (Mouse)\n" +
+             "- الميكروفون (Microphone)\n" +
+             "- الماسح الضوئي (Scanner)\n" +
+             "- كاميرا الويب (Webcam)\n\n" +
+             "خامساً: أجهزة الإخراج:\n" +
+             "- الشاشة (Monitor)\n" +
+             "- الطابعة (Printer)\n" +
+             "- السماعات (Speakers)\n\n" +
+             "سادساً: اللوحة الأم (Motherboard):\n" +
+             "- تربط جميع المكونات ببعضها\n" +
+             "- تحتوي على منافذ التوصيل والموصلات\n\n" +
+             "البرمجيات (Software):\n" +
+             "- نظام التشغيل (Windows, macOS, Linux)\n" +
+             "- البرامج التطبيقية (Office, Photoshop, Games)\n" +
+             "- لغات البرمجة (Python, Java, C++)",
+             1),
+            ("شبكات الحاسب",
+             "شبكة الحاسب هي مجموعة من الأجهزة المتصلة ببعضها لتبادل البيانات والمشاركة في الموارد.\n\n" +
+             "فوائد الشبكات:\n" +
+             "1. مشاركة الملفات والبيانات\n" +
+             "2. مشاركة الطابعات والأجهزة\n" +
+             "3. الاتصال بين المستخدمين (البريد الإلكتروني، المحادثة)\n" +
+             "4. الوصول إلى الإنترنت\n" +
+             "5. التخزين المركزي للبيانات\n\n" +
+             "أنواع الشبكات:\n\n" +
+             "1. الشبكة المحلية (LAN):\n" +
+             "- تربط أجهزة في مساحة محدودة (مدرسة، مكتب)\n" +
+             "- سرعة عالية\n" +
+             "- تستخدم كابلات Ethernet أو Wi-Fi\n\n" +
+             "2. الشبكة الواسعة (WAN):\n" +
+             "- تربط أجهزة عبر مسافات كبيرة (دول، قارات)\n" +
+             "- الإنترنت أكبر مثال على WAN\n" +
+             "- سرعة أقل نسبياً\n\n" +
+             "3. الشبكة الشخصية (PAN):\n" +
+             "- تربط أجهزة شخصية (هاتف مع سماعة بلوتوث)\n" +
+             "- مجال تغطية صغير جداً (بضعة أمتار)\n\n" +
+             "أجهزة الشبكات:\n" +
+             "- المودم (Modem): يحول الإشارات الرقمية إلى تماثلية والعكس\n" +
+             "- الراوتر (Router): يوجه البيانات بين الشبكات\n" +
+             "- السويتش (Switch): يربط الأجهزة داخل الشبكة المحلية\n\n" +
+             "الإنترنت:\n" +
+             "- شبكة عالمية ضخمة تربط ملايين الأجهزة\n" +
+             "- تستخدم بروتوكول TCP/IP للاتصال\n" +
+             "- كل جهاز له عنوان IP فريد",
+             2),
         });
-        await AddUnit(S["CMP"], "الوحدة الثانية: البرمجة", 2, new[]
+        await AddUnit(S["CMP"], "الوحدة الثانية: البرمجة", 2,
+            AcademicTerm.SecondSemester, new[]
         {
-            ("مقدمة في البرمجة", "البرمجة: كتابة تعليمات للحاسب باستخدام لغة برمجة.", 1),
-            ("المتغيرات",        "المتغير: مكان في الذاكرة يُخزّن فيه قيمة يمكن تغييرها.", 2),
+            ("مقدمة في البرمجة",
+             "البرمجة هي عملية كتابة تعليمات (أوامر) للحاسب الآلي باستخدام لغة برمجة معينة لتنفيذ مهمة محددة.\n\n" +
+             "مفاهيم أساسية:\n\n" +
+             "1. الخوارزمية (Algorithm):\n" +
+             "- مجموعة من الخطوات المتسلسلة لحل مشكلة معينة\n" +
+             "- مثال: خوارزمية تحضير كوب شاي\n" +
+             "   1. اغلي الماء\n" +
+             "   2. ضع كيس الشاي في الكوب\n" +
+             "   3. صب الماء المغلي\n" +
+             "   4. انتظر 3 دقائق\n" +
+             "   5. أزل كيس الشاي\n" +
+             "   6. أضف السكر حسب الرغبة\n\n" +
+             "2. المخطط الانسيابي (Flowchart):\n" +
+             "- تمثيل بياني للخوارزمية باستخدام أشكال ورموز\n" +
+             "- شكل بيضاوي: بداية/نهاية\n" +
+             "- متوازي أضلاع: إدخال/إخراج\n" +
+             "- مستطيل: عملية حسابية\n" +
+             "- معين: قرار (نعم/لا)\n\n" +
+             "3. لغات البرمجة:\n" +
+             "- Python: سهلة للمبتدئين، تستخدم في الذكاء الاصطناعي\n" +
+             "- Java: تستخدم في تطبيقات الأندرويد\n" +
+             "- JavaScript: تستخدم في تطوير مواقع الويب\n" +
+             "- C++: تستخدم في الألعاب والبرامج عالية الأداء\n\n" +
+             "4. أنواع البيانات:\n" +
+             "- عدد صحيح (int): 5, -3, 100\n" +
+             "- عدد عشري (float): 3.14, -0.5\n" +
+             "- نص (string): 'مرحباً', 'Hello'\n" +
+             "- منطقي (boolean): True, False\n\n" +
+             "5. الهياكل البرمجية الأساسية:\n" +
+             "- التسلسل: تنفيذ الأوامر بالترتيب\n" +
+             "- الشرط (if/else): اتخاذ قرار بناءً على شرط\n" +
+             "- التكرار (loop): تكرار مجموعة أوامر",
+             1),
+            ("المتغيرات والثوابت",
+             "المتغير (Variable): مكان في الذاكرة يُخزّن فيه قيمة يمكن تغييرها أثناء تنفيذ البرنامج.\n\n" +
+             "خصائص المتغيرات:\n" +
+             "- الاسم: معرف فريد للمتغير (يجب أن يبدأ بحرف أو شرطة سفلية)\n" +
+             "- القيمة: البيانات المخزنة في المتغير\n" +
+             "- النوع: نوع البيانات التي يمكن تخزينها\n\n" +
+             "أمثلة:\n" +
+             "- Python: age = 15      # متغير اسمه age قيمته 15\n" +
+             "- Python: name = 'Ahmed'  # متغير نصي\n" +
+             "- Python: PI = 3.14    # ثابت (قيمة لا تتغير)\n\n" +
+             "قواعد تسمية المتغيرات:\n" +
+             "- يمكن أن تحتوي على أحرف وأرقام وشرطة سفلية\n" +
+             "- يجب أن تبدأ بحرف أو شرطة سفلية (ليس رقماً)\n" +
+             "- حساسة لحالة الأحرف (age ≠ Age)\n" +
+             "- لا يمكن استخدام الكلمات المحجوزة (if, for, while)\n\n" +
+             "العمليات على المتغيرات:\n\n" +
+             "عمليات حسابية:\n" +
+             "- الجمع: + (a + b)\n" +
+             "- الطرح: - (a - b)\n" +
+             "- الضرب: * (a * b)\n" +
+             "- القسمة: / (a / b)\n" +
+             "- باقي القسمة: % (a % b)\n\n" +
+             "عمليات المقارنة:\n" +
+             "- يساوي: ==\n" +
+             "- لا يساوي: !=\n" +
+             "- أكبر: >\n" +
+             "- أصغر: <\n" +
+             "- أكبر أو يساوي: >=\n" +
+             "- أصغر أو يساوي: <=\n\n" +
+             "مثال تطبيقي:\n" +
+             "# برنامج لحساب متوسط درجات الطالب\n" +
+             "grade1 = 85\n" +
+             "grade2 = 90\n" +
+             "grade3 = 78\n" +
+             "average = (grade1 + grade2 + grade3) / 3\n" +
+             "print('المتوسط:', average)",
+             2),
         });
     }
 
-    // =========================================================================
-    // 34. SeedQuestionBankAndExams — 20 سؤال لكل مادة، 7 امتحانات
-    // =========================================================================
-    private static async Task SeedQuestionBankAndExams(
-        AppDbContext ctx,
-        Dictionary<string, Subject> S,
-        List<ClassSubjectTeacher> cstList,
-        SchoolClass class1,
-        DateTime now)
+    /// <summary>
+    /// Upgrade seeding: runs on existing databases to add newly created tables/columns.
+    /// </summary>
+    private static async Task SeedUpgrades(AppDbContext ctx)
     {
-        var cstForClass1 = cstList
-            .Where(c => c.ClassId == class1.Id)
-            .ToDictionary(c => c.SubjectId, c => c);
+        var now = DateTime.UtcNow;
 
-        static string Opts(params string[] opts)
-            => System.Text.Json.JsonSerializer.Serialize(opts);
-
-        // (نص السؤال، النوع، الإجابة الصحيحة، JSON الاختيارات)
-        var bankDefs = new Dictionary<string, (string t, QuestionType qt, string? ans, string? opts)[]>
+        // ── 1. QuestionBank (if empty) ──────────────────────────────────────
+        if (!await ctx.QuestionBank.AnyAsync())
         {
-            // ── الرياضيات ──────────────────────────────────────────────────
-            ["MTH"] = new[]
-            {
-                ("ما حل المعادلة x²-5x+6=0؟",
-                 QuestionType.MultipleChoice, "x=2 أو x=3",
-                 Opts("x=2 أو x=3","x=1 أو x=6","x=-2 أو x=-3","x=2 أو x=-3")),
-                ("ما قيمة √144؟",
-                 QuestionType.MultipleChoice, "12",
-                 Opts("10","12","14","16")),
-                ("مجموع زوايا المثلث يساوي 180°",
-                 QuestionType.TrueFalse, "صح", Opts("صح","خطأ")),
-                ("العدد π يساوي تقريباً 3.14",
-                 QuestionType.TrueFalse, "صح", Opts("صح","خطأ")),
-                ("إذا كان ميل الخط 2 ومرّ بالنقطة (1,3)، فما معادلته؟",
-                 QuestionType.MultipleChoice, "y=2x+1",
-                 Opts("y=2x+1","y=2x-1","y=x+2","y=3x+1")),
-                ("مساحة مثلث قاعدته 8 سم وارتفاعه 5 سم = ___ سم²",
-                 QuestionType.FillBlank, "20", null),
-                ("في المعادلة التربيعية، إذا كان المميز سالباً لا يوجد حل حقيقي",
-                 QuestionType.TrueFalse, "صح", Opts("صح","خطأ")),
-                ("الوتر في مثلث قائم أبعاده 3 و4 يساوي ___",
-                 QuestionType.FillBlank, "5", null),
-                ("ما ناتج (x+3)(x-3)؟",
-                 QuestionType.MultipleChoice, "x²-9",
-                 Opts("x²-9","x²+9","x²-6x+9","x²+6x-9")),
-                ("ما قيمة 2³ + √64؟",
-                 QuestionType.MultipleChoice, "16",
-                 Opts("16","14","10","12")),
-                ("إذا كانت f(x)=3x-7 فما قيمة f(5)؟",
-                 QuestionType.MultipleChoice, "8",
-                 Opts("8","7","15","-7")),
-                ("الخط الذي ميله صفر يكون موازياً لمحور السينات",
-                 QuestionType.TrueFalse, "صح", Opts("صح","خطأ")),
-                ("مساحة دائرة نصف قطرها 7 سم = ___ π سم²",
-                 QuestionType.FillBlank, "49", null),
-                ("أيٌّ من التالي عدد أولي؟",
-                 QuestionType.MultipleChoice, "17",
-                 Opts("9","15","17","21")),
-                ("مجموع زوايا المضلع الرباعي يساوي 360°",
-                 QuestionType.TrueFalse, "صح", Opts("صح","خطأ")),
-                ("إذا كانت نسبة الناجحين 75% من 80 طالباً، فعدد الناجحين = ___",
-                 QuestionType.FillBlank, "60", null),
-                ("ما قيمة 5! (مضروب 5)؟",
-                 QuestionType.MultipleChoice, "120",
-                 Opts("60","100","120","125")),
-                ("الزاوية القائمة تساوي 90°",
-                 QuestionType.TrueFalse, "صح", Opts("صح","خطأ")),
-                ("اشرح كيف تحل المعادلة التربيعية x²-7x+12=0 بالتحليل.",
-                 QuestionType.Essay, null, null),
-                ("اثبت نظرية فيثاغورس بالرسم والشرح.",
-                 QuestionType.Essay, null, null),
-            },
-            // ── اللغة العربية ──────────────────────────────────────────────
-            ["ARB"] = new[]
-            {
-                ("\"الشمسُ ساطعةٌ\" جملة من نوع",
-                 QuestionType.MultipleChoice, "اسمية",
-                 Opts("اسمية","فعلية","شبه جملة","ظرفية")),
-                ("المبتدأ في جملة \"الكتابُ مفيدٌ\" هو",
-                 QuestionType.MultipleChoice, "الكتاب",
-                 Opts("الكتاب","مفيد","ال","كلاهما")),
-                ("الفعل الماضي يدل على حدث وقع في الزمن الماضي",
-                 QuestionType.TrueFalse, "صح", Opts("صح","خطأ")),
-                ("حروف الجر تدخل على الأفعال مباشرة",
-                 QuestionType.TrueFalse, "خطأ", Opts("صح","خطأ")),
-                ("مرادف كلمة شجاع هو",
-                 QuestionType.MultipleChoice, "باسل",
-                 Opts("جبان","باسل","حكيم","صادق")),
-                ("إعراب \"الكتابَ\" في \"قرأتُ الكتابَ\"",
-                 QuestionType.MultipleChoice, "مفعول به منصوب",
-                 Opts("مفعول به منصوب","فاعل مرفوع","مبتدأ مرفوع","مضاف إليه مجرور")),
-                ("الضمير المتصل لا يمكن أن يكون فاعلاً",
-                 QuestionType.TrueFalse, "خطأ", Opts("صح","خطأ")),
-                ("جمع كلمة كتاب هو ___",
-                 QuestionType.FillBlank, "كتب", null),
-                ("الحرف الناسخ الذي ينصب المبتدأ ويرفع الخبر يُعرف بـ ___",
-                 QuestionType.FillBlank, "إن وأخواتها", null),
-                ("أيٌّ من التالي حرف جر؟",
-                 QuestionType.MultipleChoice, "إلى",
-                 Opts("إلى","إن","قد","لم")),
-                ("التاء في ذهبتُ هي",
-                 QuestionType.MultipleChoice, "ضمير رفع متحرك",
-                 Opts("ضمير رفع متحرك","حرف مضارعة","اسم","حرف نفي")),
-                ("الفاعل دائماً مرفوع",
-                 QuestionType.TrueFalse, "صح", Opts("صح","خطأ")),
-                ("ضد كلمة الحب هو ___",
-                 QuestionType.FillBlank, "الكره", null),
-                ("العلامة الأصلية للرفع هي",
-                 QuestionType.MultipleChoice, "الضمة",
-                 Opts("الضمة","الفتحة","الكسرة","السكون")),
-                ("لم يذهبْ: الفعل مجزوم بـ",
-                 QuestionType.MultipleChoice, "لم",
-                 Opts("لم","لا","لن","ما")),
-                ("مؤنث كلمة طالب هو ___",
-                 QuestionType.FillBlank, "طالبة", null),
-                ("الاسم النكرة ما دلّ على شيء غير معين",
-                 QuestionType.TrueFalse, "صح", Opts("صح","خطأ")),
-                ("الفتى المجتهدُ فازَ: هي جملة تبدأ بـ",
-                 QuestionType.MultipleChoice, "مبتدأ",
-                 Opts("مبتدأ","فعل","حرف","أداة")),
-                ("اكتب فقرة تصف فيها مدرستك معتمداً على المفردات الجديدة.",
-                 QuestionType.Essay, null, null),
-                ("حلّل النص التالي نحوياً: الطالبُ المجدُّ ينجحُ في دراستِهِ",
-                 QuestionType.Essay, null, null),
-            },
-            // ── اللغة الإنجليزية ───────────────────────────────────────────
-            ["ENG"] = new[]
-            {
-                ("The plural of child is",
-                 QuestionType.MultipleChoice, "children",
-                 Opts("childs","children","childes","childrens")),
-                ("She ___ to school every day.",
-                 QuestionType.MultipleChoice, "goes",
-                 Opts("go","goes","going","gone")),
-                ("I have been studying for 3 hours is present perfect continuous.",
-                 QuestionType.TrueFalse, "صح", Opts("صح","خطأ")),
-                ("He don't like coffee is grammatically correct.",
-                 QuestionType.TrueFalse, "خطأ", Opts("صح","خطأ")),
-                ("The opposite of ancient is",
-                 QuestionType.MultipleChoice, "modern",
-                 Opts("old","modern","huge","tiny")),
-                ("They ___ football when it started to rain.",
-                 QuestionType.MultipleChoice, "were playing",
-                 Opts("play","plays","were playing","have played")),
-                ("A noun is a word that describes an action.",
-                 QuestionType.TrueFalse, "خطأ", Opts("صح","خطأ")),
-                ("The past tense of eat is ___.",
-                 QuestionType.FillBlank, "ate", null),
-                ("A word that means very big is ___.",
-                 QuestionType.FillBlank, "enormous", null),
-                ("Which sentence is in the passive voice?",
-                 QuestionType.MultipleChoice, "The fish was eaten by the cat.",
-                 Opts("The cat ate the fish.","The fish was eaten by the cat.","I eat fish.","She catches fish.")),
-                ("She is good ___ math.",
-                 QuestionType.MultipleChoice, "at",
-                 Opts("in","at","on","for")),
-                ("Whose is used to ask about possession.",
-                 QuestionType.TrueFalse, "صح", Opts("صح","خطأ")),
-                ("The comparative form of good is ___.",
-                 QuestionType.FillBlank, "better", null),
-                ("Which word is a conjunction?",
-                 QuestionType.MultipleChoice, "and",
-                 Opts("and","table","run","quickly")),
-                ("I wish I ___ taller.",
-                 QuestionType.MultipleChoice, "were",
-                 Opts("am","were","be","been")),
-                ("The synonym of happy is ___.",
-                 QuestionType.FillBlank, "glad", null),
-                ("Adjectives come after the noun in English.",
-                 QuestionType.TrueFalse, "خطأ", Opts("صح","خطأ")),
-                ("He said I am tired. In reported speech: He said he ___",
-                 QuestionType.MultipleChoice, "was tired",
-                 Opts("is tired","was tired","am tired","be tired")),
-                ("Write a short paragraph about your daily routine using present simple tense.",
-                 QuestionType.Essay, null, null),
-                ("Describe your favourite season and give reasons why you like it.",
-                 QuestionType.Essay, null, null),
-            },
-            // ── العلوم ──────────────────────────────────────────────────────
-            ["SCI"] = new[]
-            {
-                ("الوحدة الأساسية للمادة",
-                 QuestionType.MultipleChoice, "الذرة",
-                 Opts("الجزيء","الذرة","البروتون","الخلية")),
-                ("الصيغة الكيميائية للماء",
-                 QuestionType.MultipleChoice, "H2O",
-                 Opts("CO2","H2O","NaCl","O2")),
-                ("الذرات من نفس العنصر لها نفس عدد البروتونات",
-                 QuestionType.TrueFalse, "صح", Opts("صح","خطأ")),
-                ("الميتوكوندريا هي مركز عملية الفوتوسنثيز",
-                 QuestionType.TrueFalse, "خطأ", Opts("صح","خطأ")),
-                ("عملية تحويل الضوء إلى طاقة كيميائية تسمى",
-                 QuestionType.MultipleChoice, "الفوتوسنثيز",
-                 Opts("التنفس الخلوي","الفوتوسنثيز","الانقسام الخلوي","الإخراج")),
-                ("عدد الكروموسومات في الخلية البشرية الطبيعية",
-                 QuestionType.MultipleChoice, "46",
-                 Opts("23","46","48","22")),
-                ("الضوء يسير في خطوط مستقيمة",
-                 QuestionType.TrueFalse, "صح", Opts("صح","خطأ")),
-                ("ناتج الفوتوسنثيز إلى جانب الأكسجين هو ___",
-                 QuestionType.FillBlank, "الجلوكوز", null),
-                ("الرمز الكيميائي للحديد هو ___",
-                 QuestionType.FillBlank, "Fe", null),
-                ("نوع الانقسام الذي ينتج الأمشاج",
-                 QuestionType.MultipleChoice, "الميوز",
-                 Opts("الميتوز","الميوز","الانقسام الثنائي","التكاثر")),
-                ("الوزن = الكتلة × ___",
-                 QuestionType.FillBlank, "g (تسارع الجاذبية)", null),
-                ("يمكن إنشاء طاقة من العدم",
-                 QuestionType.TrueFalse, "خطأ", Opts("صح","خطأ")),
-                ("وحدة قياس الطاقة في النظام الدولي هي ___",
-                 QuestionType.FillBlank, "الجول", null),
-                ("صاغ قوانين الحركة الثلاثة",
-                 QuestionType.MultipleChoice, "نيوتن",
-                 Opts("آينشتاين","نيوتن","جاليليو","فاراداي")),
-                ("المادة تتمدد بالتبريد",
-                 QuestionType.TrueFalse, "خطأ", Opts("صح","خطأ")),
-                ("من الجهاز العصبي المركزي",
-                 QuestionType.MultipleChoice, "الدماغ",
-                 Opts("القلب","الكبد","الدماغ","الرئة")),
-                ("الصيغة الكيميائية لثاني أكسيد الكربون هي ___",
-                 QuestionType.FillBlank, "CO2", null),
-                ("التنفس الخلوي ينتج ATP من الجلوكوز",
-                 QuestionType.TrueFalse, "صح", Opts("صح","خطأ")),
-                ("فسّر كيف تعمل عملية التنفس الخلوي وما أهميتها.",
-                 QuestionType.Essay, null, null),
-                ("قارن بين الميتوز والميوز من حيث النتيجة والهدف.",
-                 QuestionType.Essay, null, null),
-            },
-            // ── الدراسات الاجتماعية ─────────────────────────────────────────
-            ["SOC"] = new[]
-            {
-                ("عاصمة مصر",
-                 QuestionType.MultipleChoice, "القاهرة",
-                 Opts("الإسكندرية","القاهرة","الأقصر","أسوان")),
-                ("تقع مصر في قارة",
-                 QuestionType.MultipleChoice, "أفريقيا",
-                 Opts("آسيا","أوروبا","أفريقيا","أمريكا")),
-                ("البحر المتوسط يقع جنوب مصر",
-                 QuestionType.TrueFalse, "خطأ", Opts("صح","خطأ")),
-                ("الأهرامات من عجائب الدنيا السبعة القديمة",
-                 QuestionType.TrueFalse, "صح", Opts("صح","خطأ")),
-                ("أطول نهر في العالم",
-                 QuestionType.MultipleChoice, "النيل",
-                 Opts("الأمازون","النيل","المسيسبي","الكونغو")),
-                ("ثورة 23 يوليو قامت عام",
-                 QuestionType.MultipleChoice, "1952",
-                 Opts("1948","1952","1956","1961")),
-                ("مصر دولة عربية إسلامية تقع في قلب العالم القديم",
-                 QuestionType.TrueFalse, "صح", Opts("صح","خطأ")),
-                ("عاصمة المملكة العربية السعودية هي ___",
-                 QuestionType.FillBlank, "الرياض", null),
-                ("أكبر قارات العالم من حيث المساحة هي ___",
-                 QuestionType.FillBlank, "آسيا", null),
-                ("من الموارد الطبيعية المفقودة في مصر",
-                 QuestionType.MultipleChoice, "الماس",
-                 Opts("البترول","الغاز الطبيعي","الماس","الفوسفات")),
-                ("السد العالي بُني في أسوان",
-                 QuestionType.TrueFalse, "صح", Opts("صح","خطأ")),
-                ("عدد الدول العربية",
-                 QuestionType.MultipleChoice, "22",
-                 Opts("18","20","22","25")),
-                ("جزيرة سيناء تقع في شرق مصر",
-                 QuestionType.TrueFalse, "صح", Opts("صح","خطأ")),
-                ("مؤسس الدولة المصرية الحديثة",
-                 QuestionType.MultipleChoice, "محمد علي باشا",
-                 Opts("جمال عبد الناصر","أنور السادات","محمد علي باشا","الخديوي إسماعيل")),
-                ("اشتهرت الحضارة الفرعونية بـ",
-                 QuestionType.MultipleChoice, "بناء الأهرامات والمعابد",
-                 Opts("اختراع الطيارة","بناء الأهرامات والمعابد","الفتح الفضائي","صناعة السيارات")),
-                ("أكبر محيطات العالم هو ___",
-                 QuestionType.FillBlank, "المحيط الهادي", null),
-                ("العاصمة الأثرية لمصر القديمة هي ___",
-                 QuestionType.FillBlank, "طيبة", null),
-                ("قناة السويس تربط البحر المتوسط بالبحر الأحمر",
-                 QuestionType.TrueFalse, "صح", Opts("صح","خطأ")),
-                ("تحدث عن أهمية نهر النيل في حياة المصريين قديماً وحديثاً.",
-                 QuestionType.Essay, null, null),
-                ("ناقش أهمية قناة السويس للاقتصاد المصري والعالمي.",
-                 QuestionType.Essay, null, null),
-            },
-            // ── التربية الإسلامية ───────────────────────────────────────────
-            ["ISL"] = new[]
-            {
-                ("عدد آيات سورة الفاتحة",
-                 QuestionType.MultipleChoice, "7",
-                 Opts("5","6","7","8")),
-                ("الحديث النبوي ينقسم إلى",
-                 QuestionType.MultipleChoice, "صحيح وحسن وضعيف",
-                 Opts("صحيح وضعيف فقط","صحيح وحسن وضعيف","صحيح ومنكر فقط","قوي وضعيف")),
-                ("الزكاة ركن من أركان الإسلام الخمسة",
-                 QuestionType.TrueFalse, "صح", Opts("صح","خطأ")),
-                ("صيام رمضان فرض على كل مسلم بالغ عاقل قادر",
-                 QuestionType.TrueFalse, "صح", Opts("صح","خطأ")),
-                ("أول ما يُسأل عنه العبد يوم القيامة",
-                 QuestionType.MultipleChoice, "الصلاة",
-                 Opts("الصيام","الصلاة","الزكاة","الحج")),
-                ("عدد الصلوات المفروضة في اليوم والليلة",
-                 QuestionType.MultipleChoice, "5",
-                 Opts("3","4","5","6")),
-                ("الحج فرض مرة واحدة في العمر لمن استطاع",
-                 QuestionType.TrueFalse, "صح", Opts("صح","خطأ")),
-                ("أول أركان الإسلام هو ___",
-                 QuestionType.FillBlank, "الشهادتان", null),
-                ("النبي الخاتم هو ___",
-                 QuestionType.FillBlank, "محمد صلى الله عليه وسلم", null),
-                ("من أسماء الله الحسنى",
-                 QuestionType.MultipleChoice, "الجبار",
-                 Opts("الجبار","الملحد","المادي","الظالم")),
-                ("الكتاب السماوي المنزَّل على سيدنا موسى",
-                 QuestionType.MultipleChoice, "التوراة",
-                 Opts("الإنجيل","التوراة","القرآن","الزبور")),
-                ("الصدق من أخلاق الإسلام المحمودة",
-                 QuestionType.TrueFalse, "صح", Opts("صح","خطأ")),
-                ("تُسمى سورة الفاتحة بـ ___",
-                 QuestionType.FillBlank, "أم القرآن", null),
-                ("معنى كلمة الإسلام لغةً",
-                 QuestionType.MultipleChoice, "الاستسلام والانقياد لله",
-                 Opts("الإيمان","الاستسلام والانقياد لله","العبادة","التوبة")),
-                ("من الأنبياء أولي العزم الخمسة",
-                 QuestionType.MultipleChoice, "إبراهيم",
-                 Opts("إدريس","يوسف","إبراهيم","داود")),
-                ("القبلة التي يتوجه إليها المسلمون في الصلاة هي ___",
-                 QuestionType.FillBlank, "الكعبة المشرفة", null),
-                ("الغيبة والنميمة من الأخلاق المحمودة",
-                 QuestionType.TrueFalse, "خطأ", Opts("صح","خطأ")),
-                ("أطول سورة في القرآن الكريم",
-                 QuestionType.MultipleChoice, "البقرة",
-                 Opts("البقرة","آل عمران","النساء","الكهف")),
-                ("تحدّث عن أهمية الصدق في الإسلام مستدلاً بآية أو حديث.",
-                 QuestionType.Essay, null, null),
-                ("اذكر أركان الإيمان الستة مع الشرح الموجز لكل ركن.",
-                 QuestionType.Essay, null, null),
-            },
-            // ── الحاسب الآلي ─────────────────────────────────────────────────
-            ["CMP"] = new[]
-            {
-                ("وحدة قياس سرعة المعالج",
-                 QuestionType.MultipleChoice, "جيجاهرتز",
-                 Opts("بايت","جيجاهرتز","ميجابايت","بيكسل")),
-                ("الذاكرة التي تفقد محتوياتها عند إيقاف الكمبيوتر",
-                 QuestionType.MultipleChoice, "الذاكرة العشوائية RAM",
-                 Opts("القرص الصلب","الذاكرة العشوائية RAM","الفلاش ميموري","CD-ROM")),
-                ("HTML هي لغة برمجة",
-                 QuestionType.TrueFalse, "خطأ", Opts("صح","خطأ")),
-                ("الإنترنت شبكة عالمية تربط ملايين الحواسيب",
-                 QuestionType.TrueFalse, "صح", Opts("صح","خطأ")),
-                ("أصغر وحدة لتخزين المعلومات",
-                 QuestionType.MultipleChoice, "بت",
-                 Opts("بايت","كيلوبايت","بت","جيجابايت")),
-                ("نظام تشغيل من بين التالي",
-                 QuestionType.MultipleChoice, "Windows 11",
-                 Opts("Microsoft Word","Windows 11","Google Chrome","Adobe Photoshop")),
-                ("البرنامج يمكنه العمل بدون أجهزة مادية",
-                 QuestionType.TrueFalse, "خطأ", Opts("صح","خطأ")),
-                ("من أجهزة الإخراج: الشاشة و___",
-                 QuestionType.FillBlank, "الطابعة", null),
-                ("اختصار CPU يعني ___",
-                 QuestionType.FillBlank, "وحدة المعالجة المركزية", null),
-                ("دماغ الحاسوب",
-                 QuestionType.MultipleChoice, "المعالج",
-                 Opts("الذاكرة","القرص الصلب","المعالج","شاشة العرض")),
-                ("ناتج 2+3×4 (أولوية العمليات)",
-                 QuestionType.MultipleChoice, "14",
-                 Opts("20","14","12","24")),
-                ("جميع برامج الكمبيوتر تُكتب بلغة الآلة مباشرة",
-                 QuestionType.TrueFalse, "خطأ", Opts("صح","خطأ")),
-                ("اختصار WWW يعني ___",
-                 QuestionType.FillBlank, "World Wide Web", null),
-                ("لغة برمجة من بين التالي",
-                 QuestionType.MultipleChoice, "Python",
-                 Opts("HTML","Python","Google","Excel")),
-                ("نوع البيانات الممثّل للأرقام الصحيحة",
-                 QuestionType.MultipleChoice, "Integer",
-                 Opts("String","Boolean","Integer","Float")),
-                ("الشبكة التي تربط الأجهزة داخل مبنى واحد تُسمى ___",
-                 QuestionType.FillBlank, "LAN", null),
-                ("أمن المعلومات يهتم بحماية البيانات من الاختراق",
-                 QuestionType.TrueFalse, "صح", Opts("صح","خطأ")),
-                ("اختصار AI يعني",
-                 QuestionType.MultipleChoice, "Artificial Intelligence",
-                 Opts("Advanced Internet","Artificial Intelligence","Automatic Integration","Active Input")),
-                ("اشرح الفرق بين البرامج التطبيقية وبرامج النظام مع مثال لكل.",
-                 QuestionType.Essay, null, null),
-                ("صف دور الحاسوب في تطوير التعليم مع ذكر ثلاثة أمثلة.",
-                 QuestionType.Essay, null, null),
-            },
-        };
+            var subjects = await ctx.Subjects.ToDictionaryAsync(s => s.Code!, s => s);
+            var grade1   = await ctx.GradeLevels.OrderBy(g => g.LevelOrder).FirstAsync();
 
-        var examTitles = new Dictionary<string, (string title, int daysOffset)>
-        {
-            ["ARB"] = ("امتحان اللغة العربية الشامل - الفصل الأول",        30),
-            ["ENG"] = ("English Comprehensive Exam - First Semester",       32),
-            ["MTH"] = ("امتحان الرياضيات الشامل - الفصل الأول",             34),
-            ["SCI"] = ("امتحان العلوم الشامل - الفصل الأول",                36),
-            ["SOC"] = ("امتحان الدراسات الاجتماعية الشامل - الفصل الأول",   38),
-            ["ISL"] = ("امتحان التربية الإسلامية الشامل - الفصل الأول",     40),
-            ["CMP"] = ("امتحان الحاسب الآلي الشامل - الفصل الأول",          42),
-        };
-
-        foreach (var (code, questions) in bankDefs)
-        {
-            var subject = S[code];
-
-            // ── 1. QuestionBank ──────────────────────────────────────────────
-            var bankItems = questions.Select((q, i) => new QuestionBank
+            var qbQuestions = new (string text, QuestionType type, string correct, string? options, Subject subj)[]
             {
-                QuestionText  = q.t,
-                QuestionType  = q.qt,
-                CorrectAnswer = q.ans,
-                OptionsJson   = q.opts,
-                SubjectId     = subject.Id,
-                UsageCount    = 1,
-                CreatedAt = now, UpdatedAt = now
-            }).ToList();
-            ctx.QuestionBank.AddRange(bankItems);
-            await ctx.SaveChangesAsync();
-
-            // ── 2. Exam ──────────────────────────────────────────────────────
-            var (title, daysOffset) = examTitles[code];
-            var cst = cstForClass1[subject.Id];
-            var exam = new Exam
-            {
-                ClassSubjectTeacherId = cst.Id,
-                Title           = title,
-                StartTime       = now.Date.AddDays(daysOffset).AddHours(9),
-                EndTime         = now.Date.AddDays(daysOffset).AddHours(11),
-                DurationMinutes = 120,
-                TotalScore      = 100m,
-                IsAIGenerated   = false,
-                IsPublished     = true,
-                Category        = EvaluationCategory.Academic,
-                CreatedAt = now, UpdatedAt = now
+                ("ما ناتج 5 + 3؟",                       QuestionType.MultipleChoice, "8",  @"[""4"",""7"",""8"",""10""]", subjects["MTH"]),
+                ("10 - 4 = ...",                         QuestionType.FillBlank,      "6",  null,                       subjects["MTH"]),
+                ("العدد 12 هو عدد زوجي",                 QuestionType.TrueFalse,      "True", null,                     subjects["MTH"]),
+                ("ما ناتج 2 × 6 = ...",                  QuestionType.MultipleChoice, "12", @"[""8"",""12"",""14"",""16""]", subjects["MTH"]),
+                ("اجمع: 15 + 7 = ...",                   QuestionType.FillBlank,      "22", null,                       subjects["MTH"]),
+                ("العدد الأولي هو عدد يقبل القسمة على 1 ونفسه فقط",
+                                                          QuestionType.TrueFalse,      "True", null,                    subjects["MTH"]),
+                ("ما ناتج 36 ÷ 6؟",                     QuestionType.MultipleChoice, "6",  @"[""4"",""6"",""8"",""9""]",  subjects["MTH"]),
+                ("المربع له 4 أضلاع متساوية",           QuestionType.TrueFalse,      "True", null,                     subjects["MTH"]),
+                ("الفعل الماضي من 'يكتب' هو 'كتب'",     QuestionType.TrueFalse,      "True", null,                     subjects["ARB"]),
+                ("ما مرادف كلمة 'جميل'؟",               QuestionType.MultipleChoice, "حسن",@"[""قبيح"",""حسن"",""سريع"",""كبير""]", subjects["ARB"]),
+                ("المبتدأ ... في أول الجملة الاسمية",    QuestionType.FillBlank,      "مرفوع", null,                    subjects["ARB"]),
+                ("جمع كلمة 'كتاب' هو 'كُتب'",           QuestionType.TrueFalse,      "True", null,                     subjects["ARB"]),
+                ("ما ضد كلمة 'طويل'؟",                  QuestionType.MultipleChoice, "قصير",@"[""جميل"",""قصير"",""عريض"",""ثقيل""]", subjects["ARB"]),
+                ("الحرف الناسخ 'إنّ' ينصب ... ويرفع ...",
+                                                          QuestionType.FillBlank,      "الاسم والخبر", null,            subjects["ARB"]),
             };
-            ctx.Exams.Add(exam);
+
+            foreach (var (text, type, correct, options, subj) in qbQuestions)
+            {
+                ctx.QuestionBank.Add(new QuestionBank
+                {
+                    QuestionText  = text,
+                    QuestionType  = type,
+                    CorrectAnswer = correct,
+                    OptionsJson   = options,
+                    SubjectId     = subj.Id,
+                    GradeLevelId  = grade1.Id,
+                    CreatedAt = now, UpdatedAt = now
+                });
+            }
             await ctx.SaveChangesAsync();
 
-            // ── 3. ExamQuestionBankItems  (20 سؤال × 5 درجات = 100) ──────────
-            ctx.ExamQuestionBankItems.AddRange(
-                bankItems.Select((q, i) => new ExamQuestionBankItem
+            // Link QB questions to an existing exam if any
+            var anyExam = await ctx.Exams.FirstOrDefaultAsync();
+            if (anyExam != null)
+            {
+                var qbLinks = await ctx.QuestionBank
+                    .Where(q => q.SubjectId == subjects["MTH"].Id)
+                    .OrderBy(q => q.Id)
+                    .Take(3)
+                    .ToListAsync();
+                int order = 1;
+                foreach (var qb in qbLinks)
                 {
-                    ExamId         = exam.Id,
-                    QuestionBankId = q.Id,
-                    Points         = 5m,
-                    DisplayOrder   = i + 1,
-                    CreatedAt = now, UpdatedAt = now
-                })
-            );
+                    ctx.ExamQuestionBankItems.Add(new ExamQuestionBankItem
+                    {
+                        ExamId         = anyExam.Id,
+                        QuestionBankId = qb.Id,
+                        Points         = 10,
+                        DisplayOrder   = order++,
+                        CreatedAt = now, UpdatedAt = now
+                    });
+                }
+                await ctx.SaveChangesAsync();
+            }
+        }
+
+        // ── 2. Update AcademicYear dates (14-week second semester) ──────────
+        var year = await ctx.AcademicYears.FirstOrDefaultAsync(y => y.IsCurrent);
+        if (year != null && (year.SecondSemesterStartDate != new DateOnly(2026, 4, 4) ||
+                             year.SecondSemesterEndDate   != new DateOnly(2026, 7, 11)))
+        {
+            year.SecondSemesterStartDate = new DateOnly(2026, 4, 4);
+            year.SecondSemesterEndDate   = new DateOnly(2026, 7, 11);
+            year.EndDate                 = new DateOnly(2026, 7, 11);
+            year.UpdatedAt = DateTime.UtcNow;
+            await ctx.SaveChangesAsync();
+        }
+
+        // ── 3. Regenerate EvaluationPeriods if old format (missing semester numbers) ──
+        if (year != null)
+        {
+            bool anyOldPeriod = await ctx.EvaluationPeriods
+                .AnyAsync(p => p.AcademicYearId == year.Id && p.PeriodType == PeriodType.Weekly && p.SemesterNumber == null);
+            if (anyOldPeriod)
+            {
+                // Remove dependent data first
+                var periodIds = await ctx.EvaluationPeriods
+                    .Where(p => p.AcademicYearId == year.Id)
+                    .Select(p => p.Id)
+                    .ToListAsync();
+                ctx.PeriodAverages.RemoveRange(
+                    await ctx.PeriodAverages.Where(pa => periodIds.Contains(pa.PeriodId)).ToListAsync());
+                ctx.StudentEvaluations.RemoveRange(
+                    await ctx.StudentEvaluations.Where(se => periodIds.Contains(se.PeriodId)).ToListAsync());
+                ctx.DailyAbsences.RemoveRange(
+                    await ctx.DailyAbsences.Where(da => da.PeriodId != null && periodIds.Contains(da.PeriodId.Value)).ToListAsync());
+                // Remove old periods
+                ctx.EvaluationPeriods.RemoveRange(
+                    await ctx.EvaluationPeriods.Where(p => p.AcademicYearId == year.Id).ToListAsync());
+                await ctx.SaveChangesAsync();
+
+                // Regenerate with current dates
+                var newPeriods = Project.Domain.Helpers.EvaluationPeriodGenerator
+                    .GeneratePeriods(year.Id, year.StartDate,
+                        year.FirstSemesterStartDate, year.FirstSemesterEndDate,
+                        year.SecondSemesterStartDate, year.SecondSemesterEndDate)
+                    .ToList();
+                ctx.EvaluationPeriods.AddRange(newPeriods);
+                await ctx.SaveChangesAsync();
+            }
+        }
+
+        // ── 4. Update Units with Term (if missing) ──────────────────────────
+        bool anyUnitWithoutTerm = await ctx.Units.AnyAsync(u => u.Term == null);
+        if (anyUnitWithoutTerm)
+        {
+            var subjects = await ctx.Subjects.ToDictionaryAsync(s => s.Code!, s => s);
+            var allUnits = await ctx.Units
+                .Where(u => u.Term == null)
+                .OrderBy(u => u.SubjectId).ThenBy(u => u.DisplayOrder)
+                .ToListAsync();
+
+            foreach (var unit in allUnits)
+            {
+                // First unit of each subject → FirstSemester, second → SecondSemester
+                unit.Term = unit.DisplayOrder <= 1
+                    ? AcademicTerm.FirstSemester
+                    : AcademicTerm.SecondSemester;
+                unit.UpdatedAt = now;
+            }
+            await ctx.SaveChangesAsync();
+        }
+
+        // ── 5. Update templates to SecondSemester (if still on FirstSemester) ──
+        bool anyTmplNeedsUpdate = await ctx.EvaluationTemplates
+            .AnyAsync(t => t.Term == AcademicTerm.FirstSemester);
+        if (anyTmplNeedsUpdate)
+        {
+            var tmpls = await ctx.EvaluationTemplates
+                .Where(t => t.Term == AcademicTerm.FirstSemester)
+                .ToListAsync();
+            foreach (var t in tmpls)
+            {
+                t.Term = AcademicTerm.SecondSemester;
+                t.Weeks = 14;
+                t.UpdatedAt = now;
+            }
             await ctx.SaveChangesAsync();
         }
     }

@@ -203,7 +203,7 @@ public class StudentEvaluationService : IStudentEvaluationService
     }
 
     public async Task<OperationResult<IEnumerable<StudentEvaluationDto>>> GetByEnrollmentAndPeriodAsync(
-        int enrollmentId, int periodId)
+        int enrollmentId, int periodId, AcademicTerm? term = null)
     {
         var enrollment = await _unitOfWork.StudentEnrollments.GetByIdAsync(enrollmentId);
         if (enrollment is null || enrollment.IsDeleted)
@@ -214,6 +214,11 @@ public class StudentEvaluationService : IStudentEvaluationService
             return OperationResult<IEnumerable<StudentEvaluationDto>>.Failure("فترة التقييم غير موجودة");
 
         var evaluations = await _unitOfWork.StudentEvaluations.GetByEnrollmentAndPeriodAsync(enrollmentId, periodId);
+
+        // Filter by term if specified
+        if (term.HasValue)
+            evaluations = evaluations.Where(e => e.Period?.SemesterNumber == (int)term.Value).ToList();
+
         return OperationResult<IEnumerable<StudentEvaluationDto>>.Success(
             _mapper.Map<IEnumerable<StudentEvaluationDto>>(evaluations),
             "تم جلب التقييمات بنجاح");
@@ -303,7 +308,7 @@ public class StudentEvaluationService : IStudentEvaluationService
     }
 
     public async Task<OperationResult<IEnumerable<ClassEvaluationDto>>> GetByClassAndPeriodAsync(
-        int classId, int periodId)
+        int classId, int periodId, AcademicTerm? term = null)
     {
         var classEntity = await _unitOfWork.Classes.GetByIdAsync(classId);
         if (classEntity is null || classEntity.IsDeleted)
@@ -317,6 +322,11 @@ public class StudentEvaluationService : IStudentEvaluationService
         var enrollmentIds = enrollments.Select(e => e.Id).ToList();
 
         var evaluations = await _unitOfWork.StudentEvaluations.GetByPeriodAndEnrollmentsAsync(periodId, enrollmentIds);
+
+        // Filter by term if specified
+        if (term.HasValue)
+            evaluations = evaluations.Where(e => e.Period?.SemesterNumber == (int)term.Value).ToList();
+
         var evaluationsByEnrollment = evaluations.GroupBy(e => e.EnrollmentId);
 
         var result = new List<ClassEvaluationDto>();

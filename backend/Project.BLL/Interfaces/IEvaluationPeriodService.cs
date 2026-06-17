@@ -15,4 +15,5 @@ public interface IEvaluationPeriodService
     Task<OperationResult<IEnumerable<EvaluationPeriodDto>>> GetPeriodsByMonthAsync(int academicYearId, string monthName);
     Task<OperationResult<EvaluationPeriodDto>> GetPeriodByIdAsync(int id);
     Task<OperationResult<EvaluationPeriodDto>> GetActivePeriodAsync(int academicYearId);
+    Task<OperationResult<EvaluationPeriodDto>> GetCurrentTermAsync(int academicYearId);
 }

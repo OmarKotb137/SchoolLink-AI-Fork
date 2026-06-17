@@ -3,6 +3,7 @@ using Project.BLL.DTOs.Enrollments;
 using Project.BLL.Interfaces;
 using Project.DAL.Interfaces;
 using Project.Domain.Entities;
+using Project.Domain.Enums;
 
 namespace Project.BLL.Services;
 
@@ -18,6 +19,7 @@ public class StudentProgressionService : IStudentProgressionService
     public async Task<OperationResult<IEnumerable<StudentProgressionCandidateDto>>> GetCandidatesAsync(
         int gradeLevelId,
         int academicYearId,
+        AcademicTerm? term = null,
         CancellationToken ct = default)
     {
         var gradeLevel = await _unitOfWork.GradeLevels.GetByIdAsync(gradeLevelId, ct);
@@ -38,7 +40,7 @@ public class StudentProgressionService : IStudentProgressionService
 
         var enrollmentIds = enrollments.Select(e => e.Id).ToList();
         var finalGrades = await _unitOfWork.FinalGrades.FindAsync(
-            fg => !fg.IsDeleted && enrollmentIds.Contains(fg.EnrollmentId),
+            fg => !fg.IsDeleted && enrollmentIds.Contains(fg.EnrollmentId) && (term == null || fg.Term == term),
             ct);
 
         var finalGradesByEnrollmentId = finalGrades.ToDictionary(fg => fg.EnrollmentId);

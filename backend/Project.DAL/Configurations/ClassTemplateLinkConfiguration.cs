@@ -10,7 +10,10 @@ namespace Project.DAL.Configurations
         {
             builder.HasKey(x => x.Id);
 
-            builder.HasIndex(x => new { x.ClassId, x.TemplateId, x.AcademicYearId })
+            builder.Property(x => x.Term)
+                .HasConversion<int>();
+
+            builder.HasIndex(x => new { x.ClassId, x.TemplateId, x.AcademicYearId, x.Term })
                 .IsUnique()
                 .HasFilter("[IsDeleted] = 0");
 

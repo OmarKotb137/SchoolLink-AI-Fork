@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
 import { Topbar } from '../../layouts/topbar/topbar';
 import { BookParserService, ParsedUnitDto, CreateUnitDto, ParsedLessonDto } from '../../core/services/book-parser.service';
+import { AcademicYearService } from '../../core/services/academic-year.service';
 
 @Component({
   selector: 'app-book-parser',
@@ -15,6 +16,7 @@ import { BookParserService, ParsedUnitDto, CreateUnitDto, ParsedLessonDto } from
 export class BookParser {
   sidebarOpen = signal(false);
   private service = inject(BookParserService);
+  private academicYearService = inject(AcademicYearService);
 
   gradeLevels = signal<any[]>([]);
   selectedGradeLevelId = signal<number | null>(null);
@@ -75,6 +77,9 @@ export class BookParser {
   // Move lesson state
   moveLessonSrc = signal<{ unitIdx: number; lessonIdx: number } | null>(null);
 
+  // Term filter for saved subjects view
+  selectedTerm = signal<number>(1);
+
   subjectsGroupedByGrade = computed(() => {
     const subjects = this.parsedSubjects();
     const groups = new Map<string, typeof subjects>();
@@ -95,17 +100,47 @@ export class BookParser {
 
   ngOnInit() {
     this.loadGradeLevels();
+    this.loadCurrentTerm();
     this.loadParsedSubjects();
+  }
+
+  loadCurrentTerm() {
+    this.academicYearService.getCurrentTerm().subscribe({
+      next: (res) => {
+        if (res?.data != null) this.selectedTerm.set(res.data);
+      }
+    });
+  }
+
+  onTermChange() {
+    this.loadParsedSubjects();
+    // Also reload subject structure if a subject is expanded
+    const subjectId = this.expandedSubjectId();
+    if (subjectId != null) {
+      this.loadSubjectStructure(subjectId);
+    }
   }
 
   loadParsedSubjects() {
     this.loadingSubjects.set(true);
-    this.service.getParsedSubjects().subscribe({
+    this.service.getParsedSubjects(this.selectedTerm()).subscribe({
       next: (res) => {
         this.parsedSubjects.set(res?.data ?? []);
         this.loadingSubjects.set(false);
       },
       error: () => this.loadingSubjects.set(false)
+    });
+  }
+
+  loadSubjectStructure(subjectId: number) {
+    this.loadingSubjectUnits.set(true);
+    this.subjectUnits.set([]);
+    this.service.getSubjectStructure(subjectId, this.selectedTerm()).subscribe({
+      next: (res) => {
+        this.subjectUnits.set(res?.data ?? []);
+        this.loadingSubjectUnits.set(false);
+      },
+      error: () => this.loadingSubjectUnits.set(false)
     });
   }
 
@@ -237,15 +272,7 @@ export class BookParser {
       return;
     }
     this.expandedSubjectId.set(subjectId);
-    this.loadingSubjectUnits.set(true);
-    this.subjectUnits.set([]);
-    this.service.getSubjectStructure(subjectId).subscribe({
-      next: (res) => {
-        this.subjectUnits.set(res?.data ?? []);
-        this.loadingSubjectUnits.set(false);
-      },
-      error: () => this.loadingSubjectUnits.set(false)
-    });
+    this.loadSubjectStructure(subjectId);
   }
 
   loadGradeLevels() {
@@ -332,6 +359,7 @@ export class BookParser {
       pageStart: u.pageStart,
       pageEnd: u.pageEnd,
       displayOrder: u.displayOrder,
+      term: this.selectedTerm(),
       lessons: (u.lessons || []).map(l => ({
         title: l.title,
         content: l.content,
@@ -341,11 +369,12 @@ export class BookParser {
       }))
     }));
 
-    this.service.save(subjectId, gradeLevelId, units).subscribe({
+    this.service.save(subjectId, gradeLevelId, units, this.selectedTerm()).subscribe({
       next: () => {
         this.step.set('saved');
         this.showToast('تم حفظ هيكل الكتاب بنجاح!', 'success');
         this.saving.set(false);
+        this.loadParsedSubjects();
       },
       error: (err) => {
         const msg = err.error?.message || err.error?.error || 'حدث خطأ في الاتصال';

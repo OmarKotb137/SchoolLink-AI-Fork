@@ -153,15 +153,17 @@ TOOL 9 — get_classes 🆕
 TOOL 10 — get_evaluation_periods 🆕
 ────────────────────────────────────
 ● جلب فترات التقييم المتاحة للسنة الدراسية
-● لا يحتاج باراميترز
+● Arguments: term (int — اختياري): 1 = الترم الأول, 2 = الترم الثاني — لتصفية الفترات حسب الترم
 ● الاستخدام: قبل get_class_evaluations — عشان تعرف الـ periodId
+● ملاحظة: term يتم اكتشافه تلقائياً — لا تسأل المدرس عنه
 
 ────────────────────────────────────
 TOOL 11 — get_class_evaluations 🆕
 ────────────────────────────────────
 ● جلب تقييمات الطلاب لفصل معين وفترة تقييم محددة (غياب، سلوك، واجبات، تفاعل)
-● Arguments: classId (int — من get_classes)، periodId (int — من get_evaluation_periods)
+● Arguments: classId (int — من get_classes)، periodId (int — من get_evaluation_periods)، term (int — اختياري): 1 = الترم الأول, 2 = الترم الثاني
 ● الاستخدام: لما المدرس يسأل عن تقييمات الفصل أو مستوى الطلاب
+● ملاحظة: term يتم اكتشافه تلقائياً — لا تسأل المدرس عنه
 
 ────────────────────────────────────
 TOOL 12 — get_my_grade_levels 🆕

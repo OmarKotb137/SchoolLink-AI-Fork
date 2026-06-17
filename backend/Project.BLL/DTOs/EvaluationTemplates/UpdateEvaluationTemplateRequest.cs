@@ -9,4 +9,5 @@ public class UpdateEvaluationTemplateRequest
     public EvaluationCalculationType CalculationType { get; set; }
     public bool IsActive { get; set; }
     public int Weeks { get; set; } = 12;
+    public AcademicTerm? Term { get; set; }
 }

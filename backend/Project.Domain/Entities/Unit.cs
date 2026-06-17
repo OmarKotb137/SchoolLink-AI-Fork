@@ -1,3 +1,5 @@
+using Project.Domain.Enums;
+
 namespace Project.Domain.Entities
 {
     public class Unit : BaseEntity
@@ -9,6 +11,7 @@ namespace Project.Domain.Entities
         public int DisplayOrder { get; set; }
         public int? PageStart { get; set; }
         public int? PageEnd { get; set; }
+        public AcademicTerm? Term { get; set; } // null = both semesters, 1 = FirstSemester, 2 = SecondSemester
 
         public Subject Subject { get; set; } = null!;
         public GradeLevel GradeLevel { get; set; } = null!;

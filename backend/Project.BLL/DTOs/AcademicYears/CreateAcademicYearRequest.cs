@@ -14,4 +14,9 @@ public class CreateAcademicYearRequest
     [Required]
     public DateOnly EndDate { get; set; }
     // EndDate > StartDate is validated in the service.
+
+    public DateOnly? FirstSemesterStartDate { get; set; }
+    public DateOnly? FirstSemesterEndDate { get; set; }
+    public DateOnly? SecondSemesterStartDate { get; set; }
+    public DateOnly? SecondSemesterEndDate { get; set; }
 }

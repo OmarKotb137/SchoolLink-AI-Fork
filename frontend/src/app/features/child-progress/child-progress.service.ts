@@ -43,8 +43,12 @@ export class ChildProgressService {
   private http = inject(HttpClient);
   private base = buildApiUrl('child-progress');
 
-  get() {
-    return this.http.get<OperationResult<ChildProgressItem[]>>(this.base).pipe(
+  get(term?: number | null) {
+    let url = this.base;
+    if (term != null) {
+      url += `?term=${term}`;
+    }
+    return this.http.get<OperationResult<ChildProgressItem[]>>(url).pipe(
       map(res => res.data)
     );
   }

@@ -14,11 +14,19 @@ public class PeriodicAssessmentRepository : Repository<PeriodicAssessment>, IPer
     public async Task<PeriodicAssessment?> GetByEnrollmentAndTypeAsync(
         int enrollmentId,
         PeriodicAssessmentType assessmentType,
+        AcademicTerm? term = null,
         CancellationToken ct = default)
-        => await _context.PeriodicAssessments
-            .FirstOrDefaultAsync(pa =>
-                pa.EnrollmentId    == enrollmentId    &&
-                pa.AssessmentType  == assessmentType, ct);
+    {
+        var query = _context.PeriodicAssessments
+            .Where(pa =>
+                pa.EnrollmentId == enrollmentId &&
+                pa.AssessmentType == assessmentType);
+
+        if (term.HasValue)
+            query = query.Where(pa => pa.Term == term.Value);
+
+        return await query.FirstOrDefaultAsync(ct);
+    }
 
 
     public async Task<IReadOnlyList<PeriodicAssessment>> GetByEnrollmentIdAsync(
@@ -47,24 +55,33 @@ public class PeriodicAssessmentRepository : Repository<PeriodicAssessment>, IPer
     public async Task<IReadOnlyList<PeriodicAssessment>> GetByClassAndTypeAsync(
         int classId,
         PeriodicAssessmentType assessmentType,
+        AcademicTerm? term = null,
         CancellationToken ct = default)
-        => await _context.PeriodicAssessments
+    {
+        var query = _context.PeriodicAssessments
             .Where(pa =>
-                pa.AssessmentType        == assessmentType &&
-                pa.Enrollment.ClassId    == classId        &&
-                pa.Enrollment.LeftAt     == null)
+                pa.AssessmentType == assessmentType &&
+                pa.Enrollment.ClassId == classId &&
+                pa.Enrollment.LeftAt == null);
+
+        if (term.HasValue)
+            query = query.Where(pa => pa.Term == term.Value);
+
+        return await query
             .Include(pa => pa.Enrollment)
                 .ThenInclude(e => e.Student)
             .OrderByDescending(pa => pa.Score)
             .ToListAsync(ct);
+    }
 
 
     public async Task UpsertAsync(PeriodicAssessment assessment, CancellationToken ct = default)
     {
         var existing = await _context.PeriodicAssessments
             .FirstOrDefaultAsync(pa =>
-                pa.EnrollmentId   == assessment.EnrollmentId   &&
-                pa.AssessmentType == assessment.AssessmentType, ct);
+                pa.EnrollmentId == assessment.EnrollmentId &&
+                pa.AssessmentType == assessment.AssessmentType &&
+                pa.Term == assessment.Term, ct);
 
         if (existing is null)
             await _context.PeriodicAssessments.AddAsync(assessment, ct);
@@ -84,20 +101,19 @@ public class PeriodicAssessmentRepository : Repository<PeriodicAssessment>, IPer
         var list = assessments.ToList();
         if (!list.Any()) return;
 
-        var enrollmentIds = list.Select(a => a.EnrollmentId).Distinct().ToList();
-        var types         = list.Select(a => a.AssessmentType).Distinct().ToList();
+        var keys = list.Select(a => new { a.EnrollmentId, a.AssessmentType, a.Term }).Distinct().ToList();
+        var enrollmentIds = keys.Select(k => k.EnrollmentId).Distinct().ToList();
 
         var existing = await _context.PeriodicAssessments
-            .Where(pa =>
-                enrollmentIds.Contains(pa.EnrollmentId) &&
-                types.Contains(pa.AssessmentType))
+            .Where(pa => enrollmentIds.Contains(pa.EnrollmentId))
             .ToListAsync(ct);
 
         foreach (var assessment in list)
         {
             var ex = existing.FirstOrDefault(pa =>
-                pa.EnrollmentId   == assessment.EnrollmentId   &&
-                pa.AssessmentType == assessment.AssessmentType);
+                pa.EnrollmentId == assessment.EnrollmentId &&
+                pa.AssessmentType == assessment.AssessmentType &&
+                pa.Term == assessment.Term);
 
             if (ex is null)
                 await _context.PeriodicAssessments.AddAsync(assessment, ct);
@@ -111,6 +127,3 @@ public class PeriodicAssessmentRepository : Repository<PeriodicAssessment>, IPer
         }
     }
 }
-
-
-

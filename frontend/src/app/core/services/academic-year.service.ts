@@ -8,6 +8,10 @@ export interface AcademicYear {
   startDate: string;
   endDate: string;
   isCurrent: boolean;
+  firstSemesterStartDate?: string;
+  firstSemesterEndDate?: string;
+  secondSemesterStartDate?: string;
+  secondSemesterEndDate?: string;
 }
 
 @Injectable({
@@ -23,6 +27,10 @@ export class AcademicYearService {
 
   getCurrent(): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/current`);
+  }
+
+  getCurrentTerm(): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/current-term`);
   }
 
   getById(id: number): Observable<any> {

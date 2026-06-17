@@ -10,6 +10,13 @@
           <section class="bg-surface-container-lowest rounded-3xl p-widget-padding shadow-sm flex flex-col items-center text-center">
             <h1 class="font-headline-lg text-headline-lg text-on-surface mb-2">مرحباً بك، {{ studentName() }}! 👋</h1>
             <p class="text-on-surface-variant font-body-md text-body-md mb-8">أداؤك الأكاديمي في تحسن مستمر. إليك نظرة سريعة على تقدمك.</p>
+            <div class="flex items-center gap-3 mb-6">
+              <label class="font-label-sm text-label-sm text-outline">الفصل الدراسي:</label>
+              <select (change)="onTermChange($event)" style="padding:8px 16px;border-radius:12px;border:1px solid var(--outline-variant, #e0e0e0);background:rgba(255,255,255,0.7);backdrop-filter:blur(8px);font-size:14px;">
+<option value="1">الترم الأول</option>
+<option value="2">الترم الثاني</option>
+              </select>
+            </div>
             <div class="relative w-64 h-64 mb-6">
               <svg class="w-full h-full -rotate-90" viewBox="0 0 36 36">
                 <circle class="stroke-surface-container-high" cx="18" cy="18" fill="none" r="15.9155" stroke-width="2.5"></circle>

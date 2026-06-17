@@ -2,6 +2,7 @@ import { Component, signal, OnInit, inject } from '@angular/core';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
 import { Topbar } from '../../layouts/topbar/topbar';
 import { AuthService } from '../../core/services/auth.service';
+import { AcademicYearService } from '../../core/services/academic-year.service';
 import { StudentDashboardService, StudentDashboardData } from './student-dashboard.service';
 import { switchMap, of } from 'rxjs';
 
@@ -14,14 +15,29 @@ import { switchMap, of } from 'rxjs';
 export class StudentDashboard implements OnInit {
   auth = inject(AuthService);
   private service = inject(StudentDashboardService);
+  private academicYearService = inject(AcademicYearService);
 
   sidebarOpen = signal(false);
 
   data = signal<StudentDashboardData | null>(null);
   loading = signal(true);
   studentName = signal('');
+  selectedTerm = signal<number>(1);
 
   ngOnInit() {
+    this.loadData();
+
+    this.academicYearService.getCurrentTerm().subscribe({
+      next: (res) => {
+        if (res?.data != null && this.selectedTerm() !== res.data) {
+          this.selectedTerm.set(res.data);
+          this.loadData();
+        }
+      }
+    });
+  }
+
+  loadData() {
     this.loading.set(true);
 
     this.service.get().pipe(
@@ -39,12 +55,18 @@ export class StudentDashboard implements OnInit {
           this.loading.set(false);
           return of(null);
         }
-        return this.service.loadStats(enrollmentId);
+        return this.service.loadStats(enrollmentId, this.selectedTerm());
       })
     ).subscribe(stats => {
       this.loading.set(false);
       if (stats) this.data.set(stats);
     });
+  }
+
+  onTermChange(event: Event) {
+    const value = (event.target as HTMLSelectElement).value;
+    this.selectedTerm.set(Number(value));
+    this.loadData();
   }
 
   get levelText(): string {
