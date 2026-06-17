@@ -90,11 +90,16 @@
               @if (e.status === 'draft' || e.status === 'upcoming') {
                 <button class="px-3 py-1.5 rounded-lg bg-primary/10 text-primary font-label-sm text-label-sm hover:bg-primary/20 transition-colors flex items-center gap-1" (click)="publishExam(e.id)"><span class="material-symbols-outlined text-[16px]">publish</span>نشر للطلاب</button>
               }
-              <button class="px-3 py-1.5 rounded-lg bg-white/40 backdrop-blur-sm text-on-surface font-label-sm text-label-sm hover:bg-white/60 transition-colors flex items-center gap-1" (click)="openViewModal(e)"><span class="material-symbols-outlined text-[16px]">visibility</span>عرض</button>
-              <button class="px-3 py-1.5 rounded-lg bg-white/40 backdrop-blur-sm text-on-surface font-label-sm text-label-sm hover:bg-white/60 transition-colors flex items-center gap-1" (click)="openEditModal(e)"><span class="material-symbols-outlined text-[16px]">edit</span>تعديل</button>
               @if (e.status === 'ended') {
                 <button class="px-3 py-1.5 rounded-lg bg-tertiary/10 text-tertiary font-label-sm text-label-sm hover:bg-tertiary/20 transition-colors flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">bar_chart</span>النتائج</button>
+                @if (e.isResultPublished) {
+                  <button class="px-3 py-1.5 rounded-lg bg-error/10 text-error font-label-sm text-label-sm hover:bg-error/20 transition-colors flex items-center gap-1" (click)="togglePublishResults(e.id, false)"><span class="material-symbols-outlined text-[16px]">visibility_off</span>إخفاء النتائج</button>
+                } @else {
+                  <button class="px-3 py-1.5 rounded-lg bg-green-50 text-green-700 font-label-sm text-label-sm hover:bg-green-100 transition-colors flex items-center gap-1" (click)="togglePublishResults(e.id, true)"><span class="material-symbols-outlined text-[16px]">visibility</span>نشر النتائج</button>
+                }
               }
+              <button class="px-3 py-1.5 rounded-lg bg-white/40 backdrop-blur-sm text-on-surface font-label-sm text-label-sm hover:bg-white/60 transition-colors flex items-center gap-1" (click)="openViewModal(e)"><span class="material-symbols-outlined text-[16px]">visibility</span>عرض</button>
+              <button class="px-3 py-1.5 rounded-lg bg-white/40 backdrop-blur-sm text-on-surface font-label-sm text-label-sm hover:bg-white/60 transition-colors flex items-center gap-1" (click)="openEditModal(e)"><span class="material-symbols-outlined text-[16px]">edit</span>تعديل</button>
               <button class="px-3 py-1.5 rounded-lg bg-error/10 text-error font-label-sm text-label-sm hover:bg-error/20 transition-colors flex items-center gap-1 mr-auto" (click)="deleteExam(e.id)"><span class="material-symbols-outlined text-[16px]">delete</span></button>
             </div>
           </div>

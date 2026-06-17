@@ -50,13 +50,29 @@ export class MyExams implements OnInit {
     this.isLoading.set(true);
     this.examsService.getMyExams().subscribe({
       next: result => {
-        this.exams.set(result.data ?? []);
+        const exams = result.data ?? [];
+        this.exams.set(exams);
         this.isLoading.set(false);
+        this.autoProcessExpiredExams(exams);
       },
       error: err => {
         this.showError(this.extractErrorMessage(err, 'تعذر تحميل الامتحانات'));
         this.isLoading.set(false);
       }
+    });
+  }
+
+  private autoProcessExpiredExams(exams: StudentExamListItem[]) {
+    const expiredAttempts = exams.filter(e => e.status === 'expired' && e.attemptId);
+    if (expiredAttempts.length === 0) return;
+
+    expiredAttempts.forEach(exam => {
+      // الإجابات محفوظة على السيرفر بالفعل من الـ Auto-Save أثناء الامتحان
+      // الـ Background Service على الأرجح سلّمها تلقائياً — لو لأ، نسلّمها هنا كـ fallback
+      this.examsService.submitAttempt(exam.attemptId!, []).subscribe({
+        next: () => this.examsService.clearDraftFromLocalStorage(exam.attemptId!),
+        error: () => {} // لو الـ Background Service سبقنا → 409 → نتجاهلها بهدوء
+      });
     });
   }
 
@@ -117,6 +133,44 @@ export class MyExams implements OnInit {
 
   canStart(exam: StudentExamListItem): boolean {
     return exam.status === 'available' || exam.status === 'inProgress';
+  }
+
+  hasLocalDraft(attemptId?: number): boolean {
+    if (!attemptId) return false;
+    const draft = this.examsService.loadDraftFromLocalStorage(attemptId);
+    return !!(draft && draft.answers && draft.answers.length > 0);
+  }
+
+  submitDraft(exam: StudentExamListItem) {
+    if (!exam.attemptId) return;
+    const draft = this.examsService.loadDraftFromLocalStorage(exam.attemptId);
+    if (!draft || !draft.answers) return;
+
+    this.isLoading.set(true);
+    this.examsService.submitAttempt(exam.attemptId, draft.answers).subscribe({
+      next: () => {
+        this.examsService.clearDraftFromLocalStorage(exam.attemptId!);
+        this.loadExams();
+      },
+      error: err => {
+        this.showError(this.extractErrorMessage(err, 'تعذر تسليم الإجابات المحفوظة'));
+        this.isLoading.set(false);
+      }
+    });
+  }
+
+  submitEmpty(exam: StudentExamListItem) {
+    if (!exam.attemptId) return;
+    this.isLoading.set(true);
+    this.examsService.submitAttempt(exam.attemptId, []).subscribe({
+      next: () => {
+        this.loadExams();
+      },
+      error: err => {
+        this.showError(this.extractErrorMessage(err, 'تعذر إنهاء الامتحان'));
+        this.isLoading.set(false);
+      }
+    });
   }
 
   private extractErrorMessage(err: unknown, fallback: string): string {

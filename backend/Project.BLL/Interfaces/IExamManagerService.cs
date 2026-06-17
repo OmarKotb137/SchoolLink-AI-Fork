@@ -6,7 +6,8 @@ public record ExamManagerItemDto(
     int Id, string Name, string Subject, string Class,
     string Date, string StartTime, string EndTime,
     int Duration, int QuestionCount, string Status,
-    double? AvgScore, int? Submitted, int? Total
+    double? AvgScore, int? Submitted, int? Total,
+    bool IsResultPublished
 );
 
 public record ExamManagerQuestionDto(
@@ -18,6 +19,7 @@ public record ExamManagerDetailDto(
     int Id, string Name, string Subject, string Class,
     string Date, string StartTime, string EndTime,
     int Duration, int QuestionCount, string Status,
+    bool IsResultPublished,
     List<ExamManagerQuestionDto> Questions
 );
 
@@ -40,4 +42,5 @@ public interface IExamManagerService
     Task<OperationResult> UpdateAsync(int id, CreateExamManagerDto dto);
     Task<OperationResult> DeleteAsync(int id);
     Task<OperationResult> PublishAsync(int id, int teacherId);
+    Task<OperationResult> ToggleResultPublishStatusAsync(int id, bool isPublished, int teacherId);
 }

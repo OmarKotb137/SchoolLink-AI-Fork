@@ -79,6 +79,15 @@ export interface StudentExamAnswerPayload {
   booleanAnswer?: boolean | null;
 }
 
+export interface SaveAnswerProgressPayload {
+  questionId: number;
+  answerText?: string | null;
+  selectedOptionId?: number | null;
+  booleanAnswer?: boolean | null;
+}
+
+export type SaveStatus = 'idle' | 'saving' | 'saved' | 'failed';
+
 export interface StudentExamDraft {
   attemptId: number;
   examId: number;

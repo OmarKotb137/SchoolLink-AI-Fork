@@ -166,6 +166,18 @@ export class ExamManagement implements OnInit {
     });
   }
 
+  togglePublishResults(examId: number, publish: boolean) {
+    if (publish) {
+      this.api.publishResults(examId).subscribe(r => {
+        if (r.isSuccess) this.loadAll();
+      });
+    } else {
+      this.api.unpublishResults(examId).subscribe(r => {
+        if (r.isSuccess) this.loadAll();
+      });
+    }
+  }
+
   private calculateDurationMinutes(start: string, end: string): number {
     if (!start || !end) return 0;
 

@@ -23,6 +23,8 @@ public interface IStudentExamAttemptRepository : IRepository<StudentExamAttempt>
 
     Task<decimal>                           GetAverageScoreAsync(int examId, CancellationToken ct = default);
     Task<IReadOnlyList<StudentExamAttempt>> GetTopScorersAsync(int examId, int count, CancellationToken ct = default);
+
+    Task<IReadOnlyList<StudentExamAttempt>> GetExpiredUnsubmittedAsync(CancellationToken ct = default);
 }
 
 

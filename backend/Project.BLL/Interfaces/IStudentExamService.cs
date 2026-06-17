@@ -11,4 +11,5 @@ public interface IStudentExamService
     Task<OperationResult<StudentExamAttemptStartedDto>> GetActiveAttemptAsync(int userId, int examId);
     Task<OperationResult<StudentExamAttemptResultDto>> SubmitAttemptAsync(int userId, int attemptId, SubmitStudentExamAttemptDto dto);
     Task<OperationResult<StudentExamAttemptResultDto>> GetAttemptResultAsync(int userId, int attemptId);
+    Task<OperationResult> SaveAnswerProgressAsync(int userId, int attemptId, SaveAnswerProgressDto dto);
 }

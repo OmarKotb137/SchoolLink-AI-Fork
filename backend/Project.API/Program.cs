@@ -38,6 +38,7 @@ try
     builder.Services.AddSwaggerGen();
     builder.Services.AddSignalR();
     builder.Services.AddApplicationServices(builder.Configuration);
+    builder.Services.AddHostedService<Project.API.Services.ExamAutoSubmitService>();
 
     var jwtSettings = builder.Configuration.GetSection("Jwt");
     var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]!);

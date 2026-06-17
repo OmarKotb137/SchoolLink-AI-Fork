@@ -93,6 +93,26 @@ public class ExamManagerController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPut("{id:int}/publish-results")]
+    [Authorize(Roles = "Admin,Teacher")]
+    public async Task<IActionResult> PublishResults(int id)
+    {
+        var result = await _service.ToggleResultPublishStatusAsync(id, true, GetUserId());
+        if (!result.IsSuccess)
+            return BadRequest(result);
+        return Ok(result);
+    }
+
+    [HttpPut("{id:int}/unpublish-results")]
+    [Authorize(Roles = "Admin,Teacher")]
+    public async Task<IActionResult> UnpublishResults(int id)
+    {
+        var result = await _service.ToggleResultPublishStatusAsync(id, false, GetUserId());
+        if (!result.IsSuccess)
+            return BadRequest(result);
+        return Ok(result);
+    }
+
     [HttpGet("stats")]
     public async Task<IActionResult> GetStats([FromQuery] int? academicYearId)
     {

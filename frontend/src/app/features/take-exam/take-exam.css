@@ -1,5 +1,6 @@
 .timer-box,
-.progress-box {
+.progress-box,
+.save-status-box {
   min-height: 44px;
   border-radius: 16px;
   border: 1px solid #e2e8f0;
@@ -9,6 +10,43 @@
   gap: 8px;
   padding: 8px 12px;
   color: #0f172a;
+}
+
+.save-status-box {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.save-status-box .material-symbols-outlined {
+  font-size: 18px;
+}
+
+.status-saving {
+  color: #1d4ed8;
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.status-saved {
+  color: #047857;
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+}
+
+.status-failed {
+  color: #b91c1c;
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.retry-btn {
+  margin-right: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #dc2626;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
 }
 
 .timer-box strong {

@@ -155,6 +155,33 @@ public class StudentExamAttemptRepository
             .OrderByDescending(a => a.Score)
             .Take(count)
             .ToListAsync(ct);
+
+
+    public async Task<IReadOnlyList<StudentExamAttempt>> GetExpiredUnsubmittedAsync(
+        CancellationToken ct = default)
+    {
+        var unsubmittedAttempts = await _context.StudentExamAttempts
+            .Where(a => a.SubmittedAt == null)
+            .Include(a => a.Exam)
+            .ToListAsync(ct);
+
+        var nowUtc = DateTime.UtcNow;
+
+        return unsubmittedAttempts.Where(a =>
+        {
+            var startedAtUtc = DateTime.SpecifyKind(a.StartedAt, DateTimeKind.Utc);
+
+            // الوقت انتهى عن طريق Duration الامتحان
+            var isTimeUpByDuration = a.Exam.DurationMinutes.HasValue &&
+                startedAtUtc.AddMinutes(a.Exam.DurationMinutes.Value) < nowUtc;
+
+            // أو وقت الامتحان الكلي انتهى — EndTime محفوظ بتوقيت مصر (UTC+3)
+            var isTimeUpByEndTime = a.Exam.EndTime.HasValue &&
+                a.Exam.EndTime.Value.AddHours(-3) < nowUtc;
+
+            return isTimeUpByDuration || isTimeUpByEndTime;
+        }).ToList();
+    }
 }
 
 

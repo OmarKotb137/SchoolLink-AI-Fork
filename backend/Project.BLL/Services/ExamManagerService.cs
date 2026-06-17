@@ -47,8 +47,9 @@ public class ExamManagerService : IExamManagerService
                 ? $"{classEntity.GradeLevel.Name} - {classEntity.Name}"
                 : "";
             var subjectName = e.Subject?.Name ?? e.ClassSubjectTeacher?.Subject.Name ?? "";
-            var avgScore = e.Attempts.Count > 0
-                ? Math.Round(e.Attempts.Where(a => a.Score.HasValue).Average(a => (double)(a.Score.Value / (a.TotalScore > 0 ? a.TotalScore : 1) * 100)), 1)
+            var scoredAttempts = e.Attempts.Where(a => a.Score.HasValue).ToList();
+            var avgScore = scoredAttempts.Count > 0
+                ? Math.Round(scoredAttempts.Average(a => (double)(a.Score!.Value / (a.TotalScore > 0 ? a.TotalScore : 1) * 100)), 1)
                 : (double?)null;
             var totalStudents = classEntity?.Enrollments.Count(e => !e.IsDeleted) ?? 0;
 
@@ -59,7 +60,8 @@ public class ExamManagerService : IExamManagerService
                 e.EndTime?.ToString("HH:mm") ?? "",
                 e.DurationMinutes ?? 0,
                 questionCount, status,
-                avgScore, e.Attempts.Count, totalStudents > 0 ? totalStudents : null
+                avgScore, e.Attempts.Count, totalStudents > 0 ? totalStudents : null,
+                e.IsResultPublished
             );
         }).ToList();
 
@@ -109,7 +111,7 @@ public class ExamManagerService : IExamManagerService
             exam.StartTime?.ToString("HH:mm") ?? "",
             exam.EndTime?.ToString("HH:mm") ?? "",
             exam.DurationMinutes ?? 0,
-            questionCount, status, questions
+            questionCount, status, exam.IsResultPublished, questions
         );
 
         return OperationResult<ExamManagerDetailDto>.Success(dto);
@@ -224,17 +226,44 @@ public class ExamManagerService : IExamManagerService
 
     public async Task<OperationResult> PublishAsync(int id, int teacherId)
     {
-        var exam = await _unitOfWork.Exams.GetByIdAsync(id);
-        if (exam == null || exam.IsDeleted)
-            return OperationResult.Failure("الامتحان غير موجود");
+        var exam = await _context.Exams
+            .Include(e => e.ClassSubjectTeacher)
+            .FirstOrDefaultAsync(e => e.Id == id && !e.IsDeleted);
+
+        if (exam is null)
+            return OperationResult.Failure("الامتحان غير موجود", 404);
+
+        if (exam.ClassSubjectTeacher?.TeacherId != teacherId)
+            return OperationResult.Failure("غير مصرح لك بنشر هذا الامتحان", 403);
 
         exam.IsPublished = true;
         exam.UpdatedAt = DateTime.UtcNow;
 
-        _unitOfWork.Exams.Update(exam);
-        await _unitOfWork.SaveChangesAsync();
+        _context.Exams.Update(exam);
+        await _context.SaveChangesAsync();
 
         return OperationResult.Success("تم نشر الامتحان بنجاح");
+    }
+
+    public async Task<OperationResult> ToggleResultPublishStatusAsync(int id, bool isPublished, int teacherId)
+    {
+        var exam = await _context.Exams
+            .Include(e => e.ClassSubjectTeacher)
+            .FirstOrDefaultAsync(e => e.Id == id && !e.IsDeleted);
+
+        if (exam is null)
+            return OperationResult.Failure("الامتحان غير موجود", 404);
+
+        if (exam.ClassSubjectTeacher?.TeacherId != teacherId)
+            return OperationResult.Failure("غير مصرح لك بتعديل هذا الامتحان", 403);
+
+        exam.IsResultPublished = isPublished;
+        exam.UpdatedAt = DateTime.UtcNow;
+
+        _context.Exams.Update(exam);
+        await _context.SaveChangesAsync();
+
+        return OperationResult.Success();
     }
 
     private static string GetStatus(Exam exam, DateTime nowUnused)

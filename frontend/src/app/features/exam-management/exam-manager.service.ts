@@ -19,6 +19,7 @@ export interface ExamItem {
   avgScore?: number;
   submitted?: number;
   total?: number;
+  isResultPublished: boolean;
 }
 
 export interface ExamQuestion {
@@ -40,6 +41,7 @@ export interface ExamDetail {
   duration: number;
   questionCount: number;
   status: string;
+  isResultPublished: boolean;
   questions: ExamQuestion[];
 }
 
@@ -101,6 +103,14 @@ export class ExamManagerService {
 
   publish(id: number): Observable<OperationResult<null>> {
     return this.http.put<OperationResult<null>>(`${this.base}/${id}/publish`, {});
+  }
+
+  publishResults(id: number): Observable<OperationResult<null>> {
+    return this.http.put<OperationResult<null>>(`${this.base}/${id}/publish-results`, {});
+  }
+
+  unpublishResults(id: number): Observable<OperationResult<null>> {
+    return this.http.put<OperationResult<null>>(`${this.base}/${id}/unpublish-results`, {});
   }
 
   getSubjects(): Observable<{ id: number; name: string }[]> {

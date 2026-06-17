@@ -68,6 +68,16 @@ public class StudentExamsController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPatch("/api/student/exam-attempts/{attemptId:int}/answers")]
+    public async Task<IActionResult> SaveAnswerProgress(int attemptId, [FromBody] SaveAnswerProgressDto dto)
+    {
+        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var result = await _studentExamService.SaveAnswerProgressAsync(userId, attemptId, dto);
+        if (!result.IsSuccess)
+            return StatusCode(result.StatusCode, result);
+        return Ok(result);
+    }
+
     [HttpGet("/api/student/exam-attempts/{attemptId:int}/result")]
     public async Task<IActionResult> GetResult(int attemptId)
     {

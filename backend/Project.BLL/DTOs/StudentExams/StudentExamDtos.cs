@@ -64,6 +64,15 @@ public class StudentExamAttemptStartedDto
     public DateTime? EndsAt { get; set; }
 }
 
+// DTO لحفظ إجابة واحدة تلقائياً أثناء الامتحان (Auto-Save)
+public class SaveAnswerProgressDto
+{
+    public int     QuestionId       { get; set; }
+    public string? AnswerText       { get; set; }
+    public int?    SelectedOptionId { get; set; }
+    public bool?   BooleanAnswer    { get; set; }
+}
+
 public class SubmitStudentExamAttemptDto
 {
     public List<StudentExamAnswerPayloadDto> Answers { get; set; } = new();

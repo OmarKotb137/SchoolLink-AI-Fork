@@ -5,6 +5,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
 import { Topbar } from '../../layouts/topbar/topbar';
 import {
+  SaveAnswerProgressPayload,
   StudentExamAnswerPayload,
   StudentExamAttemptStarted,
   StudentExamDetails,
@@ -26,6 +27,9 @@ export class TakeExam implements OnInit, OnDestroy {
   private examsService = inject(StudentExamsService);
 
   readonly QuestionType = StudentQuestionType;
+
+  /** signal من الـ Service — يعكس حالة الحفظ التلقائي الحالية في الـ UI */
+  saveStatus = this.examsService.saveStatus;
 
   sidebarOpen = signal(false);
   exam = signal<StudentExamDetails | null>(null);
@@ -84,7 +88,9 @@ export class TakeExam implements OnInit, OnDestroy {
               this.router.navigate(['/student-exams', this.examId, 'take', attempt?.attemptId ?? this.attemptId]);
               return;
             }
+            this.examsService.resetForAttempt(this.attemptId);
             this.restoreDraft();
+            this.examsService.retryFailedSaves(this.attemptId);
             this.startTimer(attempt);
             this.isLoading.set(false);
           },
@@ -118,7 +124,13 @@ export class TakeExam implements OnInit, OnDestroy {
   }
 
   openSubmitConfirm() {
+    this.examsService.cancelPendingDebounces();
+    void this.examsService.flushQueue(this.attemptId);
     this.confirmSubmitOpen.set(true);
+  }
+
+  retrySaving() {
+    this.examsService.retryFailedSaves(this.attemptId);
   }
 
   cancelSubmit() {
@@ -152,6 +164,26 @@ export class TakeExam implements OnInit, OnDestroy {
   private setAnswer(questionId: number, answer: StudentExamAnswerPayload) {
     this.answers.update(current => ({ ...current, [questionId]: answer }));
     this.saveDraft();
+
+    const progressPayload: SaveAnswerProgressPayload = {
+      questionId: answer.questionId,
+      answerText: answer.answerText ?? null,
+      selectedOptionId: answer.selectedOptionId ?? null,
+      booleanAnswer: answer.booleanAnswer ?? null
+    };
+
+    const question = this.exam()?.questions.find(q => q.id === questionId);
+    const isImmediateType =
+      question?.questionType === StudentQuestionType.MultipleChoice ||
+      question?.questionType === StudentQuestionType.TrueFalse;
+
+    if (isImmediateType) {
+      // اختيار بـ click واحد — تدخل الـ Queue فوراً بدون انتظار
+      this.examsService.enqueueImmediate(this.attemptId, progressPayload);
+    } else {
+      // الطالب لسه بيكتب — debounce 800ms قبل ما نبعت للسيرفر
+      this.examsService.enqueueDebounced(this.attemptId, progressPayload);
+    }
   }
 
   private buildPayload(): StudentExamAnswerPayload[] {
@@ -194,12 +226,18 @@ export class TakeExam implements OnInit, OnDestroy {
       this.remainingSeconds.set(remaining);
       if (remaining === 0) {
         this.stopTimer();
-        this.submitExam();
+        void this.flushAllAndSubmit();
       }
     };
 
     tick();
     this.timerId = setInterval(tick, 1000);
+  }
+
+  private async flushAllAndSubmit() {
+    this.examsService.cancelPendingDebounces();
+    await this.examsService.flushQueue(this.attemptId);
+    this.submitExam();
   }
 
   private stopTimer() {

@@ -9,6 +9,23 @@
           <h1 class="text-lg md:text-xl font-bold text-gray-900 truncate">{{ exam()?.title || 'جاري تحميل الامتحان' }}</h1>
         </div>
         <div class="flex flex-wrap items-center gap-3">
+          @if (saveStatus() === 'saving') {
+            <div class="save-status-box status-saving">
+              <span class="material-symbols-outlined animate-spin">progress_activity</span>
+              <span>جاري الحفظ...</span>
+            </div>
+          } @else if (saveStatus() === 'saved') {
+            <div class="save-status-box status-saved">
+              <span class="material-symbols-outlined">check_circle</span>
+              <span>تم الحفظ</span>
+            </div>
+          } @else if (saveStatus() === 'failed') {
+            <div class="save-status-box status-failed">
+              <span class="material-symbols-outlined">error</span>
+              <span>فشل الحفظ</span>
+              <button type="button" class="retry-btn" (click)="retrySaving()">إعادة</button>
+            </div>
+          }
           <div class="timer-box" [class.warning]="remainingSeconds() <= 300 && remainingSeconds() > 0">
             <span class="material-symbols-outlined">timer</span>
             <strong>{{ timeLabel() }}</strong>

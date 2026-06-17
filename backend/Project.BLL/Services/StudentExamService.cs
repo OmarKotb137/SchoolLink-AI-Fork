@@ -171,37 +171,46 @@ public class StudentExamService : IStudentExamService
         if (attempt.SubmittedAt.HasValue)
             return OperationResult<StudentExamAttemptResultDto>.Failure("تم تسليم هذه المحاولة بالفعل");
 
-        var availability = ValidateExamAvailability(attempt.Exam);
-        if (!availability.IsSuccess)
-            return OperationResult<StudentExamAttemptResultDto>.Failure(availability.Message!, availability.StatusCode);
-
-        var answersByQuestion = dto.Answers
-            .GroupBy(a => a.QuestionId)
-            .ToDictionary(g => g.Key, g => g.Last());
+        // الإجابات معتمدة من الـ DB (محفوظة مسبقاً عن طريق الـ Auto-Save) مش من الـ DTO القادم في الطلب
+        var savedAnswersByQuestion = attempt.Answers.ToDictionary(a => a.QuestionId);
 
         decimal totalScore = 0;
         var hasManualQuestions = false;
 
         foreach (var question in attempt.Exam.Questions.Where(q => !q.IsDeleted))
         {
-            answersByQuestion.TryGetValue(question.Id, out var answerDto);
-            var answer = new StudentExamAnswer
+            if (savedAnswersByQuestion.TryGetValue(question.Id, out var existingAnswer))
             {
-                AttemptId = attempt.Id,
-                QuestionId = question.Id,
-                AnswerText = answerDto?.AnswerText,
-                SelectedOptionId = answerDto?.SelectedOptionId,
-                BooleanAnswer = answerDto?.BooleanAnswer
-            };
+                GradeObjectiveAnswer(question, existingAnswer);
 
-            GradeObjectiveAnswer(question, answer);
+                if (existingAnswer.IsCorrect.HasValue)
+                    totalScore += existingAnswer.PointsEarned;
+                else
+                    hasManualQuestions = true;
 
-            if (answer.IsCorrect.HasValue)
-                totalScore += answer.PointsEarned;
+                _unitOfWork.StudentExamAnswers.Update(existingAnswer);
+            }
             else
-                hasManualQuestions = true;
+            {
+                // الطالب ملوش إجابة محفوظة لهذا السؤال — يُسجَّل بدون إجابة (null)
+                var answer = new StudentExamAnswer
+                {
+                    AttemptId = attempt.Id,
+                    QuestionId = question.Id,
+                    AnswerText = null,
+                    SelectedOptionId = null,
+                    BooleanAnswer = null
+                };
 
-            await _unitOfWork.StudentExamAnswers.AddAsync(answer);
+                GradeObjectiveAnswer(question, answer);
+
+                if (answer.IsCorrect.HasValue)
+                    totalScore += answer.PointsEarned;
+                else
+                    hasManualQuestions = true;
+
+                await _unitOfWork.StudentExamAnswers.AddAsync(answer);
+            }
         }
 
         attempt.SubmittedAt = DateTime.UtcNow;
@@ -227,6 +236,44 @@ public class StudentExamService : IStudentExamService
             return OperationResult<StudentExamAttemptResultDto>.Failure("المحاولة غير موجودة", 404);
 
         return OperationResult<StudentExamAttemptResultDto>.Success(MapResult(attempt, IsResultPublished(attempt.Exam)));
+    }
+
+    public async Task<OperationResult> SaveAnswerProgressAsync(int userId, int attemptId, SaveAnswerProgressDto dto)
+    {
+        var enrollmentResult = await GetCurrentEnrollmentAsync(userId);
+        if (!enrollmentResult.IsSuccess)
+            return OperationResult.Failure(enrollmentResult.Message!, enrollmentResult.StatusCode);
+
+        var attempt = await _unitOfWork.StudentExamAttempts.GetByIdAsync(attemptId);
+        if (attempt == null || attempt.IsDeleted || attempt.EnrollmentId != enrollmentResult.Data!.Id)
+            return OperationResult.Failure("المحاولة غير موجودة", 404);
+
+        if (attempt.SubmittedAt.HasValue)
+            return OperationResult.Failure("تم تسليم هذه المحاولة بالفعل", 409);
+
+        var existingAnswer = await _unitOfWork.StudentExamAnswers.GetByAttemptAndQuestionAsync(attemptId, dto.QuestionId);
+        if (existingAnswer != null)
+        {
+            existingAnswer.AnswerText = dto.AnswerText;
+            existingAnswer.SelectedOptionId = dto.SelectedOptionId;
+            existingAnswer.BooleanAnswer = dto.BooleanAnswer;
+            _unitOfWork.StudentExamAnswers.Update(existingAnswer);
+        }
+        else
+        {
+            var answer = new StudentExamAnswer
+            {
+                AttemptId = attemptId,
+                QuestionId = dto.QuestionId,
+                AnswerText = dto.AnswerText,
+                SelectedOptionId = dto.SelectedOptionId,
+                BooleanAnswer = dto.BooleanAnswer
+            };
+            await _unitOfWork.StudentExamAnswers.AddAsync(answer);
+        }
+
+        await _unitOfWork.SaveChangesAsync();
+        return OperationResult.Success("تم تحديث الإجابة بنجاح");
     }
 
     private async Task<OperationResult<StudentEnrollment>> GetCurrentEnrollmentAsync(int userId)
@@ -274,7 +321,28 @@ public class StudentExamService : IStudentExamService
         }
 
         if (attempt != null)
+        {
+            var isTimeUp = false;
+            if (exam.EndTime.HasValue && now > exam.EndTime.Value)
+            {
+                isTimeUp = true;
+            }
+            else if (exam.DurationMinutes.HasValue)
+            {
+                var startedAtUtc = DateTime.SpecifyKind(attempt.StartedAt, DateTimeKind.Utc);
+                if (DateTime.UtcNow > startedAtUtc.AddMinutes(exam.DurationMinutes.Value))
+                {
+                    isTimeUp = true;
+                }
+            }
+
+            if (isTimeUp)
+            {
+                return "expired";
+            }
+
             return "inProgress";
+        }
 
         if (exam.StartTime.HasValue && now < exam.StartTime.Value)
             return "upcoming";
@@ -391,8 +459,7 @@ public class StudentExamService : IStudentExamService
 
     private static bool IsResultPublished(Exam exam)
     {
-        // Result publishing for informal teacher exams will be added as a teacher-side feature.
-        return false;
+        return exam.IsResultPublished;
     }
 
     private static string GetSubjectName(Exam exam)
