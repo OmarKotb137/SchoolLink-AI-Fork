@@ -23,9 +23,11 @@ namespace Project.BLL.DTOs.ExamAttempt
     {
         public int Id { get; set; }
         public string QuestionText { get; set; } = string.Empty;
+        public string QuestionType { get; set; } = string.Empty;  // mcq | true-false | essay
+        public decimal QuestionPoints { get; set; }               // الحد الأقصى لدرجة السؤال
         public string? AnswerText { get; set; }
         public bool? IsCorrect { get; set; }
         public decimal PointsEarned { get; set; }
-        public string? AIFeedback { get; set; }
+        public string? Feedback { get; set; }
     }
 }

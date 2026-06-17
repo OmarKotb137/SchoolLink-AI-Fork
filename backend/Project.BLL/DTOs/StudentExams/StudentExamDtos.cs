@@ -106,6 +106,7 @@ public class StudentExamResultAnswerDto
     public int? SelectedOptionId { get; set; }
     public bool? BooleanAnswer { get; set; }
     public bool? IsCorrect { get; set; }
+    public string? CorrectAnswerText { get; set; }
     public decimal PointsEarned { get; set; }
     public decimal QuestionPoints { get; set; }
     public string? AIFeedback { get; set; }

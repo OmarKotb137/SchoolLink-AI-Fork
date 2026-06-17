@@ -19,7 +19,7 @@ public class ExamManagerService : IExamManagerService
         _unitOfWork = unitOfWork;
     }
 
-    public async Task<OperationResult<List<ExamManagerItemDto>>> GetAllAsync(int? cstId = null)
+    public async Task<OperationResult<List<ExamManagerItemDto>>> GetAllAsync(List<int>? cstIds = null)
     {
         var query = _context.Exams
             .Include(e => e.Subject)
@@ -32,8 +32,8 @@ public class ExamManagerService : IExamManagerService
             .Where(e => !e.IsDeleted)
             .AsQueryable();
 
-        if (cstId.HasValue)
-            query = query.Where(e => e.ClassSubjectTeacherId == cstId.Value);
+        if (cstIds != null && cstIds.Count > 0)
+            query = query.Where(e => cstIds.Contains(e.ClassSubjectTeacherId!.Value));
 
         var exams = await query.OrderByDescending(e => e.CreatedAt).ToListAsync();
 
@@ -52,6 +52,7 @@ public class ExamManagerService : IExamManagerService
                 ? Math.Round(scoredAttempts.Average(a => (double)(a.Score!.Value / (a.TotalScore > 0 ? a.TotalScore : 1) * 100)), 1)
                 : (double?)null;
             var totalStudents = classEntity?.Enrollments.Count(e => !e.IsDeleted) ?? 0;
+            var pendingGrading = e.Attempts.Count(a => a.SubmittedAt != null && !a.IsGraded);
 
             return new ExamManagerItemDto(
                 e.Id, e.Title, subjectName, className,
@@ -61,7 +62,8 @@ public class ExamManagerService : IExamManagerService
                 e.DurationMinutes ?? 0,
                 questionCount, status,
                 avgScore, e.Attempts.Count, totalStudents > 0 ? totalStudents : null,
-                e.IsResultPublished
+                e.IsResultPublished,
+                pendingGrading > 0 ? pendingGrading : null
             );
         }).ToList();
 
@@ -117,15 +119,15 @@ public class ExamManagerService : IExamManagerService
         return OperationResult<ExamManagerDetailDto>.Success(dto);
     }
 
-    public async Task<OperationResult<ExamManagerStatsDto>> GetStatsAsync(int? cstId = null)
+    public async Task<OperationResult<ExamManagerStatsDto>> GetStatsAsync(List<int>? cstIds = null)
     {
         var query = _context.Exams
             .Include(e => e.Attempts)
             .Where(e => !e.IsDeleted)
             .AsQueryable();
 
-        if (cstId.HasValue)
-            query = query.Where(e => e.ClassSubjectTeacherId == cstId.Value);
+        if (cstIds != null && cstIds.Count > 0)
+            query = query.Where(e => cstIds.Contains(e.ClassSubjectTeacherId!.Value));
 
         var exams = await query.ToListAsync();
         var now = DateTime.UtcNow;
@@ -187,6 +189,10 @@ public class ExamManagerService : IExamManagerService
         await _unitOfWork.Exams.AddAsync(exam);
         await _unitOfWork.SaveChangesAsync();
 
+        // حفظ الأسئلة اليدوية لو وُجدت
+        if (dto.Questions != null)
+            await SaveQuestionsAsync(exam.Id, dto.Questions);
+
         var detail = await GetByIdAsync(exam.Id);
         return detail;
     }
@@ -208,6 +214,22 @@ public class ExamManagerService : IExamManagerService
 
         _unitOfWork.Exams.Update(exam);
         await _unitOfWork.SaveChangesAsync();
+
+        // إعادة بناء الأسئلة لو أُرسلت (soft-replace: احذف القديمة وأضف الجديدة)
+        if (dto.Questions != null)
+        {
+            // حذف أسئلة الامتحان المباشرة فقط (ليس المجموعات)
+            var oldQuestions = await _context.ExamQuestions
+                .Where(q => q.ExamId == id && !q.IsDeleted)
+                .ToListAsync();
+            foreach (var q in oldQuestions)
+            {
+                q.IsDeleted = true;
+                q.UpdatedAt = DateTime.UtcNow;
+            }
+            await _context.SaveChangesAsync();
+            await SaveQuestionsAsync(id, dto.Questions);
+        }
 
         return OperationResult.Success("تم تحديث الامتحان بنجاح");
     }
@@ -249,6 +271,7 @@ public class ExamManagerService : IExamManagerService
     {
         var exam = await _context.Exams
             .Include(e => e.ClassSubjectTeacher)
+            .Include(e => e.Attempts)
             .FirstOrDefaultAsync(e => e.Id == id && !e.IsDeleted);
 
         if (exam is null)
@@ -256,6 +279,14 @@ public class ExamManagerService : IExamManagerService
 
         if (exam.ClassSubjectTeacher?.TeacherId != teacherId)
             return OperationResult.Failure("غير مصرح لك بتعديل هذا الامتحان", 403);
+
+        // Phase 6.4: منع النشر لو فيه محاولات لم تُصحح بعد
+        if (isPublished)
+        {
+            bool hasPending = exam.Attempts.Any(a => a.SubmittedAt != null && !a.IsGraded);
+            if (hasPending)
+                return OperationResult.Failure("لا يمكن نشر النتائج، يوجد إجابات لم تُصحح بعد", 400);
+        }
 
         exam.IsResultPublished = isPublished;
         exam.UpdatedAt = DateTime.UtcNow;
@@ -266,9 +297,14 @@ public class ExamManagerService : IExamManagerService
         return OperationResult.Success();
     }
 
-    private static string GetStatus(Exam exam, DateTime nowUnused)
+    private static string GetStatus(Exam exam, DateTime _ )
     {
-        var now = DateTime.UtcNow.AddHours(3); // Adjust to Egypt Standard Time for comparison
+        // Phase 5: استخدام TimeZoneInfo بدل من AddHours هاردكود
+        var cairoZone = TimeZoneInfo.FindSystemTimeZoneById(
+            OperatingSystem.IsWindows() ? "Egypt Standard Time" : "Africa/Cairo"
+        );
+        var now = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, cairoZone);
+
         if (!exam.IsPublished)
             return "draft";
         if (exam.StartTime == null || exam.EndTime == null)
@@ -278,6 +314,56 @@ public class ExamManagerService : IExamManagerService
         if (now >= exam.StartTime && now <= exam.EndTime)
             return "active";
         return "ended";
+    }
+
+    // Phase 3: حفظ أسئلة يدوية جديدة لامتحان
+    private async Task SaveQuestionsAsync(int examId, List<CreateExamManagerQuestionDto> questions)
+    {
+        var now = DateTime.UtcNow;
+        int order = 1;
+
+        foreach (var q in questions)
+        {
+            var qType = q.Type switch
+            {
+                "mcq"        => QuestionType.MultipleChoice,
+                "true-false" => QuestionType.TrueFalse,
+                _            => QuestionType.Essay,
+            };
+
+            var question = new ExamQuestion
+            {
+                ExamId       = examId,
+                QuestionText = q.Text,
+                QuestionType = qType,
+                CorrectAnswer = q.CorrectAnswer ?? "",
+                Points       = q.Points,
+                DisplayOrder = order++,
+                CreatedAt    = now,
+                UpdatedAt    = now,
+            };
+            _context.ExamQuestions.Add(question);
+            await _context.SaveChangesAsync();
+
+            if ((qType == QuestionType.MultipleChoice || qType == QuestionType.TrueFalse)
+                && q.Options?.Count > 0)
+            {
+                int optOrder = 1;
+                foreach (var opt in q.Options)
+                {
+                    _context.ExamQuestionOptions.Add(new ExamQuestionOption
+                    {
+                        QuestionId   = question.Id,
+                        OptionText   = opt,
+                        IsCorrect    = opt == q.CorrectAnswer,
+                        DisplayOrder = optOrder++,
+                        CreatedAt    = now,
+                        UpdatedAt    = now,
+                    });
+                }
+                await _context.SaveChangesAsync();
+            }
+        }
     }
 
     private static ExamManagerQuestionDto MapQuestion(ExamQuestion q)

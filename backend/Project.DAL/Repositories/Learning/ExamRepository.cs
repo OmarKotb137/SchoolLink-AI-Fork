@@ -152,6 +152,16 @@ public class ExamRepository : Repository<Exam>, IExamRepository
                     .OrderBy(o => o.DisplayOrder))
             .FirstOrDefaultAsync(e => e.Id == examId, ct);
 
+    public async Task<Exam?> GetWithClassSubjectTeacherAsync(
+        int examId,
+        CancellationToken ct = default)
+        => await _context.Exams
+            .Include(e => e.ClassSubjectTeacher)
+                .ThenInclude(cst => cst.Subject)
+            .Include(e => e.ClassSubjectTeacher)
+                .ThenInclude(cst => cst.Class)
+            .FirstOrDefaultAsync(e => e.Id == examId, ct);
+
     public async Task<IReadOnlyList<Exam>> GetPublishedForEnrollmentAsync(
         int enrollmentId,
         CancellationToken ct = default)

@@ -47,6 +47,9 @@ public class StudentExamAttemptRepository
             .Where(a => a.ExamId == examId)
             .Include(a => a.Enrollment)
                 .ThenInclude(e => e.Student)
+                    .ThenInclude(s => s.User)
+            .Include(a => a.Answers)
+                .ThenInclude(ans => ans.Question)
             .OrderByDescending(a => a.Score)
             .ToListAsync(ct);
 
@@ -109,6 +112,7 @@ public class StudentExamAttemptRepository
         int enrollmentId,
         CancellationToken ct = default)
         => await _context.StudentExamAttempts
+            .AsSplitQuery()                                     // ✅ يمنع Cartesian Explosion بين Collections
             .Include(a => a.Answers)
                 .ThenInclude(ans => ans.Question)
                     .ThenInclude(q => q.Options
@@ -172,12 +176,16 @@ public class StudentExamAttemptRepository
             var startedAtUtc = DateTime.SpecifyKind(a.StartedAt, DateTimeKind.Utc);
 
             // الوقت انتهى عن طريق Duration الامتحان
+            // ✅ Grace Period دقيقتين: نديها وقت كافي للـ Frontend يسلّم بنفسه قبل ما الـ Background يتدخل
+            //    لو الطالب سلّم بنفسه في آخر ثانية، الـ Background مش هيتصادم معاه
+            const int gracePeriodMinutes = 2;
+
             var isTimeUpByDuration = a.Exam.DurationMinutes.HasValue &&
-                startedAtUtc.AddMinutes(a.Exam.DurationMinutes.Value) < nowUtc;
+                startedAtUtc.AddMinutes(a.Exam.DurationMinutes.Value).AddMinutes(gracePeriodMinutes) < nowUtc;
 
             // أو وقت الامتحان الكلي انتهى — EndTime محفوظ بتوقيت مصر (UTC+3)
             var isTimeUpByEndTime = a.Exam.EndTime.HasValue &&
-                a.Exam.EndTime.Value.AddHours(-3) < nowUtc;
+                a.Exam.EndTime.Value.AddHours(-3).AddMinutes(gracePeriodMinutes) < nowUtc;
 
             return isTimeUpByDuration || isTimeUpByEndTime;
         }).ToList();

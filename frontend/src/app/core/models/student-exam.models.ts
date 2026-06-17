@@ -113,6 +113,7 @@ export interface StudentExamResultAnswer {
   selectedOptionId?: number | null;
   booleanAnswer?: boolean | null;
   isCorrect?: boolean | null;
+  correctAnswerText?: string | null;
   pointsEarned: number;
   questionPoints: number;
   aiFeedback?: string | null;

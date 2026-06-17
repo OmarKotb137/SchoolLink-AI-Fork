@@ -7,7 +7,8 @@ public record ExamManagerItemDto(
     string Date, string StartTime, string EndTime,
     int Duration, int QuestionCount, string Status,
     double? AvgScore, int? Submitted, int? Total,
-    bool IsResultPublished
+    bool IsResultPublished,
+    int? PendingGradingCount
 );
 
 public record ExamManagerQuestionDto(
@@ -27,17 +28,26 @@ public record ExamManagerStatsDto(
     int Total, int Upcoming, int Ended, double AvgScore
 );
 
+public record CreateExamManagerQuestionDto(
+    string Type,               // "mcq" | "true-false" | "essay"
+    string Text,
+    List<string>? Options,
+    string? CorrectAnswer,
+    decimal Points
+);
+
 public record CreateExamManagerDto(
     string Title, int SubjectId, int ClassId,
     string Date, string StartTime, string EndTime,
-    int DurationMinutes
+    int DurationMinutes,
+    List<CreateExamManagerQuestionDto>? Questions
 );
 
 public interface IExamManagerService
 {
-    Task<OperationResult<List<ExamManagerItemDto>>> GetAllAsync(int? cstId = null);
+    Task<OperationResult<List<ExamManagerItemDto>>> GetAllAsync(List<int>? cstIds = null);
     Task<OperationResult<ExamManagerDetailDto>> GetByIdAsync(int id);
-    Task<OperationResult<ExamManagerStatsDto>> GetStatsAsync(int? cstId = null);
+    Task<OperationResult<ExamManagerStatsDto>> GetStatsAsync(List<int>? cstIds = null);
     Task<OperationResult<ExamManagerDetailDto>> CreateAsync(CreateExamManagerDto dto, int teacherId);
     Task<OperationResult> UpdateAsync(int id, CreateExamManagerDto dto);
     Task<OperationResult> DeleteAsync(int id);

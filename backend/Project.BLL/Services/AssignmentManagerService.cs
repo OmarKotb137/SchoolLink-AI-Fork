@@ -101,7 +101,8 @@ public class AssignmentManagerService : IAssignmentManagerService
                         .OrderBy(o => o.DisplayOrder)
                         .Select(o => o.OptionText)
                         .ToList(),
-                    CorrectAnswer = q.CorrectAnswer ?? ""
+                    CorrectAnswer = q.CorrectAnswer ?? "",
+                    Points = q.Points
                 }).ToList()
         };
 
@@ -132,7 +133,7 @@ public class AssignmentManagerService : IAssignmentManagerService
             ClassSubjectTeacherId = cst.Id,
             Title = dto.Title,
             DueDate = dueDate,
-            MaxScore = dto.Questions.Sum(q => q.Type == "essay" ? 10 : 5),
+            MaxScore = dto.Questions.Sum(q => q.Points > 0 ? q.Points : (q.Type == "essay" ? 10 : 5)),
             IsAutoGraded = true,
             IsPublished = true,
             Category = EvaluationCategory.Academic,
@@ -153,7 +154,7 @@ public class AssignmentManagerService : IAssignmentManagerService
                 QuestionType = MapTypeBack(qDto.Type),
                 CorrectAnswer = qDto.CorrectAnswer,
                 DisplayOrder = displayOrder++,
-                Points = qDto.Type == "essay" ? 10 : 5,
+                Points = qDto.Points > 0 ? qDto.Points : (qDto.Type == "essay" ? 10 : 5),
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -201,12 +202,17 @@ public class AssignmentManagerService : IAssignmentManagerService
         if (assignment is null || assignment.IsDeleted)
             return OperationResult.Failure("الواجب غير موجود", 404);
 
+        var submissionCount = await _context.StudentAssignmentSubmissions.CountAsync(s => s.AssignmentId == id && !s.IsDeleted);
+        if (submissionCount > 0)
+            return OperationResult.Failure("لا يمكن تعديل الواجب لوجود طلاب قاموا بالتسليم بالفعل", 400);
+
         DateTime? dueDate = null;
         if (DateTime.TryParse(dto.Deadline, out var parsed))
             dueDate = parsed;
 
         assignment.Title = dto.Title;
         assignment.DueDate = dueDate;
+        assignment.MaxScore = dto.Questions.Sum(q => q.Points > 0 ? q.Points : (q.Type == "essay" ? 10 : 5));
         assignment.UpdatedAt = DateTime.UtcNow;
 
         _unitOfWork.Assignments.Update(assignment);
@@ -229,7 +235,7 @@ public class AssignmentManagerService : IAssignmentManagerService
                 QuestionType = MapTypeBack(qDto.Type),
                 CorrectAnswer = qDto.CorrectAnswer,
                 DisplayOrder = displayOrder++,
-                Points = qDto.Type == "essay" ? 10 : 5,
+                Points = qDto.Points > 0 ? qDto.Points : (qDto.Type == "essay" ? 10 : 5),
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -267,6 +273,10 @@ public class AssignmentManagerService : IAssignmentManagerService
         if (assignment is null || assignment.IsDeleted)
             return OperationResult.Failure("الواجب غير موجود", 404);
 
+        var submissionCount = await _context.StudentAssignmentSubmissions.CountAsync(s => s.AssignmentId == id && !s.IsDeleted);
+        if (submissionCount > 0)
+            return OperationResult.Failure("لا يمكن حذف الواجب لوجود طلاب قاموا بالتسليم بالفعل", 400);
+
         assignment.IsDeleted = true;
         assignment.UpdatedAt = DateTime.UtcNow;
         _unitOfWork.Assignments.Update(assignment);
@@ -291,6 +301,100 @@ public class AssignmentManagerService : IAssignmentManagerService
                 : 0,
             Overdue = list.Count(a => a.Status == "active" && a.Submitted < a.Total)
         });
+    }
+
+    public async Task<OperationResult<List<AssignmentSubmissionListItemDto>>> GetSubmissionsAsync(int assignmentId)
+    {
+        var submissions = await _context.StudentAssignmentSubmissions
+            .Include(s => s.Enrollment)
+                .ThenInclude(e => e.Student)
+                    .ThenInclude(st => st.User)
+            .Where(s => s.AssignmentId == assignmentId && !s.IsDeleted)
+            .ToListAsync();
+
+        var list = submissions.Select(s => new AssignmentSubmissionListItemDto
+        {
+            SubmissionId = s.Id,
+            StudentName = s.Enrollment?.Student?.User?.FullName ?? "غير معروف",
+            SubmittedAt = s.SubmittedAt.ToString("yyyy-MM-ddTHH:mm"),
+            IsGraded = s.IsGraded,
+            Score = s.Score ?? 0m,
+            MaxScore = s.MaxScore
+        }).ToList();
+
+        return OperationResult<List<AssignmentSubmissionListItemDto>>.Success(list);
+    }
+
+    public async Task<OperationResult<AssignmentSubmissionDetailDto>> GetSubmissionDetailAsync(int assignmentId, int submissionId)
+    {
+        var submission = await _context.StudentAssignmentSubmissions
+            .Include(s => s.Enrollment)
+                .ThenInclude(e => e.Student)
+                    .ThenInclude(st => st.User)
+            .Include(s => s.Answers)
+                .ThenInclude(a => a.Question)
+                    .ThenInclude(q => q.Options)
+            .FirstOrDefaultAsync(s => s.Id == submissionId && s.AssignmentId == assignmentId && !s.IsDeleted);
+
+        if (submission == null)
+            return OperationResult<AssignmentSubmissionDetailDto>.Failure("التسليم غير موجود", 404);
+
+        var dto = new AssignmentSubmissionDetailDto
+        {
+            SubmissionId = submission.Id,
+            StudentName = submission.Enrollment?.Student?.User?.FullName ?? "غير معروف",
+            Score = submission.Score ?? 0m,
+            MaxScore = submission.MaxScore,
+            IsGraded = submission.IsGraded,
+            Answers = submission.Answers.Select(a => new AssignmentSubmissionAnswerDto
+            {
+                QuestionId = a.QuestionId,
+                QuestionText = a.Question?.QuestionText ?? "",
+                Type = MapType(a.Question?.QuestionType ?? QuestionType.MultipleChoice),
+                StudentAnswer = a.Question?.QuestionType == QuestionType.MultipleChoice 
+                    ? a.Question.Options.FirstOrDefault(o => o.Id == a.SelectedOptionId)?.OptionText ?? ""
+                    : a.Question?.QuestionType == QuestionType.TrueFalse 
+                        ? (a.BooleanAnswer == true ? "صواب" : a.BooleanAnswer == false ? "خطأ" : "")
+                        : a.AnswerText ?? "",
+                CorrectAnswer = a.Question?.CorrectAnswer ?? "",
+                PointsEarned = a.PointsEarned,
+                MaxPoints = a.Question?.Points ?? 0,
+                IsCorrect = a.IsCorrect
+            }).ToList()
+        };
+
+        return OperationResult<AssignmentSubmissionDetailDto>.Success(dto);
+    }
+
+    public async Task<OperationResult> GradeSubmissionAsync(int assignmentId, int submissionId, GradeAssignmentSubmissionDto dto)
+    {
+        var submission = await _context.StudentAssignmentSubmissions
+            .Include(s => s.Answers)
+                .ThenInclude(a => a.Question)
+            .FirstOrDefaultAsync(s => s.Id == submissionId && s.AssignmentId == assignmentId && !s.IsDeleted);
+
+        if (submission == null)
+            return OperationResult.Failure("التسليم غير موجود", 404);
+
+        if (submission.IsGraded)
+            return OperationResult.Failure("تم تصحيح هذا الواجب مسبقاً", 400);
+
+        foreach (var answer in submission.Answers)
+        {
+            if (answer.Question?.QuestionType == QuestionType.Essay && dto.ManualGrades.TryGetValue(answer.QuestionId, out var manualPoints))
+            {
+                answer.PointsEarned = manualPoints;
+                answer.IsCorrect = manualPoints > 0; // Or logic based on max points
+            }
+        }
+
+        submission.Score = submission.Answers.Sum(a => a.PointsEarned);
+        submission.IsGraded = true;
+        
+        _context.StudentAssignmentSubmissions.Update(submission);
+        await _context.SaveChangesAsync();
+
+        return OperationResult.Success("تم حفظ التصحيح بنجاح");
     }
 
     private static string GetStatus(Assignment a)

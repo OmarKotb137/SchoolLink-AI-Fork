@@ -58,10 +58,20 @@
                       {{ answer.pointsEarned }}/{{ answer.questionPoints }}
                     </span>
                   </div>
-                  <p class="text-sm text-gray-500 mt-3">
-                    إجابتك:
-                    {{ answer.answerText || (answer.booleanAnswer === true ? 'صح' : answer.booleanAnswer === false ? 'خطأ' : answer.selectedOptionId || 'لم تتم الإجابة') }}
-                  </p>
+                  <div class="mt-3 space-y-2 text-sm text-gray-600 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                    <p class="flex items-center gap-2">
+                      <span class="font-semibold text-gray-900 min-w-[80px]">إجابتك:</span>
+                      <span [class.text-red-600]="answer.isCorrect === false" [class.text-green-600]="answer.isCorrect === true" class="font-medium">
+                        {{ answer.answerText || 'لم يتم الإجابة' }}
+                      </span>
+                    </p>
+                    @if (answer.correctAnswerText && answer.isCorrect === false) {
+                      <p class="flex items-center gap-2 pt-2 border-t border-gray-200">
+                        <span class="font-semibold text-gray-900 min-w-[80px]">الإجابة الصحيحة:</span>
+                        <span class="text-green-600 font-medium">{{ answer.correctAnswerText }}</span>
+                      </p>
+                    }
+                  </div>
                 </div>
               }
             </div>

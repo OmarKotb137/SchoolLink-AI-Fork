@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { buildApiUrl } from '../../core/utils/api-url';
 import { OperationResult } from '../../core/models/api.model';
 import { Observable } from 'rxjs';
@@ -22,6 +22,7 @@ export interface Question {
   text: string;
   options?: string[];
   correctAnswer: string;
+  points?: number;
 }
 
 export interface AssignmentDetail {
@@ -56,6 +57,7 @@ export interface CreateQuestion {
   text: string;
   options: string[];
   correctAnswer: string;
+  points?: number;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -63,26 +65,32 @@ export class AssignmentManagerService {
   private http = inject(HttpClient);
   private base = buildApiUrl('assignment-manager');
 
+  // FIX: Use HttpParams so teacherId or academicYearId can be sent independently
   getAll(teacherId?: number, academicYearId?: number): Observable<OperationResult<AssignmentItem[]>> {
-    let params = '';
-    if (teacherId && academicYearId) {
-      params = `?teacherId=${teacherId}&academicYearId=${academicYearId}`;
-    }
-    return this.http.get<OperationResult<AssignmentItem[]>>(`${this.base}${params}`);
+    let params = new HttpParams();
+    if (teacherId) params = params.set('teacherId', teacherId);
+    if (academicYearId) params = params.set('academicYearId', academicYearId);
+    return this.http.get<OperationResult<AssignmentItem[]>>(this.base, { params });
   }
 
+  // FIX: Throw a proper error if isSuccess=false so the component's error handler fires
   getById(id: number): Observable<AssignmentDetail> {
     return this.http.get<OperationResult<AssignmentDetail>>(`${this.base}/${id}`).pipe(
-      map(r => r.data)
+      map(r => {
+        if (!r.isSuccess || !r.data) {
+          throw new Error(r.message || 'تعذر تحميل بيانات الواجب');
+        }
+        return r.data;
+      })
     );
   }
 
+  // FIX: Same independent-params approach for stats
   getStats(teacherId?: number, academicYearId?: number): Observable<OperationResult<Stats>> {
-    let params = '';
-    if (teacherId && academicYearId) {
-      params = `?teacherId=${teacherId}&academicYearId=${academicYearId}`;
-    }
-    return this.http.get<OperationResult<Stats>>(`${this.base}/stats${params}`);
+    let params = new HttpParams();
+    if (teacherId) params = params.set('teacherId', teacherId);
+    if (academicYearId) params = params.set('academicYearId', academicYearId);
+    return this.http.get<OperationResult<Stats>>(`${this.base}/stats`, { params });
   }
 
   create(dto: CreatePayload): Observable<OperationResult<AssignmentDetail>> {
@@ -104,4 +112,49 @@ export class AssignmentManagerService {
   getClasses(): Observable<{ id: number; name: string }[]> {
     return this.http.get<{ id: number; name: string }[]>(`${this.base}/classes`);
   }
+
+  getSubmissions(assignmentId: number): Observable<OperationResult<AssignmentSubmissionListItem[]>> {
+    return this.http.get<OperationResult<AssignmentSubmissionListItem[]>>(`${this.base}/${assignmentId}/submissions`);
+  }
+
+  getSubmissionDetail(assignmentId: number, submissionId: number): Observable<OperationResult<AssignmentSubmissionDetail>> {
+    return this.http.get<OperationResult<AssignmentSubmissionDetail>>(`${this.base}/${assignmentId}/submissions/${submissionId}`);
+  }
+
+  gradeSubmission(assignmentId: number, submissionId: number, dto: GradeAssignmentSubmissionDto): Observable<OperationResult<void>> {
+    return this.http.post<OperationResult<void>>(`${this.base}/${assignmentId}/submissions/${submissionId}/grade`, dto);
+  }
+}
+
+export interface AssignmentSubmissionListItem {
+  submissionId: number;
+  studentName: string;
+  submittedAt: string;
+  isGraded: boolean;
+  score: number;
+  maxScore: number;
+}
+
+export interface AssignmentSubmissionDetail {
+  submissionId: number;
+  studentName: string;
+  score: number;
+  maxScore: number;
+  isGraded: boolean;
+  answers: AssignmentSubmissionAnswer[];
+}
+
+export interface AssignmentSubmissionAnswer {
+  questionId: number;
+  questionText: string;
+  type: string;
+  studentAnswer: string;
+  correctAnswer: string;
+  pointsEarned: number;
+  maxPoints: number;
+  isCorrect?: boolean;
+}
+
+export interface GradeAssignmentSubmissionDto {
+  manualGrades: Record<number, number>;
 }

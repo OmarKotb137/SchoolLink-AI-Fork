@@ -1,12 +1,13 @@
 import { Component, signal, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterModule } from '@angular/router';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
 import { Topbar } from '../../layouts/topbar/topbar';
 import { AssignmentManagerService, AssignmentItem, Question, AssignmentDetail, Stats } from './assignment-manager.service';
 
 @Component({
   selector: 'app-assignment-management',
-  imports: [Sidebar, Topbar, FormsModule],
+  imports: [Sidebar, Topbar, FormsModule, RouterModule],
   templateUrl: './assignment-management.html',
   styleUrl: './assignment-management.css'
 })
@@ -61,14 +62,20 @@ export class AssignmentManagement implements OnInit {
   }
 
   openEditModal(a: AssignmentItem) {
-    this.editingAssignment.set(a);
-    this.newTitle.set(a.title);
-    const subj = this.subjects().find(s => s.name === a.subject);
-    this.newSubjectId.set(subj ? subj.id : null);
-    const cls = this.classes().find(c => c.name === a.class);
-    this.newClassId.set(cls ? cls.id : null);
-    this.newDeadline.set(a.deadline);
-    this.showAddModal.set(true);
+    this.api.getById(a.id).subscribe(detail => {
+      this.editingAssignment.set(a);
+      this.newTitle.set(a.title);
+      const subj = this.subjects().find(s => s.name === a.subject);
+      this.newSubjectId.set(subj ? subj.id : null);
+      const cls = this.classes().find(c => c.name === a.class);
+      this.newClassId.set(cls ? cls.id : null);
+      this.newDeadline.set(a.deadline);
+      this.questions.set(detail.questions.map(q => ({
+        ...q,
+        correctAnswer: q.type === 'mcq' ? String(q.options?.indexOf(q.correctAnswer) !== -1 ? q.options?.indexOf(q.correctAnswer) : 0) : q.correctAnswer
+      })));
+      this.showAddModal.set(true);
+    });
   }
 
   openViewModal(a: AssignmentItem) {
@@ -85,7 +92,7 @@ export class AssignmentManagement implements OnInit {
   }
 
   addQuestion() {
-    this.questions.update(q => [...q, { id: Date.now(), type: 'mcq', text: '', options: ['', '', '', ''], correctAnswer: '0' }]);
+    this.questions.update(q => [...q, { id: Date.now(), type: 'mcq', text: '', options: ['', '', '', ''], correctAnswer: '0', points: 5 }]);
   }
 
   removeQuestion(id: number) {
@@ -108,6 +115,10 @@ export class AssignmentManagement implements OnInit {
     this.questions.update(q => q.map(x => x.id === id ? { ...x, correctAnswer: answer } : x));
   }
 
+  updateQuestionPoints(id: number, points: number) {
+    this.questions.update(q => q.map(x => x.id === id ? { ...x, points } : x));
+  }
+
   saveAssignment() {
     const payload = {
       title: this.newTitle(),
@@ -118,7 +129,8 @@ export class AssignmentManagement implements OnInit {
         type: q.type,
         text: q.text,
         options: q.options ?? [],
-        correctAnswer: q.type === 'mcq' ? (q.options ? q.options[Number(q.correctAnswer)] ?? '' : '') : q.correctAnswer
+        correctAnswer: q.type === 'mcq' ? (q.options ? q.options[Number(q.correctAnswer)] ?? '' : '') : q.correctAnswer,
+        points: Number(q.points) || (q.type === 'essay' ? 10 : 5)
       }))
     };
 

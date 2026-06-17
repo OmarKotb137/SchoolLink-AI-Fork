@@ -22,6 +22,7 @@ public class AssignmentManagerQuestionDto
     public string Text { get; set; } = string.Empty;
     public List<string> Options { get; set; } = new();
     public string CorrectAnswer { get; set; } = string.Empty;
+    public decimal Points { get; set; } = 5;
 }
 
 public class AssignmentManagerDetailDto
@@ -60,6 +61,7 @@ public class CreateManagerQuestionDto
     public string Text { get; set; } = string.Empty;
     public List<string> Options { get; set; } = new();
     public string CorrectAnswer { get; set; } = string.Empty;
+    public decimal Points { get; set; } = 5;
 }
 
 public class UpdateAssignmentManagerDto
@@ -67,6 +69,43 @@ public class UpdateAssignmentManagerDto
     public string Title { get; set; } = string.Empty;
     public string? Deadline { get; set; }
     public List<CreateManagerQuestionDto> Questions { get; set; } = new();
+}
+
+public class AssignmentSubmissionListItemDto
+{
+    public int SubmissionId { get; set; }
+    public string StudentName { get; set; } = string.Empty;
+    public string SubmittedAt { get; set; } = string.Empty;
+    public bool IsGraded { get; set; }
+    public decimal Score { get; set; }
+    public decimal MaxScore { get; set; }
+}
+
+public class AssignmentSubmissionDetailDto
+{
+    public int SubmissionId { get; set; }
+    public string StudentName { get; set; } = string.Empty;
+    public decimal Score { get; set; }
+    public decimal MaxScore { get; set; }
+    public bool IsGraded { get; set; }
+    public List<AssignmentSubmissionAnswerDto> Answers { get; set; } = new();
+}
+
+public class AssignmentSubmissionAnswerDto
+{
+    public int QuestionId { get; set; }
+    public string QuestionText { get; set; } = string.Empty;
+    public string Type { get; set; } = "mcq";
+    public string StudentAnswer { get; set; } = string.Empty;
+    public string CorrectAnswer { get; set; } = string.Empty;
+    public decimal PointsEarned { get; set; }
+    public decimal MaxPoints { get; set; }
+    public bool? IsCorrect { get; set; }
+}
+
+public class GradeAssignmentSubmissionDto
+{
+    public Dictionary<int, decimal> ManualGrades { get; set; } = new();
 }
 
 public interface IAssignmentManagerService
@@ -77,4 +116,8 @@ public interface IAssignmentManagerService
     Task<OperationResult> UpdateAsync(int id, UpdateAssignmentManagerDto dto);
     Task<OperationResult> DeleteAsync(int id);
     Task<OperationResult<AssignmentManagerStatsDto>> GetStatsAsync(int? classSubjectTeacherId = null);
+    
+    Task<OperationResult<List<AssignmentSubmissionListItemDto>>> GetSubmissionsAsync(int assignmentId);
+    Task<OperationResult<AssignmentSubmissionDetailDto>> GetSubmissionDetailAsync(int assignmentId, int submissionId);
+    Task<OperationResult> GradeSubmissionAsync(int assignmentId, int submissionId, GradeAssignmentSubmissionDto dto);
 }

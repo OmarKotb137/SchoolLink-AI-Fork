@@ -16,5 +16,6 @@ namespace Project.BLL.DTOs.ExamAttempt
         public decimal TotalScore { get; set; }
         public bool IsGraded { get; set; }
         public int TimeTakenMinutes { get; set; }
+        public string Status { get; set; } = string.Empty; // submitted | graded | waitingGrade
     }
 }

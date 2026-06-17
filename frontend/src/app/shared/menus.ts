@@ -41,7 +41,7 @@ export const TEACHER_MENU: SidebarMenuItem[] = [
   { label: 'محتوى دروس', icon: 'menu_book', route: '/lesson-creator' },
   { label: 'تحليل هيكل الكتاب', icon: 'auto_stories', route: '/book-parser' },
   { label: 'إدارة الواجبات', icon: 'assignment_add', route: '/assignment-management' },
-  { label: 'الواجبات', icon: 'assignment', route: '/homework' },
+  // removed direct student homework link for teachers; use assignment-management instead
   { label: 'المحادثات', icon: 'chat', route: '/chat' },
   { label: 'تقييم الحصص', icon: 'feedback', route: '/lesson-feedback' },
   { label: 'رصد الدرجات', icon: 'grading', route: '/grade-monitor' },

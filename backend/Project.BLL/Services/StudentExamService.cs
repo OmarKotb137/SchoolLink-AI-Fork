@@ -171,6 +171,13 @@ public class StudentExamService : IStudentExamService
         if (attempt.SubmittedAt.HasValue)
             return OperationResult<StudentExamAttemptResultDto>.Failure("تم تسليم هذه المحاولة بالفعل");
 
+        // سجل وقت التسليم فوراً وقم بحفظه قبل البدء في عملية التصحيح الثقيلة
+        // هذا يضمن أن حالة 'تم التسليم' تُسجَّل حتى لو فشلت مرحلة التصحيح لاحقاً أو استغرقت وقتاً طويلاً
+        attempt.SubmittedAt = DateTime.UtcNow;
+        attempt.UpdatedAt = DateTime.UtcNow;
+        _unitOfWork.StudentExamAttempts.Update(attempt);
+        await _unitOfWork.SaveChangesAsync();
+
         // الإجابات معتمدة من الـ DB (محفوظة مسبقاً عن طريق الـ Auto-Save) مش من الـ DTO القادم في الطلب
         var savedAnswersByQuestion = attempt.Answers.ToDictionary(a => a.QuestionId);
 
@@ -221,8 +228,8 @@ public class StudentExamService : IStudentExamService
         _unitOfWork.StudentExamAttempts.Update(attempt);
         await _unitOfWork.SaveChangesAsync();
 
-        var updatedAttempt = await _unitOfWork.StudentExamAttempts.GetWithAnswersForEnrollmentAsync(attempt.Id, enrollmentResult.Data!.Id);
-        return OperationResult<StudentExamAttemptResultDto>.Success(MapResult(updatedAttempt!, false), "تم تسليم الامتحان بنجاح");
+        // ✅ نستخدم الـ object اللي في الميموري مباشرة بدل من إعادة جلب query ثقيلة ثانية من الـ DB
+        return OperationResult<StudentExamAttemptResultDto>.Success(MapResult(attempt, false), "تم تسليم الامتحان بنجاح");
     }
 
     public async Task<OperationResult<StudentExamAttemptResultDto>> GetAttemptResultAsync(int userId, int attemptId)
@@ -441,17 +448,58 @@ public class StudentExamService : IStudentExamService
             Answers = isResultPublished
                 ? attempt.Answers
                     .OrderBy(a => a.Question.DisplayOrder)
-                    .Select(a => new StudentExamResultAnswerDto
-                    {
-                        QuestionId = a.QuestionId,
-                        QuestionText = a.Question.QuestionText,
-                        AnswerText = a.AnswerText,
-                        SelectedOptionId = a.SelectedOptionId,
-                        BooleanAnswer = a.BooleanAnswer,
-                        IsCorrect = a.IsCorrect,
-                        PointsEarned = a.PointsEarned,
-                        QuestionPoints = a.Question.Points,
-                        AIFeedback = a.AIFeedback
+                    .Select(a => {
+                        string? finalAnswerText = a.AnswerText;
+                        string? correctAnswerText = null;
+
+                        if (a.Question.QuestionType == QuestionType.MultipleChoice)
+                        {
+                            var selectedOpt = a.Question.Options.FirstOrDefault(o => o.Id == a.SelectedOptionId);
+                            if (selectedOpt != null)
+                            {
+                                finalAnswerText = selectedOpt.OptionText;
+                            }
+                            var correctOpt = a.Question.Options.FirstOrDefault(o => o.IsCorrect);
+                            if (correctOpt != null)
+                            {
+                                correctAnswerText = correctOpt.OptionText;
+                            }
+                        }
+                        else if (a.Question.QuestionType == QuestionType.TrueFalse)
+                        {
+                            if (a.BooleanAnswer.HasValue)
+                            {
+                                finalAnswerText = a.BooleanAnswer.Value ? "صح" : "خطأ";
+                            }
+                            
+                            var normalizedCorrect = NormalizeBoolean(a.Question.CorrectAnswer);
+                            if (normalizedCorrect.HasValue)
+                            {
+                                correctAnswerText = normalizedCorrect.Value ? "صح" : "خطأ";
+                            }
+                            else
+                            {
+                                correctAnswerText = a.Question.CorrectAnswer;
+                            }
+                        }
+                        else if (a.Question.QuestionType == QuestionType.Essay)
+                        {
+                            correctAnswerText = a.Question.CorrectAnswer;
+                        }
+
+                        return new StudentExamResultAnswerDto
+                        {
+                            QuestionId = a.QuestionId,
+                            QuestionText = a.Question.QuestionText,
+                            AnswerText = finalAnswerText,
+                            SelectedOptionId = a.SelectedOptionId,
+                            BooleanAnswer = a.BooleanAnswer,
+                            IsCorrect = a.IsCorrect,
+                            CorrectAnswerText = correctAnswerText,
+                            PointsEarned = a.PointsEarned,
+                            QuestionPoints = a.Question.Points,
+                            AIFeedback = a.AIFeedback
+                        };
                     }).ToList()
                 : new List<StudentExamResultAnswerDto>()
         };

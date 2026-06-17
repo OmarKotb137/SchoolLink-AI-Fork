@@ -130,4 +130,34 @@ public class AssignmentManagerController : ControllerBase
             .ToListAsync();
         return Ok(classes);
     }
+
+    [HttpGet("{id:int}/submissions")]
+    [Authorize(Roles = "Admin,Teacher")]
+    public async Task<IActionResult> GetSubmissions(int id)
+    {
+        var result = await _service.GetSubmissionsAsync(id);
+        if (!result.IsSuccess)
+            return BadRequest(result);
+        return Ok(result);
+    }
+
+    [HttpGet("{id:int}/submissions/{submissionId:int}")]
+    [Authorize(Roles = "Admin,Teacher")]
+    public async Task<IActionResult> GetSubmissionDetail(int id, int submissionId)
+    {
+        var result = await _service.GetSubmissionDetailAsync(id, submissionId);
+        if (!result.IsSuccess)
+            return NotFound(result);
+        return Ok(result);
+    }
+
+    [HttpPost("{id:int}/submissions/{submissionId:int}/grade")]
+    [Authorize(Roles = "Admin,Teacher")]
+    public async Task<IActionResult> GradeSubmission(int id, int submissionId, [FromBody] GradeAssignmentSubmissionDto dto)
+    {
+        var result = await _service.GradeSubmissionAsync(id, submissionId, dto);
+        if (!result.IsSuccess)
+            return BadRequest(result);
+        return Ok(result);
+    }
 }

@@ -19,6 +19,7 @@ export const routes: Routes = [
   { path: 'class-schedule', canActivate: [authGuard], data: { roles: ['student'] }, loadComponent: () => import('./features/class-schedule/class-schedule').then(c => c.ClassSchedule) },
   { path: 'teacher-schedule', canActivate: [authGuard], data: { roles: ['teacher'] }, loadComponent: () => import('./features/teacher-schedule/teacher-schedule').then(c => c.TeacherSchedule) },
   { path: 'assignment-management', canActivate: [authGuard], loadComponent: () => import('./features/assignment-management/assignment-management').then(c => c.AssignmentManagement) },
+  { path: 'assignment-submissions/:id', canActivate: [authGuard], loadComponent: () => import('./features/assignment-submissions/assignment-submissions').then(c => c.AssignmentSubmissions) },
   { path: 'homework', canActivate: [authGuard], loadComponent: () => import('./features/homework/homework').then(c => c.Homework) },
   { path: 'student-assignments/:assignmentId/take', canActivate: [authGuard], data: { roles: ['student'] }, loadComponent: () => import('./features/homework/homework').then(c => c.Homework) },
   { path: 'student-assignments/submissions/:submissionId', canActivate: [authGuard], data: { roles: ['student'] }, loadComponent: () => import('./features/assignment-submission-result/assignment-submission-result').then(c => c.AssignmentSubmissionResult) },
