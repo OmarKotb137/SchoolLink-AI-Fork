@@ -1,9 +1,10 @@
-import { Component, input, inject, computed, OnInit } from '@angular/core';
+import { Component, input, inject, computed, OnInit, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { RoleService } from '../../shared/role.service';
 import { ROLE_MENUS, SidebarMenuItem } from '../../shared/menus';
 import { NotificationService } from '../../core/services/notification.service';
 import { AuthService } from '../../core/services/auth.service';
+import { UserService } from '../../core/services/user.service';
 
 @Component({
   selector: 'app-topbar',
@@ -15,6 +16,7 @@ export class Topbar implements OnInit {
   private roleService = inject(RoleService);
   private notifService = inject(NotificationService);
   private authService = inject(AuthService);
+  private userService = inject(UserService);
   router = inject(Router);
   userName = input('أحمد');
   showSearch = input(true);
@@ -23,6 +25,9 @@ export class Topbar implements OnInit {
   showSettings = input(true);
   showAvatar = input(true);
   notificationCount = input(0);
+
+  profilePictureUrl = signal<string | null>(null);
+  isLoadingAvatar = signal(false);
 
   userRole = computed(() => {
     const roleLabels: Record<string, string> = {
@@ -53,7 +58,26 @@ export class Topbar implements OnInit {
     const user = this.authService.user();
     if (user) {
       this.notifService.getUnreadCount(user.userId).subscribe();
+      this.loadProfilePicture();
     }
+  }
+
+  private loadProfilePicture() {
+    const user = this.authService.user();
+    if (!user) return;
+
+    this.isLoadingAvatar.set(true);
+    this.userService.getMyProfile().subscribe({
+      next: res => {
+        const user = res.data;
+        this.profilePictureUrl.set(user?.profilePictureUrl ?? null);
+        this.isLoadingAvatar.set(false);
+      },
+      error: () => {
+        this.profilePictureUrl.set(null);
+        this.isLoadingAvatar.set(false);
+      }
+    });
   }
 
   navigate(route: string) {
