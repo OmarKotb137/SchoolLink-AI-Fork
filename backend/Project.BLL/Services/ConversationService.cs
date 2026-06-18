@@ -6,6 +6,7 @@ using Project.BLL.Interfaces;
 using Project.DAL.Interfaces;
 using Project.Domain.Entities;
 using Project.Domain.Enums;
+using Project.BLL.DTOs.Notifications;
 
 namespace Project.BLL.Services;
 
@@ -13,11 +14,13 @@ public class ConversationService : IConversationService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper _mapper;
+    private readonly INotificationService _notificationService;
 
-    public ConversationService(IUnitOfWork unitOfWork, IMapper mapper)
+    public ConversationService(IUnitOfWork unitOfWork, IMapper mapper, INotificationService notificationService)
     {
         _unitOfWork = unitOfWork;
         _mapper = mapper;
+        _notificationService = notificationService;
     }
 
     public async Task<OperationResult<ConversationDto>> CreateDirectConversationAsync(CreateDirectConversationRequest request)
@@ -424,6 +427,15 @@ public class ConversationService : IConversationService
         await _unitOfWork.ConversationParticipants.AddAsync(participant);
         await _unitOfWork.SaveChangesAsync();
 
+        // Notify the added user
+        await _notificationService.SendNotificationAsync(new SendNotificationRequest
+        {
+            UserId = userId,
+            Title = "دعوة محادثة جماعية",
+            Body = $"تمت إضافتك إلى محادثة جماعية: {conversation.Title ?? conversation.Id.ToString()}",
+            Type = NotificationType.GroupChatInvite
+        });
+
         return OperationResult.Success("تم إضافة المشترك بنجاح");
     }
 
@@ -494,6 +506,24 @@ public class ConversationService : IConversationService
         await _unitOfWork.SaveChangesAsync();
 
         var sender = await _unitOfWork.Users.GetByIdAsync(request.SenderId);
+
+        // Notify other participants about new message
+        var otherParticipantIds = participants
+            .Where(p => p.UserId != request.SenderId)
+            .Select(p => p.UserId)
+            .ToList();
+
+        if (otherParticipantIds.Count != 0)
+        {
+            await _notificationService.SendBulkNotificationAsync(new SendBulkNotificationRequest
+            {
+                UserIds = otherParticipantIds,
+                Title = "رسالة جديدة",
+                Body = $"لديك رسالة جديدة من {(sender?.FullName ?? "")}",
+                Type = NotificationType.NewMessage
+            });
+        }
+
         var dto = _mapper.Map<MessageDto>(message);
         dto.SenderName = sender?.FullName ?? "";
 

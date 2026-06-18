@@ -1,6 +1,7 @@
 using AutoMapper;
 using Common.Results;
 using Project.BLL.DTOs;
+using Project.BLL.DTOs.Notifications;
 using Project.BLL.Interfaces;
 using Project.DAL.Interfaces;
 using Project.Domain.Entities;
@@ -12,6 +13,7 @@ public class TimetableService : ITimetableService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper     _mapper;
+    private readonly INotificationService _notificationService;
     private static readonly SchoolDay[] OrderedSchoolDays =
     {
         SchoolDay.Sunday,
@@ -21,10 +23,11 @@ public class TimetableService : ITimetableService
         SchoolDay.Thursday
     };
 
-    public TimetableService(IUnitOfWork unitOfWork, IMapper mapper)
+    public TimetableService(IUnitOfWork unitOfWork, IMapper mapper, INotificationService notificationService)
     {
         _unitOfWork = unitOfWork;
         _mapper     = mapper;
+        _notificationService = notificationService;
     }
 
     public async Task<OperationResult<TimetableDto>> CreateTimetableAsync(
@@ -312,6 +315,9 @@ public class TimetableService : ITimetableService
         await _unitOfWork.TimetableSlots.AddAsync(slot);
         await _unitOfWork.SaveChangesAsync();
 
+        // Send ScheduleChanged notification to students in this class
+        await NotifyScheduleChangedAsync(timetable.ClassId);
+
         // 7. Reload with ClassSubjectTeacher, Subject, and Teacher for DTO names
         var withDetails = await _unitOfWork.TimetableSlots.GetByIdWithDetailsAsync(slot.Id);
 
@@ -399,6 +405,9 @@ public class TimetableService : ITimetableService
 
         _unitOfWork.TimetableSlots.Update(slot);
         await _unitOfWork.SaveChangesAsync();
+
+        // Send ScheduleChanged notification to students in this class
+        await NotifyScheduleChangedAsync(timetable.ClassId);
 
         // 7. Reload with details for SubjectName, TeacherName, and RoomName
         var withDetails = await _unitOfWork.TimetableSlots.GetByIdWithDetailsAsync(slot.Id);
@@ -596,6 +605,30 @@ public class TimetableService : ITimetableService
         return OperationResult<IEnumerable<TeacherScheduleSlotDto>>.Success(
             result,
             "تم جلب جدول المعلم بنجاح");
+    }
+
+    private async Task NotifyScheduleChangedAsync(int classId)
+    {
+        var classEntity = await _unitOfWork.Classes.GetByIdAsync(classId);
+        if (classEntity is null) return;
+
+        var enrollments = await _unitOfWork.StudentEnrollments
+            .GetActiveByClassAsync(classId, classEntity.AcademicYearId);
+        var studentIds = enrollments
+            .Where(e => e.Student != null && e.Student.UserId != null)
+            .Select(e => e.Student.UserId!.Value)
+            .Distinct()
+            .ToList();
+
+        if (studentIds.Count == 0) return;
+
+        await _notificationService.SendBulkNotificationAsync(new SendBulkNotificationRequest
+        {
+            UserIds = studentIds,
+            Title = "تحديث الجدول الدراسي",
+            Body = "تم تعديل الجدول الدراسي للفصل، يرجى مراجعة الجدول",
+            Type = NotificationType.ScheduleChanged
+        });
     }
 
     private async Task<TimetableValidationResultDto?> BuildValidationResultAsync(int timetableId)

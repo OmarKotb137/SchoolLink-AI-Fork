@@ -1,9 +1,11 @@
 using AutoMapper;
 using Common.Results;
 using Project.BLL.DTOs.DailyAbsences;
+using Project.BLL.DTOs.Notifications;
 using Project.BLL.Interfaces;
 using Project.DAL.Interfaces;
 using Project.Domain.Entities;
+using Project.Domain.Enums;
 
 namespace Project.BLL.Services;
 
@@ -11,11 +13,13 @@ public class DailyAbsenceService : IDailyAbsenceService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper     _mapper;
+    private readonly INotificationService _notificationService;
 
-    public DailyAbsenceService(IUnitOfWork unitOfWork, IMapper mapper)
+    public DailyAbsenceService(IUnitOfWork unitOfWork, IMapper mapper, INotificationService notificationService)
     {
         _unitOfWork = unitOfWork;
         _mapper     = mapper;
+        _notificationService = notificationService;
     }
 
     public async Task<OperationResult<DailyAbsenceDto>> RecordAbsenceAsync(
@@ -60,6 +64,46 @@ public class DailyAbsenceService : IDailyAbsenceService
 
         await _unitOfWork.DailyAbsences.AddAsync(entity);
         await _unitOfWork.SaveChangesAsync();
+
+        // إشعار بالغياب
+        if (request.IsAbsent)
+        {
+            var studentName = enrollment.Student?.FullName ?? "طالب";
+            var parentUsers = await _unitOfWork.ParentStudents
+                .FindAsync(ps => ps.StudentId == enrollment.StudentId);
+            var parentIds = parentUsers.Select(p => p.ParentId).ToList();
+
+            // Admins
+            var admins = await _unitOfWork.Users.FindAsync(u =>
+                u.Role == UserRole.Admin && u.IsActive && !u.IsDeleted);
+
+            var allRecipients = parentIds.Concat(admins.Select(a => a.Id)).Distinct().ToList();
+            if (allRecipients.Count != 0)
+            {
+                await _notificationService.SendBulkNotificationAsync(new SendBulkNotificationRequest
+                {
+                    UserIds = allRecipients,
+                    Title = "تسجيل غياب",
+                    Body = $"تم تسجيل غياب للطالب {studentName} بتاريخ {request.AbsenceDate:yyyy-MM-dd}",
+                    Type = NotificationType.AbsenceAlert
+                });
+            }
+
+            // Excessive Absence Warning: check if total absences > 10
+            const int excessiveAbsenceThreshold = 10;
+            var totalAbsences = await _unitOfWork.DailyAbsences
+                .GetAbsenceCountAsync(request.EnrollmentId, null);
+            if (totalAbsences > excessiveAbsenceThreshold)
+            {
+                await _notificationService.SendBulkNotificationAsync(new SendBulkNotificationRequest
+                {
+                    UserIds = allRecipients,
+                    Title = "تحذير من الغياب المتكرر",
+                    Body = $"تجاوز الطالب {studentName} {excessiveAbsenceThreshold} أيام غياب (إجمالي {totalAbsences})",
+                    Type = NotificationType.ExcessiveAbsenceWarning
+                });
+            }
+        }
 
         return OperationResult<DailyAbsenceDto>.Success(
             _mapper.Map<DailyAbsenceDto>(entity),

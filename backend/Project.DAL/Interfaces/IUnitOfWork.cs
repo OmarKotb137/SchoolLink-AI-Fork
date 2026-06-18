@@ -62,6 +62,7 @@ public interface IUnitOfWork : IDisposable, IAsyncDisposable
     IBlockedUserRepository                 BlockedUsers                 { get; }
     INotificationRepository                Notifications                { get; }
     IAnnouncementRepository                Announcements                { get; }
+    IRepository<ParentMeetingRequest>      ParentMeetingRequests        { get; }
 
     // Section E: Library
     ILibraryItemRepository                 LibraryItems                 { get; }
@@ -73,6 +74,7 @@ public interface IUnitOfWork : IDisposable, IAsyncDisposable
     IResultVisibilitySettingRepository     ResultVisibilitySettings     { get; }
     IAIGenerationLogRepository             AIGenerationLogs             { get; }
     ISchoolProfileRepository               SchoolProfiles               { get; }
+    IRepository<AIReport>                  AIReports                    { get; }
 
     // Section H: Timetable
     IRoomRepository                        Rooms                        { get; }

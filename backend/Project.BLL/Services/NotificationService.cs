@@ -12,11 +12,13 @@ public class NotificationService : INotificationService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper _mapper;
+    private readonly INotificationPushService _pushService;
 
-    public NotificationService(IUnitOfWork unitOfWork, IMapper mapper)
+    public NotificationService(IUnitOfWork unitOfWork, IMapper mapper, INotificationPushService pushService)
     {
         _unitOfWork = unitOfWork;
         _mapper = mapper;
+        _pushService = pushService;
     }
 
     public async Task<OperationResult> SendNotificationAsync(SendNotificationRequest request)
@@ -28,6 +30,10 @@ public class NotificationService : INotificationService
         var notification = _mapper.Map<Notification>(request);
         await _unitOfWork.Notifications.AddAsync(notification);
         await _unitOfWork.SaveChangesAsync();
+
+        // Real-time push
+        var dto = _mapper.Map<NotificationDto>(notification);
+        await _pushService.PushToUserAsync(request.UserId, dto);
 
         return OperationResult.Success("تم إرسال الإشعار بنجاح");
     }
@@ -135,6 +141,14 @@ public class NotificationService : INotificationService
 
         await _unitOfWork.Notifications.BulkAddAsync(notifications);
         await _unitOfWork.SaveChangesAsync();
+
+        // Real-time push for all recipients
+        var pushTasks = notifications.Select(n =>
+        {
+            var dto = _mapper.Map<NotificationDto>(n);
+            return _pushService.PushToUserAsync(n.UserId, dto);
+        });
+        await Task.WhenAll(pushTasks);
 
         return OperationResult.Success($"تم إرسال الإشعارات إلى {notifications.Count} مستخدمين");
     }

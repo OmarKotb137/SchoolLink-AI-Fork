@@ -102,6 +102,7 @@ try
     app.UseAuthorization();
     app.MapControllers();
     app.MapHub<Project.API.Hubs.ChatHub>("/hubs/chat");
+    app.MapHub<Project.API.Hubs.NotificationsHub>("/hubs/notifications");
 
     Log.Information("SchoolLink API is ready");
     app.Run();

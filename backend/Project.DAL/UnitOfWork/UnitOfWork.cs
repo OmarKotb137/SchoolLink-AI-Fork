@@ -68,6 +68,7 @@ public class UnitOfWork : IUnitOfWork
         IBlockedUserRepository                 blockedUsers,
         INotificationRepository                notifications,
         IAnnouncementRepository                announcements,
+        IRepository<ParentMeetingRequest>      parentMeetingRequests,
 
         ILibraryItemRepository                 libraryItems,
 
@@ -87,7 +88,10 @@ public class UnitOfWork : IUnitOfWork
 
         // Section J: Question Bank
         IRepository<QuestionBank>              questionBank,
-        IRepository<ExamQuestionBankItem>      examQuestionBankItems)
+        IRepository<ExamQuestionBankItem>      examQuestionBankItems,
+
+        // AI Reports
+        IRepository<AIReport>                  aiReports)
     {
         _context = context;
 
@@ -137,6 +141,7 @@ public class UnitOfWork : IUnitOfWork
         BlockedUsers                 = blockedUsers;
         Notifications                = notifications;
         Announcements                = announcements;
+        ParentMeetingRequests        = parentMeetingRequests;
 
         // Section E
         LibraryItems                 = libraryItems;
@@ -162,6 +167,9 @@ public class UnitOfWork : IUnitOfWork
         // Section J
         QuestionBank                 = questionBank;
         ExamQuestionBankItems        = examQuestionBankItems;
+
+        // AI Reports
+        AIReports                    = aiReports;
     }
 
     public IRepository<ClassTemplateLink>         ClassTemplateLinks           { get; }
@@ -212,6 +220,7 @@ public class UnitOfWork : IUnitOfWork
     public IBlockedUserRepository                 BlockedUsers                 { get; }
     public INotificationRepository                Notifications                { get; }
     public IAnnouncementRepository                Announcements                { get; }
+    public IRepository<ParentMeetingRequest>      ParentMeetingRequests        { get; }
 
     // Section E: Library
     public ILibraryItemRepository                 LibraryItems                 { get; }
@@ -236,6 +245,9 @@ public class UnitOfWork : IUnitOfWork
     // Section J: Question Bank
     public IRepository<QuestionBank>              QuestionBank                 { get; }
     public IRepository<ExamQuestionBankItem>      ExamQuestionBankItems        { get; }
+
+    // AI Reports
+    public IRepository<AIReport>                  AIReports                    { get; }
 
     // Persistence
 

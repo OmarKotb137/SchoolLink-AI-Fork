@@ -11,8 +11,8 @@
     @if (showNotifications()) {
       <button class="topbar-icon-btn" (click)="navigate('/notifications')">
         <span class="material-symbols-outlined">notifications</span>
-        @if (notificationCount() > 0) {
-          <span class="notif-badge">{{ notificationCount() > 99 ? '99+' : notificationCount() }}</span>
+        @if (realNotifCount() > 0) {
+          <span class="notif-badge">{{ realNotifCount() > 99 ? '99+' : realNotifCount() }}</span>
         }
       </button>
     }

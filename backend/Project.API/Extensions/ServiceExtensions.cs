@@ -36,6 +36,9 @@ public static class ServiceExtensions
         services.AddScoped<IAccountGenerationService, AccountGenerationService>();
         services.AddScoped<ITeacherService, TeacherService>();
         services.AddScoped<INotificationService, NotificationService>();
+        services.AddScoped<INotificationPushService, SignalRNotificationPushService>();
+        services.AddScoped<IAIReportService, AIReportService>();
+        services.AddScoped<IParentMeetingService, ParentMeetingService>();
         services.AddScoped<IAnnouncementService, AnnouncementService>();
         services.AddScoped<IConversationService, ConversationService>();
         services.AddScoped<IResultVisibilityService, ResultVisibilityService>();

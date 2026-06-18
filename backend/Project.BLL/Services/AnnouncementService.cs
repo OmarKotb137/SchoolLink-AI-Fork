@@ -2,6 +2,7 @@
 using Common.Results;
 using Project.BLL.DTOs.Announcements;
 using Project.BLL.DTOs.Common;
+using Project.BLL.DTOs.Notifications;
 using Project.BLL.Interfaces;
 using Project.DAL.Interfaces;
 using Project.Domain.Entities;
@@ -13,11 +14,13 @@ public class AnnouncementService : IAnnouncementService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper _mapper;
+    private readonly INotificationService _notificationService;
 
-    public AnnouncementService(IUnitOfWork unitOfWork, IMapper mapper)
+    public AnnouncementService(IUnitOfWork unitOfWork, IMapper mapper, INotificationService notificationService)
     {
         _unitOfWork = unitOfWork;
         _mapper = mapper;
+        _notificationService = notificationService;
     }
 
     public async Task<OperationResult<AnnouncementDto>> CreateAnnouncementAsync(CreateAnnouncementRequest request)
@@ -36,6 +39,16 @@ public class AnnouncementService : IAnnouncementService
         var announcement = _mapper.Map<Announcement>(request);
         await _unitOfWork.Announcements.AddAsync(announcement);
         await _unitOfWork.SaveChangesAsync();
+
+        // send notification
+        var notifType = request.Category switch
+        {
+            Domain.Enums.AnnouncementType.Event => NotificationType.SchoolEvent,
+            Domain.Enums.AnnouncementType.Holiday => NotificationType.Holiday,
+            Domain.Enums.AnnouncementType.Emergency => NotificationType.EmergencyAlert,
+            _ => NotificationType.Announcement
+        };
+        await SendAnnouncementNotificationAsync(notifType, request);
 
         var dto = _mapper.Map<AnnouncementDto>(announcement);
         dto.AuthorName = author.FullName;
@@ -74,6 +87,12 @@ public class AnnouncementService : IAnnouncementService
         announcement.Body = request.Body;
         announcement.TargetRole = request.TargetRole;
         announcement.TargetClassId = request.TargetClassId;
+        announcement.Category = request.Category;
+        announcement.TargetGradeLevelId = request.TargetGradeLevelId;
+        announcement.IsForAllUsers = request.IsForAllUsers;
+        announcement.IsForAllStudents = request.IsForAllStudents;
+        announcement.IsForAllParents = request.IsForAllParents;
+        announcement.IsForAllTeachers = request.IsForAllTeachers;
         announcement.ExpiresAt = request.ExpiresAt;
         announcement.UpdatedAt = DateTime.UtcNow;
         _unitOfWork.Announcements.Update(announcement);
@@ -122,8 +141,27 @@ public class AnnouncementService : IAnnouncementService
 
         var announcements = await _unitOfWork.Announcements.GetActiveAsync();
 
-        var filtered = announcements
-            .Where(a => a.TargetRole == null || a.TargetRole == filter.CallerRole);
+        var filtered = announcements.AsEnumerable();
+
+        // if the caller has a specific role, filter by it
+        if (filter.CallerRole == UserRole.Student ||
+            filter.CallerRole == UserRole.Parent ||
+            filter.CallerRole == UserRole.Teacher)
+        {
+            filtered = filtered.Where(a =>
+                a.IsForAllUsers ||
+                a.TargetRole == null ||
+                a.TargetRole == filter.CallerRole);
+
+            if (filter.CallerRole == UserRole.Student)
+                filtered = filtered.Where(a => a.IsForAllStudents || a.IsForAllUsers || a.TargetRole == UserRole.Student);
+
+            if (filter.CallerRole == UserRole.Parent)
+                filtered = filtered.Where(a => a.IsForAllParents || a.IsForAllUsers || a.TargetRole == UserRole.Parent);
+
+            if (filter.CallerRole == UserRole.Teacher)
+                filtered = filtered.Where(a => a.IsForAllTeachers || a.IsForAllUsers || a.TargetRole == UserRole.Teacher);
+        }
 
         if (filter.ClassId.HasValue)
         {
@@ -170,6 +208,80 @@ public class AnnouncementService : IAnnouncementService
             TotalCount = totalCount,
             Page = filter.Page,
             PageSize = filter.PageSize
+        });
+    }
+
+    private async Task SendAnnouncementNotificationAsync(NotificationType type, CreateAnnouncementRequest request)
+    {
+        var recipients = new List<int>();
+
+        if (request.IsForAllUsers || request.IsForAllStudents || request.IsForAllParents || request.IsForAllTeachers)
+        {
+            if (request.IsForAllUsers)
+            {
+                var allUsers = await _unitOfWork.Users.FindAsync(u => u.IsActive && !u.IsDeleted);
+                recipients.AddRange(allUsers.Select(u => u.Id));
+            }
+            else
+            {
+                if (request.IsForAllStudents)
+                {
+                    var students = await _unitOfWork.Students.FindAsync(s => s.IsActive && !s.IsDeleted);
+                    recipients.AddRange(students.Where(s => s.UserId != null).Select(s => s.UserId!.Value));
+                }
+                if (request.IsForAllParents)
+                {
+                    var parentLinks = await _unitOfWork.ParentStudents.FindAsync(ps => true);
+                    recipients.AddRange(parentLinks.Select(ps => ps.ParentId));
+                }
+                if (request.IsForAllTeachers)
+                {
+                    var teachers = await _unitOfWork.Users.FindAsync(u =>
+                        u.Role == UserRole.Teacher && u.IsActive && !u.IsDeleted);
+                    recipients.AddRange(teachers.Select(t => t.Id));
+                }
+            }
+        }
+        else if (request.TargetClassId.HasValue)
+        {
+            var classEntity = await _unitOfWork.Classes.GetByIdAsync(request.TargetClassId.Value);
+            if (classEntity != null)
+            {
+                var enrollments = await _unitOfWork.StudentEnrollments
+                    .GetActiveByClassAsync(request.TargetClassId.Value, classEntity.AcademicYearId);
+                foreach (var enrollment in enrollments)
+                {
+                    var student = await _unitOfWork.Students.GetByIdAsync(enrollment.StudentId);
+                    if (student?.UserId != null)
+                        recipients.Add(student.UserId.Value);
+                }
+            }
+        }
+        else if (request.TargetGradeLevelId.HasValue)
+        {
+            var classes = await _unitOfWork.Classes.FindAsync(c =>
+                c.GradeLevelId == request.TargetGradeLevelId && !c.IsDeleted);
+            foreach (var c in classes)
+            {
+                var enrollments = await _unitOfWork.StudentEnrollments
+                    .GetActiveByClassAsync(c.Id, c.AcademicYearId);
+                foreach (var enrollment in enrollments)
+                {
+                    var student = await _unitOfWork.Students.GetByIdAsync(enrollment.StudentId);
+                    if (student?.UserId != null)
+                        recipients.Add(student.UserId.Value);
+                }
+            }
+        }
+
+        if (recipients.Count == 0) return;
+
+        await _notificationService.SendBulkNotificationAsync(new SendBulkNotificationRequest
+        {
+            UserIds = recipients.Distinct().ToList(),
+            Title = request.Title,
+            Body = request.Body,
+            Type = type
         });
     }
 }

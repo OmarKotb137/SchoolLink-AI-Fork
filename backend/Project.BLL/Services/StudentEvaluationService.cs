@@ -1,5 +1,6 @@
 using AutoMapper;
 using Common.Results;
+using Project.BLL.DTOs.Notifications;
 using Project.BLL.DTOs.StudentEvaluations;
 using Project.BLL.Interfaces;
 using Project.DAL.Interfaces;
@@ -12,11 +13,13 @@ public class StudentEvaluationService : IStudentEvaluationService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper     _mapper;
+    private readonly INotificationService _notificationService;
 
-    public StudentEvaluationService(IUnitOfWork unitOfWork, IMapper mapper)
+    public StudentEvaluationService(IUnitOfWork unitOfWork, IMapper mapper, INotificationService notificationService)
     {
         _unitOfWork = unitOfWork;
         _mapper     = mapper;
+        _notificationService = notificationService;
     }
 
     public async Task<OperationResult> AutoFillAttendanceScoresAsync(int classId, int periodId, int enteredById)
@@ -167,9 +170,66 @@ public class StudentEvaluationService : IStudentEvaluationService
         await _unitOfWork.StudentEvaluations.AddAsync(entity);
         await _unitOfWork.SaveChangesAsync();
 
+        // إشعار بالتقييم
+        var notifType = ResolveEvaluationNotificationType(item.Name);
+        if (notifType.HasValue)
+        {
+            var student = await _unitOfWork.Students.GetByIdAsync(enrollment.StudentId);
+            var studentName = student?.FullName ?? "طالب";
+            var parentUsers = await _unitOfWork.ParentStudents
+                .FindAsync(ps => ps.StudentId == enrollment.StudentId);
+            var parentIds = parentUsers.Select(p => p.ParentId).ToList();
+
+            var recipients = new List<int>();
+            if (student?.UserId != null)
+                recipients.Add(student.UserId.Value);
+            recipients.AddRange(parentIds);
+
+            if (recipients.Count != 0)
+            {
+                await _notificationService.SendBulkNotificationAsync(new SendBulkNotificationRequest
+                {
+                    UserIds = recipients.Distinct().ToList(),
+                    Title = notifType switch
+                    {
+                        NotificationType.GradeAlert => "تسجيل درجة",
+                        NotificationType.BehaviorAlert => "تنبيه سلوكي",
+                        NotificationType.PositiveBehavior => "سلوك إيجابي",
+                        NotificationType.DisciplinaryAction => "إجراء تأديبي",
+                        NotificationType.ImprovementAlert => "تحسين الأداء",
+                        _ => "تقييم جديد"
+                    },
+                    Body = $"تم تسجيل تقييم للطالب {studentName} في معيار {item.Name}",
+                    Type = notifType.Value
+                });
+            }
+        }
+
         return OperationResult<StudentEvaluationDto>.Success(
             _mapper.Map<StudentEvaluationDto>(entity),
             "تم تسجيل التقييم بنجاح");
+    }
+
+    private static NotificationType? ResolveEvaluationNotificationType(string itemName)
+    {
+        if (string.IsNullOrWhiteSpace(itemName)) return null;
+
+        if (itemName.Contains("سلوك إيجابي") || itemName.Contains("متميز"))
+            return NotificationType.PositiveBehavior;
+
+        if (itemName.Contains("السلوك") || itemName.Contains("انضباط"))
+            return NotificationType.DisciplinaryAction;
+
+        if (itemName.Contains("درجة") || itemName.Contains("اختبار"))
+            return NotificationType.GradeAlert;
+
+        if (itemName.Contains("مشاركة") || itemName.Contains("حضور"))
+            return NotificationType.ImprovementAlert;
+
+        if (itemName.Contains("سلوك"))
+            return NotificationType.BehaviorAlert;
+
+        return null;
     }
 
     public async Task<OperationResult<StudentEvaluationDto>> UpdateEvaluationAsync(
@@ -255,6 +315,7 @@ public class StudentEvaluationService : IStudentEvaluationService
         var itemMap = items.ToDictionary(i => i.Id);
 
         var saved = 0;
+        var newCreations = new List<(int EnrollmentId, EvaluationItem Item)>();
         foreach (var entry in request.Entries)
         {
             if (!itemMap.TryGetValue(entry.EvaluationItemId, out var item))
@@ -263,8 +324,7 @@ public class StudentEvaluationService : IStudentEvaluationService
             if (!entry.Score.HasValue) continue;
             if (entry.Score < 0 || entry.Score > item.MaxScore) continue;
 
-            // Round up to nearest 0.5 (e.g. 7.1→7.5, 7.6→8)
-            entry.Score = Math.Ceiling(entry.Score.Value * 2) / 2;
+            entry.Score = Math.Ceiling(entry.Score.Value * 2) / 2; // Round up to nearest 0.5 (e.g. 7.1→7.5, 7.6→8)
 
             if (entry.EvaluationId.HasValue)
             {
@@ -298,12 +358,53 @@ public class StudentEvaluationService : IStudentEvaluationService
                         EnteredAt = DateTime.UtcNow
                     };
                     await _unitOfWork.StudentEvaluations.AddAsync(eval);
+                    newCreations.Add((entry.EnrollmentId, item));
                 }
             }
             saved++;
         }
 
         await _unitOfWork.SaveChangesAsync();
+
+        // إشعارات فقط للتقييمات الجديدة (create) مش التحديثات
+        foreach (var (enrollmentId, item) in newCreations)
+        {
+            var notifType = ResolveEvaluationNotificationType(item.Name);
+            if (!notifType.HasValue) continue;
+
+            var enrollment = await _unitOfWork.StudentEnrollments.GetByIdAsync(enrollmentId);
+            if (enrollment is null) continue;
+
+            var student = await _unitOfWork.Students.GetByIdAsync(enrollment.StudentId);
+            var studentName = student?.FullName ?? "طالب";
+            var parentUsers = await _unitOfWork.ParentStudents
+                .FindAsync(ps => ps.StudentId == enrollment.StudentId);
+            var parentIds = parentUsers.Select(p => p.ParentId).ToList();
+
+            var recipients = new List<int>();
+            if (student?.UserId != null)
+                recipients.Add(student.UserId.Value);
+            recipients.AddRange(parentIds);
+
+            if (recipients.Count == 0) continue;
+
+            await _notificationService.SendBulkNotificationAsync(new SendBulkNotificationRequest
+            {
+                UserIds = recipients.Distinct().ToList(),
+                Title = notifType switch
+                {
+                    NotificationType.GradeAlert => "تسجيل درجة",
+                    NotificationType.BehaviorAlert => "تنبيه سلوكي",
+                    NotificationType.PositiveBehavior => "سلوك إيجابي",
+                    NotificationType.DisciplinaryAction => "إجراء تأديبي",
+                    NotificationType.ImprovementAlert => "تحسين الأداء",
+                    _ => "تقييم جديد"
+                },
+                Body = $"تم تسجيل تقييم للطالب {studentName} في معيار {item.Name}",
+                Type = notifType.Value
+            });
+        }
+
         return OperationResult.Success("تم حفظ الدرجات بنجاح");
     }
 

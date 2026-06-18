@@ -1,6 +1,7 @@
 using AutoMapper;
 using Common.Results;
 using Project.BLL.DTOs;
+using Project.BLL.DTOs.Notifications;
 using Project.BLL.DTOs.Users;
 using Project.BLL.DTOs.Teachers;
 using Project.BLL.Interfaces;
@@ -14,11 +15,13 @@ public class ClassSubjectTeacherService : IClassSubjectTeacherService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper     _mapper;
+    private readonly INotificationService _notificationService;
 
-    public ClassSubjectTeacherService(IUnitOfWork unitOfWork, IMapper mapper)
+    public ClassSubjectTeacherService(IUnitOfWork unitOfWork, IMapper mapper, INotificationService notificationService)
     {
         _unitOfWork = unitOfWork;
         _mapper     = mapper;
+        _notificationService = notificationService;
     }
 
     public async Task<OperationResult<ClassSubjectTeacherDto>> AssignTeacherAsync(
@@ -65,6 +68,28 @@ public class ClassSubjectTeacherService : IClassSubjectTeacherService
         // 7. Persist
         await _unitOfWork.ClassSubjectTeachers.AddAsync(entity);
         await _unitOfWork.SaveChangesAsync();
+
+        // Notify students about substitute teacher
+        var enrollments = await _unitOfWork.StudentEnrollments
+            .GetActiveByClassAsync(request.ClassId, request.AcademicYearId);
+        var studentIds = new List<int>();
+        foreach (var enrollment in enrollments)
+        {
+            var student = await _unitOfWork.Students.GetByIdAsync(enrollment.StudentId);
+            if (student?.UserId != null)
+                studentIds.Add(student.UserId.Value);
+        }
+
+        if (studentIds.Count != 0)
+        {
+            await _notificationService.SendBulkNotificationAsync(new SendBulkNotificationRequest
+            {
+                UserIds = studentIds.Distinct().ToList(),
+                Title = "تعيين معلم جديد",
+                Body = $"تم تعيين معلم {(teacher?.FullName ?? "")} لمادة {subject?.Name ?? ""}",
+                Type = NotificationType.SubstituteTeacher
+            });
+        }
 
         // 8. Reload with all navigation properties, including AcademicYear
         var withDetails = await _unitOfWork.ClassSubjectTeachers

@@ -48,6 +48,7 @@ public class AppDbContext : DbContext
     public DbSet<BlockedUser> BlockedUsers => Set<BlockedUser>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<Announcement> Announcements => Set<Announcement>();
+    public DbSet<ParentMeetingRequest> ParentMeetingRequests => Set<ParentMeetingRequest>();
     
     public DbSet<LibraryItem> LibraryItems => Set<LibraryItem>();
     
@@ -55,6 +56,7 @@ public class AppDbContext : DbContext
     
     public DbSet<ResultVisibilitySetting> ResultVisibilitySettings => Set<ResultVisibilitySetting>();
     public DbSet<AIGenerationLog> AIGenerationLogs => Set<AIGenerationLog>();
+    public DbSet<AIReport> AIReports => Set<AIReport>();
     public DbSet<SchoolProfile> SchoolProfiles => Set<SchoolProfile>();
 
     public DbSet<QuestionBank> QuestionBank => Set<QuestionBank>();

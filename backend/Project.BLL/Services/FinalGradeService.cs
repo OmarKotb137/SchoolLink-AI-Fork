@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using Common.Results;
 using Project.BLL.DTOs.FinalGrades;
+using Project.BLL.DTOs.Notifications;
 using Project.BLL.Interfaces;
 using Project.DAL.Interfaces;
 using Project.Domain.Entities;
@@ -12,11 +13,13 @@ public class FinalGradeService : IFinalGradeService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper     _mapper;
+    private readonly INotificationService _notificationService;
 
-    public FinalGradeService(IUnitOfWork unitOfWork, IMapper mapper)
+    public FinalGradeService(IUnitOfWork unitOfWork, IMapper mapper, INotificationService notificationService)
     {
         _unitOfWork = unitOfWork;
         _mapper     = mapper;
+        _notificationService = notificationService;
     }
 
     public async Task<OperationResult<FinalGradeDto>> CalculateFinalGradeAsync(int enrollmentId, AcademicTerm? term = null)
@@ -157,6 +160,104 @@ public class FinalGradeService : IFinalGradeService
         }
 
         await _unitOfWork.SaveChangesAsync();
+
+        // إشعار بنشر الدرجات للطلاب وأولياء الأمور
+        var affectedEnrollments = new List<StudentEnrollment>();
+        if (request.ClassId.HasValue)
+        {
+            var classEntity = await _unitOfWork.Classes.GetByIdAsync(request.ClassId.Value);
+            if (classEntity != null)
+            {
+                var enrollments = await _unitOfWork.StudentEnrollments
+                    .GetActiveByClassAsync(request.ClassId.Value, request.AcademicYearId);
+                affectedEnrollments.AddRange(enrollments);
+            }
+        }
+        else
+        {
+            var classes = await _unitOfWork.Classes.FindAsync(c =>
+                c.AcademicYearId == request.AcademicYearId && !c.IsDeleted);
+            foreach (var c in classes)
+            {
+                var enrollments = await _unitOfWork.StudentEnrollments
+                    .GetActiveByClassAsync(c.Id, request.AcademicYearId);
+                affectedEnrollments.AddRange(enrollments);
+            }
+        }
+
+        var allRecipients = new List<int>();
+        foreach (var enrollment in affectedEnrollments.DistinctBy(e => e.StudentId))
+        {
+            var student = await _unitOfWork.Students.GetByIdAsync(enrollment.StudentId);
+            if (student?.UserId != null)
+                allRecipients.Add(student.UserId.Value);
+
+            var parentUsers = await _unitOfWork.ParentStudents
+                .FindAsync(ps => ps.StudentId == enrollment.StudentId);
+            allRecipients.AddRange(parentUsers.Select(p => p.ParentId));
+        }
+
+        if (allRecipients.Count != 0)
+        {
+            await _notificationService.SendBulkNotificationAsync(new SendBulkNotificationRequest
+            {
+                UserIds = allRecipients.Distinct().ToList(),
+                Title = "نشر الدرجات النهائية",
+                Body = $"تم نشر الدرجات النهائية للفصل الدراسي {(request.Term == AcademicTerm.FirstSemester ? "الأول" : "الثاني")}",
+                Type = NotificationType.GradePublished
+            });
+        }
+
+        // Threshold check: إشعار للطلاب الذين تقل درجاتهم عن 50%
+        const decimal thresholdPercent = 0.5m;
+        var classesToCheck = request.ClassId.HasValue
+            ? new[] { request.ClassId.Value }
+            : (await _unitOfWork.Classes.FindAsync(c =>
+                c.AcademicYearId == request.AcademicYearId && !c.IsDeleted)).Select(c => c.Id);
+
+        foreach (var classId in classesToCheck)
+        {
+            var classGrades = await _unitOfWork.FinalGrades.GetByClassIdAsync(classId, request.Term);
+            var belowThreshold = classGrades
+                .Where(g => !g.IsDeleted && g.MaxTotal > 0 && (decimal)g.Total / g.MaxTotal < thresholdPercent)
+                .ToList();
+
+            foreach (var grade in belowThreshold)
+            {
+                var enrollment = await _unitOfWork.StudentEnrollments.GetByIdAsync(grade.EnrollmentId);
+                if (enrollment == null) continue;
+
+                var student = await _unitOfWork.Students.GetByIdAsync(enrollment.StudentId);
+                var studentName = student?.FullName ?? "طالب";
+
+                var parentUsers = await _unitOfWork.ParentStudents
+                    .FindAsync(ps => ps.StudentId == enrollment.StudentId);
+                var userRecipients = new List<int>();
+                if (student?.UserId != null)
+                    userRecipients.Add(student.UserId.Value);
+                userRecipients.AddRange(parentUsers.Select(p => p.ParentId));
+
+                if (userRecipients.Count == 0) continue;
+
+                // GradeThresholdAlert
+                await _notificationService.SendBulkNotificationAsync(new SendBulkNotificationRequest
+                {
+                    UserIds = userRecipients.Distinct().ToList(),
+                    Title = "تنبيه تدني درجات",
+                    Body = $"درجات الطالب {studentName} أقل من 50% في الفصل الدراسي {(request.Term == AcademicTerm.FirstSemester ? "الأول" : "الثاني")}",
+                    Type = NotificationType.GradeThresholdAlert
+                });
+
+                // AcademicProbation
+                await _notificationService.SendBulkNotificationAsync(new SendBulkNotificationRequest
+                {
+                    UserIds = userRecipients.Distinct().ToList(),
+                    Title = "إنذار أكاديمي",
+                    Body = $"الطالب {studentName} تحت الملاحظة الأكاديمية بسبب تدني الدرجات",
+                    Type = NotificationType.AcademicProbation
+                });
+            }
+        }
 
         return OperationResult.Success("تم نشر الدرجات بنجاح");
     }
