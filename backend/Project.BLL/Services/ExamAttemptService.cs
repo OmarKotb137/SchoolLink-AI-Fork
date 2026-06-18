@@ -31,12 +31,18 @@ namespace Project.BLL.Services
             return OperationResult<GetExamAttemptDto>.Success(dto);
         }
 
-        public async Task<OperationResult<List<ExamAttemptSummaryDto>>> GetByExamIdAsync(int examId)
+        public async Task<OperationResult<List<ExamAttemptSummaryDto>>> GetByExamIdAsync(int examId, int teacherId)
         {
             var exam = await _unitOfWork.Exams.GetByIdAsync(examId);
 
             if (exam == null || exam.IsDeleted)
                 return OperationResult<List<ExamAttemptSummaryDto>>.Failure("الامتحان غير موجود", 404);
+
+            // Phase 6.2 — فحص الملكية: المعلم لازم يكون صاحب هذا الامتحان
+            var examWithCst = await _unitOfWork.Exams.GetWithClassSubjectTeacherAsync(examId);
+            if (examWithCst?.ClassSubjectTeacher?.TeacherId != null
+                && examWithCst.ClassSubjectTeacher.TeacherId != teacherId)
+                return OperationResult<List<ExamAttemptSummaryDto>>.Failure("غير مصرح لك بعرض نتائج هذا الامتحان", 403);
 
             var attempts = await _unitOfWork.StudentExamAttempts
                 .GetByExamIdAsync(examId, CancellationToken.None);
@@ -204,7 +210,63 @@ namespace Project.BLL.Services
         return OperationResult.Success("تم تصحيح المحاولة تلقائياً بنجاح");
     }
 
-    public async Task<OperationResult> GradeAttemptAsync(int attemptId)
+    public async Task<OperationResult> GradeEssayAnswersAsync(int attemptId, GradeEssayAttemptDto dto, int teacherId)
+        {
+            var attempt = await _unitOfWork.StudentExamAttempts
+                .GetWithAnswersAsync(attemptId, CancellationToken.None);
+
+            if (attempt == null || attempt.IsDeleted)
+                return OperationResult.Failure("المحاولة غير موجودة", 404);
+
+            if (attempt.SubmittedAt == null)
+                return OperationResult.Failure("لم يتم تقديم المحاولة بعد");
+
+            // فحص ملكية: المعلم لازم يكون صاحب هذا الامتحان
+            var examWithCst = await _unitOfWork.Exams.GetWithClassSubjectTeacherAsync(attempt.ExamId);
+            if (examWithCst?.ClassSubjectTeacher?.TeacherId != null
+                && examWithCst.ClassSubjectTeacher.TeacherId != teacherId)
+                return OperationResult.Failure("غير مصرح لك بتصحيح هذه المحاولة", 403);
+
+            var exam = await _unitOfWork.Exams.GetWithQuestionsAsync(attempt.ExamId, CancellationToken.None);
+            if (exam == null) return OperationResult.Failure("الامتحان غير موجود", 404);
+
+            foreach (var ansDto in dto.Answers)
+            {
+                var answer = attempt.Answers.FirstOrDefault(a => a.Id == ansDto.AnswerId);
+                if (answer == null) continue;
+
+                var question = exam.Questions.FirstOrDefault(q => q.Id == answer.QuestionId);
+                if (question == null || question.QuestionType != Project.Domain.Enums.QuestionType.Essay) continue;
+
+                // منع إدخال درجة أعلى من الحد الأقصى
+                var earned = Math.Min(ansDto.PointsEarned, question.Points);
+                answer.PointsEarned = earned;
+                answer.IsCorrect    = earned > 0;
+                answer.AIFeedback   = ansDto.Feedback;   // يُستخدم كملاحظة المعلم
+                _unitOfWork.StudentExamAnswers.Update(answer);
+            }
+
+            // إعادة حساب مجموع الدرجة
+            attempt.Score = attempt.Answers.Sum(a => a.PointsEarned);
+
+            // تحقق: هل لسه أسئلة مقالية بدون درجة محددة
+            var hasUngradedEssay = attempt.Answers
+                .Join(exam.Questions, a => a.QuestionId, q => q.Id, (a, q) => new { a, q })
+                .Any(x => x.q.QuestionType == Project.Domain.Enums.QuestionType.Essay
+                       && !x.a.IsCorrect.HasValue);
+
+            if (!hasUngradedEssay)
+                attempt.IsGraded = true;
+
+            attempt.UpdatedAt = DateTime.UtcNow;
+            _unitOfWork.StudentExamAttempts.Update(attempt);
+            await _unitOfWork.SaveChangesAsync(CancellationToken.None);
+
+            return OperationResult.Success("تم حفظ التصحيح بنجاح");
+        }
+
+        // Legacy — kept to avoid breaking the auto-grade endpoint; candidates for removal
+        public async Task<OperationResult> GradeAttemptAsync_Legacy(int attemptId)
         {
             var attempt = await _unitOfWork.StudentExamAttempts
                 .GetWithAnswersAsync(attemptId, CancellationToken.None);

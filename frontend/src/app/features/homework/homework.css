@@ -1,0 +1,134 @@
+.summary-box {
+  display: flex;
+  min-height: 3.5rem;
+  min-width: 8.5rem;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 0.875rem;
+  border: 1px solid #eef2f7;
+  background: #f9fafb;
+  padding: 0.75rem;
+  color: #374151;
+}
+
+.summary-box .material-symbols-outlined {
+  font-size: 1.25rem;
+  color: #2563eb;
+}
+
+.summary-box small {
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.question-card {
+  border: 1px solid #eef2f7;
+  border-radius: 1rem;
+  background: #ffffff;
+  padding: 1.25rem;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.04);
+}
+
+.question-number {
+  display: inline-flex;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.75rem;
+  background: #2563eb;
+  color: #ffffff;
+  font-weight: 900;
+}
+
+.points-chip,
+.answered-chip {
+  display: inline-flex;
+  min-height: 1.75rem;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.25rem 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.points-chip {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.answered-chip {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.answer-option {
+  display: flex;
+  min-height: 3.25rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-radius: 0.875rem;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  padding: 0.875rem 1rem;
+  text-align: start;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #374151;
+  transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease;
+}
+
+.answer-option:hover,
+.answer-option.selected {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.essay-input {
+  width: 100%;
+  resize: vertical;
+  border-radius: 0.875rem;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  padding: 1rem;
+  color: #111827;
+  outline: none;
+}
+
+.essay-input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.secondary-action,
+.submit-action {
+  display: inline-flex;
+  min-height: 2.875rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.875rem;
+  padding: 0.75rem 1.25rem;
+  font-weight: 900;
+}
+
+.secondary-action {
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #374151;
+}
+
+.submit-action {
+  background: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 10px 20px rgba(37, 99, 235, 0.18);
+}
+
+.submit-action:disabled,
+.secondary-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}

@@ -67,9 +67,11 @@ public static class ServiceExtensions
         services.AddScoped<IAssignmentService, AssignmentService>();
         services.AddScoped<IAssignmentManagerService, AssignmentManagerService>();
         services.AddScoped<IAssignmentSubmissionService, AssignmentSubmissionService>();
+        services.AddScoped<IStudentAssignmentService, StudentAssignmentService>();
         services.AddScoped<IExamService, ExamService>();
         services.AddScoped<IExamManagerService, ExamManagerService>();
         services.AddScoped<IExamAttemptService, ExamAttemptService>();
+        services.AddScoped<IStudentExamService, StudentExamService>();
         services.AddScoped<IExamHtmlRenderer, ExamHtmlRenderer>();
         services.AddScoped<IQuestionBankService, QuestionBankService>();
         services.AddScoped<IExamMediaService>(sp =>

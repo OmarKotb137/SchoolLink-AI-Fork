@@ -20,6 +20,8 @@ public interface IAssignmentRepository : IRepository<Assignment>
     Task<IReadOnlyList<Assignment>> GetOverdueAsync(int? classSubjectTeacherId = null, CancellationToken ct = default);
 
     Task<Assignment?> GetWithQuestionsAsync(int assignmentId, CancellationToken ct = default);
+    Task<IReadOnlyList<Assignment>> GetPublishedForEnrollmentAsync(int enrollmentId, CancellationToken ct = default);
+    Task<Assignment?> GetStudentAssignmentDetailsAsync(int assignmentId, int enrollmentId, CancellationToken ct = default);
 }
 
 

@@ -1225,6 +1225,78 @@ public static class SeedData
     // Private helpers
     // =========================================================================
 
+    /// <summary>
+    /// Seeds DailyAbsence rows for the current week so dashboard charts always have data.
+    /// Safe to call on an empty DB (exits early) and fully idempotent (skips if week already seeded).
+    /// </summary>
+    private static async Task SeedCurrentWeekActivity(AppDbContext ctx)
+    {
+        // Guard: nothing to seed if no base data exists yet
+        bool anyEnrollments = await ctx.StudentEnrollments.AnyAsync();
+        if (!anyEnrollments) return;
+
+        // Current week boundaries (Sunday → Saturday)
+        var today       = DateOnly.FromDateTime(DateTime.UtcNow);
+        var weekStart   = today.AddDays(-(int)today.DayOfWeek);          // Sunday
+        var weekEnd     = weekStart.AddDays(4);                           // Thursday (school days)
+
+        // Idempotency: skip if this week is already seeded
+        bool alreadySeeded = await ctx.DailyAbsences
+            .AnyAsync(a => a.AbsenceDate >= weekStart && a.AbsenceDate <= weekEnd);
+        if (alreadySeeded) return;
+
+        // Fetch a handful of enrollments across different classes
+        var enrollments = await ctx.StudentEnrollments
+            .OrderBy(e => e.ClassId).ThenBy(e => e.Id)
+            .Take(15)
+            .ToListAsync();
+
+        // One CST per class (any subject)
+        var classIds = enrollments.Select(e => e.ClassId).Distinct().ToList();
+        var cstByClass = await ctx.ClassSubjectTeachers
+            .Where(c => classIds.Contains(c.ClassId))
+            .GroupBy(c => c.ClassId)
+            .ToDictionaryAsync(g => g.Key, g => g.First());
+
+        // Current evaluation period (if any)
+        var currentPeriod = await ctx.EvaluationPeriods
+            .Where(p => p.StartDate <= today && p.EndDate >= today)
+            .FirstOrDefaultAsync();
+
+        var now     = DateTime.UtcNow;
+        var rng     = new Random();
+        var batch   = new List<DailyAbsence>();
+
+        // ~30 % of the fetched students get one absence somewhere in the current week
+        foreach (var enr in enrollments)
+        {
+            if (rng.NextDouble() >= 0.30) continue;
+
+            if (!cstByClass.TryGetValue(enr.ClassId, out var cst)) continue;
+
+            var absenceDate = weekStart.AddDays(rng.Next(0, 5));   // Sun–Thu
+
+            batch.Add(new DailyAbsence
+            {
+                EnrollmentId          = enr.Id,
+                ClassSubjectTeacherId = cst.Id,
+                AbsenceDate           = absenceDate,
+                IsAbsent              = true,
+                Reason                = "مرض",
+                PeriodId              = currentPeriod?.Id,
+                RecordedById          = cst.TeacherId,
+                CreatedAt             = now,
+                UpdatedAt             = now
+            });
+        }
+
+        if (batch.Count > 0)
+        {
+            ctx.DailyAbsences.AddRange(batch);
+            await ctx.SaveChangesAsync();
+        }
+    }
+
     /// <summary>Builds EvaluationItem list from a compact definition array.</summary>
     private static List<EvaluationItem> BuildItems(
         int templateId,

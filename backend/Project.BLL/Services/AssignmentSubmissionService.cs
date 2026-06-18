@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using Common.Results;
 using Project.BLL.DTOs.AssignmentSubmission;
 using Project.BLL.Interfaces;
@@ -54,7 +54,7 @@ namespace Project.BLL.Services
             if (assignment == null || assignment.IsDeleted)
                 return OperationResult<GetAssignmentSubmissionDto>.Failure("لم يتم العثور على الواجب", 404);
 
-            if (assignment.DueDate.HasValue && assignment.DueDate < DateTime.UtcNow)
+            if (assignment.DueDate.HasValue && assignment.DueDate < DateTime.UtcNow.AddHours(3))
                 return OperationResult<GetAssignmentSubmissionDto>.Failure("لقد انتهى موعد تسليم الواجب");
 
             var existingSubmission = await _unitOfWork.StudentAssignmentSubmissions

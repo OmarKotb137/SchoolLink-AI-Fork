@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using Project.BLL.DTOs.Exam;
 using Project.BLL.DTOs.ExamAttempt;
 using Project.Domain.Entities;
@@ -44,20 +44,7 @@ namespace Project.BLL.Mapping
 
             CreateMap<ExamQuestionOption, GetExamQuestionOptionDto>();
 
-            CreateMap<StudentExamAttempt, GetExamAttemptDto>()
-                .ForMember(d => d.StudentName, o => o.MapFrom(s => s.Enrollment.Student.User.FullName))
-                .ForMember(d => d.ExamTitle, o => o.MapFrom(s => s.Exam.Title))
-                .ForMember(d => d.Answers, o => o.MapFrom(s => s.Answers));
 
-            CreateMap<StudentExamAttempt, ExamAttemptSummaryDto>()
-                .ForMember(d => d.StudentName, o => o.MapFrom(s => s.Enrollment.Student.User.FullName))
-                .ForMember(d => d.TimeTakenMinutes, o => o.MapFrom(s =>
-                    s.SubmittedAt.HasValue
-                        ? (int)(s.SubmittedAt.Value - s.StartedAt).TotalMinutes
-                        : 0));
-
-            CreateMap<StudentExamAnswer, GetExamAnswerDto>()
-                .ForMember(d => d.QuestionText, o => o.MapFrom(s => s.Question.QuestionText));
         }
     }
 }

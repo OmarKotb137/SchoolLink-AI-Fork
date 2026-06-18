@@ -1,11 +1,7 @@
-﻿using AutoMapper;
+using AutoMapper;
 using Project.BLL.DTOs.ExamAttempt;
 using Project.Domain.Entities;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Project.Domain.Enums;
 
 namespace Project.BLL.Mapping
 {
@@ -30,13 +26,25 @@ namespace Project.BLL.Mapping
                     opt => opt.MapFrom(src =>
                         src.SubmittedAt.HasValue
                             ? (int)(src.SubmittedAt.Value - src.StartedAt).TotalMinutes
-                            : 0));
+                            : 0))
+                .ForMember(dest => dest.Status, opt => opt.MapFrom(src =>
+                    src.IsGraded ? "graded" :
+                    src.SubmittedAt.HasValue && src.Answers.Any(a => a.Question != null
+                        && a.Question.QuestionType == QuestionType.Essay) ? "waitingGrade" :
+                    src.SubmittedAt.HasValue ? "submitted" : "pending"));
 
             // StudentExamAnswer → GetExamAnswerDto
-            // Id, AnswerText, IsCorrect, PointsEarned, AIFeedback → بيتمابوا تلقائياً
             CreateMap<StudentExamAnswer, GetExamAnswerDto>()
                 .ForMember(dest => dest.QuestionText,
-                    opt => opt.MapFrom(src => src.Question.QuestionText));
+                    opt => opt.MapFrom(src => src.Question.QuestionText))
+                .ForMember(dest => dest.QuestionType,
+                    opt => opt.MapFrom(src =>
+                        src.Question.QuestionType == QuestionType.MultipleChoice ? "mcq" :
+                        src.Question.QuestionType == QuestionType.TrueFalse ? "true-false" : "essay"))
+                .ForMember(dest => dest.QuestionPoints,
+                    opt => opt.MapFrom(src => src.Question.Points))
+                .ForMember(dest => dest.Feedback,
+                    opt => opt.MapFrom(src => src.AIFeedback));
         }
     }
 }

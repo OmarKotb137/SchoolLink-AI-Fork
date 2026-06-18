@@ -150,6 +150,51 @@ public class AssignmentRepository : Repository<Assignment>, IAssignmentRepositor
                 .ThenInclude(q => q.Options
                     .OrderBy(o => o.DisplayOrder))
             .FirstOrDefaultAsync(a => a.Id == assignmentId, ct);
+
+    public async Task<IReadOnlyList<Assignment>> GetPublishedForEnrollmentAsync(
+        int enrollmentId,
+        CancellationToken ct = default)
+        => await _context.Assignments
+            .Where(a =>
+                !a.IsDeleted &&
+                a.IsPublished &&
+                _context.StudentEnrollments.Any(e =>
+                    e.Id == enrollmentId &&
+                    !e.IsDeleted &&
+                    e.LeftAt == null &&
+                    e.ClassId == a.ClassSubjectTeacher.ClassId &&
+                    e.AcademicYearId == a.ClassSubjectTeacher.AcademicYearId))
+            .Include(a => a.ClassSubjectTeacher)
+                .ThenInclude(cst => cst.Subject)
+            .Include(a => a.ClassSubjectTeacher)
+                .ThenInclude(cst => cst.Class)
+            .Include(a => a.Questions.Where(q => !q.IsDeleted))
+            .OrderBy(a => a.DueDate ?? DateTime.MaxValue)
+            .ThenByDescending(a => a.CreatedAt)
+            .ToListAsync(ct);
+
+    public async Task<Assignment?> GetStudentAssignmentDetailsAsync(
+        int assignmentId,
+        int enrollmentId,
+        CancellationToken ct = default)
+        => await _context.Assignments
+            .Where(a =>
+                a.Id == assignmentId &&
+                !a.IsDeleted &&
+                a.IsPublished &&
+                _context.StudentEnrollments.Any(e =>
+                    e.Id == enrollmentId &&
+                    !e.IsDeleted &&
+                    e.LeftAt == null &&
+                    e.ClassId == a.ClassSubjectTeacher.ClassId &&
+                    e.AcademicYearId == a.ClassSubjectTeacher.AcademicYearId))
+            .Include(a => a.ClassSubjectTeacher)
+                .ThenInclude(cst => cst.Subject)
+            .Include(a => a.ClassSubjectTeacher)
+                .ThenInclude(cst => cst.Class)
+            .Include(a => a.Questions.Where(q => !q.IsDeleted).OrderBy(q => q.DisplayOrder))
+                .ThenInclude(q => q.Options.Where(o => !o.IsDeleted).OrderBy(o => o.DisplayOrder))
+            .FirstOrDefaultAsync(ct);
 }
 
 

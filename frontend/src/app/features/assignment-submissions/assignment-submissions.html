@@ -1,0 +1,136 @@
+<app-sidebar [(isOpen)]="sidebarOpen" />
+<div class="main-content">
+  <app-topbar userName="أحمد" />
+  <main class="p-gutter-desktop">
+    <div class="max-w-6xl mx-auto flex flex-col gap-stack-lg">
+
+      <!-- Header -->
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <button routerLink="/assignment-management" class="mb-2 text-primary hover:text-blue-600 flex items-center gap-1 font-label-md text-label-md">
+            <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+            العودة للواجبات
+          </button>
+          <h1 class="font-headline-lg text-headline-lg" style="font-weight:800;background:linear-gradient(135deg,#00236f,#3b82f6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">
+            تسليمات الواجب: {{ assignment()?.title }}
+          </h1>
+          <p class="font-body-md text-body-md text-outline">
+            {{ assignment()?.subject }} - {{ assignment()?.class }}
+          </p>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="glass-table-container">
+        <div class="overflow-x-auto">
+          <table class="w-full">
+            <thead>
+              <tr>
+                <th class="text-right p-4 font-label-md text-label-md text-outline">اسم الطالب</th>
+                <th class="text-right p-4 font-label-md text-label-md text-outline">تاريخ التسليم</th>
+                <th class="text-right p-4 font-label-md text-label-md text-outline">الدرجة</th>
+                <th class="text-right p-4 font-label-md text-label-md text-outline">الحالة</th>
+                <th class="text-center p-4 font-label-md text-label-md text-outline"></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (sub of submissions(); track sub.submissionId) {
+                <tr>
+                  <td class="p-4 font-body-md text-body-md" style="font-weight:700;">{{ sub.studentName }}</td>
+                  <td class="p-4 font-body-md text-body-md text-outline" dir="ltr">{{ sub.submittedAt }}</td>
+                  <td class="p-4 font-body-md text-body-md" [class.text-outline]="!sub.isGraded">
+                    {{ sub.isGraded ? sub.score + ' / ' + sub.maxScore : 'في الانتظار' }}
+                  </td>
+                  <td class="p-4">
+                    @if (sub.isGraded) {
+                      <span class="px-3 py-1 bg-green-500/10 text-green-600 rounded-full font-label-sm text-label-sm">مصحح</span>
+                    } @else {
+                      <span class="px-3 py-1 bg-tertiary-fixed/20 text-tertiary rounded-full font-label-sm text-label-sm">بانتظار التصحيح</span>
+                    }
+                  </td>
+                  <td class="p-4 text-center">
+                    <button class="gradient-btn py-1.5 px-4 text-sm" (click)="viewSubmission(sub)">
+                      {{ sub.isGraded ? 'عرض النتيجة' : 'تصحيح' }}
+                    </button>
+                  </td>
+                </tr>
+              }
+              @if (submissions().length === 0) {
+                <tr>
+                  <td colspan="5" class="p-8 text-center text-outline font-body-md">لا توجد تسليمات حتى الآن</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Grade Modal -->
+@if (viewingSubmission(); as sub) {
+  <div class="fixed inset-0 z-[999] flex items-center justify-center glass-overlay p-margin-mobile" (click)="closeModal()" dir="rtl">
+    <div class="glass-modal max-w-4xl w-full max-h-[90vh] overflow-y-auto relative z-[1000]" (click)="$event.stopPropagation()">
+      <div class="glass-modal-header flex justify-between items-center">
+        <h2 class="font-headline-md text-headline-md" style="font-weight:700;">تصحيح إجابة: {{ sub.studentName }}</h2>
+        <button class="p-2 rounded-full hover:bg-black/5 transition-colors" (click)="closeModal()"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <div class="p-stack-lg">
+        <div class="flex flex-col gap-stack-md">
+          @for (ans of sub.answers; track ans.questionId) {
+            <div class="border border-white/40 bg-white/30 backdrop-blur-sm rounded-2xl p-stack-md">
+              <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center gap-3">
+                  <span class="bg-gradient-to-l from-primary to-blue-600 text-on-primary w-7 h-7 rounded-lg flex items-center justify-center font-bold text-label-sm">{{ $index + 1 }}</span>
+                  <span class="px-3 py-1 bg-secondary/10 text-secondary rounded-full text-label-sm font-label-sm">
+                    {{ ans.type === 'mcq' ? 'اختيار من متعدد' : ans.type === 'true-false' ? 'صح وخطأ' : 'مقالي' }}
+                  </span>
+                </div>
+                @if (ans.type !== 'essay') {
+                  <span class="font-label-md text-label-md" [class.text-green-600]="ans.isCorrect" [class.text-error]="!ans.isCorrect">
+                    {{ ans.pointsEarned }} / {{ ans.maxPoints }} نقطة
+                  </span>
+                }
+              </div>
+              <p class="font-body-lg text-body-lg mb-3">{{ ans.questionText }}</p>
+              
+              <div class="p-4 bg-white/40 rounded-xl mb-3">
+                <p class="text-label-sm font-label-sm text-outline mb-1">إجابة الطالب:</p>
+                <p class="font-body-md text-body-md" [class.text-green-600]="ans.type !== 'essay' && ans.isCorrect" [class.text-error]="ans.type !== 'essay' && !ans.isCorrect">
+                  {{ ans.studentAnswer || 'لم يجب' }}
+                </p>
+              </div>
+
+              @if (ans.type === 'essay') {
+                <div class="flex items-center justify-between mt-4 p-4 border border-primary/20 bg-primary/5 rounded-xl">
+                  <div class="flex-1">
+                    <p class="text-label-sm font-label-sm text-primary mb-1">نموذج الإجابة:</p>
+                    <p class="font-body-md text-body-md">{{ ans.correctAnswer || 'لا يوجد' }}</p>
+                  </div>
+                  @if (!sub.isGraded) {
+                    <div class="flex items-center gap-2 border-r border-primary/20 pr-4">
+                      <span class="text-label-sm font-label-sm text-outline">أدخل الدرجة:</span>
+                      <input type="number" class="w-20 border border-outline-variant rounded-lg px-2 py-1 text-center font-body-md" min="0" [max]="ans.maxPoints" [value]="manualGrades()[ans.questionId] || 0" (input)="updateGrade(ans.questionId, +$any($event.target).value)">
+                      <span class="text-outline font-label-sm">/ {{ ans.maxPoints }}</span>
+                    </div>
+                  } @else {
+                    <div class="flex items-center gap-2 border-r border-primary/20 pr-4">
+                      <span class="text-label-md font-label-md text-green-600 font-bold">{{ ans.pointsEarned }} / {{ ans.maxPoints }} نقطة</span>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+      <div class="glass-modal-footer flex justify-end gap-3">
+        <button class="secondary-btn-glass" (click)="closeModal()">إغلاق</button>
+        @if (!sub.isGraded) {
+          <button class="gradient-btn" (click)="saveGrade()">حفظ وتصحيح</button>
+        }
+      </div>
+    </div>
+  </div>
+}

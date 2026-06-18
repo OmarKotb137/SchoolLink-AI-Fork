@@ -81,8 +81,16 @@
                   <td class="p-4">
                     <div class="flex items-center justify-center gap-1">
                       <button class="p-2 rounded-lg hover:bg-white/50 text-outline hover:text-primary transition-all" title="عرض" (click)="openViewModal(a)"><span class="material-symbols-outlined">visibility</span></button>
-                      <button class="p-2 rounded-lg hover:bg-white/50 text-outline hover:text-secondary transition-all" title="تعديل" (click)="openEditModal(a)"><span class="material-symbols-outlined">edit</span></button>
-                      <button class="p-2 rounded-lg hover:bg-white/50 text-outline hover:text-error transition-all" title="حذف" (click)="deleteAssignment(a.id)"><span class="material-symbols-outlined">delete</span></button>
+                      <button class="p-2 rounded-lg hover:bg-white/50 text-outline hover:text-tertiary transition-all" title="التسليمات" [routerLink]="['/assignment-submissions', a.id]">
+                        <span class="material-symbols-outlined">assignment_turned_in</span>
+                      </button>
+                      @if (a.submitted === 0) {
+                        <button class="p-2 rounded-lg hover:bg-white/50 text-outline hover:text-secondary transition-all" title="تعديل" (click)="openEditModal(a)"><span class="material-symbols-outlined">edit</span></button>
+                        <button class="p-2 rounded-lg hover:bg-white/50 text-outline hover:text-error transition-all" title="حذف" (click)="deleteAssignment(a.id)"><span class="material-symbols-outlined">delete</span></button>
+                      } @else {
+                        <button class="p-2 rounded-lg opacity-50 cursor-not-allowed text-outline" title="لا يمكن التعديل لوجود تسليمات"><span class="material-symbols-outlined">edit</span></button>
+                        <button class="p-2 rounded-lg opacity-50 cursor-not-allowed text-outline" title="لا يمكن الحذف لوجود تسليمات"><span class="material-symbols-outlined">delete</span></button>
+                      }
                     </div>
                   </td>
                 </tr>
@@ -125,7 +133,7 @@
           </div>
           <div class="flex flex-col gap-1">
             <label class="font-label-md text-label-md" style="font-weight:600;">تاريخ التسليم</label>
-            <input class="border border-outline-variant rounded-xl px-4 py-3 font-body-md text-body-md bg-white/60 focus:outline-none focus:ring-2 focus:ring-primary backdrop-blur-sm" type="date" [value]="newDeadline()" (input)="newDeadline.set($any($event.target).value)" />
+            <input class="border border-outline-variant rounded-xl px-4 py-3 font-body-md text-body-md bg-white/60 focus:outline-none focus:ring-2 focus:ring-primary backdrop-blur-sm" type="datetime-local" [value]="newDeadline()" (input)="newDeadline.set($any($event.target).value)" />
           </div>
         </div>
 
@@ -149,7 +157,13 @@
                       <option value="essay">مقالي</option>
                     </select>
                   </div>
-                  <button class="p-1 rounded-lg hover:bg-error/10 text-outline hover:text-error transition-colors" (click)="removeQuestion(q.id)"><span class="material-symbols-outlined">close</span></button>
+                  <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-1 bg-white/60 border border-outline-variant rounded-lg px-2 py-1">
+                      <span class="text-label-sm font-label-sm text-outline">الدرجة:</span>
+                      <input type="number" class="w-16 bg-transparent border-none text-center font-body-sm text-body-sm focus:outline-none focus:ring-0" min="1" [value]="q.points ?? (q.type === 'essay' ? 10 : 5)" (input)="updateQuestionPoints(q.id, +$any($event.target).value)">
+                    </div>
+                    <button class="p-1 rounded-lg hover:bg-error/10 text-outline hover:text-error transition-colors" (click)="removeQuestion(q.id)"><span class="material-symbols-outlined">close</span></button>
+                  </div>
                 </div>
                 <textarea class="w-full border border-outline-variant rounded-xl px-4 py-3 font-body-md text-body-md bg-white/60 focus:outline-none focus:ring-2 focus:ring-primary mb-3 resize-none backdrop-blur-sm" rows="2" placeholder="نص السؤال..." [value]="q.text" (input)="updateQuestionText(q.id, $any($event.target).value)"></textarea>
                 @if (q.type === 'mcq' && q.options) {

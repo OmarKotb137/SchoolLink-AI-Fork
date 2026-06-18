@@ -27,19 +27,26 @@ public class ExamManagerController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll([FromQuery] int? academicYearId)
     {
-        int? cstId = null;
         var userId = GetUserId();
+        List<int>? cstIds = null;
+
         if (academicYearId.HasValue)
         {
-            var csts = await _context.ClassSubjectTeachers
+            cstIds = await _context.ClassSubjectTeachers
                 .Where(c => c.TeacherId == userId && c.AcademicYearId == academicYearId.Value && !c.IsDeleted)
                 .Select(c => c.Id)
                 .ToListAsync();
-            if (csts.Count == 1)
-                cstId = csts[0];
+        }
+        else
+        {
+            // بدون فلتر سنة: جلب كل CSTs للمعلم
+            cstIds = await _context.ClassSubjectTeachers
+                .Where(c => c.TeacherId == userId && !c.IsDeleted)
+                .Select(c => c.Id)
+                .ToListAsync();
         }
 
-        var result = await _service.GetAllAsync(cstId);
+        var result = await _service.GetAllAsync(cstIds.Count > 0 ? cstIds : null);
         return Ok(result);
     }
 
@@ -93,45 +100,108 @@ public class ExamManagerController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPut("{id:int}/publish-results")]
+    [Authorize(Roles = "Admin,Teacher")]
+    public async Task<IActionResult> PublishResults(int id)
+    {
+        var result = await _service.ToggleResultPublishStatusAsync(id, true, GetUserId());
+        if (!result.IsSuccess)
+            return BadRequest(result);
+        return Ok(result);
+    }
+
+    [HttpPut("{id:int}/unpublish-results")]
+    [Authorize(Roles = "Admin,Teacher")]
+    public async Task<IActionResult> UnpublishResults(int id)
+    {
+        var result = await _service.ToggleResultPublishStatusAsync(id, false, GetUserId());
+        if (!result.IsSuccess)
+            return BadRequest(result);
+        return Ok(result);
+    }
+
     [HttpGet("stats")]
     public async Task<IActionResult> GetStats([FromQuery] int? academicYearId)
     {
-        int? cstId = null;
         var userId = GetUserId();
+        List<int>? cstIds = null;
+
         if (academicYearId.HasValue)
         {
-            var csts = await _context.ClassSubjectTeachers
+            cstIds = await _context.ClassSubjectTeachers
                 .Where(c => c.TeacherId == userId && c.AcademicYearId == academicYearId.Value && !c.IsDeleted)
                 .Select(c => c.Id)
                 .ToListAsync();
-            if (csts.Count == 1)
-                cstId = csts[0];
+        }
+        else
+        {
+            cstIds = await _context.ClassSubjectTeachers
+                .Where(c => c.TeacherId == userId && !c.IsDeleted)
+                .Select(c => c.Id)
+                .ToListAsync();
         }
 
-        var result = await _service.GetStatsAsync(cstId);
+        var result = await _service.GetStatsAsync(cstIds.Count > 0 ? cstIds : null);
         return Ok(result);
     }
 
     [HttpGet("subjects")]
-    [AllowAnonymous]
     public async Task<IActionResult> GetSubjects()
     {
-        var subjects = await _context.Subjects
+        var userId = GetUserId();
+        var role   = User.FindFirstValue(ClaimTypes.Role);
+
+        if (role == "Teacher")
+        {
+            var subjectIds = await _context.ClassSubjectTeachers
+                .Where(c => c.TeacherId == userId && !c.IsDeleted)
+                .Select(c => c.SubjectId)
+                .Distinct()
+                .ToListAsync();
+
+            var subjects = await _context.Subjects
+                .Where(s => subjectIds.Contains(s.Id) && !s.IsDeleted)
+                .Select(s => new { s.Id, s.Name })
+                .ToListAsync();
+
+            return Ok(subjects);
+        }
+
+        var allSubjects = await _context.Subjects
             .Where(s => !s.IsDeleted)
             .Select(s => new { s.Id, s.Name })
             .ToListAsync();
-        return Ok(subjects);
+        return Ok(allSubjects);
     }
 
     [HttpGet("classes")]
-    [AllowAnonymous]
     public async Task<IActionResult> GetClasses()
     {
-        var classes = await _context.Classes
+        var userId = GetUserId();
+        var role   = User.FindFirstValue(ClaimTypes.Role);
+
+        if (role == "Teacher")
+        {
+            var classIds = await _context.ClassSubjectTeachers
+                .Where(c => c.TeacherId == userId && !c.IsDeleted)
+                .Select(c => c.ClassId)
+                .Distinct()
+                .ToListAsync();
+
+            var classes = await _context.Classes
+                .Include(c => c.GradeLevel)
+                .Where(c => classIds.Contains(c.Id) && !c.IsDeleted)
+                .Select(c => new { c.Id, Name = c.GradeLevel.Name + " - " + c.Name })
+                .ToListAsync();
+
+            return Ok(classes);
+        }
+
+        var allClasses = await _context.Classes
             .Include(c => c.GradeLevel)
             .Where(c => !c.IsDeleted)
             .Select(c => new { c.Id, Name = c.GradeLevel.Name + " - " + c.Name })
             .ToListAsync();
-        return Ok(classes);
+        return Ok(allClasses);
     }
 }

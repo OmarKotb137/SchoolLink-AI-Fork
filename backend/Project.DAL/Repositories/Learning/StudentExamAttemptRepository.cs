@@ -47,6 +47,9 @@ public class StudentExamAttemptRepository
             .Where(a => a.ExamId == examId)
             .Include(a => a.Enrollment)
                 .ThenInclude(e => e.Student)
+                    .ThenInclude(s => s.User)
+            .Include(a => a.Answers)
+                .ThenInclude(ans => ans.Question)
             .OrderByDescending(a => a.Score)
             .ToListAsync(ct);
 
@@ -104,6 +107,28 @@ public class StudentExamAttemptRepository
             .Include(a => a.Exam)
             .FirstOrDefaultAsync(a => a.Id == attemptId, ct);
 
+    public async Task<StudentExamAttempt?> GetWithAnswersForEnrollmentAsync(
+        int attemptId,
+        int enrollmentId,
+        CancellationToken ct = default)
+        => await _context.StudentExamAttempts
+            .AsSplitQuery()                                     // ✅ يمنع Cartesian Explosion بين Collections
+            .Include(a => a.Answers)
+                .ThenInclude(ans => ans.Question)
+                    .ThenInclude(q => q.Options
+                        .OrderBy(o => o.DisplayOrder))
+            .Include(a => a.Exam)
+                .ThenInclude(e => e.Questions.Where(q => !q.IsDeleted))
+                    .ThenInclude(q => q.Options.Where(o => !o.IsDeleted))
+            .Include(a => a.Exam)
+                .ThenInclude(e => e.Subject)
+            .Include(a => a.Exam)
+                .ThenInclude(e => e.GradeLevel)
+            .Include(a => a.Exam)
+                .ThenInclude(e => e.ClassSubjectTeacher)
+                    .ThenInclude(cst => cst.Subject)
+            .FirstOrDefaultAsync(a => a.Id == attemptId && a.EnrollmentId == enrollmentId, ct);
+
 
     public async Task<decimal> GetAverageScoreAsync(
         int examId,
@@ -134,6 +159,37 @@ public class StudentExamAttemptRepository
             .OrderByDescending(a => a.Score)
             .Take(count)
             .ToListAsync(ct);
+
+
+    public async Task<IReadOnlyList<StudentExamAttempt>> GetExpiredUnsubmittedAsync(
+        CancellationToken ct = default)
+    {
+        var unsubmittedAttempts = await _context.StudentExamAttempts
+            .Where(a => a.SubmittedAt == null)
+            .Include(a => a.Exam)
+            .ToListAsync(ct);
+
+        var nowUtc = DateTime.UtcNow;
+
+        return unsubmittedAttempts.Where(a =>
+        {
+            var startedAtUtc = DateTime.SpecifyKind(a.StartedAt, DateTimeKind.Utc);
+
+            // الوقت انتهى عن طريق Duration الامتحان
+            // ✅ Grace Period دقيقتين: نديها وقت كافي للـ Frontend يسلّم بنفسه قبل ما الـ Background يتدخل
+            //    لو الطالب سلّم بنفسه في آخر ثانية، الـ Background مش هيتصادم معاه
+            const int gracePeriodMinutes = 2;
+
+            var isTimeUpByDuration = a.Exam.DurationMinutes.HasValue &&
+                startedAtUtc.AddMinutes(a.Exam.DurationMinutes.Value).AddMinutes(gracePeriodMinutes) < nowUtc;
+
+            // أو وقت الامتحان الكلي انتهى — EndTime محفوظ بتوقيت مصر (UTC+3)
+            var isTimeUpByEndTime = a.Exam.EndTime.HasValue &&
+                a.Exam.EndTime.Value.AddHours(-3).AddMinutes(gracePeriodMinutes) < nowUtc;
+
+            return isTimeUpByDuration || isTimeUpByEndTime;
+        }).ToList();
+    }
 }
 
 

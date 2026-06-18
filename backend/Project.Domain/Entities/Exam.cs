@@ -1,4 +1,4 @@
-﻿using Project.Domain.Enums;
+using Project.Domain.Enums;
 
 namespace Project.Domain.Entities
 {
@@ -15,6 +15,7 @@ namespace Project.Domain.Entities
         public decimal TotalScore { get; set; }
         public bool IsAIGenerated { get; set; } = false;
         public bool IsPublished { get; set; } = false;
+        public bool IsResultPublished { get; set; } = false;
         public EvaluationCategory Category { get; set; }
 
         // Navigation Properties

@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Project.BLL.DTOs.ExamAttempt;
 using Project.BLL.Interfaces;
@@ -17,6 +18,9 @@ public class ExamAttemptsController : ControllerBase
         _service = service;
     }
 
+    private int GetUserId() =>
+        int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
     [HttpGet("{id:int}")]
     public async Task<IActionResult> GetById(int id)
     {
@@ -30,7 +34,7 @@ public class ExamAttemptsController : ControllerBase
     [HttpGet("by-exam/{examId:int}")]
     public async Task<IActionResult> GetByExam(int examId)
     {
-        var result = await _service.GetByExamIdAsync(examId);
+        var result = await _service.GetByExamIdAsync(examId, GetUserId());
         return Ok(result);
     }
 
@@ -56,21 +60,15 @@ public class ExamAttemptsController : ControllerBase
 
     [Authorize(Roles = "Admin,Teacher")]
     [HttpPatch("{attemptId:int}/grade")]
-    public async Task<IActionResult> Grade(int attemptId)
+    public async Task<IActionResult> Grade(int attemptId, [FromBody] GradeEssayAttemptDto dto)
     {
-        var result = await _service.GradeAttemptAsync(attemptId);
+        var result = await _service.GradeEssayAnswersAsync(attemptId, dto, GetUserId());
         if (!result.IsSuccess)
             return BadRequest(result);
         return Ok(result);
     }
 
-    [HttpGet("by-student/{enrollmentId:int}/exam/{examId:int}")]
-    public async Task<IActionResult> GetStudentAttempts(int enrollmentId, int examId)
-    {
-        var result = await _service.GetStudentAttemptsAsync(enrollmentId, examId);
-        return Ok(result);
-    }
-
+    // Legacy endpoint — kept for backward compat, candidates for removal
     [Authorize(Roles = "Admin,Teacher")]
     [HttpPatch("{attemptId:int}/auto-grade")]
     public async Task<IActionResult> AutoGrade(int attemptId)

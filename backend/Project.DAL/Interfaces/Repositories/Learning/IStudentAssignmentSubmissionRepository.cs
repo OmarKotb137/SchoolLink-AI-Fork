@@ -18,6 +18,7 @@ public interface IStudentAssignmentSubmissionRepository : IRepository<StudentAss
     Task<IReadOnlyList<StudentAssignmentSubmission>> GetUngradedByAssignmentAsync(int assignmentId, CancellationToken ct = default);
 
     Task<StudentAssignmentSubmission?> GetWithAnswersAsync(int submissionId, CancellationToken ct = default);
+    Task<StudentAssignmentSubmission?> GetWithAnswersForEnrollmentAsync(int submissionId, int enrollmentId, CancellationToken ct = default);
 
     Task<decimal> GetAverageScoreAsync(int assignmentId, CancellationToken ct = default);
     Task<IReadOnlyList<StudentAssignmentSubmission>> GetPendingByTeacherAsync(int teacherId, int academicYearId, CancellationToken ct = default);

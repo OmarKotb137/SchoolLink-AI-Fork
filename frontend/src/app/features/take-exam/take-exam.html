@@ -1,0 +1,160 @@
+<app-sidebar [(isOpen)]="sidebarOpen" />
+<div class="main-content">
+  <app-topbar userName="أحمد" />
+  <main class="pt-16 min-h-screen bg-gray-50" dir="rtl">
+    <div class="sticky top-16 z-30 bg-white/95 backdrop-blur border-b border-gray-100">
+      <div class="max-w-7xl mx-auto px-4 md:px-6 py-3 flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
+        <div class="min-w-0">
+          <span class="text-xs font-bold text-blue-600">{{ exam()?.subjectName || 'امتحان' }}</span>
+          <h1 class="text-lg md:text-xl font-bold text-gray-900 truncate">{{ exam()?.title || 'جاري تحميل الامتحان' }}</h1>
+        </div>
+        <div class="flex flex-wrap items-center gap-3">
+          @if (saveStatus() === 'saving') {
+            <div class="save-status-box status-saving">
+              <span class="material-symbols-outlined animate-spin">progress_activity</span>
+              <span>جاري الحفظ...</span>
+            </div>
+          } @else if (saveStatus() === 'saved') {
+            <div class="save-status-box status-saved">
+              <span class="material-symbols-outlined">check_circle</span>
+              <span>تم الحفظ</span>
+            </div>
+          } @else if (saveStatus() === 'failed') {
+            <div class="save-status-box status-failed">
+              <span class="material-symbols-outlined">error</span>
+              <span>فشل الحفظ</span>
+              <button type="button" class="retry-btn" (click)="retrySaving()">إعادة</button>
+            </div>
+          }
+          <div class="timer-box" [class.warning]="remainingSeconds() <= 300 && remainingSeconds() > 0">
+            <span class="material-symbols-outlined">timer</span>
+            <strong>{{ timeLabel() }}</strong>
+          </div>
+          <div class="progress-box">
+            <span>{{ answeredCount() }}/{{ totalQuestions() }}</span>
+            <div class="progress-track"><div [style.width.%]="progressPercent()"></div></div>
+          </div>
+          <button class="submit-btn" type="button" (click)="openSubmitConfirm()" [disabled]="isSubmitting() || isLoading()">
+            <span class="material-symbols-outlined">send</span>
+            تسليم
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto p-4 md:p-6 lg:p-8">
+      @if (errorMessage()) {
+        <div class="flex items-center gap-3 p-4 mb-5 text-sm text-red-800 rounded-2xl bg-red-50 border border-red-200">
+          <span class="material-symbols-outlined text-lg">error</span>
+          <span class="font-medium">{{ errorMessage() }}</span>
+        </div>
+      }
+
+      @if (isLoading()) {
+        <div class="py-20 flex flex-col items-center gap-3 text-gray-500">
+          <span class="material-symbols-outlined animate-spin text-4xl text-blue-600">progress_activity</span>
+          <span class="font-medium">جاري تجهيز الامتحان...</span>
+        </div>
+      } @else if (exam(); as examData) {
+        <div class="grid grid-cols-1 xl:grid-cols-[1fr_260px] gap-6">
+          <section class="space-y-5">
+            @for (question of examData.questions; track question.id; let i = $index) {
+              <article class="question-card" [id]="'question-' + question.id">
+                <div class="flex items-start justify-between gap-4 mb-4">
+                  <div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <span class="question-number">سؤال {{ i + 1 }}</span>
+                      @if (question.questionType === QuestionType.MultipleChoice) {
+                        <span class="type-badge type-mcq">اختيار من متعدد</span>
+                      } @else if (question.questionType === QuestionType.TrueFalse) {
+                        <span class="type-badge type-tf">صح أو خطأ</span>
+                      } @else if (question.questionType === QuestionType.FillBlank) {
+                        <span class="type-badge type-fill">أكمل الفراغ</span>
+                      } @else {
+                        <span class="type-badge type-essay">مقالي</span>
+                      }
+                    </div>
+                    <h2 class="text-base md:text-lg font-bold text-gray-900 mt-2 leading-8">{{ question.questionText }}</h2>
+                  </div>
+                  <span class="points-chip">{{ question.points }} درجة</span>
+                </div>
+
+                @if (question.contentText) {
+                  <div class="content-note">{{ question.contentText }}</div>
+                }
+                @if (question.imageUrl) {
+                  <img class="question-image" [src]="question.imageUrl" alt="صورة السؤال" />
+                }
+
+                @if (question.questionType === QuestionType.MultipleChoice) {
+                  <div class="options-grid">
+                    @for (option of question.options; track option.id) {
+                      <label class="option-tile" [class.selected]="getAnswer(question.id)?.selectedOptionId === option.id">
+                        <input type="radio" [name]="'q-' + question.id" [checked]="getAnswer(question.id)?.selectedOptionId === option.id" (change)="updateOption(question, option.id)" />
+                        <span>{{ option.optionText }}</span>
+                      </label>
+                    }
+                  </div>
+                } @else if (question.questionType === QuestionType.TrueFalse) {
+                  <div class="options-grid two">
+                    <label class="option-tile" [class.selected]="getAnswer(question.id)?.booleanAnswer === true">
+                      <input type="radio" [name]="'q-' + question.id" [checked]="getAnswer(question.id)?.booleanAnswer === true" (change)="updateBoolean(question, true)" />
+                      <span>✓ صح</span>
+                    </label>
+                    <label class="option-tile false-tile" [class.selected]="getAnswer(question.id)?.booleanAnswer === false">
+                      <input type="radio" [name]="'q-' + question.id" [checked]="getAnswer(question.id)?.booleanAnswer === false" (change)="updateBoolean(question, false)" />
+                      <span>✗ خطأ</span>
+                    </label>
+                  </div>
+                } @else if (question.questionType === QuestionType.FillBlank) {
+                  <textarea
+                    class="answer-textarea"
+                    rows="2"
+                    placeholder="اكتب الإجابة الصحيحة في الفراغ..."
+                    [ngModel]="getAnswer(question.id)?.answerText || ''"
+                    (ngModelChange)="updateText(question, $event)">
+                  </textarea>
+                } @else {
+                  <textarea
+                    class="answer-textarea"
+                    rows="5"
+                    placeholder="اكتب إجابتك المقالية هنا..."
+                    [ngModel]="getAnswer(question.id)?.answerText || ''"
+                    (ngModelChange)="updateText(question, $event)">
+                  </textarea>
+                }
+              </article>
+            }
+          </section>
+
+          <aside class="question-nav">
+            <h3>الأسئلة</h3>
+            <div class="question-nav-grid">
+              @for (question of examData.questions; track question.id; let i = $index) {
+                <button type="button" [class.answered]="getAnswer(question.id)" (click)="scrollToQuestion(question.id)">
+                  {{ i + 1 }}
+                </button>
+              }
+            </div>
+            <p>يتم حفظ إجاباتك مؤقتًا في هذا المتصفح حتى تضغط تسليم.</p>
+          </aside>
+        </div>
+      }
+    </div>
+  </main>
+</div>
+
+@if (confirmSubmitOpen()) {
+  <div class="fixed inset-0 z-[200] flex items-center justify-center bg-gray-900/50 backdrop-blur-sm p-4" dir="rtl">
+    <div class="bg-white rounded-3xl shadow-xl max-w-md w-full overflow-hidden">
+      <div class="p-6 border-b border-gray-100">
+        <h2 class="text-xl font-bold text-gray-900">تأكيد تسليم الامتحان</h2>
+        <p class="text-sm text-gray-500 mt-2">أجبت عن {{ answeredCount() }} من {{ totalQuestions() }} سؤال. بعد التسليم لن تستطيع تعديل الإجابات.</p>
+      </div>
+      <div class="p-5 flex justify-end gap-3 bg-gray-50">
+        <button class="cancel-btn" type="button" (click)="cancelSubmit()">رجوع</button>
+        <button class="submit-btn" type="button" (click)="submitExam()" [disabled]="isSubmitting()">تأكيد التسليم</button>
+      </div>
+    </div>
+  </div>
+}
