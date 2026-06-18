@@ -442,6 +442,10 @@ public class ExamManagerService : IExamManagerService
             var correct = q.Options.FirstOrDefault(o => o.IsCorrect);
             correctAnswer = correct?.OptionText ?? "";
         }
+        else if (q.QuestionType == QuestionType.Essay)
+        {
+            correctAnswer = q.CorrectAnswer ?? "";
+        }
 
         return new ExamManagerQuestionDto(q.Id, type, q.QuestionText, options, correctAnswer, q.Points);
     }
