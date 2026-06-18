@@ -147,6 +147,35 @@ public class FinalGradeService : IFinalGradeService
         if (year is null || year.IsDeleted)
             return OperationResult.Failure("السنة الدراسية غير موجودة");
 
+        var hasUnpublished = false;
+        if (request.ClassId.HasValue)
+        {
+            hasUnpublished = await _unitOfWork.FinalGrades.AnyAsync(fg =>
+                fg.Enrollment.ClassId == request.ClassId.Value &&
+                fg.Term == request.Term &&
+                !fg.IsPublished);
+        }
+        else
+        {
+            var classes = await _unitOfWork.Classes.FindAsync(c =>
+                c.AcademicYearId == request.AcademicYearId && !c.IsDeleted);
+            foreach (var classEntity in classes)
+            {
+                var anyUnpublished = await _unitOfWork.FinalGrades.AnyAsync(fg =>
+                    fg.Enrollment.ClassId == classEntity.Id &&
+                    fg.Term == request.Term &&
+                    !fg.IsPublished);
+                if (anyUnpublished)
+                {
+                    hasUnpublished = true;
+                    break;
+                }
+            }
+        }
+
+        if (!hasUnpublished)
+            return OperationResult.Success("جميع الدرجات منشورة بالفعل");
+
         if (request.ClassId.HasValue)
         {
             await _unitOfWork.FinalGrades.BulkPublishByClassAsync(request.ClassId.Value, request.Term);

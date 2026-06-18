@@ -2,7 +2,6 @@ import { Component, signal, computed, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
-import { Topbar } from '../../layouts/topbar/topbar';
 import { ExamGeneratorService, AiGenerateExamRequest, AiExamPreviewDto, AiExamPreviewQuestionDto, ExamSummaryDto } from '../../core/services/exam-generator.service';
 import { GradeLevelService } from '../../core/services/grade-level.service';
 import { buildApiUrl } from '../../core/utils/api-url';
@@ -46,7 +45,7 @@ export interface LessonDto {
 
 @Component({
   selector: 'app-exam-generator',
-  imports: [Sidebar, Topbar, FormsModule],
+  imports: [Sidebar, FormsModule],
   templateUrl: './exam-generator.html',
   styleUrl: './exam-generator.css',
 })

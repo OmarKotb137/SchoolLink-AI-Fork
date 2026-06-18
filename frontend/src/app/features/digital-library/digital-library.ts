@@ -3,7 +3,6 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
-import { Topbar } from '../../layouts/topbar/topbar';
 import { LibraryService } from '../../core/services/library.service';
 import { LibraryItemDto, LibraryItemType } from '../../core/models/library.model';
 import { RoleService } from '../../shared/role.service';
@@ -11,7 +10,7 @@ import { RoleService } from '../../shared/role.service';
 @Component({
   selector: 'app-digital-library',
   standalone: true,
-  imports: [Sidebar, Topbar, CommonModule, FormsModule],
+  imports: [Sidebar, CommonModule, FormsModule],
   templateUrl: './digital-library.html',
   styleUrl: './digital-library.css',
 })

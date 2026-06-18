@@ -62,6 +62,7 @@ public interface IUnitOfWork : IDisposable, IAsyncDisposable
     IBlockedUserRepository                 BlockedUsers                 { get; }
     INotificationRepository                Notifications                { get; }
     IAnnouncementRepository                Announcements                { get; }
+    IRepository<AnnouncementUser>          AnnouncementUsers            { get; }
     IRepository<ParentMeetingRequest>      ParentMeetingRequests        { get; }
 
     // Section E: Library

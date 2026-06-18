@@ -68,6 +68,7 @@ public class UnitOfWork : IUnitOfWork
         IBlockedUserRepository                 blockedUsers,
         INotificationRepository                notifications,
         IAnnouncementRepository                announcements,
+        IRepository<AnnouncementUser>          announcementUsers,
         IRepository<ParentMeetingRequest>      parentMeetingRequests,
 
         ILibraryItemRepository                 libraryItems,
@@ -141,6 +142,7 @@ public class UnitOfWork : IUnitOfWork
         BlockedUsers                 = blockedUsers;
         Notifications                = notifications;
         Announcements                = announcements;
+        AnnouncementUsers            = announcementUsers;
         ParentMeetingRequests        = parentMeetingRequests;
 
         // Section E
@@ -220,6 +222,7 @@ public class UnitOfWork : IUnitOfWork
     public IBlockedUserRepository                 BlockedUsers                 { get; }
     public INotificationRepository                Notifications                { get; }
     public IAnnouncementRepository                Announcements                { get; }
+    public IRepository<AnnouncementUser>           AnnouncementUsers            { get; }
     public IRepository<ParentMeetingRequest>      ParentMeetingRequests        { get; }
 
     // Section E: Library

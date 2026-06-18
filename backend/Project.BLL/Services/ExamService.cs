@@ -5,6 +5,7 @@ using Project.BLL.Interfaces;
 using Project.DAL.Interfaces;
 using Project.Domain.Entities;
 using Project.Domain.Enums;
+using Project.BLL.DTOs.Notifications;
 
 namespace Project.BLL.Services
 {
@@ -14,17 +15,20 @@ namespace Project.BLL.Services
         private readonly IMapper _mapper;
         private readonly IExamMediaService _mediaService;
         private readonly IExamHtmlRenderer _htmlRenderer;
+        private readonly INotificationService _notificationService;
 
         public ExamService(
             IUnitOfWork unitOfWork,
             IMapper mapper,
             IExamMediaService mediaService,
-            IExamHtmlRenderer htmlRenderer)
+            IExamHtmlRenderer htmlRenderer,
+            INotificationService notificationService)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
             _mediaService = mediaService;
             _htmlRenderer = htmlRenderer;
+            _notificationService = notificationService;
         }
 
         public async Task<OperationResult<List<ExamSummaryDto>>> GetAllByClassSubjectTeacherAsync(int classSubjectTeacherId)
@@ -96,6 +100,33 @@ namespace Project.BLL.Services
             await _unitOfWork.Exams.AddAsync(exam);
             await _unitOfWork.SaveChangesAsync(CancellationToken.None);
 
+            // Notify students about new exam
+            if (exam.ClassSubjectTeacherId.HasValue)
+            {
+                var cst = await _unitOfWork.ClassSubjectTeachers.GetByIdAsync(exam.ClassSubjectTeacherId.Value);
+                if (cst != null)
+                {
+                    var enrollments = await _unitOfWork.StudentEnrollments
+                        .GetActiveByClassAsync(cst.ClassId, cst.AcademicYearId);
+                    var studentIds = enrollments
+                        .Where(e => e.Student != null && e.Student.UserId != null)
+                        .Select(e => e.Student.UserId!.Value)
+                        .Distinct()
+                        .ToList();
+
+                    if (studentIds.Count != 0)
+                    {
+                        await _notificationService.SendBulkNotificationAsync(new SendBulkNotificationRequest
+                        {
+                            UserIds = studentIds,
+                            Title = "امتحان جديد",
+                            Body = $"تم إضافة امتحان جديد: {exam.Title}",
+                            Type = NotificationType.Exam
+                        });
+                    }
+                }
+            }
+
             var resultDto = _mapper.Map<ExamSummaryDto>(exam);
             return OperationResult<ExamSummaryDto>.Success(resultDto, "تم إنشاء الامتحان بنجاح");
         }
@@ -107,6 +138,10 @@ namespace Project.BLL.Services
             if (exam == null || exam.IsDeleted)
                 return OperationResult<ExamSummaryDto>.Failure("الامتحان غير موجود", 404);
 
+            // Check if schedule changed
+            var oldStartTime = exam.StartTime;
+            var oldEndTime = exam.EndTime;
+
             exam.Title = dto.Title;
             exam.StartTime = dto.StartTime;
             exam.EndTime = dto.EndTime;
@@ -116,6 +151,36 @@ namespace Project.BLL.Services
 
             _unitOfWork.Exams.Update(exam);
             await _unitOfWork.SaveChangesAsync(CancellationToken.None);
+
+            // Notify if schedule changed
+            if (oldStartTime != dto.StartTime || oldEndTime != dto.EndTime)
+            {
+                if (exam.ClassSubjectTeacherId.HasValue)
+                {
+                    var cst = await _unitOfWork.ClassSubjectTeachers.GetByIdAsync(exam.ClassSubjectTeacherId.Value);
+                    if (cst != null)
+                    {
+                        var enrollments = await _unitOfWork.StudentEnrollments
+                            .GetActiveByClassAsync(cst.ClassId, cst.AcademicYearId);
+                        var studentIds = enrollments
+                            .Where(e => e.Student != null && e.Student.UserId != null)
+                            .Select(e => e.Student.UserId!.Value)
+                            .Distinct()
+                            .ToList();
+
+                        if (studentIds.Count != 0)
+                        {
+                            await _notificationService.SendBulkNotificationAsync(new SendBulkNotificationRequest
+                            {
+                                UserIds = studentIds,
+                                Title = "تغيير موعد الامتحان",
+                                Body = $"تم تغيير موعد الامتحان: {exam.Title}",
+                                Type = NotificationType.ExamScheduleChanged
+                            });
+                        }
+                    }
+                }
+            }
 
             var resultDto = _mapper.Map<ExamSummaryDto>(exam);
             return OperationResult<ExamSummaryDto>.Success(resultDto, "تم تحديث الامتحان بنجاح");
@@ -149,6 +214,54 @@ namespace Project.BLL.Services
 
             _unitOfWork.Exams.Update(exam);
             await _unitOfWork.SaveChangesAsync(CancellationToken.None);
+
+            // Notify students about published exam results
+            var publishedExam = await _unitOfWork.Exams.GetByIdAsync(id);
+            if (publishedExam?.ClassSubjectTeacherId != null)
+            {
+                var cst = await _unitOfWork.ClassSubjectTeachers.GetByIdAsync(publishedExam.ClassSubjectTeacherId.Value);
+                if (cst != null)
+                {
+                    var enrollments = await _unitOfWork.StudentEnrollments
+                        .GetActiveByClassAsync(cst.ClassId, cst.AcademicYearId);
+                    var studentIds = enrollments
+                        .Where(e => e.Student != null && e.Student.UserId != null)
+                        .Select(e => e.Student.UserId!.Value)
+                        .Distinct()
+                        .ToList();
+
+                    if (studentIds.Count != 0)
+                    {
+                        await _notificationService.SendBulkNotificationAsync(new SendBulkNotificationRequest
+                        {
+                            UserIds = studentIds,
+                            Title = "نتائج الامتحان",
+                            Body = $"تم نشر نتائج الامتحان: {publishedExam.Title}",
+                            Type = NotificationType.ExamResult
+                        });
+
+                        // كمان نبعت إشعار لأولياء الأمور
+                        var parentIds = new List<int>();
+                        foreach (var enrollment in enrollments)
+                        {
+                            var parentLinks = await _unitOfWork.ParentStudents
+                                .FindAsync(ps => ps.StudentId == enrollment.StudentId);
+                            parentIds.AddRange(parentLinks.Select(ps => ps.ParentId));
+                        }
+                        parentIds = parentIds.Distinct().ToList();
+                        if (parentIds.Count != 0)
+                        {
+                            await _notificationService.SendBulkNotificationAsync(new SendBulkNotificationRequest
+                            {
+                                UserIds = parentIds,
+                                Title = "نتائج الامتحان",
+                                Body = $"تم نشر نتائج الامتحان: {publishedExam.Title}",
+                                Type = NotificationType.ExamResult
+                            });
+                        }
+                    }
+                }
+            }
 
             return OperationResult.Success("تم نشر الامتحان بنجاح");
         }

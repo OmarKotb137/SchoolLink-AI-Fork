@@ -3,13 +3,12 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
-import { Topbar } from '../../layouts/topbar/topbar';
 import { AssignmentManagerService, AssignmentSubmissionListItem, AssignmentSubmissionDetail, AssignmentDetail } from '../assignment-management/assignment-manager.service';
 
 @Component({
   selector: 'app-assignment-submissions',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, Sidebar, Topbar],
+  imports: [CommonModule, FormsModule, RouterModule, Sidebar],
   templateUrl: './assignment-submissions.html',
   styleUrl: './assignment-submissions.css'
 })

@@ -1,0 +1,180 @@
+<app-sidebar [(isOpen)]="sidebarOpen" />
+<div class="main-content">
+  <main class="pt-24 px-margin-mobile md:px-margin-desktop pb-24 lg:pb-12">
+    <div class="max-w-4xl mx-auto space-y-stack-lg">
+
+      <!-- Header -->
+      <div>
+        <h1 class="font-headline-lg text-headline-lg" style="font-weight:800;background:linear-gradient(135deg,#f59e0b,#d97706);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">
+          طلب اجتماع مع المدرسة
+        </h1>
+        <p class="text-outline font-body-md mt-1">تقديم طلب اجتماع لمناقشة المستوى الدراسي لابنك مع الإدارة</p>
+      </div>
+
+      @if (submitted()) {
+        <!-- Success Message -->
+        <div class="glass-card" style="padding:32px;text-align:center;border-right:4px solid #0d7a5f;">
+          <span class="material-symbols-outlined" style="font-size:48px;color:#0d7a5f;font-variation-settings:'FILL'1;">check_circle</span>
+          <h2 class="font-headline-md text-headline-md mt-2" style="font-weight:700;">تم إرسال الطلب بنجاح</h2>
+          <p class="text-outline font-body-md mt-1">سيتم مراجعة طلبك من قبل الإدارة والرد عليك في أقرب وقت</p>
+          <button class="gradient-btn mt-4" style="padding:10px 24px;" (click)="submitted.set(false)">
+            تقديم طلب آخر
+          </button>
+        </div>
+      }
+
+      @if (!submitted()) {
+        <!-- Request Form -->
+        <div class="glass-card" style="padding:24px;">
+          <h2 class="font-headline-md text-headline-md" style="font-weight:700;">نموذج طلب الاجتماع</h2>
+          <p class="text-outline font-body-md mt-1">يرجى تعبئة البيانات التالية لتقديم طلب الاجتماع</p>
+
+          @if (error()) {
+            <div class="error-banner mt-4">
+              <span class="material-symbols-outlined" style="font-size:18px;">error</span>
+              <span>{{ error() }}</span>
+            </div>
+          }
+
+          @if (loading()) {
+            <div class="flex justify-center py-8">
+              <div class="loading-spinner"></div>
+            </div>
+          } @else if (children().length === 0) {
+            <div class="text-center py-8">
+              <span class="material-symbols-outlined text-4xl text-outline">child_care</span>
+              <p class="text-outline font-body-md mt-2">لا يوجد أبناء مسجلين لحسابك</p>
+            </div>
+          } @else {
+            <div class="form-grid mt-6">
+              <!-- Student Selection -->
+              <div class="form-group">
+                <label class="form-label" for="student">الطالب *</label>
+                <select id="student" class="glass-select"
+                        [value]="studentId() ?? ''"
+                        (change)="onStudentChange($event)">
+                  <option value="" disabled>اختر الطالب</option>
+                  @for (child of children(); track child.id) {
+                    <option [value]="child.id">{{ child.name }}</option>
+                  }
+                </select>
+              </div>
+
+              <!-- Reason -->
+              <div class="form-group">
+                <label class="form-label" for="reason">سبب الطلب *</label>
+                <textarea id="reason" class="glass-textarea"
+                          [value]="reason()"
+                          (input)="onReasonInput($event)"
+                          placeholder="اذكر سبب طلب الاجتماع..."
+                          rows="3"></textarea>
+              </div>
+
+              <!-- Preferred Date -->
+              <div class="form-group">
+                <label class="form-label" for="preferredDate">التاريخ المفضل</label>
+                <input id="preferredDate" type="date" class="glass-input"
+                       [value]="preferredDate()"
+                       (input)="onDateInput($event)" />
+              </div>
+
+              <!-- Notes -->
+              <div class="form-group">
+                <label class="form-label" for="notes">ملاحظات إضافية</label>
+                <textarea id="notes" class="glass-textarea"
+                          [value]="notes()"
+                          (input)="onNotesInput($event)"
+                          placeholder="أي ملاحظات إضافية..."
+                          rows="2"></textarea>
+              </div>
+            </div>
+
+            <div class="flex justify-end mt-6">
+              <button class="gradient-btn" style="padding:12px 32px;"
+                      [disabled]="!canSubmit()"
+                      (click)="submitRequest()">
+                @if (submitting()) {
+                  <span class="loading-spinner-small"></span>
+                  <span>جاري الإرسال...</span>
+                } @else {
+                  <span class="material-symbols-outlined" style="font-size:18px;">send</span>
+                  <span>إرسال الطلب</span>
+                }
+              </button>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- Previous Requests -->
+      <div class="glass-card" style="padding:24px;">
+        <h2 class="font-headline-md text-headline-md" style="font-weight:700;">طلباتي السابقة</h2>
+        <p class="text-outline font-body-md mt-1">جميع طلبات الاجتماع التي قمت بتقديمها</p>
+
+        @if (requestsLoading()) {
+          <div class="flex justify-center py-8">
+            <div class="loading-spinner"></div>
+          </div>
+        } @else if (myRequests().length === 0) {
+          <div class="text-center py-8">
+            <span class="material-symbols-outlined text-4xl text-outline">meeting_room</span>
+            <p class="text-outline font-body-md mt-2">لا توجد طلبات سابقة</p>
+          </div>
+        } @else {
+          <div class="requests-list mt-4">
+            @for (req of myRequests(); track req.id) {
+              <div class="request-card" style="border-right:4px solid {{ getStatusColor(req.status) }};">
+                <div class="request-card-header">
+                  <div class="request-status">
+                    <span class="material-symbols-outlined" style="color:{{ getStatusColor(req.status) }};">
+                      {{ getStatusIcon(req.status) }}
+                    </span>
+                    <span class="status-label" style="color:{{ getStatusColor(req.status) }};">
+                      {{ getStatusLabel(req.status) }}
+                    </span>
+                  </div>
+                  <span class="text-outline text-label-sm">{{ formatDateTime(req.createdAt) }}</span>
+                </div>
+                <div class="request-card-body">
+                  <div class="request-info">
+                    <span class="material-symbols-outlined" style="font-size:16px;color:#f59e0b;">face</span>
+                    <span>{{ req.studentName }}</span>
+                  </div>
+                  <div class="request-info">
+                    <span class="material-symbols-outlined" style="font-size:16px;color:#2563eb;">description</span>
+                    <span>{{ req.reason }}</span>
+                  </div>
+                  @if (req.preferredDate) {
+                    <div class="request-info">
+                      <span class="material-symbols-outlined" style="font-size:16px;color:#7c3aed;">calendar_month</span>
+                      <span>{{ formatDate(req.preferredDate) }}</span>
+                    </div>
+                  }
+                  @if (req.scheduledDate) {
+                    <div class="request-info">
+                      <span class="material-symbols-outlined" style="font-size:16px;color:#0d7a5f;">event_available</span>
+                      <span>{{ formatDateTime(req.scheduledDate) }}</span>
+                    </div>
+                  }
+                  @if (req.handledByName) {
+                    <div class="request-info">
+                      <span class="material-symbols-outlined" style="font-size:16px;color:#0891b2;">person</span>
+                      <span>{{ req.handledByName }}</span>
+                    </div>
+                  }
+                  @if (req.notes) {
+                    <div class="request-info">
+                      <span class="material-symbols-outlined" style="font-size:16px;color:#6b7280;">notes</span>
+                      <span>{{ req.notes }}</span>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+    </div>
+  </main>
+</div>

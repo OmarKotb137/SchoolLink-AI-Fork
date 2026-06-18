@@ -14,12 +14,10 @@ import {
   ClassPickerStudent
 } from '../../core/services/class-enrollment-picker.service';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
-import { Topbar } from '../../layouts/topbar/topbar';
-
 @Component({
   selector: 'app-class-management',
   standalone: true,
-  imports: [CommonModule, FormsModule, Sidebar, Topbar],
+  imports: [CommonModule, FormsModule, Sidebar],
   templateUrl: './class-management.html',
   styleUrl: './class-management.css',
 })

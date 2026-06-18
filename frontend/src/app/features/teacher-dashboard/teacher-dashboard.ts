@@ -1,6 +1,5 @@
 import { Component, OnInit, signal, inject } from '@angular/core';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
-import { Topbar } from '../../layouts/topbar/topbar';
 import { AuthService } from '../../core/services/auth.service';
 import { ClassService } from '../../core/services/class.service';
 import { ClassSubjectTeacherService } from '../../core/services/class-subject-teacher.service';
@@ -12,7 +11,7 @@ import { catchError, switchMap, map } from 'rxjs/operators';
 
 @Component({
   selector: 'app-teacher-dashboard',
-  imports: [Sidebar, Topbar],
+  imports: [Sidebar],
   templateUrl: './teacher-dashboard.html',
   styleUrl: './teacher-dashboard.css'
 })

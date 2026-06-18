@@ -1,6 +1,5 @@
 import { Component, signal, OnInit, inject } from '@angular/core';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
-import { Topbar } from '../../layouts/topbar/topbar';
 import { AuthService } from '../../core/services/auth.service';
 import { AcademicYearService } from '../../core/services/academic-year.service';
 import { StudentDashboardService, StudentDashboardData } from './student-dashboard.service';
@@ -8,7 +7,7 @@ import { switchMap, of } from 'rxjs';
 
 @Component({
   selector: 'app-student-dashboard',
-  imports: [Sidebar, Topbar],
+  imports: [Sidebar],
   templateUrl: './student-dashboard.html',
   styleUrl: './student-dashboard.css'
 })

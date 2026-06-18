@@ -88,4 +88,14 @@ public class AnnouncementController : ControllerBase
             return BadRequest(result);
         return NoContent();
     }
+
+    [HttpPost("cleanup-expired")]
+    public async Task<IActionResult> CleanupExpired()
+    {
+        var callerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var result = await _announcementService.CleanupExpiredAnnouncementsAsync(callerId);
+        if (!result.IsSuccess)
+            return BadRequest(result);
+        return Ok(result);
+    }
 }

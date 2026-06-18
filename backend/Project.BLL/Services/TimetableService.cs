@@ -191,6 +191,9 @@ public class TimetableService : ITimetableService
             await _unitOfWork.SaveChangesAsync();
         });
 
+        // إشعار الطلاب بتحديث الجدول عند التفعيل فقط (ليس عند كل إضافة/تعديل حصة)
+        await NotifyScheduleChangedAsync(timetable.ClassId);
+
         return OperationResult.Success("تم تفعيل الجدول الدراسي بنجاح");
     }
 
@@ -315,9 +318,7 @@ public class TimetableService : ITimetableService
         await _unitOfWork.TimetableSlots.AddAsync(slot);
         await _unitOfWork.SaveChangesAsync();
 
-        // Send ScheduleChanged notification to students in this class
-        await NotifyScheduleChangedAsync(timetable.ClassId);
-
+        // تم نقل الإشعار إلى ActivateTimetableAsync (التنبيه عند تفعيل الجدول فقط، مش عند كل تعديل)
         // 7. Reload with ClassSubjectTeacher, Subject, and Teacher for DTO names
         var withDetails = await _unitOfWork.TimetableSlots.GetByIdWithDetailsAsync(slot.Id);
 
@@ -406,8 +407,7 @@ public class TimetableService : ITimetableService
         _unitOfWork.TimetableSlots.Update(slot);
         await _unitOfWork.SaveChangesAsync();
 
-        // Send ScheduleChanged notification to students in this class
-        await NotifyScheduleChangedAsync(timetable.ClassId);
+        // تم نقل الإشعار إلى ActivateTimetableAsync (التنبيه عند تفعيل الجدول فقط، مش عند كل تعديل)
 
         // 7. Reload with details for SubjectName, TeacherName, and RoomName
         var withDetails = await _unitOfWork.TimetableSlots.GetByIdWithDetailsAsync(slot.Id);

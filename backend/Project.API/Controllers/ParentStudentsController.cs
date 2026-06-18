@@ -8,7 +8,6 @@ namespace Project.API.Controllers;
 
 [ApiController]
 [Route("api/parent-students")]
-[Authorize(Roles = "Admin")]
 public class ParentStudentsController : ControllerBase
 {
     private readonly IParentStudentService _parentStudentService;
@@ -19,6 +18,7 @@ public class ParentStudentsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Link([FromBody] LinkParentStudentRequest request)
     {
         var result = await _parentStudentService.LinkParentToStudentAsync(request);
@@ -28,6 +28,7 @@ public class ParentStudentsController : ControllerBase
     }
 
     [HttpDelete("{id:int}")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Unlink(int id)
     {
         var result = await _parentStudentService.UnlinkParentFromStudentAsync(id);
@@ -37,6 +38,7 @@ public class ParentStudentsController : ControllerBase
     }
 
     [HttpGet("by-parent/{parentId:int}")]
+    [Authorize(Roles = "Admin,Parent")]
     public async Task<IActionResult> GetStudentsByParent(int parentId)
     {
         var result = await _parentStudentService.GetStudentsByParentAsync(parentId);
@@ -46,6 +48,7 @@ public class ParentStudentsController : ControllerBase
     }
 
     [HttpGet("by-student/{studentId:int}")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> GetParentsByStudent(int studentId)
     {
         var result = await _parentStudentService.GetParentsByStudentAsync(studentId);

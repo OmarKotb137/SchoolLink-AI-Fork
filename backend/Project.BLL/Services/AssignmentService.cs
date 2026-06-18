@@ -6,6 +6,7 @@ using Project.BLL.Interfaces;
 using Project.DAL.Interfaces;
 using Project.Domain.Entities;
 using Project.Domain.Enums;
+using Project.BLL.DTOs.Notifications;
 
 namespace Project.BLL.Services
 {
@@ -13,11 +14,13 @@ namespace Project.BLL.Services
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
+        private readonly INotificationService _notificationService;
 
-        public AssignmentService(IUnitOfWork unitOfWork, IMapper mapper)
+        public AssignmentService(IUnitOfWork unitOfWork, IMapper mapper, INotificationService notificationService)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
+            _notificationService = notificationService;
         }
 
         public async Task<OperationResult<List<AssignmentDto>>> GetAllByClassSubjectTeacherAsync(int classSubjectTeacherId)
@@ -52,6 +55,34 @@ namespace Project.BLL.Services
 
             await _unitOfWork.Assignments.AddAsync(assignment);
             await _unitOfWork.SaveChangesAsync();
+
+            // Notify students in this class about the new assignment
+            var cst = await _unitOfWork.ClassSubjectTeachers.GetByIdAsync(dto.ClassSubjectTeacherId);
+            if (cst != null)
+            {
+                var classEntity = await _unitOfWork.Classes.GetByIdAsync(cst.ClassId);
+                if (classEntity != null)
+                {
+                    var enrollments = await _unitOfWork.StudentEnrollments
+                        .GetActiveByClassAsync(cst.ClassId, cst.AcademicYearId);
+                    var studentIds = enrollments
+                        .Where(e => e.Student != null && e.Student.UserId != null)
+                        .Select(e => e.Student.UserId!.Value)
+                        .Distinct()
+                        .ToList();
+
+                    if (studentIds.Count != 0)
+                    {
+                        await _notificationService.SendBulkNotificationAsync(new SendBulkNotificationRequest
+                        {
+                            UserIds = studentIds,
+                            Title = "واجب جديد",
+                            Body = $"تم إضافة واجب جديد: {assignment.Title}",
+                            Type = NotificationType.NewAssignment
+                        });
+                    }
+                }
+            }
 
             var resultDto = _mapper.Map<AssignmentDto>(assignment);
             return OperationResult<AssignmentDto>.Success(resultDto);

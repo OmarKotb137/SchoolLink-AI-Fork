@@ -2,7 +2,6 @@ import { CommonModule, DatePipe } from '@angular/common';
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
-import { Topbar } from '../../layouts/topbar/topbar';
 import {
   StudentAssignmentAnswerPayload,
   StudentAssignmentDetails,
@@ -14,7 +13,7 @@ import { StudentAssignmentsService } from '../../core/services/student-assignmen
 @Component({
   selector: 'app-homework',
   standalone: true,
-  imports: [CommonModule, Sidebar, Topbar, DatePipe],
+  imports: [CommonModule, Sidebar, DatePipe],
   templateUrl: './homework.html',
   styleUrl: './homework.css'
 })

@@ -48,6 +48,7 @@ public class AppDbContext : DbContext
     public DbSet<BlockedUser> BlockedUsers => Set<BlockedUser>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<Announcement> Announcements => Set<Announcement>();
+    public DbSet<AnnouncementUser> AnnouncementUsers => Set<AnnouncementUser>();
     public DbSet<ParentMeetingRequest> ParentMeetingRequests => Set<ParentMeetingRequest>();
     
     public DbSet<LibraryItem> LibraryItems => Set<LibraryItem>();

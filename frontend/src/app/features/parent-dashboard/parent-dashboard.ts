@@ -1,7 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, OnInit, signal, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
-import { Topbar } from '../../layouts/topbar/topbar';
 import { ParentDashboardChild, ParentDashboardData, ParentDashboardService } from '../../core/services/parent-dashboard.service';
 import { AuthService } from '../../core/services/auth.service';
 import { Chart, BarController, BarElement, CategoryScale, LinearScale, Tooltip, Legend, ArcElement, DoughnutController } from 'chart.js';
@@ -11,7 +10,7 @@ Chart.register(BarController, BarElement, CategoryScale, LinearScale, Tooltip, L
 @Component({
   selector: 'app-parent-dashboard',
   standalone: true,
-  imports: [CommonModule, Sidebar, Topbar],
+  imports: [CommonModule, Sidebar],
   templateUrl: './parent-dashboard.html',
   styleUrl: './parent-dashboard.css'
 })

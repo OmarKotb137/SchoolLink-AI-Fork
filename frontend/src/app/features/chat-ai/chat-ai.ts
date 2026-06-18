@@ -2,7 +2,6 @@
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
-import { Topbar } from '../../layouts/topbar/topbar';
 import {
   AiAgentChatService,
   AgentResponse,
@@ -57,7 +56,7 @@ const QUICK_PROMPTS: Record<string, QuickPrompt[]> = {
 
 @Component({
   selector: 'app-chat-ai',
-  imports: [Sidebar, Topbar, FormsModule, DatePipe],
+  imports: [Sidebar, FormsModule, DatePipe],
   templateUrl: './chat-ai.html',
   styleUrl: './chat-ai.css',
 })

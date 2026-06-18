@@ -1,6 +1,5 @@
 import { Component, inject, signal, ViewChild, ElementRef, OnInit, AfterViewInit } from '@angular/core';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
-import { Topbar } from '../../layouts/topbar/topbar';
 import { DashboardService, AdminDashboardData } from './dashboard.service';
 import { AuthService } from '../../core/services/auth.service';
 import { Chart, BarController, BarElement, CategoryScale, LinearScale, Tooltip, Legend, ArcElement, PointElement, LineElement, LineController, DoughnutController } from 'chart.js';
@@ -9,7 +8,7 @@ Chart.register(BarController, BarElement, CategoryScale, LinearScale, Tooltip, L
 
 @Component({
   selector: 'app-admin-dashboard',
-  imports: [Sidebar, Topbar],
+  imports: [Sidebar],
   templateUrl: './admin-dashboard.html',
   styleUrl: './admin-dashboard.css'
 })

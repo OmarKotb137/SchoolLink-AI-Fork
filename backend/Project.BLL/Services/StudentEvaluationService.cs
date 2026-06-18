@@ -170,39 +170,33 @@ public class StudentEvaluationService : IStudentEvaluationService
         await _unitOfWork.StudentEvaluations.AddAsync(entity);
         await _unitOfWork.SaveChangesAsync();
 
-        // إشعار بالتقييم
+        // إشعار بالتقييم (لولي الأمر + الطالب)
         var notifType = ResolveEvaluationNotificationType(item.Name);
-        if (notifType.HasValue)
+        var student = await _unitOfWork.Students.GetByIdAsync(enrollment.StudentId);
+        var studentName = student?.FullName ?? "طالب";
+        var parentUsers = await _unitOfWork.ParentStudents
+            .FindAsync(ps => ps.StudentId == enrollment.StudentId);
+        var recipients = parentUsers.Select(p => p.ParentId).ToList();
+        if (student?.UserId != null)
+            recipients.Add(student.UserId.Value);
+
+        if (recipients.Count != 0)
         {
-            var student = await _unitOfWork.Students.GetByIdAsync(enrollment.StudentId);
-            var studentName = student?.FullName ?? "طالب";
-            var parentUsers = await _unitOfWork.ParentStudents
-                .FindAsync(ps => ps.StudentId == enrollment.StudentId);
-            var parentIds = parentUsers.Select(p => p.ParentId).ToList();
-
-            var recipients = new List<int>();
-            if (student?.UserId != null)
-                recipients.Add(student.UserId.Value);
-            recipients.AddRange(parentIds);
-
-            if (recipients.Count != 0)
+            await _notificationService.SendBulkNotificationAsync(new SendBulkNotificationRequest
             {
-                await _notificationService.SendBulkNotificationAsync(new SendBulkNotificationRequest
+                UserIds = recipients,
+                Title = notifType switch
                 {
-                    UserIds = recipients.Distinct().ToList(),
-                    Title = notifType switch
-                    {
-                        NotificationType.GradeAlert => "تسجيل درجة",
-                        NotificationType.BehaviorAlert => "تنبيه سلوكي",
-                        NotificationType.PositiveBehavior => "سلوك إيجابي",
-                        NotificationType.DisciplinaryAction => "إجراء تأديبي",
-                        NotificationType.ImprovementAlert => "تحسين الأداء",
-                        _ => "تقييم جديد"
-                    },
-                    Body = $"تم تسجيل تقييم للطالب {studentName} في معيار {item.Name}",
-                    Type = notifType.Value
-                });
-            }
+                    NotificationType.GradeAlert => "تسجيل درجة",
+                    NotificationType.BehaviorAlert => "تنبيه سلوكي",
+                    NotificationType.PositiveBehavior => "سلوك إيجابي",
+                    NotificationType.DisciplinaryAction => "إجراء تأديبي",
+                    NotificationType.ImprovementAlert => "تحسين الأداء",
+                    _ => "تقييم جديد"
+                },
+                Body = $"تم تسجيل تقييم للطالب {studentName} في معيار {item.Name}: {entity.Score} من {item.MaxScore}",
+                Type = notifType
+            });
         }
 
         return OperationResult<StudentEvaluationDto>.Success(
@@ -210,9 +204,10 @@ public class StudentEvaluationService : IStudentEvaluationService
             "تم تسجيل التقييم بنجاح");
     }
 
-    private static NotificationType? ResolveEvaluationNotificationType(string itemName)
+    private static NotificationType ResolveEvaluationNotificationType(string itemName)
     {
-        if (string.IsNullOrWhiteSpace(itemName)) return null;
+        if (string.IsNullOrWhiteSpace(itemName))
+            return NotificationType.GradeAlert;
 
         if (itemName.Contains("سلوك إيجابي") || itemName.Contains("متميز"))
             return NotificationType.PositiveBehavior;
@@ -229,7 +224,7 @@ public class StudentEvaluationService : IStudentEvaluationService
         if (itemName.Contains("سلوك"))
             return NotificationType.BehaviorAlert;
 
-        return null;
+        return NotificationType.GradeAlert;
     }
 
     public async Task<OperationResult<StudentEvaluationDto>> UpdateEvaluationAsync(
@@ -250,6 +245,9 @@ public class StudentEvaluationService : IStudentEvaluationService
         if (teacher is null || teacher.IsDeleted || !teacher.IsActive)
             return OperationResult<StudentEvaluationDto>.Failure("المعلم غير موجود أو غير نشط");
 
+        var oldScore = entity.Score;
+        var scoreChanged = oldScore != request.NewScore;
+
         entity.Score = request.NewScore;
         entity.EnteredById = request.UpdatedById;
         entity.UpdatedAt = DateTime.UtcNow;
@@ -257,6 +255,51 @@ public class StudentEvaluationService : IStudentEvaluationService
         _unitOfWork.StudentEvaluations.Update(entity);
         await _unitOfWork.SaveChangesAsync();
 
+        // Send notification only if the score actually changed
+        if (!scoreChanged) goto Success;
+
+        try
+        {
+            var enrollment = await _unitOfWork.StudentEnrollments.GetByIdAsync(entity.EnrollmentId);
+            var student = enrollment != null
+                ? await _unitOfWork.Students.GetByIdAsync(enrollment.StudentId)
+                : null;
+            var studentName = student?.FullName ?? "طالب";
+            var studentId = student?.Id ?? 0;
+
+            if (studentId > 0)
+            {
+                var parentLinks = await _unitOfWork.ParentStudents
+                    .FindAsync(ps => ps.StudentId == studentId);
+                var allRecipients = parentLinks.Select(ps => ps.ParentId).ToList();
+                if (student?.UserId != null)
+                    allRecipients.Add(student.UserId.Value);
+
+                var notifType = ResolveEvaluationNotificationType(item.Name);
+
+                if (allRecipients.Count != 0)
+                {
+                    await _notificationService.SendBulkNotificationAsync(new SendBulkNotificationRequest
+                    {
+                        UserIds = allRecipients,
+                        Title = notifType switch
+                        {
+                            NotificationType.GradeAlert => "تحديث درجة",
+                            NotificationType.BehaviorAlert => "تحديث تنبيه سلوكي",
+                            NotificationType.PositiveBehavior => "تحديث سلوك إيجابي",
+                            NotificationType.DisciplinaryAction => "تحديث إجراء تأديبي",
+                            NotificationType.ImprovementAlert => "تحديث تحسين الأداء",
+                            _ => "تحديث تقييم"
+                        },
+                        Body = $"تم تحديث تقييم الطالب {studentName} في معيار {item.Name}: {request.NewScore} من {item.MaxScore}",
+                        Type = notifType
+                    });
+                }
+            }
+        }
+        catch { /* Notification failure should not break the update */ }
+
+    Success:
         return OperationResult<StudentEvaluationDto>.Success(
             _mapper.Map<StudentEvaluationDto>(entity),
             "تم تحديث التقييم بنجاح");
@@ -315,7 +358,7 @@ public class StudentEvaluationService : IStudentEvaluationService
         var itemMap = items.ToDictionary(i => i.Id);
 
         var saved = 0;
-        var newCreations = new List<(int EnrollmentId, EvaluationItem Item)>();
+        var changedEntities = new List<(int EnrollmentId, EvaluationItem Item, decimal Score)>();
         foreach (var entry in request.Entries)
         {
             if (!itemMap.TryGetValue(entry.EvaluationItemId, out var item))
@@ -330,10 +373,15 @@ public class StudentEvaluationService : IStudentEvaluationService
             {
                 var existing = await _unitOfWork.StudentEvaluations.GetByIdAsync(entry.EvaluationId.Value);
                 if (existing is null || existing.IsDeleted) continue;
-                existing.Score = entry.Score;
-                existing.EnteredById = request.EnteredById;
-                existing.UpdatedAt = DateTime.UtcNow;
-                _unitOfWork.StudentEvaluations.Update(existing);
+                // Only notify if score actually changed
+                if (existing.Score != entry.Score)
+                {
+                    existing.Score = entry.Score;
+                    existing.EnteredById = request.EnteredById;
+                    existing.UpdatedAt = DateTime.UtcNow;
+                    _unitOfWork.StudentEvaluations.Update(existing);
+                    changedEntities.Add((entry.EnrollmentId, item, entry.Score.Value));
+                }
             }
             else
             {
@@ -341,10 +389,15 @@ public class StudentEvaluationService : IStudentEvaluationService
                     .GetByEnrollmentItemAndPeriodAsync(entry.EnrollmentId, entry.EvaluationItemId, entry.PeriodId);
                 if (existing is not null && !existing.IsDeleted)
                 {
-                    existing.Score = entry.Score;
-                    existing.EnteredById = request.EnteredById;
-                    existing.UpdatedAt = DateTime.UtcNow;
-                    _unitOfWork.StudentEvaluations.Update(existing);
+                    // Only notify if score actually changed
+                    if (existing.Score != entry.Score)
+                    {
+                        existing.Score = entry.Score;
+                        existing.EnteredById = request.EnteredById;
+                        existing.UpdatedAt = DateTime.UtcNow;
+                        _unitOfWork.StudentEvaluations.Update(existing);
+                        changedEntities.Add((entry.EnrollmentId, item, entry.Score.Value));
+                    }
                 }
                 else
                 {
@@ -358,7 +411,7 @@ public class StudentEvaluationService : IStudentEvaluationService
                         EnteredAt = DateTime.UtcNow
                     };
                     await _unitOfWork.StudentEvaluations.AddAsync(eval);
-                    newCreations.Add((entry.EnrollmentId, item));
+                    changedEntities.Add((entry.EnrollmentId, item, entry.Score.Value));
                 }
             }
             saved++;
@@ -366,11 +419,10 @@ public class StudentEvaluationService : IStudentEvaluationService
 
         await _unitOfWork.SaveChangesAsync();
 
-        // إشعارات فقط للتقييمات الجديدة (create) مش التحديثات
-        foreach (var (enrollmentId, item) in newCreations)
+        // إشعارات فقط للدرجات اللي اتغيرت فعلاً أو الجديدة
+        foreach (var (enrollmentId, item, score) in changedEntities.Distinct())
         {
             var notifType = ResolveEvaluationNotificationType(item.Name);
-            if (!notifType.HasValue) continue;
 
             var enrollment = await _unitOfWork.StudentEnrollments.GetByIdAsync(enrollmentId);
             if (enrollment is null) continue;
@@ -379,18 +431,15 @@ public class StudentEvaluationService : IStudentEvaluationService
             var studentName = student?.FullName ?? "طالب";
             var parentUsers = await _unitOfWork.ParentStudents
                 .FindAsync(ps => ps.StudentId == enrollment.StudentId);
-            var parentIds = parentUsers.Select(p => p.ParentId).ToList();
-
-            var recipients = new List<int>();
+            var recipients = parentUsers.Select(p => p.ParentId).ToList();
             if (student?.UserId != null)
                 recipients.Add(student.UserId.Value);
-            recipients.AddRange(parentIds);
 
             if (recipients.Count == 0) continue;
 
             await _notificationService.SendBulkNotificationAsync(new SendBulkNotificationRequest
             {
-                UserIds = recipients.Distinct().ToList(),
+                UserIds = recipients,
                 Title = notifType switch
                 {
                     NotificationType.GradeAlert => "تسجيل درجة",
@@ -400,8 +449,8 @@ public class StudentEvaluationService : IStudentEvaluationService
                     NotificationType.ImprovementAlert => "تحسين الأداء",
                     _ => "تقييم جديد"
                 },
-                Body = $"تم تسجيل تقييم للطالب {studentName} في معيار {item.Name}",
-                Type = notifType.Value
+                Body = $"تم تسجيل تقييم للطالب {studentName} في معيار {item.Name}: {score} من {item.MaxScore}",
+                Type = notifType
             });
         }
 

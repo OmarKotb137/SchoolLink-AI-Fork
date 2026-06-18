@@ -38,6 +38,18 @@
   background: rgba(0, 35, 111, 0.1);
   color: #00236f;
 }
+.badge-academic {
+  background: rgba(37, 99, 235, 0.1);
+  color: #2563eb;
+}
+.badge-general {
+  background: rgba(5, 150, 105, 0.1);
+  color: #059669;
+}
+.badge-system {
+  background: rgba(107, 114, 128, 0.1);
+  color: #6b7280;
+}
 .loading-spinner {
   width: 40px;
   height: 40px;

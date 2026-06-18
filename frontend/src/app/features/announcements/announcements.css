@@ -1,0 +1,10 @@
+.main-content {
+  margin-inline-start: 280px;
+  transition: margin-inline-start 0.3s ease;
+}
+
+@media (max-width: 1023px) {
+  .main-content {
+    margin-inline-start: 0;
+  }
+}

@@ -2,14 +2,13 @@ import { CommonModule, DatePipe } from '@angular/common';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
-import { Topbar } from '../../layouts/topbar/topbar';
 import { StudentAssignmentSubmissionResult } from '../../core/models/student-assignment.models';
 import { StudentAssignmentsService } from '../../core/services/student-assignments.service';
 
 @Component({
   selector: 'app-assignment-submission-result',
   standalone: true,
-  imports: [CommonModule, Sidebar, Topbar, DatePipe],
+  imports: [CommonModule, Sidebar, DatePipe],
   templateUrl: './assignment-submission-result.html',
   styleUrl: './assignment-submission-result.css'
 })

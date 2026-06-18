@@ -2,14 +2,13 @@ import { Component, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
-import { Topbar } from '../../layouts/topbar/topbar';
 import { BookParserService, ParsedUnitDto, CreateUnitDto, ParsedLessonDto } from '../../core/services/book-parser.service';
 import { AcademicYearService } from '../../core/services/academic-year.service';
 
 @Component({
   selector: 'app-book-parser',
   standalone: true,
-  imports: [Sidebar, Topbar, CommonModule, FormsModule],
+  imports: [Sidebar, CommonModule, FormsModule],
   templateUrl: './book-parser.html',
   styleUrl: './book-parser.css',
 })

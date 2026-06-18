@@ -19,4 +19,5 @@ public class AnnouncementDto
     public bool IsForAllTeachers { get; set; }
     public DateTime? ExpiresAt { get; set; }
     public DateTime CreatedAt { get; set; }
+    public int TargetedUserCount { get; set; }
 }

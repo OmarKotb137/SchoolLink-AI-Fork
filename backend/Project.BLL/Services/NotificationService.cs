@@ -120,7 +120,8 @@ public class NotificationService : INotificationService
     public async Task<OperationResult> SendBulkNotificationAsync(SendBulkNotificationRequest request)
     {
         var notifications = new List<Notification>();
-        foreach (var userId in request.UserIds)
+        var uniqueUserIds = request.UserIds.Distinct().ToList();
+        foreach (var userId in uniqueUserIds)
         {
             var user = await _unitOfWork.Users.GetByIdAsync(userId);
             if (user == null || user.IsDeleted || !user.IsActive)
@@ -142,13 +143,23 @@ public class NotificationService : INotificationService
         await _unitOfWork.Notifications.BulkAddAsync(notifications);
         await _unitOfWork.SaveChangesAsync();
 
-        // Real-time push for all recipients
-        var pushTasks = notifications.Select(n =>
+        // Real-time push for all recipients — كل push مستقل عشان فشل واحد ما يأثرش على الباقي
+        var pushExceptions = new List<Exception>();
+        foreach (var n in notifications)
         {
-            var dto = _mapper.Map<NotificationDto>(n);
-            return _pushService.PushToUserAsync(n.UserId, dto);
-        });
-        await Task.WhenAll(pushTasks);
+            try
+            {
+                var dto = _mapper.Map<NotificationDto>(n);
+                await _pushService.PushToUserAsync(n.UserId, dto);
+            }
+            catch (Exception ex)
+            {
+                pushExceptions.Add(ex);
+            }
+        }
+
+        if (pushExceptions.Count > 0 && notifications.Count == pushExceptions.Count)
+            return OperationResult.Failure("فشل إرسال الإشعارات عبر الإتصال المباشر، ولكن تم حفظها في قاعدة البيانات");
 
         return OperationResult.Success($"تم إرسال الإشعارات إلى {notifications.Count} مستخدمين");
     }

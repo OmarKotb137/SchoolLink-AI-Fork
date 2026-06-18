@@ -4,7 +4,7 @@ public class ParentMeetingRequest : BaseEntity
 {
     public int ParentId { get; set; }
     public int StudentId { get; set; }
-    public int? TeacherId { get; set; }
+    public int? HandledById { get; set; }
     public string Reason { get; set; } = string.Empty;
     public DateTime? PreferredDate { get; set; }
     public DateTime? ScheduledDate { get; set; }
@@ -14,7 +14,7 @@ public class ParentMeetingRequest : BaseEntity
     // Navigation Properties
     public User Parent { get; set; } = null!;
     public Student Student { get; set; } = null!;
-    public User? Teacher { get; set; }
+    public User? HandledBy { get; set; }
 }
 
 public enum MeetingRequestStatus

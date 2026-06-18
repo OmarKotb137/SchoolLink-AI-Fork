@@ -12,8 +12,6 @@ import {
   StudentProgressionService
 } from '../../core/services/student-progression.service';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
-import { Topbar } from '../../layouts/topbar/topbar';
-
 type ProgressionAction = 1 | 2 | 3;
 type AccountFilter = 'all' | 'with-account' | 'without-account';
 type GradeFilter = 'all' | 'published' | 'unpublished' | 'missing';
@@ -22,7 +20,7 @@ type SortMode = 'name' | 'high' | 'low';
 @Component({
   selector: 'app-student-progression',
   standalone: true,
-  imports: [CommonModule, FormsModule, Sidebar, Topbar],
+  imports: [CommonModule, FormsModule, Sidebar],
   templateUrl: './student-progression.html',
   styleUrl: './student-progression.css'
 })

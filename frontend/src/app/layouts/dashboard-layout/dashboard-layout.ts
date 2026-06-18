@@ -1,6 +1,6 @@
 import { Component, signal, input } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { Sidebar, SidebarMenuItem } from '../sidebar/sidebar';
+import { Sidebar, SidebarMenuSection } from '../sidebar/sidebar';
 import { Topbar } from '../topbar/topbar';
 
 @Component({
@@ -10,6 +10,6 @@ import { Topbar } from '../topbar/topbar';
   styleUrl: './dashboard-layout.css'
 })
 export class DashboardLayout {
-  menuItems = input<SidebarMenuItem[]>([]);
+  menuItems = input<SidebarMenuSection[]>([]);
   sidebarOpen = signal(false);
 }

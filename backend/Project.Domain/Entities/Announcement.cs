@@ -20,5 +20,6 @@ namespace Project.Domain.Entities
         // Navigation Properties
         public User Author { get; set; } = null!;
         public SchoolClass? TargetClass { get; set; }
+        public ICollection<AnnouncementUser> AnnouncementUsers { get; set; } = new List<AnnouncementUser>();
     }
 }

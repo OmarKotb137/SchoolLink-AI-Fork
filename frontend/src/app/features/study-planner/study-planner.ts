@@ -1,7 +1,6 @@
 ﻿import { Component, signal, computed, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
-import { Topbar } from '../../layouts/topbar/topbar';
 import { AuthService } from '../../core/services/auth.service';
 import { StudentService } from '../../core/services/student.service';
 import { SubjectService } from '../../core/services/subject.service';
@@ -12,7 +11,7 @@ import { StudyPlanDto, StudyPlanItemDto, DAY_NAMES, PERIOD_NAMES, CreateStudyPla
 
 @Component({
   selector: 'app-study-planner',
-  imports: [Sidebar, Topbar, FormsModule],
+  imports: [Sidebar, FormsModule],
   templateUrl: './study-planner.html',
   styleUrl: './study-planner.css',
 })

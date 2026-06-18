@@ -18,6 +18,10 @@ public class NotificationController : ControllerBase
         _notificationService = notificationService;
     }
 
+    /// <summary>استخراج userId من التوكن مباشرة</summary>
+    private int CurrentUserId =>
+        int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+
     [Authorize(Roles = "Admin,Teacher")]
     [HttpPost]
     public async Task<IActionResult> Send([FromBody] SendNotificationRequest request)
@@ -38,11 +42,10 @@ public class NotificationController : ControllerBase
         return Ok(result);
     }
 
-    [Authorize(Roles = "Admin")]
     [HttpDelete("bulk")]
     public async Task<IActionResult> DeleteBulk([FromBody] List<int> notificationIds)
     {
-        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var userId = CurrentUserId;
         var result = await _notificationService.DeleteBulkNotificationsAsync(notificationIds, userId);
         if (!result.IsSuccess)
             return BadRequest(result);
@@ -52,6 +55,9 @@ public class NotificationController : ControllerBase
     [HttpGet("user/{userId}")]
     public async Task<IActionResult> GetByUser(int userId, [FromQuery] bool onlyUnread = false)
     {
+        var requestingUserId = CurrentUserId;
+        if (userId != requestingUserId)
+            return Forbid();
         var result = await _notificationService.GetNotificationsByUserAsync(userId, onlyUnread);
         if (!result.IsSuccess)
             return BadRequest(result);
@@ -61,6 +67,9 @@ public class NotificationController : ControllerBase
     [HttpGet("user/{userId}/unread-count")]
     public async Task<IActionResult> GetUnreadCount(int userId)
     {
+        var requestingUserId = CurrentUserId;
+        if (userId != requestingUserId)
+            return Forbid();
         var result = await _notificationService.GetUnreadCountAsync(userId);
         if (!result.IsSuccess)
             return BadRequest(result);
@@ -70,7 +79,7 @@ public class NotificationController : ControllerBase
     [HttpGet("{notificationId}")]
     public async Task<IActionResult> GetById(int notificationId)
     {
-        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var userId = CurrentUserId;
         var result = await _notificationService.GetNotificationByIdAsync(notificationId, userId);
         if (!result.IsSuccess)
             return NotFound(result);
@@ -80,7 +89,7 @@ public class NotificationController : ControllerBase
     [HttpPut("{notificationId}/read")]
     public async Task<IActionResult> MarkAsRead(int notificationId)
     {
-        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var userId = CurrentUserId;
         var result = await _notificationService.MarkNotificationAsReadAsync(notificationId, userId);
         if (!result.IsSuccess)
             return BadRequest(result);
@@ -90,17 +99,19 @@ public class NotificationController : ControllerBase
     [HttpPut("user/{userId}/read-all")]
     public async Task<IActionResult> MarkAllAsRead(int userId)
     {
+        var requestingUserId = CurrentUserId;
+        if (userId != requestingUserId)
+            return Forbid();
         var result = await _notificationService.MarkAllNotificationsAsReadAsync(userId);
         if (!result.IsSuccess)
             return BadRequest(result);
         return Ok(result);
     }
 
-    [Authorize(Roles = "Admin")]
     [HttpDelete("{notificationId}")]
     public async Task<IActionResult> Delete(int notificationId)
     {
-        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var userId = CurrentUserId;
         var result = await _notificationService.DeleteNotificationAsync(notificationId, userId);
         if (!result.IsSuccess)
             return BadRequest(result);

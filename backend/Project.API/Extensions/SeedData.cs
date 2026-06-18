@@ -490,10 +490,13 @@ public static class SeedData
         {
             for (int i = 0; i < 30; i++)
             {
+                var firstIdx = seq % 30;              // 0..29, rotates every student
+                var middleIdx = (seq / 6) % 30;        // 0..29, rotates every 6 students
+                var lastIdx = seq / 30;                // 0..5, rotates every 30 students
                 seq++;
                 var st = new Student
                 {
-                    FullName  = $"{firstNames[i]} {middleNames[i]} {lastNames[i]}",
+                    FullName  = $"{firstNames[firstIdx]} {middleNames[middleIdx]} {lastNames[lastIdx]}",
                     Gender    = Gender.Male,
                     BirthDate = new DateOnly(2012, 1 + (seq % 12), 1 + (seq % 28)),
                     IsActive  = true,
@@ -2443,6 +2446,69 @@ public static class SeedData
                 t.Term = AcademicTerm.SecondSemester;
                 t.Weeks = 14;
                 t.UpdatedAt = now;
+            }
+            await ctx.SaveChangesAsync();
+        }
+
+        // ── 6. Update student names to be unique (fix duplicate names across classes) ──
+        bool studentNamesNeedFix = await ctx.Students.AnyAsync(s => s.FullName == "أحمد عبد الرحمن عبد العزيز" && !s.IsDeleted);
+        if (studentNamesNeedFix)
+        {
+            var firstNames  = new[] { "أحمد","محمد","علي","عمر","خالد","يوسف","محمود","كريم","حسن","حسين","إبراهيم","عبد الله","أمير","بسام","جمال","حمزة","سامي","صالح","عادل","طارق","زياد","شادي","نادر","هاني","وائل","باهر","رامي","فادي","مازن","ياسر" };
+            var middleNames = new[] { "عبد الرحمن","سامح","جابر","إسماعيل","فتحي","أنور","حمدي","رفعت","سمير","جلال","نبيل","كامل","رشاد","بهجت","نعيم","وجيه","قاسم","مبشر","رؤوف","وديع","بهاء","سعيد","لطفي","نزيه","هشام","أكرم","بطرس","ثروت","جورج","حبيب" };
+            var lastNames   = new[] { "عبد العزيز","السيد","خليل","مرسي","فوزي","نصر","الشيخ","شحاتة","النجار","هاشم","الديب","رمضان","سلامة","بسيوني","عتريس","أبو زيد","الزهار","عرفة","جابر","خضر","زيتون","طنطاوي","عبده","غانم","قنديل","كمال","لقمة","موسى","نوح","هندي" };
+
+            var allStudents = await ctx.Students
+                .OrderBy(s => s.Id)
+                .Where(s => !s.IsDeleted)
+                .ToListAsync();
+
+            for (int seq = 0; seq < allStudents.Count; seq++)
+            {
+                var firstIdx = seq % 30;
+                var middleIdx = (seq / 6) % 30;
+                var lastIdx = seq / 30;
+                allStudents[seq].FullName = $"{firstNames[firstIdx]} {middleNames[middleIdx]} {lastNames[lastIdx]}";
+                allStudents[seq].UpdatedAt = now;
+            }
+            await ctx.SaveChangesAsync();
+
+            // Also update related User accounts and Parent names
+            var studentUserIds = allStudents.Where(s => s.UserId.HasValue).Select(s => s.UserId!.Value).ToHashSet();
+            var studentUsers = await ctx.Users
+                .Where(u => u.Role == UserRole.Student && studentUserIds.Contains(u.Id))
+                .ToListAsync();
+            var studentUserMap = allStudents
+                .Where(s => s.UserId.HasValue)
+                .ToDictionary(s => s.UserId!.Value, s => s.FullName);
+            foreach (var user in studentUsers)
+            {
+                if (studentUserMap.TryGetValue(user.Id, out var fullName))
+                {
+                    user.FullName = fullName;
+                    user.UpdatedAt = now;
+                }
+            }
+            await ctx.SaveChangesAsync();
+
+            // Update parent names (وليّ أمر {studentName})
+            var studentIdSet = allStudents.Select(s => s.Id).ToHashSet();
+            var parentStudentLinks = await ctx.ParentStudents
+                .Where(ps => studentIdSet.Contains(ps.StudentId))
+                .ToListAsync();
+            var parentIds = parentStudentLinks.Select(ps => ps.ParentId).ToHashSet();
+            var parentUsers = await ctx.Users
+                .Where(u => u.Role == UserRole.Parent && parentIds.Contains(u.Id))
+                .ToListAsync();
+            var parentStudentMap = parentStudentLinks.ToDictionary(ps => ps.ParentId, ps => ps.StudentId);
+            var studentNameMap = allStudents.ToDictionary(s => s.Id, s => s.FullName);
+            foreach (var user in parentUsers)
+            {
+                if (parentStudentMap.TryGetValue(user.Id, out var studentId) && studentNameMap.TryGetValue(studentId, out var sName))
+                {
+                    user.FullName = $"وليّ أمر {sName}";
+                    user.UpdatedAt = now;
+                }
             }
             await ctx.SaveChangesAsync();
         }

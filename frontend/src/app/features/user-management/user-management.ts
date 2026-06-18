@@ -4,7 +4,6 @@ import { Router } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
-import { Topbar } from '../../layouts/topbar/topbar';
 import { ParentStudentLink, ParentStudentService, RelationshipType } from '../../core/services/parent-student.service';
 import { Student, StudentService } from '../../core/services/student.service';
 import {
@@ -22,7 +21,7 @@ type ManagedRole = 'Admin' | 'Parent' | 'Student';
 @Component({
   selector: 'app-user-management',
   standalone: true,
-  imports: [CommonModule, Sidebar, Topbar],
+  imports: [CommonModule, Sidebar],
   templateUrl: './user-management.html',
   styleUrl: './user-management.css'
 })
