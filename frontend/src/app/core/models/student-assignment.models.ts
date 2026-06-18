@@ -87,9 +87,11 @@ export interface StudentAssignmentResultAnswer {
   questionText: string;
   answerText?: string | null;
   selectedOptionId?: number | null;
+  selectedOptionText?: string | null;
   booleanAnswer?: boolean | null;
   isCorrect?: boolean | null;
   pointsEarned: number;
   questionPoints: number;
+  correctAnswerText?: string | null;
   aiFeedback?: string | null;
 }

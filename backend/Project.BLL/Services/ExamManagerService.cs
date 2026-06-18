@@ -1,5 +1,7 @@
 using Common.Results;
 using Microsoft.EntityFrameworkCore;
+using Project.BLL.DTOs.Common;
+using Project.BLL.DTOs.Exam;
 using Project.BLL.Interfaces;
 using Project.DAL.Context;
 using Project.DAL.Interfaces;
@@ -19,8 +21,13 @@ public class ExamManagerService : IExamManagerService
         _unitOfWork = unitOfWork;
     }
 
-    public async Task<OperationResult<List<ExamManagerItemDto>>> GetAllAsync(List<int>? cstIds = null)
+    public async Task<OperationResult<PagedResult<ExamManagerItemDto>>> GetAllAsync(ExamManagerFilterDto filter)
     {
+        var cairoZone = TimeZoneInfo.FindSystemTimeZoneById(
+            OperatingSystem.IsWindows() ? "Egypt Standard Time" : "Africa/Cairo"
+        );
+        var now = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, cairoZone);
+
         var query = _context.Exams
             .Include(e => e.Subject)
             .Include(e => e.ClassSubjectTeacher).ThenInclude(cst => cst!.Subject)
@@ -32,14 +39,53 @@ public class ExamManagerService : IExamManagerService
             .Where(e => !e.IsDeleted)
             .AsQueryable();
 
-        if (cstIds != null && cstIds.Count > 0)
-            query = query.Where(e => cstIds.Contains(e.ClassSubjectTeacherId!.Value));
+        // Filter by CST IDs (academic year)
+        if (filter.CstIds != null && filter.CstIds.Count > 0)
+            query = query.Where(e => filter.CstIds.Contains(e.ClassSubjectTeacherId!.Value));
 
-        var exams = await query.OrderByDescending(e => e.CreatedAt).ToListAsync();
+        // Filter by subject
+        if (filter.SubjectId.HasValue)
+            query = query.Where(e => e.SubjectId == filter.SubjectId.Value);
 
-        var dtos = exams.Select(e =>
+        // Filter by search term
+        if (!string.IsNullOrWhiteSpace(filter.Search))
         {
-            var now = DateTime.UtcNow;
+            var term = filter.Search.Trim().ToLower();
+            query = query.Where(e => e.Title.ToLower().Contains(term));
+        }
+
+        // Apply sorting before fetching
+        query = (filter.SortBy?.ToLower()) switch
+        {
+            "oldest" => query.OrderBy(e => e.CreatedAt),
+            "name-asc" => query.OrderBy(e => e.Title),
+            "name-desc" => query.OrderByDescending(e => e.Title),
+            "date-asc" => query.OrderBy(e => e.StartTime ?? e.CreatedAt),
+            "date-desc" => query.OrderByDescending(e => e.StartTime ?? e.CreatedAt),
+            _ => query.OrderByDescending(e => e.CreatedAt), // "newest" or default
+        };
+
+        // Fetch all matching exams for in-memory status filtering
+        var exams = await query.ToListAsync();
+
+        // Apply status filter in memory (since status is computed at runtime)
+        if (!string.IsNullOrWhiteSpace(filter.Status) && filter.Status != "all")
+        {
+            exams = exams.Where(e => GetStatus(e, now) == filter.Status).ToList();
+        }
+
+        var totalCount = exams.Count;
+
+        // Apply pagination in memory after status filter
+        var page = Math.Max(1, filter.Page);
+        var pageSize = Math.Max(1, Math.Min(100, filter.PageSize));
+        var pagedExams = exams
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+
+        var dtos = pagedExams.Select(e =>
+        {
             var status = GetStatus(e, now);
             var questionCount = e.Questions.Count + e.Groups.Sum(g => g.Questions.Count);
             var classEntity = e.ClassSubjectTeacher?.Class;
@@ -63,11 +109,20 @@ public class ExamManagerService : IExamManagerService
                 questionCount, status,
                 avgScore, e.Attempts.Count, totalStudents > 0 ? totalStudents : null,
                 e.IsResultPublished,
-                pendingGrading > 0 ? pendingGrading : null
+                pendingGrading > 0 ? pendingGrading : null,
+                e.IsAIGenerated
             );
         }).ToList();
 
-        return OperationResult<List<ExamManagerItemDto>>.Success(dtos);
+        var paged = new PagedResult<ExamManagerItemDto>
+        {
+            Items = dtos,
+            TotalCount = totalCount,
+            Page = page,
+            PageSize = pageSize,
+        };
+
+        return OperationResult<PagedResult<ExamManagerItemDto>>.Success(paged);
     }
 
     public async Task<OperationResult<ExamManagerDetailDto>> GetByIdAsync(int id)
@@ -113,7 +168,8 @@ public class ExamManagerService : IExamManagerService
             exam.StartTime?.ToString("HH:mm") ?? "",
             exam.EndTime?.ToString("HH:mm") ?? "",
             exam.DurationMinutes ?? 0,
-            questionCount, status, exam.IsResultPublished, questions
+            questionCount, status, exam.IsResultPublished,
+            exam.TotalScore, questions
         );
 
         return OperationResult<ExamManagerDetailDto>.Success(dto);
@@ -179,7 +235,7 @@ public class ExamManagerService : IExamManagerService
             StartTime = startTime,
             EndTime = endTime,
             DurationMinutes = dto.DurationMinutes,
-            TotalScore = 100,
+            TotalScore = dto.TotalScore,
             IsPublished = false,
             Category = EvaluationCategory.Academic,
             CreatedAt = DateTime.UtcNow,
@@ -210,6 +266,7 @@ public class ExamManagerService : IExamManagerService
         exam.StartTime = startTime;
         exam.EndTime = endTime;
         exam.DurationMinutes = dto.DurationMinutes;
+        exam.TotalScore = dto.TotalScore;
         exam.UpdatedAt = DateTime.UtcNow;
 
         _unitOfWork.Exams.Update(exam);
@@ -386,6 +443,6 @@ public class ExamManagerService : IExamManagerService
             correctAnswer = correct?.OptionText ?? "";
         }
 
-        return new ExamManagerQuestionDto(q.Id, type, q.QuestionText, options, correctAnswer);
+        return new ExamManagerQuestionDto(q.Id, type, q.QuestionText, options, correctAnswer, q.Points);
     }
 }

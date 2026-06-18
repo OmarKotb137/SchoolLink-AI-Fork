@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Project.BLL.DTOs.Exam;
 using Project.BLL.Interfaces;
 using Project.DAL.Context;
 
@@ -25,7 +26,14 @@ public class ExamManagerController : ControllerBase
         int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
     [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] int? academicYearId)
+    public async Task<IActionResult> GetAll(
+        [FromQuery] string? search,
+        [FromQuery] int? subjectId,
+        [FromQuery] string? status,
+        [FromQuery] string? sortBy,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] int? academicYearId = null)
     {
         var userId = GetUserId();
         List<int>? cstIds = null;
@@ -39,14 +47,24 @@ public class ExamManagerController : ControllerBase
         }
         else
         {
-            // بدون فلتر سنة: جلب كل CSTs للمعلم
             cstIds = await _context.ClassSubjectTeachers
                 .Where(c => c.TeacherId == userId && !c.IsDeleted)
                 .Select(c => c.Id)
                 .ToListAsync();
         }
 
-        var result = await _service.GetAllAsync(cstIds.Count > 0 ? cstIds : null);
+        var filter = new ExamManagerFilterDto
+        {
+            Search = search,
+            SubjectId = subjectId,
+            Status = status,
+            SortBy = sortBy,
+            Page = page,
+            PageSize = pageSize,
+            CstIds = cstIds.Count > 0 ? cstIds : null
+        };
+
+        var result = await _service.GetAllAsync(filter);
         return Ok(result);
     }
 

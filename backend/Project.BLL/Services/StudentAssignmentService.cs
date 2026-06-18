@@ -270,17 +270,45 @@ public class StudentAssignmentService : IStudentAssignmentService
             Answers = includeAnswers
                 ? submission.Answers
                     .OrderBy(a => a.Question.DisplayOrder)
-                    .Select(a => new StudentAssignmentResultAnswerDto
-                    {
-                        QuestionId = a.QuestionId,
-                        QuestionText = a.Question.QuestionText,
-                        AnswerText = a.AnswerText,
-                        SelectedOptionId = a.SelectedOptionId,
-                        BooleanAnswer = a.BooleanAnswer,
-                        IsCorrect = a.IsCorrect,
-                        PointsEarned = a.PointsEarned,
-                        QuestionPoints = a.Question.Points,
-                        AIFeedback = a.AIFeedback
+                    .Select(a => {
+                        string? correctAnswerText = null;
+                        if (a.Question.QuestionType == QuestionType.MultipleChoice)
+                        {
+                            var correctOpt = a.Question.Options.FirstOrDefault(o => o.IsCorrect && !o.IsDeleted);
+                            if (correctOpt != null)
+                                correctAnswerText = correctOpt.OptionText;
+                        }
+                        else if (a.Question.QuestionType == QuestionType.TrueFalse)
+                        {
+                            var normalized = NormalizeBoolean(a.Question.CorrectAnswer);
+                            if (normalized.HasValue)
+                                correctAnswerText = normalized.Value ? "صح" : "خطأ";
+                            else
+                                correctAnswerText = a.Question.CorrectAnswer;
+                        }
+                        else
+                        {
+                            correctAnswerText = a.Question.CorrectAnswer;
+                        }
+
+                        string? selectedOptionText = a.SelectedOptionId.HasValue
+                            ? a.Question.Options.FirstOrDefault(o => o.Id == a.SelectedOptionId.Value && !o.IsDeleted)?.OptionText
+                            : null;
+
+                        return new StudentAssignmentResultAnswerDto
+                        {
+                            QuestionId = a.QuestionId,
+                            QuestionText = a.Question.QuestionText,
+                            AnswerText = a.AnswerText,
+                            SelectedOptionId = a.SelectedOptionId,
+                            SelectedOptionText = selectedOptionText,
+                            BooleanAnswer = a.BooleanAnswer,
+                            IsCorrect = a.IsCorrect,
+                            PointsEarned = a.PointsEarned,
+                            QuestionPoints = a.Question.Points,
+                            CorrectAnswerText = correctAnswerText,
+                            AIFeedback = a.AIFeedback
+                        };
                     }).ToList()
                 : new List<StudentAssignmentResultAnswerDto>()
         };

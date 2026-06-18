@@ -83,9 +83,11 @@ public class StudentAssignmentResultAnswerDto
     public string QuestionText { get; set; } = string.Empty;
     public string? AnswerText { get; set; }
     public int? SelectedOptionId { get; set; }
+    public string? SelectedOptionText { get; set; }
     public bool? BooleanAnswer { get; set; }
     public bool? IsCorrect { get; set; }
     public decimal PointsEarned { get; set; }
     public decimal QuestionPoints { get; set; }
+    public string? CorrectAnswerText { get; set; }
     public string? AIFeedback { get; set; }
 }

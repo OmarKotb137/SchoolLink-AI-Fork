@@ -44,6 +44,23 @@
           </button>
         </section>
 
+        @if (r.isResultPublished) {
+          <div class="result-char" [class.char-pass]="getScorePercent(r) >= 50" [class.char-fail]="getScorePercent(r) < 50">
+            <span class="material-symbols-outlined char-icon">
+              {{ getScorePercent(r) >= 50 ? 'sentiment_very_satisfied' : 'sentiment_dissatisfied' }}
+            </span>
+            <div class="char-msg">
+              @if (getScorePercent(r) >= 50) {
+                <strong>مبروك! 🎉</strong>
+                <span>لقد اجتزت الامتحان بنجاح، أحسنت!</span>
+              } @else {
+                <strong>لا بأس 💪</strong>
+                <span>حاول مرة أخرى، ستتحسن بالتأكيد!</span>
+              }
+            </div>
+          </div>
+        }
+
         @if (r.isResultPublished && r.answers.length > 0) {
           <section class="bg-white rounded-2xl border border-gray-100 shadow-lg overflow-hidden">
             <div class="p-5 border-b border-gray-100 bg-gray-50">

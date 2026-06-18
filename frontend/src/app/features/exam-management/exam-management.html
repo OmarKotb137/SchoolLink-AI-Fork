@@ -2,11 +2,12 @@
 <div class="main-content">
   <app-topbar userName="أحمد" />
   <main class="p-gutter-desktop">
-    <div class="max-w-6xl mx-auto flex flex-col gap-stack-lg">
+    <div class="max-w-7xl mx-auto flex flex-col gap-stack-lg">
 
+      <!-- Header -->
       <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 class="font-headline-lg text-headline-lg" style="font-weight:800;background:linear-gradient(135deg,#00236f,#6b7280);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">إدارة الامتحانات</h1>
+          <h1 class="font-headline-lg text-headline-lg exam-title">إدارة الامتحانات</h1>
           <p class="font-body-md text-body-md text-outline">إنشاء ومتابعة وتقييم الامتحانات</p>
         </div>
         <div class="flex gap-3">
@@ -22,34 +23,67 @@
       </div>
 
       <!-- Stats Cards -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-gutter-desktop">
-        <div class="glass-card" style="padding:24px;">
-          <div class="flex items-center gap-3 mb-2">
-            <div class="gradient-icon-box gradient-primary"><span class="material-symbols-outlined">quiz</span></div>
-            <span class="font-label-md text-label-md text-outline">إجمالي الامتحانات</span>
+      <div class="stats-grid">
+        <div class="glass-card stat-card">
+          <div class="stat-icon stat-icon-primary"><span class="material-symbols-outlined">quiz</span></div>
+          <div class="stat-body">
+            <span class="stat-label">إجمالي الامتحانات</span>
+            <p class="stat-value">{{ stats().total }}</p>
           </div>
-          <p class="gradient-stat-number">{{ stats().total }}</p>
         </div>
-        <div class="glass-card" style="padding:24px;">
-          <div class="flex items-center gap-3 mb-2">
-            <div class="gradient-icon-box gradient-secondary"><span class="material-symbols-outlined">calendar_month</span></div>
-            <span class="font-label-md text-label-md text-outline">قادمة</span>
+        <div class="glass-card stat-card">
+          <div class="stat-icon stat-icon-secondary"><span class="material-symbols-outlined">calendar_month</span></div>
+          <div class="stat-body">
+            <span class="stat-label">قادمة</span>
+            <p class="stat-value">{{ stats().upcoming }}</p>
           </div>
-          <p class="gradient-stat-number">{{ stats().upcoming }}</p>
         </div>
-        <div class="glass-card" style="padding:24px;">
-          <div class="flex items-center gap-3 mb-2">
-            <div class="gradient-icon-box" style="background:linear-gradient(135deg,#757682,#9ca3af);"><span class="material-symbols-outlined">checklist</span></div>
-            <span class="font-label-md text-label-md text-outline">منتهية</span>
+        <div class="glass-card stat-card">
+          <div class="stat-icon stat-icon-ended"><span class="material-symbols-outlined">checklist</span></div>
+          <div class="stat-body">
+            <span class="stat-label">منتهية</span>
+            <p class="stat-value">{{ stats().ended }}</p>
           </div>
-          <p class="gradient-stat-number">{{ stats().ended }}</p>
         </div>
-        <div class="glass-card" style="padding:24px;">
-          <div class="flex items-center gap-3 mb-2">
-            <div class="gradient-icon-box gradient-tertiary"><span class="material-symbols-outlined">trending_up</span></div>
-            <span class="font-label-md text-label-md text-outline">متوسط الدرجات</span>
+        <div class="glass-card stat-card">
+          <div class="stat-icon stat-icon-tertiary"><span class="material-symbols-outlined">trending_up</span></div>
+          <div class="stat-body">
+            <span class="stat-label">متوسط الدرجات</span>
+            <p class="stat-value">{{ stats().ended > 0 ? stats().avgScore + '%' : '—' }}</p>
           </div>
-          <p class="gradient-stat-number">{{ stats().ended > 0 ? stats().avgScore + '%' : '—' }}</p>
+        </div>
+      </div>
+
+      <!-- Filter Bar -->
+      <div class="filter-bar">
+        <div class="search-wrapper">
+          <span class="material-symbols-outlined search-icon">search</span>
+          <input class="search-input" type="text" placeholder="ابحث عن امتحان..." 
+            [value]="searchTerm()" (input)="onSearchInput($any($event.target).value)" />
+          @if (searchTerm()) {
+            <button class="search-clear" (click)="onSearchInput('')">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          }
+        </div>
+        <div class="filter-selects">
+          <div class="select-wrapper">
+            <select class="filter-select" [ngModel]="subjectFilter()" (ngModelChange)="onSubjectChange($event)">
+              <option value="">كل المواد</option>
+              @for (s of subjects(); track s.id) {
+                <option [value]="s.id">{{ s.name }}</option>
+              }
+            </select>
+            <span class="material-symbols-outlined select-arrow">expand_more</span>
+          </div>
+          <div class="select-wrapper">
+            <select class="filter-select" [ngModel]="sortBy()" (ngModelChange)="onSortChange($event)">
+              @for (opt of sortOptions; track opt.value) {
+                <option [value]="opt.value">{{ opt.label }}</option>
+              }
+            </select>
+            <span class="material-symbols-outlined select-arrow">expand_more</span>
+          </div>
         </div>
       </div>
 
@@ -60,75 +94,219 @@
         }
       </div>
 
-      <!-- Exam Cards -->
+      <!-- Loading State -->
       @if (loading()) {
-        <div class="flex items-center justify-center py-16">
-          <div class="flex flex-col items-center gap-3 text-outline">
-            <span class="material-symbols-outlined text-[48px] animate-spin" style="animation-duration:1.5s;">progress_activity</span>
-            <p class="font-body-md text-body-md">جاري تحميل الامتحانات...</p>
-          </div>
+        <div class="skeleton-grid">
+          @for (_ of [1,2,3,4,5,6]; track $index) {
+            <div class="skeleton-card">
+              <div class="skeleton-line skeleton-line-sm"></div>
+              <div class="skeleton-line skeleton-line-md"></div>
+              <div class="skeleton-line skeleton-line-lg"></div>
+              <div class="skeleton-row">
+                <div class="skeleton-line skeleton-line-xs"></div>
+                <div class="skeleton-line skeleton-line-xs"></div>
+                <div class="skeleton-line skeleton-line-xs"></div>
+              </div>
+            </div>
+          }
         </div>
-      } @else if (loadError()) {
-        <div class="flex flex-col items-center justify-center py-16 gap-3">
-          <div class="gradient-icon-box" style="background:linear-gradient(135deg,#ef4444,#dc2626);"><span class="material-symbols-outlined">error</span></div>
+      }
+
+      <!-- Error State -->
+      @if (!loading() && loadError()) {
+        <div class="empty-state">
+          <div class="empty-icon error-icon"><span class="material-symbols-outlined">error</span></div>
           <p class="font-body-md text-body-md text-error">{{ loadError() }}</p>
-          <button class="gradient-btn" (click)="loadAll()">إعادة المحاولة</button>
+          <button class="gradient-btn" (click)="loadExams()">إعادة المحاولة</button>
         </div>
-      } @else if (filteredExams().length === 0) {
-        <div class="flex flex-col items-center justify-center py-16 gap-3 text-outline">
-          <span class="material-symbols-outlined text-[48px]">quiz</span>
-          <p class="font-body-md text-body-md">لا توجد امتحانات في هذا التصنيف</p>
+      }
+
+      <!-- Empty State -->
+      @if (!loading() && !loadError() && exams().length === 0) {
+        <div class="empty-state">
+          <div class="empty-icon"><span class="material-symbols-outlined">quiz</span></div>
+          <p class="font-body-lg text-body-lg" style="font-weight:700;">لا توجد امتحانات</p>
+          <p class="font-body-md text-body-md text-outline">لم يتم العثور على امتحانات تطابق معايير البحث</p>
+          <button class="gradient-btn" (click)="openAddModal()">
+            <span class="material-symbols-outlined">add</span> إنشاء امتحان جديد
+          </button>
         </div>
-      } @else {
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-gutter-desktop">
-        @for (e of filteredExams(); track e.id) {
-          <div class="glass-exam-card border-{{ e.status }}">
-            <div class="flex justify-between items-start mb-3">
-              <div>
-                <h3 class="font-headline-md text-headline-md" style="font-weight:700;">{{ e.name }}</h3>
-                <p class="font-body-md text-body-md text-outline">{{ e.subject }} • {{ e.class }}</p>
-              </div>
-              <span class="px-3 py-1 rounded-full text-label-sm font-label-sm {{ getStatusClass(e.status) }}">{{ getStatusText(e.status) }}</span>
-            </div>
-            <div class="flex flex-wrap gap-3 mb-4">
-              <div class="flex items-center gap-1 text-label-sm text-outline"><span class="material-symbols-outlined text-[16px]">calendar_today</span>{{ e.date }}</div>
-              <div class="flex items-center gap-1 text-label-sm text-outline"><span class="material-symbols-outlined text-[16px]">schedule</span>{{ e.startTime }} - {{ e.endTime }}</div>
-              <div class="flex items-center gap-1 text-label-sm text-outline"><span class="material-symbols-outlined text-[16px]">quiz</span>{{ e.questionCount }} سؤال</div>
-              <div class="flex items-center gap-1 text-label-sm text-outline"><span class="material-symbols-outlined text-[16px]">timer</span>{{ e.duration }} دقيقة</div>
-            </div>
-            @if (e.avgScore != null) {
-              <div class="flex items-center gap-2 mb-4 p-3 bg-white/40 backdrop-blur-sm rounded-xl">
-                <span class="font-label-sm text-label-sm text-outline">متوسط الدرجات:</span>
-                <div class="flex-1 bg-outline-variant rounded-full h-2 overflow-hidden">
-                  <div class="bg-gradient-to-l from-primary to-blue-600 h-full rounded-full" [style.width.%]="e.avgScore"></div>
-                </div>
-                <span class="font-label-sm text-label-sm" style="font-weight:700;background:linear-gradient(135deg,#00236f,#3b82f6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">{{ e.avgScore }}%</span>
-              </div>
-            }
-            <div class="flex flex-wrap items-center gap-2 pt-3 border-t border-white/40">
-              @if (e.status === 'draft' || e.status === 'upcoming') {
-                <button class="px-3 py-1.5 rounded-lg bg-primary/10 text-primary font-label-sm text-label-sm hover:bg-primary/20 transition-colors flex items-center gap-1" (click)="publishExam(e.id)"><span class="material-symbols-outlined text-[16px]">publish</span>نشر للطلاب</button>
-              }
-              @if (e.status === 'ended') {
-                <button class="px-3 py-1.5 rounded-lg bg-tertiary/10 text-tertiary font-label-sm text-label-sm hover:bg-tertiary/20 transition-colors flex items-center gap-1" (click)="openResultsModal(e.id)">
-                  <span class="material-symbols-outlined text-[16px]">bar_chart</span>النتائج
-                  @if ((e.pendingGradingCount ?? 0) > 0) {
-                    <span class="mr-1 bg-error text-on-error text-[10px] font-bold rounded-full px-1.5 py-0.5">{{ e.pendingGradingCount }}</span>
-                  }
-                </button>
-                @if (e.isResultPublished) {
-                  <button class="px-3 py-1.5 rounded-lg bg-error/10 text-error font-label-sm text-label-sm hover:bg-error/20 transition-colors flex items-center gap-1" (click)="togglePublishResults(e.id, false)"><span class="material-symbols-outlined text-[16px]">visibility_off</span>إخفاء النتائج</button>
-                } @else {
-                  <button class="px-3 py-1.5 rounded-lg bg-green-50 text-green-700 font-label-sm text-label-sm hover:bg-green-100 transition-colors flex items-center gap-1" (click)="togglePublishResults(e.id, true)"><span class="material-symbols-outlined text-[16px]">visibility</span>نشر النتائج</button>
-                }
-              }
-              <button class="px-3 py-1.5 rounded-lg bg-white/40 backdrop-blur-sm text-on-surface font-label-sm text-label-sm hover:bg-white/60 transition-colors flex items-center gap-1" (click)="openViewModal(e)"><span class="material-symbols-outlined text-[16px]">visibility</span>عرض</button>
-              <button class="px-3 py-1.5 rounded-lg bg-white/40 backdrop-blur-sm text-on-surface font-label-sm text-label-sm hover:bg-white/60 transition-colors flex items-center gap-1" (click)="openEditModal(e)"><span class="material-symbols-outlined text-[16px]">edit</span>تعديل</button>
-              <button class="px-3 py-1.5 rounded-lg bg-error/10 text-error font-label-sm text-label-sm hover:bg-error/20 transition-colors flex items-center justify-center mr-auto shrink-0" aria-label="حذف الامتحان" (click)="requestDeleteExam(e)"><span class="material-symbols-outlined text-[16px]">delete</span></button>
-            </div>
-          </div>
-        }
+      }
+
+      <!-- Color Legend -->
+      <div class="color-legend" title="دليل ألوان الحالة — كل لون يدل على حالة الامتحان">
+        <span class="legend-item"><span class="legend-dot legend-yellow"></span>بدون موعد</span>
+        <span class="legend-item"><span class="legend-dot legend-orange"></span>قادم</span>
+        <span class="legend-item"><span class="legend-dot legend-green"></span>جاري</span>
+        <span class="legend-item"><span class="legend-dot legend-blue-light"></span>منتهي</span>
+        <span class="legend-item"><span class="legend-dot legend-slate"></span>مسودة</span>
       </div>
+
+      <!-- Exam Cards -->
+      @if (!loading() && !loadError() && exams().length > 0) {
+        <div class="exam-list">
+          @for (e of exams(); track e.id) {
+            <div [ngClass]="['exam-card', 'exam-border-' + e.status, !hasSchedule(e) ? 'no-schedule' : '']">
+              <!-- ═══ Badges + Title ═══ -->
+              <div class="card-head">
+                <div class="card-head-badges">
+                  <span class="status-badge" [class]="'badge-' + e.status">{{ getStatusText(e.status) }}</span>
+                  @if (!hasSchedule(e)) {
+                    <span class="indicator missing-time" title="هذا الامتحان لم يُحدد له وقت وتاريخ بعد">⏰</span>
+                  }
+                  @if (e.isAIGenerated) {
+                    <span class="indicator ai-indicator" title="تم إنشاؤه بواسطة الذكاء الاصطناعي">🤖</span>
+                  }
+                </div>
+              </div>
+
+              <h3 class="card-title">{{ e.name }}</h3>
+
+              <!-- ═══ Info ═══ -->
+              <div class="card-info">
+                <div class="info-line">
+                  <span class="info-chip">
+                    <span class="dot dot-subject"></span>{{ e.subject }}
+                  </span>
+                  <span class="info-chip">
+                    <span class="dot dot-class"></span>{{ e.class }}
+                  </span>
+                  <span class="info-chip" [class.info-warn]="!e.date || e.date === ''">
+                    <span class="material-symbols-outlined chip-icon">calendar_today</span>
+                    {{ e.date || '—' }}
+                  </span>
+                </div>
+                <div class="info-line">
+                  <span class="info-chip" [class.info-warn]="!e.startTime || !e.endTime">
+                    <span class="material-symbols-outlined chip-icon">schedule</span>
+                    {{ e.startTime || '—' }} - {{ e.endTime || '—' }}
+                  </span>
+                  <span class="info-chip">
+                    <span class="material-symbols-outlined chip-icon">quiz</span>
+                    {{ e.questionCount }} سؤال
+                  </span>
+                  <span class="info-chip">
+                    <span class="material-symbols-outlined chip-icon">timer</span>
+                    {{ e.duration }} دقيقة
+                  </span>
+                </div>
+              </div>
+
+              <!-- ═══ Submissions ═══ -->
+              @if (e.submitted != null) {
+                <div class="card-submissions">
+                  <span class="material-symbols-outlined subs-icon">assignment_turned_in</span>
+                  <span><strong>{{ e.submitted }}</strong> من <strong>{{ e.total || '—' }}</strong> طالب سلموا الامتحان</span>
+                </div>
+              }
+
+              <!-- ═══ Score (ONCE) ═══ -->
+              @if (e.avgScore != null) {
+                <div class="card-score">
+                  <span class="score-title">متوسط الدرجات</span>
+                  <div class="score-track-wrap">
+                    <div class="score-track">
+                      <div class="score-fill" [style.width.%]="e.avgScore"></div>
+                    </div>
+                  </div>
+                  <span class="score-value">{{ e.avgScore }}%</span>
+                </div>
+              }
+
+              <!-- ═══ Attention Banner ═══ -->
+              @if (isExamIncomplete(e)) {
+                <div class="attention-banner">
+                  <span class="material-symbols-outlined attention-icon">warning</span>
+                  <span>{{ getNeedsAttentionMessage(e) }}</span>
+                  <button class="attention-btn" (click)="openEditModal(e)">تعديل</button>
+                </div>
+              }
+
+              <!-- ═══ Footer ═══ -->
+              <div class="card-footer">
+                <div class="footer-actions">
+                  <button class="act act-view" title="عرض تفاصيل الامتحان" (click)="openViewModal(e)">
+                    <span class="material-symbols-outlined">visibility</span>
+                    <span>عرض</span>
+                  </button>
+
+                  @if (e.status === 'draft' || e.status === 'upcoming') {
+                    <button class="act act-publish" title="نشر الامتحان للطلاب" (click)="publishExam(e.id)">
+                      <span class="material-symbols-outlined">publish</span>
+                      <span>نشر</span>
+                    </button>
+                  }
+
+                  @if (e.status === 'ended') {
+                    <button class="act act-results" title="عرض نتائج الطلاب" (click)="openResultsModal(e.id)">
+                      <span class="material-symbols-outlined">bar_chart</span>
+                      <span>النتائج</span>
+                    </button>
+                    @if ((e.pendingGradingCount ?? 0) > 0) {
+                      <span class="pending-pill" title="بانتظار التصحيح">{{ e.pendingGradingCount }} بانتظار التصحيح</span>
+                    }
+                  }
+
+                  @if (e.status === 'ended') {
+                    @if (e.isResultPublished) {
+                      <button class="act act-hide" (click)="togglePublishResults(e.id, false)" title="إخفاء النتائج عن الطلاب">
+                        <span class="material-symbols-outlined">visibility_off</span>
+                        <span>إخفاء النتائج</span>
+                      </button>
+                    } @else {
+                      <button class="act act-show" (click)="togglePublishResults(e.id, true)" title="نشر النتائج للطلاب">
+                        <span class="material-symbols-outlined">visibility</span>
+                        <span>نشر النتائج</span>
+                      </button>
+                    }
+                  }
+                </div>
+
+                <div class="footer-actions footer-actions-end">
+                  <button class="act act-edit" title="تعديل بيانات الامتحان والأسئلة" (click)="openEditModal(e)">
+                    <span class="material-symbols-outlined">edit</span>
+                    <span>تعديل</span>
+                  </button>
+                  <button class="act act-delete" title="حذف الامتحان" (click)="requestDeleteExam(e)">
+                    <span class="material-symbols-outlined">delete</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- Pagination -->
+      @if (!loading() && totalCount() > 0) {
+        <div class="pagination-bar">
+          <div class="pagination-info">
+            الصفحة {{ page() }} من {{ totalPages() }} — إجمالي {{ totalCount() }} امتحان
+          </div>
+          <div class="pagination-controls">
+            <button class="page-btn" (click)="goToPage(page() - 1)" [disabled]="page() <= 1">
+              <span class="material-symbols-outlined">chevron_right</span>
+            </button>
+              @for (p of pageNumbers(); track $index) {
+              @if (p === -1 || p === -2) {
+                <span class="page-ellipsis">...</span>
+              } @else {
+                <button class="page-btn page-num" [class.active]="page() === p" (click)="goToPage(p)">{{ p }}</button>
+              }
+            }
+            <button class="page-btn" (click)="goToPage(page() + 1)" [disabled]="page() >= totalPages()">
+              <span class="material-symbols-outlined">chevron_left</span>
+            </button>
+          </div>
+          <div class="page-size-selector">
+            <select class="page-size-select" [ngModel]="pageSize()" (ngModelChange)="setPageSize($event)">
+              <option [value]="10">10 / صفحة</option>
+              <option [value]="20">20 / صفحة</option>
+              <option [value]="50">50 / صفحة</option>
+              <option [value]="100">100 / صفحة</option>
+            </select>
+          </div>
+        </div>
       }
     </div>
   </main>
@@ -136,7 +314,7 @@
 
 <!-- Add/Edit Modal -->
 @if (showAddModal()) {
-  <div class="fixed inset-0 z-[110] flex items-center justify-center glass-overlay p-margin-mobile" (click)="closeModals()">
+  <div class="modal-overlay" (click)="closeModals()">
     <div class="glass-modal max-w-xl w-full max-h-[90vh] overflow-y-auto" (click)="$event.stopPropagation()">
       <div class="glass-modal-header flex justify-between items-center">
         <h2 class="font-headline-md text-headline-md" style="font-weight:700;">{{ editingExam() ? 'تعديل امتحان' : 'امتحان جديد' }}</h2>
@@ -176,6 +354,29 @@
           </div>
           <span class="font-label-md text-label-md" style="font-weight:700;">{{ calculatedDuration() > 0 ? calculatedDuration() : 0 }} دقيقة</span>
         </div>
+        <div class="flex items-center justify-between gap-3 bg-white/40 backdrop-blur-sm rounded-xl px-4 py-3">
+          <div class="flex items-center gap-2 text-outline">
+            <span class="material-symbols-outlined">stars</span>
+            <span class="font-label-md text-label-md">الدرجة الكلية</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <input type="number" class="glass-input w-24 text-center" min="1" max="500"
+              [ngModel]="newTotalScore()" (ngModelChange)="newTotalScore.set($event)" />
+            <span class="font-label-md text-label-md">درجة</span>
+          </div>
+        </div>
+        @if (draftQuestions().length > 0) {
+          <div class="flex items-center justify-between bg-primary/5 border border-primary/10 backdrop-blur-sm rounded-xl px-4 py-2"
+            [class.border-warning/30]="draftTotal() !== newTotalScore()">
+            <span class="font-label-sm text-label-sm text-outline">مجموع درجات الأسئلة:</span>
+            <span class="font-label-md text-label-md" style="font-weight:700;">
+              {{ draftTotal() }}
+              @if (draftTotal() !== newTotalScore()) {
+                <span class="text-warning font-label-sm"> (يختلف عن الدرجة الكلية)</span>
+              }
+            </span>
+          </div>
+        }
         @if (formError()) {
           <div class="rounded-xl border border-error/20 bg-error/10 px-4 py-3 text-error font-label-sm text-label-sm">
             {{ formError() }}
@@ -187,7 +388,7 @@
           <span class="material-symbols-outlined text-outline">arrow_forward</span>
         </div>
 
-        <!-- قسم الأسئلة اليدوية -->
+        <!-- Questions Section -->
         <div class="flex flex-col gap-3">
           <div class="flex items-center justify-between">
             <h3 class="font-headline-sm text-headline-sm" style="font-weight:700;">الأسئلة ({{ draftQuestions().length }})</h3>
@@ -195,7 +396,6 @@
               <span class="material-symbols-outlined text-[16px]">add</span> سؤال جديد
             </button>
           </div>
-
           @for (q of draftQuestions(); track q._localId) {
             <div class="border border-white/40 bg-white/30 backdrop-blur-sm rounded-2xl p-4 flex flex-col gap-3">
               <div class="flex items-center gap-2">
@@ -211,10 +411,8 @@
                   <span class="material-symbols-outlined text-[18px]">delete</span>
                 </button>
               </div>
-
               <textarea class="glass-input resize-none" rows="2" placeholder="نص السؤال..."
                 [value]="q.text" (input)="updateQuestionText(q._localId, $any($event.target).value)"></textarea>
-
               @if (q.type === 'mcq') {
                 <div class="grid grid-cols-1 gap-2">
                   @for (opt of q.options; track $index) {
@@ -228,7 +426,6 @@
                   }
                 </div>
               }
-
               @if (q.type === 'true-false') {
                 <div class="flex gap-3">
                   @for (opt of ['صواب', 'خطأ']; track opt) {
@@ -243,9 +440,9 @@
                   }
                 </div>
               }
-
               @if (q.type === 'essay') {
-                <p class="text-outline font-body-sm text-sm px-2">📝 إجابة مقالية — لا تحتاج خيارات</p>
+                <textarea class="glass-input resize-none mt-2" rows="3" placeholder="الإجابة النموذجية (اختياري)..."
+                  [value]="q.correctAnswer" (input)="updateQuestionAnswer(q._localId, $any($event.target).value)"></textarea>
               }
             </div>
           }
@@ -259,9 +456,10 @@
   </div>
 }
 
+<!-- Publish Confirm Modal -->
 @if (showPublishConfirm()) {
   @let exam = publishingExam();
-  <div class="fixed inset-0 z-[120] flex items-center justify-center glass-overlay p-margin-mobile" (click)="closeModals()">
+  <div class="modal-overlay" (click)="closeModals()">
     <div class="glass-modal max-w-md w-full" (click)="$event.stopPropagation()">
       <div class="glass-modal-header flex items-center gap-3">
         <div class="gradient-icon-box gradient-primary"><span class="material-symbols-outlined">publish</span></div>
@@ -291,7 +489,7 @@
 @if (showViewModal()) {
   @let e = viewingExam();
   @if (e) {
-    <div class="fixed inset-0 z-[110] flex items-center justify-center glass-overlay p-margin-mobile" (click)="closeModals()">
+    <div class="modal-overlay" (click)="closeModals()">
       <div class="glass-modal max-w-3xl w-full max-h-[90vh] overflow-y-auto" (click)="$event.stopPropagation()">
         <div class="glass-modal-header flex justify-between items-center">
           <h2 class="font-headline-md text-headline-md" style="font-weight:700;">{{ e.name }}</h2>
@@ -299,11 +497,12 @@
         </div>
         <div class="p-stack-lg">
           <div class="flex flex-wrap gap-3 mb-stack-lg">
-            <div class="flex items-center gap-2 bg-white/40 backdrop-blur-sm rounded-xl px-4 py-2"><span class="material-symbols-outlined text-outline">book</span><span>{{ e.subject }}</span></div>
-            <div class="flex items-center gap-2 bg-white/40 backdrop-blur-sm rounded-xl px-4 py-2"><span class="material-symbols-outlined text-outline">groups</span><span>{{ e.class }}</span></div>
-            <div class="flex items-center gap-2 bg-white/40 backdrop-blur-sm rounded-xl px-4 py-2"><span class="material-symbols-outlined text-outline">calendar_today</span><span>{{ e.date }}</span></div>
-            <div class="flex items-center gap-2 bg-white/40 backdrop-blur-sm rounded-xl px-4 py-2"><span class="material-symbols-outlined text-outline">schedule</span><span>{{ e.startTime }} - {{ e.endTime }}</span></div>
-            <div class="flex items-center gap-2 bg-white/40 backdrop-blur-sm rounded-xl px-4 py-2"><span class="material-symbols-outlined text-outline">timer</span><span>{{ e.duration }} دقيقة</span></div>
+            <div class="meta-chip"><span class="material-symbols-outlined text-outline">book</span><span>{{ e.subject }}</span></div>
+            <div class="meta-chip"><span class="material-symbols-outlined text-outline">groups</span><span>{{ e.class }}</span></div>
+            <div class="meta-chip"><span class="material-symbols-outlined text-outline">calendar_today</span><span>{{ e.date }}</span></div>
+            <div class="meta-chip"><span class="material-symbols-outlined text-outline">schedule</span><span>{{ e.startTime }} - {{ e.endTime }}</span></div>
+            <div class="meta-chip"><span class="material-symbols-outlined text-outline">timer</span><span>{{ e.duration }} دقيقة</span></div>
+            <div class="meta-chip"><span class="material-symbols-outlined text-outline">stars</span><span>{{ e.totalScore }} درجة</span></div>
           </div>
           <h3 class="font-headline-md text-headline-md mb-4" style="font-weight:700;">الأسئلة</h3>
           <div class="flex flex-col gap-stack-md">
@@ -311,9 +510,9 @@
               <div class="border border-white/40 bg-white/30 backdrop-blur-sm rounded-2xl p-stack-md">
                 <div class="flex items-center gap-3 mb-3">
                   <span class="bg-gradient-to-l from-primary to-blue-600 text-on-primary w-7 h-7 rounded-lg flex items-center justify-center font-bold text-label-sm">{{ $index + 1 }}</span>
-                  @if (q.type === 'mcq') { <span class="px-3 py-1 bg-secondary/10 text-secondary rounded-full text-label-sm">اختيار من متعدد</span> }
-                  @if (q.type === 'true-false') { <span class="px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-label-sm">صح وخطأ</span> }
-                  @if (q.type === 'essay') { <span class="px-3 py-1 bg-white/50 text-outline rounded-full text-label-sm">مقالي</span> }
+                  @if (q.type === 'mcq') { <span class="qtype-badge qtype-mcq">اختيار من متعدد</span> }
+                  @if (q.type === 'true-false') { <span class="qtype-badge qtype-tf">صح وخطأ</span> }
+                  @if (q.type === 'essay') { <span class="qtype-badge qtype-essay">مقالي</span> }
                 </div>
                 <p class="font-body-lg text-body-lg mb-3">{{ q.text }}</p>
                 @if (q.type === 'mcq' && q.options) {
@@ -344,7 +543,14 @@
                   </div>
                 }
                 @if (q.type === 'essay') {
-                  <div class="p-4 bg-white/40 backdrop-blur-sm rounded-xl mr-2"><span class="text-outline font-body-md">إجابة مقالية — يتم التصحيح يدوياً أو بواسطة AI</span></div>
+                  @if (q.correctAnswer) {
+                    <div class="p-4 bg-primary/5 border border-primary/10 backdrop-blur-sm rounded-xl mr-2">
+                      <p class="font-label-sm text-outline mb-1">الإجابة النموذجية:</p>
+                      <p class="font-body-md text-body-md">{{ q.correctAnswer }}</p>
+                    </div>
+                  } @else {
+                    <div class="p-4 bg-white/40 backdrop-blur-sm rounded-xl mr-2"><span class="text-outline font-body-md">إجابة مقالية — يتم التصحيح يدوياً أو بواسطة AI</span></div>
+                  }
                 }
               </div>
             }
@@ -361,7 +567,7 @@
 <!-- Delete Confirm Modal -->
 @if (showDeleteConfirm()) {
   @let dExam = deletingExam();
-  <div class="fixed inset-0 z-[130] flex items-center justify-center glass-overlay p-margin-mobile" (click)="closeModals()">
+  <div class="modal-overlay" (click)="closeModals()">
     <div class="glass-modal max-w-md w-full" (click)="$event.stopPropagation()">
       <div class="glass-modal-header flex items-center gap-3">
         <div class="gradient-icon-box" style="background:linear-gradient(135deg,#ef4444,#dc2626);"><span class="material-symbols-outlined">delete_forever</span></div>
@@ -387,7 +593,7 @@
 
 <!-- Results Modal -->
 @if (showResultsModal()) {
-  <div class="fixed inset-0 z-[120] flex items-center justify-center glass-overlay p-margin-mobile" (click)="closeModals()">
+  <div class="modal-overlay" (click)="closeModals()">
     <div class="glass-modal max-w-3xl w-full max-h-[90vh] overflow-y-auto" (click)="$event.stopPropagation()">
       <div class="glass-modal-header flex justify-between items-center">
         <div class="flex items-center gap-3">
@@ -412,27 +618,26 @@
         } @else {
           <div class="flex flex-col gap-3">
             @for (attempt of resultsExam()!; track attempt.id) {
-              <div class="flex items-center gap-3 bg-white/40 backdrop-blur-sm rounded-xl p-4">
-                <div class="w-10 h-10 rounded-full bg-gradient-to-l from-primary to-blue-600 flex items-center justify-center text-on-primary font-bold text-label-md">{{ attempt.studentName.charAt(0) }}</div>
-                <div class="flex-1">
-                  <p class="font-label-md text-label-md" style="font-weight:700;">{{ attempt.studentName }}</p>
-                  <p class="font-body-sm text-body-sm text-outline">{{ attempt.submittedAt ? ('سلّم ' + formatSubmittedAt(attempt.submittedAt)) : 'لم يسلّم' }}</p>
+              <div class="attempt-row">
+                <div class="attempt-avatar">{{ attempt.studentName.charAt(0) }}</div>
+                <div class="attempt-info">
+                  <p class="attempt-name">{{ attempt.studentName }}</p>
+                  <p class="attempt-date">{{ attempt.submittedAt ? ('سلّم ' + formatSubmittedAt(attempt.submittedAt)) : 'لم يسلّم' }}</p>
                 </div>
                 @if (attempt.isGraded) {
-                  <div class="text-center">
-                    <p class="font-headline-sm text-headline-sm" style="font-weight:800;background:linear-gradient(135deg,#00236f,#3b82f6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">{{ attempt.score }}/{{ attempt.totalScore }}</p>
-                    <p class="font-body-sm text-body-sm text-outline">تم التصحيح</p>
+                  <div class="attempt-score">
+                    <p class="attempt-score-value">{{ attempt.score }}/{{ attempt.totalScore }}</p>
+                    <p class="attempt-score-label">تم التصحيح</p>
                   </div>
                 } @else if (attempt.status === 'waitingGrade') {
-                  <span class="px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-label-sm">ينتظر التصحيح</span>
+                  <span class="attempt-badge attempt-badge-warn">ينتظر التصحيح</span>
                 } @else if (attempt.status === 'submitted') {
-                  <span class="px-3 py-1 bg-primary/10 text-primary rounded-full text-label-sm">تم التسليم</span>
+                  <span class="attempt-badge attempt-badge-primary">تم التسليم</span>
                 } @else {
-                  <span class="px-3 py-1 bg-outline/10 text-outline rounded-full text-label-sm">لم يسلّم</span>
+                  <span class="attempt-badge attempt-badge-muted">لم يسلّم</span>
                 }
                 @if (attempt.status === 'waitingGrade' || attempt.isGraded) {
-                  <button class="px-3 py-1.5 rounded-lg bg-primary/10 text-primary font-label-sm hover:bg-primary/20 transition-colors flex items-center gap-1"
-                    (click)="openGradingModal(attempt.id)">
+                  <button class="action-btn action-tertiary" (click)="openGradingModal(attempt.id)">
                     <span class="material-symbols-outlined text-[16px]">grading</span>تصحيح
                   </button>
                 }
@@ -451,7 +656,7 @@
 <!-- Grading Modal -->
 @if (showGradingModal()) {
   @let ga = gradingAttempt();
-  <div class="fixed inset-0 z-[130] flex items-center justify-center glass-overlay p-margin-mobile" (click)="closeModals()">
+  <div class="modal-overlay" (click)="closeModals()">
     <div class="glass-modal max-w-3xl w-full max-h-[90vh] overflow-y-auto" (click)="$event.stopPropagation()">
       <div class="glass-modal-header flex justify-between items-center">
         <div class="flex items-center gap-3">
@@ -478,9 +683,9 @@
             <div class="border border-white/40 bg-white/30 backdrop-blur-sm rounded-2xl p-4 flex flex-col gap-3">
               <div class="flex items-center gap-3">
                 <span class="bg-gradient-to-l from-primary to-blue-600 text-on-primary w-7 h-7 rounded-lg flex items-center justify-center font-bold text-label-sm">{{ $index + 1 }}</span>
-                @if (ans.questionType === 'mcq') { <span class="px-3 py-1 bg-secondary/10 text-secondary rounded-full text-label-sm">اختيار من متعدد</span> }
-                @if (ans.questionType === 'true-false') { <span class="px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-label-sm">صح وخطأ</span> }
-                @if (ans.questionType === 'essay') { <span class="px-3 py-1 bg-white/50 text-outline rounded-full text-label-sm">مقالي</span> }
+                @if (ans.questionType === 'mcq') { <span class="qtype-badge qtype-mcq">اختيار من متعدد</span> }
+                @if (ans.questionType === 'true-false') { <span class="qtype-badge qtype-tf">صح وخطأ</span> }
+                @if (ans.questionType === 'essay') { <span class="qtype-badge qtype-essay">مقالي</span> }
                 <span class="mr-auto text-outline font-label-sm">حد أقصى: {{ ans.questionPoints }}</span>
               </div>
               <p class="font-body-lg text-body-lg">{{ ans.questionText }}</p>
@@ -488,7 +693,6 @@
                 <p class="font-label-sm text-outline mb-1">إجابة الطالب:</p>
                 <p class="font-body-md text-body-md">{{ ans.answerText || 'لم يجب' }}</p>
               </div>
-
               @if (ans.questionType !== 'essay') {
                 <div class="flex items-center gap-2">
                   @if (ans.isCorrect === true) {
@@ -499,8 +703,20 @@
                     <span class="text-error font-label-md">خطأ — 0 نقطة</span>
                   }
                 </div>
+                @if (ans.correctAnswerText) {
+                  <div class="bg-primary/5 border border-primary/10 backdrop-blur-sm rounded-xl px-4 py-3">
+                    <p class="font-label-sm text-outline mb-1">الإجابة النموذجية:</p>
+                    <p class="font-body-md text-body-md">{{ ans.correctAnswerText }}</p>
+                  </div>
+                }
               } @else {
                 <div class="flex flex-col gap-2">
+                  @if (ans.correctAnswerText) {
+                    <div class="bg-primary/5 border border-primary/10 backdrop-blur-sm rounded-xl px-4 py-3">
+                      <p class="font-label-sm text-outline mb-1">الإجابة النموذجية:</p>
+                      <p class="font-body-md text-body-md">{{ ans.correctAnswerText }}</p>
+                    </div>
+                  }
                   <label class="font-label-md text-label-md" style="font-weight:600;">الدرجة (0 – {{ ans.questionPoints }})</label>
                   <input type="number" class="glass-input w-32" [min]="0" [max]="ans.questionPoints"
                     [ngModel]="ans.pointsEarned" (ngModelChange)="setEssayGrade(ans.id, +$event)" />
