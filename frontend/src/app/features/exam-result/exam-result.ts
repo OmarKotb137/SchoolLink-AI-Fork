@@ -2,14 +2,13 @@ import { CommonModule } from '@angular/common';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
-import { Topbar } from '../../layouts/topbar/topbar';
 import { StudentExamAttemptResult } from '../../core/models/student-exam.models';
 import { StudentExamsService } from '../../core/services/student-exams.service';
 
 @Component({
   selector: 'app-exam-result',
   standalone: true,
-  imports: [CommonModule, Sidebar, Topbar],
+  imports: [CommonModule, Sidebar],
   templateUrl: './exam-result.html',
   styleUrl: './exam-result.css'
 })

@@ -1,9 +1,11 @@
-import { Component, input, inject, computed, OnInit } from '@angular/core';
+import { Component, input, inject, computed, OnInit, HostListener, signal, effect } from '@angular/core';
 import { Router } from '@angular/router';
 import { RoleService } from '../../shared/role.service';
 import { ROLE_MENUS, SidebarMenuItem } from '../../shared/menus';
 import { NotificationService } from '../../core/services/notification.service';
 import { AuthService } from '../../core/services/auth.service';
+import { SearchService } from '../../core/services/search.service';
+import { NotificationSignalRService } from '../../core/services/notification-signalr.service';
 
 @Component({
   selector: 'app-topbar',
@@ -15,14 +17,18 @@ export class Topbar implements OnInit {
   private roleService = inject(RoleService);
   private notifService = inject(NotificationService);
   private authService = inject(AuthService);
+  private searchService = inject(SearchService);
+  private notifSignalR = inject(NotificationSignalRService);
   router = inject(Router);
-  userName = input('أحمد');
+  userName = computed(() => this.authService.user()?.fullName || 'أحمد');
+  searchQuery = this.searchService.query;
   showSearch = input(true);
   showNotifications = input(true);
   showSpark = input(true);
   showSettings = input(true);
   showAvatar = input(true);
   notificationCount = input(0);
+  searchOpen = signal(false);
 
   userRole = computed(() => {
     const roleLabels: Record<string, string> = {
@@ -44,19 +50,102 @@ export class Topbar implements OnInit {
     return { home: homeItem, chat: chatItem, notif: notifItem };
   });
 
-  // Use the service's unread count as the real badge value (overrides input)
-  realNotifCount = computed(() => {
-    return this.notifService.unreadCount();
+  homeRoute = computed(() => this.navItems().home?.route || '/');
+
+  realNotifCount = computed(() => this.notifService.unreadCount());
+
+  searchResults = computed(() => {
+    const q = this.searchQuery().trim().toLowerCase();
+    if (!q) return [];
+
+    const role = this.roleService.currentRole();
+    const items: SidebarMenuItem[] = role ? (ROLE_MENUS[role] ?? []) : [];
+    if (!items.length) return [];
+
+    return items
+      .map(item => ({
+        ...item,
+        score: this.matchScore(item.label, q),
+      }))
+      .filter(x => x.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 8);
   });
+
+  private matchScore(label: string, query: string): number {
+    const l = label.toLowerCase();
+    if (l === query) return 100;
+    if (l.startsWith(query)) return 80;
+    if (l.includes(` ${query}`) || l.includes(query)) return 60;
+    let matches = 0;
+    let qi = 0;
+    for (const ch of l) {
+      if (qi < query.length && ch === query[qi]) {
+        matches++;
+        qi++;
+      }
+    }
+    return qi > 0 ? (matches / query.length) * 40 : 0;
+  }
 
   ngOnInit() {
     const user = this.authService.user();
     if (user) {
       this.notifService.getUnreadCount(user.userId).subscribe();
     }
+
+    // Start SignalR connection for real-time notifications
+    this.notifSignalR.startConnection();
+  }
+
+  constructor() {
+    // React to new notifications from SignalR
+    effect(() => {
+      const notif = this.notifSignalR.newNotification();
+      if (notif) {
+        this.notifService.unreadCount.update(c => c + 1);
+      }
+    });
   }
 
   navigate(route: string) {
+    this.searchOpen.set(false);
+    this.searchQuery.set('');
     this.router.navigate([route]);
+  }
+
+  onSearchInput(event: Event) {
+    const value = (event.target as HTMLInputElement).value;
+    this.searchQuery.set(value);
+    this.searchOpen.set(value.trim().length > 0);
+  }
+
+  onSearchFocus() {
+    if (this.searchQuery().trim()) {
+      this.searchOpen.set(true);
+    }
+  }
+
+  clearSearch(input: HTMLInputElement) {
+    input.value = '';
+    this.searchQuery.set('');
+    this.searchOpen.set(false);
+    input.focus();
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent) {
+    const target = event.target as HTMLElement;
+    if (!target.closest('.search-box')) {
+      this.searchOpen.set(false);
+    }
+  }
+
+  @HostListener('window:scroll', [])
+  onWindowScroll() {
+    const header = document.querySelector('.topbar');
+    if (header) {
+      header.classList.toggle('scrolled', window.scrollY > 10);
+    }
   }
 }

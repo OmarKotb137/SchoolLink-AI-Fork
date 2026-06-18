@@ -1,62 +1,114 @@
-<header class="topbar">
+<header class="topbar" #topbarEl>
+  <!-- Right: Brand + Search -->
   <div class="flex items-center gap-4">
+    <a class="brand" (click)="navigate(homeRoute())">
+      <div class="brand-icon">
+        <span class="material-symbols-outlined">school</span>
+      </div>
+      <span class="brand-text hidden md:block">SchoolLink</span>
+    </a>
+
     @if (showSearch()) {
       <div class="search-box">
         <span class="material-symbols-outlined search-icon">search</span>
-        <input class="search-input" placeholder="بحث..." type="text"/>
+        <input class="search-input" #searchInput placeholder="ابحث في الموقع..."
+               (input)="onSearchInput($event)" (focus)="onSearchFocus()"
+               (keydown.enter)="searchOpen.set(false); searchQuery() && navigate(searchResults()[0]?.route || '')"
+               type="text"/>
+        <button class="search-clear" (click)="clearSearch(searchInput)">
+          <span class="material-symbols-outlined" style="font-size:15px;">close</span>
+        </button>
+
+        @if (searchOpen() && searchResults().length > 0) {
+          <div class="search-dropdown">
+            @for (item of searchResults(); track item.route) {
+              <button class="search-result-item" (click)="navigate(item.route)"
+                      [class.highlighted]="$first">
+                <span class="material-symbols-outlined">{{ item.icon }}</span>
+                <span>{{ item.label }}</span>
+                <span class="search-result-arrow">←</span>
+              </button>
+            }
+          </div>
+        }
+        @if (searchOpen() && searchQuery().trim() && searchResults().length === 0) {
+          <div class="search-dropdown search-dropdown-empty">
+            <span class="material-symbols-outlined">search_off</span>
+            <span>لا توجد نتائج لـ "{{ searchQuery() }}"</span>
+          </div>
+        }
       </div>
     }
   </div>
-  <div class="flex items-center gap-3">
+
+  <!-- Left: Actions -->
+  <div class="topbar-actions">
     @if (showNotifications()) {
-      <button class="topbar-icon-btn" (click)="navigate('/notifications')">
+      <button class="icon-btn" (click)="navigate('/notifications')"
+              [class.active]="router.isActive('/notifications', false)"
+              title="الإشعارات">
         <span class="material-symbols-outlined">notifications</span>
         @if (realNotifCount() > 0) {
           <span class="notif-badge">{{ realNotifCount() > 99 ? '99+' : realNotifCount() }}</span>
         }
       </button>
     }
+
     @if (showSettings()) {
-      <button class="topbar-icon-btn" (click)="navigate('/settings')">
+      <button class="icon-btn" (click)="navigate('/settings')"
+              [class.active]="router.isActive('/settings', false)"
+              title="الإعدادات">
         <span class="material-symbols-outlined">settings</span>
       </button>
     }
+
+    <div class="action-divider"></div>
+
     @if (showAvatar()) {
-      <button type="button" class="flex items-center gap-2 bg-transparent border-0 p-0 cursor-pointer" (click)="navigate('/profile')">
+      <button type="button" class="avatar-btn" (click)="navigate('/profile')">
         <div class="avatar-ring">
-          <img alt="User avatar" class="avatar-img"
+          <img alt="صورة المستخدم" class="avatar-img" width="36" height="36"
                src="https://lh3.googleusercontent.com/aida-public/AB6AXuAN4unMckodCs5g4LHVoMsjVqqcibeKvRpkgZbmfv5E6sc7o8g7HGyxYuhVzjbsHn60lTec0kpRzhBwirCwV1jMt0tlapmILzS-9_t1P_hCGSAm6B5sq-hwySr89MJvuiAnrZSbcACVF-UWBM79eHa2iMjRAlHOy5bBejGokUCJqU50MpIgSu_GBmC89XlEZNDJmNwcTawOOrFTRqtWXxuyiL9Z8-6Cdpy9qTlzGT6BfGxDtZ0F8hiWuje7715i-BGs_3mx2_ajPTw"/>
+          <span class="avatar-status"></span>
         </div>
-        <div class="hidden md:block">
-          <p class="text-label-sm font-bold text-on-surface leading-tight">{{ userName() }}</p>
+        <div class="avatar-info">
+          <p class="avatar-name">{{ userName() }}</p>
           @if (userRole()) {
-            <p class="text-[10px] text-outline leading-tight">{{ userRole() }}</p>
+            <p class="avatar-role">{{ userRole() }}</p>
           }
         </div>
       </button>
     }
   </div>
 </header>
+
+<!-- Bottom Navigation (mobile) -->
 <nav class="bottom-nav">
   @let h = navItems().home;
   @let c = navItems().chat;
   @let n = navItems().notif;
-  <a class="bottom-nav-item"
+
+  <button class="nav-item"
      [class.active]="h && router.isActive(h.route, false)"
      (click)="navigate(h?.route || '/')">
     <span class="material-symbols-outlined">{{ h?.icon || 'dashboard' }}</span>
     <span>الرئيسية</span>
-  </a>
-  <a class="bottom-nav-item"
+  </button>
+
+  <button class="nav-item"
      [class.active]="c && router.isActive(c.route, false)"
      (click)="navigate(c?.route || '/chat')">
     <span class="material-symbols-outlined">{{ c?.icon || 'chat' }}</span>
     <span>المحادثات</span>
-  </a>
-  <a class="bottom-nav-item"
+  </button>
+
+  <button class="nav-item"
      [class.active]="n && router.isActive(n.route, false)"
      (click)="navigate(n?.route || '/notifications')">
     <span class="material-symbols-outlined">{{ n?.icon || 'notifications' }}</span>
     <span>الإشعارات</span>
-  </a>
+    @if (realNotifCount() > 0) {
+      <span class="notif-badge">{{ realNotifCount() > 99 ? '99+' : realNotifCount() }}</span>
+    }
+  </button>
 </nav>

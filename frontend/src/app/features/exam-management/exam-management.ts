@@ -3,7 +3,6 @@ import { NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
-import { Topbar } from '../../layouts/topbar/topbar';
 import {
   ExamManagerService,
   ExamItem, ExamDetail, ExamStats,
@@ -14,7 +13,7 @@ import { AcademicYearService } from '../../core/services/academic-year.service';
 
 @Component({
   selector: 'app-exam-management',
-  imports: [Sidebar, Topbar, FormsModule, NgClass],
+  imports: [Sidebar, FormsModule, NgClass],
   templateUrl: './exam-management.html',
   styleUrl: './exam-management.css'
 })

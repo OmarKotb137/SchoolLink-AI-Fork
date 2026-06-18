@@ -1,6 +1,5 @@
 import { Component, signal, OnInit, inject } from '@angular/core';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
-import { Topbar } from '../../layouts/topbar/topbar';
 import { ChildProgressService, ChildProgressItem } from './child-progress.service';
 import { AcademicYearService } from '../../core/services/academic-year.service';
 
@@ -25,7 +24,7 @@ interface ExamView {
 
 @Component({
   selector: 'app-child-progress',
-  imports: [Sidebar, Topbar],
+  imports: [Sidebar],
   templateUrl: './child-progress.html',
   styleUrl: './child-progress.css'
 })

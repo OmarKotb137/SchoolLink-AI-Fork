@@ -2,7 +2,6 @@ import { CommonModule, DatePipe } from '@angular/common';
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
-import { Topbar } from '../../layouts/topbar/topbar';
 import { StudentExamListItem, StudentExamStatus } from '../../core/models/student-exam.models';
 import { StudentExamsService } from '../../core/services/student-exams.service';
 
@@ -11,7 +10,7 @@ type ExamTab = 'all' | 'available' | 'upcoming' | 'submitted' | 'results';
 @Component({
   selector: 'app-my-exams',
   standalone: true,
-  imports: [CommonModule, Sidebar, Topbar, DatePipe],
+  imports: [CommonModule, Sidebar, DatePipe],
   templateUrl: './my-exams.html',
   styleUrl: './my-exams.css'
 })

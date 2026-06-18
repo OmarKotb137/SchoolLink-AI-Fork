@@ -1,7 +1,6 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
-import { Topbar } from '../../layouts/topbar/topbar';
 import { TimetableService } from '../../core/services/timetable.service';
 import { TeacherScheduleSlotDto } from '../../core/models/timetable.models';
 import {
@@ -12,7 +11,7 @@ import {
 @Component({
   selector: 'app-teacher-schedule',
   standalone: true,
-  imports: [CommonModule, Sidebar, Topbar],
+  imports: [CommonModule, Sidebar],
   templateUrl: './teacher-schedule.html',
   styleUrl: './teacher-schedule.css',
 })

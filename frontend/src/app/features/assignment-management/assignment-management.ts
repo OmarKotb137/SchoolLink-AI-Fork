@@ -2,12 +2,11 @@ import { Component, signal, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
-import { Topbar } from '../../layouts/topbar/topbar';
 import { AssignmentManagerService, AssignmentItem, Question, AssignmentDetail, Stats } from './assignment-manager.service';
 
 @Component({
   selector: 'app-assignment-management',
-  imports: [Sidebar, Topbar, FormsModule, RouterModule],
+  imports: [Sidebar, FormsModule, RouterModule],
   templateUrl: './assignment-management.html',
   styleUrl: './assignment-management.css'
 })

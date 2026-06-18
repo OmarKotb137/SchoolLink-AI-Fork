@@ -2,14 +2,13 @@ import { Component, signal, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
-import { Topbar } from '../../layouts/topbar/topbar';
 import { AcademicYearService, AcademicYear } from '../../core/services/academic-year.service';
 import { GradeLevelService, GradeLevel } from '../../core/services/grade-level.service';
 
 @Component({
   selector: 'app-settings',
   standalone: true,
-  imports: [CommonModule, FormsModule, Sidebar, Topbar],
+  imports: [CommonModule, FormsModule, Sidebar],
   templateUrl: './settings.html',
   styleUrl: './settings.css',
 })

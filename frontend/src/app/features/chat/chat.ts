@@ -3,7 +3,6 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subscription, finalize } from 'rxjs';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
-import { Topbar } from '../../layouts/topbar/topbar';
 import { ConversationService, ConversationDto, MessageDto, ParticipantDto } from '../../core/services/conversation.service';
 import { AuthService } from '../../core/services/auth.service';
 import { UserService } from '../../core/services/user.service';
@@ -40,7 +39,7 @@ interface ChatConversation {
 
 @Component({
   selector: 'app-chat',
-  imports: [CommonModule, FormsModule, Sidebar, Topbar],
+  imports: [CommonModule, FormsModule, Sidebar],
   templateUrl: './chat.html',
   styleUrl: './chat.css',
 })

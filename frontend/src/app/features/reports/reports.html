@@ -1,137 +1,285 @@
 ﻿<app-sidebar [(isOpen)]="sidebarOpen" />
 <div class="main-content">
-  <app-topbar userName="أحمد" />
-  <main class="flex-1 min-h-screen">
-    <div class="pt-28 pb-12 px-gutter-desktop max-w-7xl mx-auto">
-      <div class="flex justify-between items-end mb-8">
+  <main class="reports-page">
+    <!-- Top Section -->
+    <div class="reports-header">
+      <div class="header-top">
         <div>
-          <nav class="flex text-label-sm text-outline mb-2 gap-2">
-            <span>التقارير</span><span>/</span><span class="text-primary">التقارير الذكية</span>
+          <nav class="breadcrumb">
+            <span>التقارير</span>
+            <span class="sep">/</span>
+            <span class="current">التقارير الذكية</span>
           </nav>
-          <h2 class="text-headline-lg font-headline-lg text-on-surface">تقارير الأداء المدعومة بالذكاء الاصطناعي</h2>
-          <p class="text-body-md text-on-surface-variant mt-1">تقارير وتحليلات مخصصة للطلاب</p>
+          <h1 class="header-title">تقارير الأداء المدعومة بالذكاء الاصطناعي</h1>
+          <p class="header-subtitle">تحليلات مخصصة وتوصيات ذكية لأبنائك</p>
         </div>
       </div>
 
-      <!-- Child selector -->
-      @if (children().length > 1) {
-        <div class="flex flex-wrap gap-3 mb-8">
+      <!-- Child Tabs -->
+      @if (children().length > 0) {
+        <div class="child-tabs">
           @for (child of children(); track child.studentId) {
-            <button class="px-4 py-2 rounded-full text-label-sm font-bold transition-all"
-                    [class.bg-primary]="selectedChildId() === child.studentId"
-                    [class.text-on-primary]="selectedChildId() === child.studentId"
-                    [class.bg-surface-container-high]="selectedChildId() !== child.studentId"
+            <button class="child-tab"
+                    [class.active]="selectedChildId() === child.studentId"
                     (click)="selectChild(child.studentId, child.studentName)">
-              {{ child.studentName }}
+              <span class="child-avatar">{{ child.studentName.charAt(0) }}</span>
+              <span class="child-name">{{ child.studentName }}</span>
             </button>
           }
         </div>
       }
+    </div>
 
-      @if (loading()) {
-        <div class="flex justify-center py-12">
-          <div class="loading-spinner"></div>
+    @if (loading()) {
+      <div class="loading-state">
+        <div class="loader"></div>
+      </div>
+    }
+
+    @if (!loading() && selectedChildId()) {
+      <!-- Action Buttons -->
+      <div class="actions-row">
+        <button class="btn-primary" (click)="generateReport(selectedChildId()!)" [disabled]="generating()">
+          @if (generating()) {
+            <span class="spinner-sm"></span>
+            <span>جاري التوليد...</span>
+          } @else {
+            <span class="material-symbols-outlined">auto_awesome</span>
+            <span>توليد تقرير جديد</span>
+          }
+        </button>
+        <button class="btn-secondary" (click)="generateRecommendations(selectedChildId()!)" [disabled]="generating()">
+          <span class="material-symbols-outlined">psychology</span>
+          <span>توصيات ذكية</span>
+        </button>
+      </div>
+
+      @if (error()) {
+        <div class="error-banner">
+          <span class="material-symbols-outlined">error</span>
+          <span>{{ error() }}</span>
         </div>
       }
 
-      @if (!loading() && selectedChildId()) {
-        <!-- Action buttons -->
-        <div class="flex flex-wrap gap-4 mb-8">
-          <button class="gradient-btn px-6 py-2.5 text-label-md font-bold flex items-center gap-2"
-                  (click)="generateReport(selectedChildId()!)"
-                  [disabled]="generating()">
-            @if (generating()) {
-              <span class="loading-spinner-sm"></span>
-            } @else {
-              <span class="material-symbols-outlined">auto_awesome</span>
+      <!-- Main Content Grid -->
+      <div class="content-grid">
+        <!-- Left Column: Visual Report Data -->
+        <div class="left-col">
+          @if (reportData()) {
+            <!-- Child Name Banner -->
+            <div class="child-banner">
+              <span class="material-symbols-outlined">person</span>
+              <span>تقرير الطالب: <strong>{{ reportData()?.studentName || selectedChildName() }}</strong></span>
+            </div>
+
+            <!-- Overall Grade Circle -->
+            @if (overallMax() > 0) {
+              <div class="card overall-card">
+                <div class="card-header">
+                  <span class="material-symbols-outlined">speed</span>
+                  <h3>الأداء العام</h3>
+                  <span class="student-name-badge">{{ reportData()?.studentName || selectedChildName() }}</span>
+                </div>
+                <div class="overall-body">
+                  <div class="grade-circle" [style.--grade-color]="getGradeColor(overallScore(), overallMax())">
+                    <svg viewBox="0 0 120 120" class="grade-svg">
+                      <circle cx="60" cy="60" r="52" class="grade-bg" />
+                      <circle cx="60" cy="60" r="52" class="grade-progress"
+                        [style.stroke-dashoffset]="340 - (overallScore() / overallMax()) * 340"
+                        [style.stroke]="getGradeColor(overallScore(), overallMax())" />
+                    </svg>
+                    <div class="grade-value">
+                      <span class="grade-num">{{ overallScore() }}</span>
+                      <span class="grade-max">/ {{ overallMax() }}</span>
+                    </div>
+                  </div>
+                  @if (overallTrend() !== 'stable') {
+                    <div class="trend-badge" [class.up]="overallTrend() === 'up'" [class.down]="overallTrend() === 'down'">
+                      <span class="material-symbols-outlined">
+                        {{ overallTrend() === 'up' ? 'trending_up' : 'trending_down' }}
+                      </span>
+                      <span>{{ overallChange() > 0 ? overallChange() : '' }}{{ overallTrend() === 'up' ? ' تحسن' : ' تراجع' }}</span>
+                    </div>
+                  }
+                </div>
+              </div>
             }
-            {{ generating() ? 'جاري التوليد...' : 'توليد تقرير جديد' }}
-          </button>
-          <button class="secondary-btn-glass px-6 py-2.5 text-label-md font-bold flex items-center gap-2"
-                  (click)="generateRecommendations(selectedChildId()!)"
-                  [disabled]="generating()">
-            <span class="material-symbols-outlined">psychology</span>
-            توليد توصيات ذكية
-          </button>
+
+            <!-- Metric Bars -->
+            @if (metrics().length > 0) {
+              <div class="card metrics-card">
+                <div class="card-header">
+                  <span class="material-symbols-outlined">bar_chart</span>
+                  <h3>المؤشرات</h3>
+                </div>
+                <div class="metrics-body">
+                  @for (m of metrics(); track m.label) {
+                    <div class="metric-item">
+                      <div class="metric-info">
+                        <span class="metric-label">{{ m.label }}</span>
+                        <span class="metric-value">{{ m.value }}{{ m.max === 100 ? '%' : '/' + m.max }}</span>
+                      </div>
+                      <div class="metric-bar-track">
+                        <div class="metric-bar-fill" [style.width.%]="(m.value / m.max) * 100"
+                             [style.background]="getMetricColor((m.value / m.max) * 100)"></div>
+                      </div>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+
+            <!-- Subject Grades -->
+            @if (subjectGrades().length > 0) {
+              <div class="card subjects-card">
+                <div class="card-header">
+                  <span class="material-symbols-outlined">book_5</span>
+                  <h3>المواد الدراسية</h3>
+                </div>
+                <div class="subjects-body">
+                  @for (s of subjectGrades(); track s.subjectName) {
+                    <div class="subject-item">
+                      <div class="subject-info">
+                        <span class="subject-name">{{ s.subjectName }}</span>
+                        <span class="subject-score" [style.color]="getSubjectBarColor((s.score / s.maxScore) * 100)">
+                          {{ s.score }}/{{ s.maxScore }}
+                        </span>
+                      </div>
+                      <div class="subject-bar-track">
+                        <div class="subject-bar-fill" [style.width.%]="(s.score / s.maxScore) * 100"
+                             [style.background]="getSubjectBarColor((s.score / s.maxScore) * 100)"></div>
+                      </div>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+
+            <!-- AI Report Text (full text analysis) -->
+            @if (reportText()) {
+              <div class="card report-card">
+                <div class="card-header">
+                  <span class="material-symbols-outlined" style="color:#00236f">auto_awesome</span>
+                  <h3 style="color:#00236f">التقرير الأكاديمي</h3>
+                  <span class="student-name-badge">{{ reportData()?.studentName || selectedChildName() }}</span>
+                  <span class="ai-badge">AI</span>
+                </div>
+                <div class="report-content" [innerHTML]="formatReportText(reportText())"></div>
+              </div>
+            }
+          } @else {
+            <!-- Empty State (no report data) -->
+            <div class="empty-state">
+              <div class="empty-icon">
+                <span class="material-symbols-outlined">auto_awesome</span>
+              </div>
+              <h3>لم يتم توليد تقرير بعد</h3>
+              <p>اضغط على "توليد تقرير جديد" لبدء التحليل الذكي لابنك</p>
+            </div>
+          }
         </div>
 
-        @if (error()) {
-          <div class="glass-card p-6 mb-6 border-r-4 border-error">
-            <p class="text-error font-bold">{{ error() }}</p>
-          </div>
-        }
-
-        <div class="grid grid-cols-12 gap-6">
-          <!-- Report Content -->
-          <div class="col-span-12 lg:col-span-8 space-y-6">
-            @if (reportContent()) {
-              <div class="glass-ai rounded-xl p-widget-padding ai-gradient-border shadow-lg">
-                <div class="flex items-center gap-2 mb-4">
-                  <span class="material-symbols-outlined text-secondary">description</span>
-                  <h3 class="text-headline-sm font-headline-sm text-on-surface">التقرير الأكاديمي</h3>
-                </div>
-                <div class="prose prose-lg max-w-none text-on-surface-variant leading-relaxed whitespace-pre-line">
-                  {{ reportContent() }}
-                </div>
+        <!-- Right Column: Recommendations & History -->
+        <div class="right-col">
+          <!-- Recommendations (text-based, organized in sections) -->
+          @if (recSections().length > 0) {
+            <div class="card recs-card">
+              <div class="card-header">
+                <span class="material-symbols-outlined" style="color:#0d7a5f">lightbulb</span>
+                <h3 style="color:#0d7a5f">التوصيات الذكية</h3>
+                <span class="ai-badge" style="background:#0d7a5f">AI</span>
               </div>
-            }
-
-            @if (recommendations()) {
-              <div class="bg-surface-container-low rounded-xl p-widget-padding border border-outline-variant shadow-sm">
-                <div class="flex items-center gap-2 mb-4">
-                  <span class="material-symbols-outlined text-primary">lightbulb</span>
-                  <h3 class="text-headline-sm font-headline-sm text-on-surface">التوصيات الذكية</h3>
-                </div>
-                <div class="prose prose-lg max-w-none text-on-surface-variant leading-relaxed whitespace-pre-line">
-                  {{ recommendations() }}
-                </div>
+              <div class="child-banner" style="margin:0 16px 8px;font-size:13px;">
+                <span class="material-symbols-outlined" style="font-size:16px;">person</span>
+                <span>توصيات الطالب: <strong>{{ selectedChildName() }}</strong></span>
               </div>
-            }
-
-            @if (!reportContent() && !recommendations()) {
-              <div class="glass-card text-center py-16">
-                <span class="material-symbols-outlined text-5xl text-outline">auto_awesome</span>
-                <h3 class="font-headline-md text-body-lg mt-4 text-outline">لم يتم توليد تقرير بعد</h3>
-                <p class="text-outline font-body-md mt-1">اضغط على "توليد تقرير جديد" لبدء التحليل الذكي</p>
-              </div>
-            }
-          </div>
-
-          <!-- Sidebar: Report History -->
-          <div class="col-span-12 lg:col-span-4 space-y-6">
-            <div class="glass-card rounded-xl p-widget-padding">
-              <h3 class="text-headline-sm font-headline-sm text-on-surface mb-4">التقارير السابقة</h3>
-              @if (reportHistory().length === 0) {
-                <p class="text-outline text-label-md">لا توجد تقارير سابقة</p>
-              }
-              <div class="space-y-3">
-                @for (report of reportHistory(); track report.id) {
-                  <button class="w-full text-right p-3 rounded-xl bg-surface-container-low hover:bg-surface-container-high transition-colors"
-                          (click)="viewReport(report.id)">
-                    <p class="text-label-sm font-bold text-on-surface">
-                      @switch (report.reportType) {
-                        @case ('Student') { تقرير طالب }
-                        @case ('Class') { تقرير فصل }
-                        @case ('Recommendations') { توصيات }
-                        @default { تقرير }
+              <div class="recs-content">
+                @for (section of recSections(); track section.title) {
+                  <div class="rec-section">
+                    <h4 class="rec-section-title">{{ section.title }}</h4>
+                    <ul class="rec-section-list">
+                      @for (item of section.items; track $index) {
+                        <li class="rec-section-item">{{ item }}</li>
                       }
-                    </p>
-                    <p class="text-[10px] text-outline mt-1">{{ report.createdAt | date:'short' }}</p>
-                  </button>
+                    </ul>
+                  </div>
                 }
               </div>
             </div>
+          }
+
+          <!-- Fallback: flat recommendations text -->
+          @if (recSections().length === 0 && recommendationsText()) {
+            <div class="card recs-card">
+              <div class="card-header">
+                <span class="material-symbols-outlined" style="color:#0d7a5f">lightbulb</span>
+                <h3 style="color:#0d7a5f">التوصيات الذكية</h3>
+              </div>
+              <div class="child-banner" style="margin:0 16px 8px;font-size:13px;">
+                <span class="material-symbols-outlined" style="font-size:16px;">person</span>
+                <span>توصيات الطالب: <strong>{{ selectedChildName() }}</strong></span>
+              </div>
+              <div class="recs-content">
+                <p class="recs-intro">بناءً على تحليل أداء الطالب، نوصي بما يلي:</p>
+                @for (rec of recommendationItems(); track $index) {
+                  <div class="rec-item">
+                    <span class="rec-bullet"></span>
+                    <p>{{ rec }}</p>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- Report History -->
+          <div class="card history-card">
+            <div class="card-header">
+              <span class="material-symbols-outlined">history</span>
+              <h3>التقارير السابقة</h3>
+              <span class="student-name-badge">{{ selectedChildName() }}</span>
+            </div>
+            <div class="history-body">
+              @if (reportHistory().length === 0) {
+                <p class="history-empty">لا توجد تقارير سابقة</p>
+              }
+              @for (report of reportHistory(); track report.id) {
+                <button class="history-item" (click)="viewReport(report.id)">
+                  <div class="history-icon">
+                    <span class="material-symbols-outlined">
+                      {{ report.reportType === 'Recommendations' ? 'lightbulb' : 'description' }}
+                    </span>
+                  </div>
+                  <div class="history-info">
+                    <span class="history-title">
+                      @switch (report.reportType) {
+                        @case ('Student') { تقرير أكاديمي }
+                        @case ('Recommendations') { توصيات }
+                        @default { تقرير }
+                      }
+                    </span>
+                    <span class="history-date">{{ report.createdAt | date:'yyyy/MM/dd' }}</span>
+                  </div>
+                  <span class="history-arrow">←</span>
+                  <button class="history-delete" (click)="deleteReport(report.id, $event)" title="حذف">
+                    <span class="material-symbols-outlined">delete</span>
+                  </button>
+                </button>
+              }
+            </div>
           </div>
         </div>
-      }
+      </div>
+    }
 
-      @if (!loading() && !selectedChildId()) {
-        <div class="glass-card text-center py-16">
-          <span class="material-symbols-outlined text-5xl text-outline">child_care</span>
-          <h3 class="font-headline-md text-body-lg mt-4 text-outline">لا يوجد أبناء</h3>
-          <p class="text-outline font-body-md mt-1">لم يتم ربط أي طالب بحسابك</p>
+    <!-- No Child State -->
+    @if (!loading() && !selectedChildId()) {
+      <div class="empty-state">
+        <div class="empty-icon">
+          <span class="material-symbols-outlined">child_care</span>
         </div>
-      }
-    </div>
+        <h3>لا يوجد أبناء</h3>
+        <p>لم يتم ربط أي طالب بحسابك</p>
+      </div>
+    }
   </main>
 </div>

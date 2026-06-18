@@ -68,7 +68,8 @@ public class DailyAbsenceService : IDailyAbsenceService
         // إشعار بالغياب
         if (request.IsAbsent)
         {
-            var studentName = enrollment.Student?.FullName ?? "طالب";
+            var student = await _unitOfWork.Students.GetByIdAsync(enrollment.StudentId);
+            var studentName = student?.FullName ?? "طالب";
             var parentUsers = await _unitOfWork.ParentStudents
                 .FindAsync(ps => ps.StudentId == enrollment.StudentId);
             var parentIds = parentUsers.Select(p => p.ParentId).ToList();
@@ -89,11 +90,11 @@ public class DailyAbsenceService : IDailyAbsenceService
                 });
             }
 
-            // Excessive Absence Warning: check if total absences > 10
+            // Excessive Absence Warning: مرة واحدة فقط عند تجاوز الحد (11+)
             const int excessiveAbsenceThreshold = 10;
             var totalAbsences = await _unitOfWork.DailyAbsences
                 .GetAbsenceCountAsync(request.EnrollmentId, null);
-            if (totalAbsences > excessiveAbsenceThreshold)
+            if (totalAbsences == excessiveAbsenceThreshold + 1)
             {
                 await _notificationService.SendBulkNotificationAsync(new SendBulkNotificationRequest
                 {

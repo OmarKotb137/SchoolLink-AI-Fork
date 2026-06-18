@@ -2,7 +2,6 @@ import { CommonModule } from '@angular/common';
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
-import { Topbar } from '../../layouts/topbar/topbar';
 import { ParentStudentLink, ParentStudentService, RelationshipType } from '../../core/services/parent-student.service';
 import { CreateStudentRequest, Student, StudentService, UpdateStudentRequest } from '../../core/services/student.service';
 import { User, UserService } from '../../core/services/user.service';
@@ -10,7 +9,7 @@ import { User, UserService } from '../../core/services/user.service';
 @Component({
   selector: 'app-student-management',
   standalone: true,
-  imports: [CommonModule, Sidebar, Topbar],
+  imports: [CommonModule, Sidebar],
   templateUrl: './student-management.html',
   styleUrl: './student-management.css'
 })

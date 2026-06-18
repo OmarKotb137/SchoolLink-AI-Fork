@@ -8,12 +8,10 @@ import { GradeLevel, GradeLevelService } from '../../core/services/grade-level.s
 import { EnrollmentService, Enrollment, TransferHistory, GetEnrollmentsFilter } from '../../core/services/enrollment.service';
 import { PagedResult } from '../../core/models/api.model';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
-import { Topbar } from '../../layouts/topbar/topbar';
-
 @Component({
   selector: 'app-transfer-student',
   standalone: true,
-  imports: [CommonModule, FormsModule, Sidebar, Topbar],
+  imports: [CommonModule, FormsModule, Sidebar],
   templateUrl: './transfer-student.html',
   styleUrl: './transfer-student.css'
 })

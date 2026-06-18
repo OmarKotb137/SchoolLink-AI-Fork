@@ -3,7 +3,6 @@ import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
-import { Topbar } from '../../layouts/topbar/topbar';
 import {
   SaveAnswerProgressPayload,
   StudentExamAnswerPayload,
@@ -17,7 +16,7 @@ import { StudentExamsService } from '../../core/services/student-exams.service';
 @Component({
   selector: 'app-take-exam',
   standalone: true,
-  imports: [CommonModule, FormsModule, Sidebar, Topbar],
+  imports: [CommonModule, FormsModule, Sidebar],
   templateUrl: './take-exam.html',
   styleUrl: './take-exam.css'
 })

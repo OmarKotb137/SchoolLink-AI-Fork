@@ -72,6 +72,9 @@ public class ParentMeetingService : IParentMeetingService
         if (request == null || request.IsDeleted)
             return OperationResult<ParentMeetingRequestDto>.Failure("طلب الاجتماع غير موجود");
 
+        if (request.Status == MeetingRequestStatus.Approved)
+            return OperationResult<ParentMeetingRequestDto>.Failure("طلب الاجتماع تمت الموافقة عليه مسبقاً");
+
         var teacher = await _unitOfWork.Users.GetByIdAsync(teacherId);
         if (teacher == null || teacher.IsDeleted)
             return OperationResult<ParentMeetingRequestDto>.Failure("المعلم غير موجود");
@@ -101,6 +104,9 @@ public class ParentMeetingService : IParentMeetingService
         if (request == null || request.IsDeleted)
             return OperationResult<ParentMeetingRequestDto>.Failure("طلب الاجتماع غير موجود");
 
+        if (request.Status == MeetingRequestStatus.Rejected)
+            return OperationResult<ParentMeetingRequestDto>.Failure("طلب الاجتماع تم رفضه مسبقاً");
+
         request.Status = MeetingRequestStatus.Rejected;
         request.TeacherId = teacherId;
         request.Notes = reason;
@@ -124,6 +130,9 @@ public class ParentMeetingService : IParentMeetingService
         var request = await _unitOfWork.ParentMeetingRequests.GetByIdAsync(requestId);
         if (request == null || request.IsDeleted)
             return OperationResult<ParentMeetingRequestDto>.Failure("طلب الاجتماع غير موجود");
+
+        if (request.Status == MeetingRequestStatus.Completed)
+            return OperationResult<ParentMeetingRequestDto>.Failure("طلب الاجتماع تم إنهاؤه مسبقاً");
 
         request.Status = MeetingRequestStatus.Completed;
         _unitOfWork.ParentMeetingRequests.Update(request);

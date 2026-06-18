@@ -1,13 +1,69 @@
-﻿import { Component, signal, OnInit, inject } from '@angular/core';
+﻿import { Component, signal, computed, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
-import { Topbar } from '../../layouts/topbar/topbar';
 import { AuthService } from '../../core/services/auth.service';
 import { buildApiUrl } from '../../core/utils/api-url';
 import { ParentDashboardService, ParentDashboardChild } from '../../core/services/parent-dashboard.service';
 import { map } from 'rxjs';
+
+// ---- DTO Interfaces matching backend ----
+
+/** Recursively convert PascalCase object keys to camelCase */
+function normalizeKeys(obj: any): any {
+  if (obj === null || obj === undefined) return obj;
+  if (Array.isArray(obj)) return obj.map(normalizeKeys);
+  if (typeof obj !== 'object') return obj;
+  const result: Record<string, any> = {};
+  for (const key of Object.keys(obj)) {
+    const camelKey = key.charAt(0).toLowerCase() + key.slice(1);
+    result[camelKey] = normalizeKeys(obj[key]);
+  }
+  return result;
+}
+
+interface SubjectGradeDto {
+  subjectName: string;
+  score: number;
+  maxScore: number;
+  percentage: number;
+}
+
+interface MetricDto {
+  label: string;
+  value: number;
+  max: number;
+  trend: string;
+}
+
+interface StudentReportDto {
+  studentId: number;
+  studentName: string;
+  periodId?: number;
+  periodName?: string;
+  term?: number;
+  overallScore: number;
+  overallMax: number;
+  overallTrend: string;
+  overallChange: number;
+  subjectGrades: SubjectGradeDto[];
+  metrics: MetricDto[];
+  reportText: string | null;
+  recommendationsText: string | null;
+}
+
+interface RecommendationSection {
+  title: string;
+  items: string[];
+}
+
+interface RecommendationsDto {
+  studentId: number;
+  recommendationsText: string;
+  recommendationItems: string[];
+  sections: RecommendationSection[];
+}
 
 interface AIReportResult {
   id: number;
@@ -21,9 +77,11 @@ interface AIReportResult {
   createdAt: string;
 }
 
+// ---- Component ----
+
 @Component({
   selector: 'app-reports',
-  imports: [CommonModule, FormsModule, Sidebar, Topbar],
+  imports: [CommonModule, FormsModule, Sidebar],
   templateUrl: './reports.html',
   styleUrl: './reports.css',
 })
@@ -37,15 +95,31 @@ export class Reports implements OnInit {
   generating = signal(false);
   error = signal<string | null>(null);
 
+  userName = computed(() => this.authService.user()?.fullName ?? 'ولي الأمر');
+
   // Children
   children = signal<ParentDashboardChild[]>([]);
   selectedChildId = signal<number | null>(null);
   selectedChildName = signal('');
 
-  // Report data
-  reportContent = signal<string | null>(null);
+  // Structured report data (from structured endpoints)
+  reportData = signal<StudentReportDto | null>(null);
+  recsData = signal<RecommendationsDto | null>(null);
+
+  // History
   reportHistory = signal<AIReportResult[]>([]);
-  recommendations = signal<string | null>(null);
+
+  // Convenience computed for template
+  subjectGrades = computed(() => this.reportData()?.subjectGrades ?? []);
+  metrics = computed(() => this.reportData()?.metrics ?? []);
+  overallScore = computed(() => this.reportData()?.overallScore ?? 0);
+  overallMax = computed(() => this.reportData()?.overallMax ?? 100);
+  overallTrend = computed(() => (this.reportData()?.overallTrend ?? 'stable') as 'up' | 'down' | 'stable');
+  overallChange = computed(() => this.reportData()?.overallChange ?? 0);
+  reportText = computed(() => this.reportData()?.reportText ?? null);
+  recommendationsText = computed(() => this.recsData()?.recommendationsText ?? null);
+  recommendationItems = computed(() => this.recsData()?.recommendationItems ?? []);
+  recSections = computed(() => this.recsData()?.sections ?? []);
 
   private aiBase = buildApiUrl('ai/reports');
 
@@ -81,35 +155,126 @@ export class Reports implements OnInit {
   loadReports(studentId: number) {
     this.loading.set(true);
     this.error.set(null);
-    this.reportContent.set(null);
-    this.recommendations.set(null);
+    this.reportData.set(null);
+    this.recsData.set(null);
 
     // Load history
     this.http.get<any>(`${this.aiBase}/student/${studentId}/history`).pipe(
       map((res: any) => res?.data ?? [])
     ).subscribe({
       next: (data: AIReportResult[]) => {
-        this.reportHistory.set(Array.isArray(data) ? data : []);
+        const reports = Array.isArray(data) ? data : [];
+        this.reportHistory.set(reports);
         this.loading.set(false);
+
+        // Auto-load latest structured report if summary exists AND has valid fields
+        const studentReports = reports.filter(r => r.reportType === 'Student');
+        if (studentReports.length > 0 && studentReports[0].summary) {
+          try {
+            const parsed = normalizeKeys(JSON.parse(studentReports[0].summary));
+            if (parsed && typeof parsed.overallScore === 'number') {
+              // Fallback: if summary doesn't have reportText, use raw content
+              if (!parsed.reportText && studentReports[0].content) {
+                parsed.reportText = studentReports[0].content;
+              }
+              this.reportData.set(parsed as StudentReportDto);
+            }
+          } catch { /* ignore parse errors */ }
+        }
+
+        // Auto-load latest recommendations from stored content (NO AI call)
+        const recReports = reports.filter(r => r.reportType === 'Recommendations');
+        if (recReports.length > 0 && !this.recsData()) {
+          this.parseRecommendationsFromContent(recReports[0]);
+        }
       },
       error: () => this.loading.set(false)
+    });
+  }
+
+  /** Parse recommendations content text into structured sections (same logic as backend) */
+  private parseRecommendationsFromContent(report: AIReportResult) {
+    const content = report.content || '';
+    const sections: RecommendationSection[] = [];
+    let currentSection: RecommendationSection | null = null;
+
+    for (const rawLine of content.split('\n')) {
+      const line = rawLine.trim();
+      if (!line.length) continue;
+
+      // Section header: **Title**
+      if (line.startsWith('**') && line.endsWith('**')) {
+        currentSection = { title: line.replace(/\*/g, '').trim(), items: [] };
+        sections.push(currentSection);
+        continue;
+      }
+      // Section header with text after **
+      if (line.startsWith('**') && line.includes('**', 2)) {
+        const endIdx = line.lastIndexOf('**');
+        const title = line.substring(2, endIdx).trim();
+        if (title.length > 0) {
+          currentSection = { title, items: [] };
+          sections.push(currentSection);
+          continue;
+        }
+      }
+      // Bullet item
+      if (line.startsWith('-') || line.startsWith('•') || line.startsWith('*')) {
+        const item = line.replace(/^[-•*\s]+/, '').trim();
+        if (item.length > 0) {
+          if (currentSection) {
+            currentSection.items.push(item);
+          } else {
+            currentSection = { title: 'توصيات عامة', items: [item] };
+            sections.push(currentSection);
+          }
+        }
+        continue;
+      }
+    }
+
+    // Fallback: flat items if no sections
+    const recItems = content.split('\n')
+      .map(l => l.trim())
+      .filter(l => l.startsWith('-') || l.startsWith('•') || l.startsWith('*'))
+      .map(l => l.replace(/^[-•*\s]+/, '').trim())
+      .filter(l => l.length > 0);
+
+    this.recsData.set({
+      studentId: report.studentId,
+      recommendationsText: content,
+      recommendationItems: recItems.length > 0 ? recItems : [content.trim()],
+      sections: sections.length > 0 ? sections : []
     });
   }
 
   generateReport(studentId: number) {
     this.generating.set(true);
     this.error.set(null);
-    this.http.get<any>(`${this.aiBase}/student/${studentId}/period/0`).pipe(
-      map((res: any) => res?.data)
-    ).subscribe({
-      next: (data: AIReportResult) => {
-        if (data) {
-          this.reportContent.set(data.content);
-          this.loadReports(studentId);
+
+    this.http.get<any>(`${this.aiBase}/student/${studentId}/period/0/structured`).subscribe({
+      next: (res) => {
+        // Extract data safely: OperationResult wraps in { data: DTO }
+        const dto: StudentReportDto | null = res?.data?.overallScore != null ? res.data
+                                      : res?.overallScore != null ? res
+                                      : null;
+        if (dto) {
+          this.reportData.set(dto);
+          // Refresh history only (don't clear reportData)
+          this.http.get<any>(`${this.aiBase}/student/${studentId}/history`).subscribe({
+            next: (hres) => {
+              const hist = Array.isArray(hres?.data) ? hres.data
+                         : Array.isArray(hres) ? hres
+                         : [];
+              this.reportHistory.set(hist);
+            }
+          });
+        } else {
+          this.error.set('تعذر قراءة بيانات التقرير');
         }
         this.generating.set(false);
       },
-      error: (err) => {
+      error: () => {
         this.error.set('حدث خطأ أثناء توليد التقرير');
         this.generating.set(false);
       }
@@ -118,29 +283,160 @@ export class Reports implements OnInit {
 
   generateRecommendations(studentId: number) {
     this.generating.set(true);
-    this.http.get<any>(`${this.aiBase}/recommendations/${studentId}`).pipe(
-      map((res: any) => res?.data)
-    ).subscribe({
-      next: (data: AIReportResult) => {
-        if (data) {
-          this.recommendations.set(data.content);
-        }
+
+    this.http.get<any>(`${this.aiBase}/recommendations/${studentId}/structured`).subscribe({
+      next: (res) => {
+        const dto: RecommendationsDto | null = res?.data?.recommendationItems != null ? res.data
+                                             : res?.recommendationItems != null ? res
+                                             : null;
+        if (dto) this.recsData.set(dto);
         this.generating.set(false);
       },
-      error: () => this.generating.set(false)
+      error: () => {
+        this.generating.set(false);
+      }
     });
   }
 
   viewReport(id: number) {
     this.loading.set(true);
-    this.http.get<any>(`${this.aiBase}/${id}`).pipe(
-      map((res: any) => res?.data)
-    ).subscribe({
-      next: (data: AIReportResult) => {
-        if (data) this.reportContent.set(data.content);
+    this.http.get<any>(`${this.aiBase}/${id}`).subscribe({
+      next: (res) => {
+        const data: AIReportResult | null = res?.data?.id != null ? res.data
+                                          : res?.id != null ? res
+                                          : null;
+        if (data) {
+          if (data.reportType === 'Student' && data.summary) {
+            try {
+              const parsed = normalizeKeys(JSON.parse(data.summary));
+              if (parsed && typeof parsed.overallScore === 'number') {
+                // Fallback: if summary doesn't have reportText, use raw content
+                if (!parsed.reportText && data.content) {
+                  parsed.reportText = data.content;
+                }
+                this.reportData.set(parsed as StudentReportDto);
+                this.recsData.set(null);
+              } else {
+                this.reportData.set(null);
+                this.recsData.set(null);
+              }
+            } catch {
+              this.reportData.set(null);
+              this.recsData.set(null);
+            }
+          } else if (data.reportType === 'Recommendations') {
+            this.reportData.set(null);
+            this.parseRecommendationsFromContent(data);
+          } else {
+            this.reportData.set(null);
+            this.recsData.set(null);
+          }
+        }
         this.loading.set(false);
       },
       error: () => this.loading.set(false)
     });
+  }
+
+  deleteReport(id: number, event: Event) {
+    event.stopPropagation();
+    if (!confirm('هل أنت متأكد من حذف هذا التقرير؟')) return;
+
+    this.http.delete<any>(`${this.aiBase}/${id}`).subscribe({
+      next: () => {
+        this.reportHistory.set(this.reportHistory().filter(r => r.id !== id));
+        // If it was the active report, clear it
+        if (!this.reportHistory().some(r => r.reportType === 'Student')) {
+          this.reportData.set(null);
+        }
+        if (!this.reportHistory().some(r => r.reportType === 'Recommendations')) {
+          this.recsData.set(null);
+        }
+      },
+      error: () => { /* silent */ }
+    });
+  }
+
+  /** Convert markdown-style formatting to rich HTML with colors */
+  formatReportText(text: string | null): string {
+    if (!text) return '';
+
+    // First, extract and convert markdown tables (blocks of | ... | lines)
+    let html = text.replace(/^((?:[^\n]*\|[^\n]*\n?)+)/gm, (tableBlock: string) => {
+      const lines = tableBlock.split('\n').map(l => l.trim()).filter(l => l.startsWith('|'));
+      if (lines.length < 2) return tableBlock; // not a real table
+
+      // Second line is usually the separator (|---|---|)
+      const separatorLine = lines[1]?.replace(/[^\-|:]/g, '').includes('---');
+      const headerLine = separatorLine ? lines[0] : null;
+      const bodyLines = separatorLine ? lines.slice(2) : lines;
+
+      let tbl = '<table class="report-table">';
+
+      // Header row
+      if (headerLine) {
+        const cells = headerLine.split('|').filter(c => c.trim().length > 0);
+        tbl += '<thead><tr>' + cells.map(c => `<th>${c.trim()}</th>`).join('') + '</tr></thead>';
+      }
+
+      // Body rows
+      if (bodyLines.length > 0) {
+        tbl += '<tbody>';
+        for (const row of bodyLines) {
+          const cells = row.split('|').filter(c => c.trim().length > 0);
+          if (cells.length > 0) {
+            tbl += '<tr>' + cells.map(c => `<td>${c.trim()}</td>`).join('') + '</tr>';
+          }
+        }
+        tbl += '</tbody>';
+      }
+
+      tbl += '</table>';
+      return tbl;
+    });
+
+    // Then apply all inline formatting
+    return html
+      // Headers (lines that are bold and act as section titles)
+      .replace(/^(\*\*[^*]+\*\*)$/gm, '<h4 class="report-h4">$1</h4>')
+      // Bold with inline label pattern: - **label:** rest
+      .replace(/^- (\*\*(.+?):\*\*)/gm, '<span class="report-label">$2:</span>')
+      // Bold markers → strong with accent color
+      .replace(/\*\*(.+?)\*\*/g, '<strong class="report-strong">$1</strong>')
+      // Italic → em with color
+      .replace(/\*(.+?)\*/g, '<em class="report-em">$1</em>')
+      // Scores/percentages: e.g. "83.0 / 100.0", "88.75%", "35.5 / 40.0"
+      .replace(/(\d+[.,]?\d*)\s*\/\s*(\d+[.,]?\d*)/g, '<span class="report-score">$1 / $2</span>')
+      .replace(/(\d+[.,]?\d*)%/g, '<span class="report-pct">$1%</span>')
+      // Horizontal rules
+      .replace(/---+/g, '<hr class="report-hr">')
+      // Remove #### heading markers (keep the text)
+      .replace(/^#{1,4}\s*/gm, '')
+      // Bullet items at start of line
+      .replace(/^- /gm, '<span class="report-bullet">•</span> ')
+      // Line breaks
+      .replace(/\n/g, '<br>');
+  }
+
+  getSubjectBarColor(pct: number): string {
+    if (pct >= 85) return '#16a34a';
+    if (pct >= 70) return '#2563eb';
+    if (pct >= 50) return '#f59e0b';
+    return '#dc2626';
+  }
+
+  getGradeColor(score: number, max: number): string {
+    const pct = max > 0 ? (score / max) * 100 : 0;
+    if (pct >= 85) return '#16a34a';
+    if (pct >= 70) return '#2563eb';
+    if (pct >= 50) return '#f59e0b';
+    return '#dc2626';
+  }
+
+  getMetricColor(pct: number): string {
+    if (pct >= 80) return '#16a34a';
+    if (pct >= 60) return '#2563eb';
+    if (pct >= 40) return '#f59e0b';
+    return '#dc2626';
   }
 }

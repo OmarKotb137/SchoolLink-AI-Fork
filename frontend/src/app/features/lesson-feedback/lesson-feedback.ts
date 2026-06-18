@@ -1,7 +1,6 @@
 import { Component, signal, OnInit, inject, computed } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
-import { Topbar } from '../../layouts/topbar/topbar';
 import { AuthService } from '../../core/services/auth.service';
 import { RoleService } from '../../shared/role.service';
 import { LessonFeedbackService, ClassSubjectTeacherDto, LessonFeedbackDto } from './lesson-feedback.service';
@@ -9,7 +8,7 @@ import { TimetableService } from '../../core/services/timetable.service';
 
 @Component({
   selector: 'app-lesson-feedback',
-  imports: [Sidebar, Topbar, FormsModule],
+  imports: [Sidebar, FormsModule],
   templateUrl: './lesson-feedback.html',
   styleUrl: './lesson-feedback.css'
 })

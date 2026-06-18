@@ -5,6 +5,7 @@ using Project.BLL.Interfaces;
 using Project.DAL.Interfaces;
 using Project.Domain.Entities;
 using Project.Domain.Enums;
+using Project.BLL.DTOs.Notifications;
 
 namespace Project.BLL.Services
 {
@@ -12,11 +13,13 @@ namespace Project.BLL.Services
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
+        private readonly INotificationService _notificationService;
 
-        public AssignmentSubmissionService(IUnitOfWork unitOfWork, IMapper mapper)
+        public AssignmentSubmissionService(IUnitOfWork unitOfWork, IMapper mapper, INotificationService notificationService)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
+            _notificationService = notificationService;
         }
 
         public async Task<OperationResult<GetAssignmentSubmissionDto>> GetByIdAsync(int id)
@@ -109,6 +112,22 @@ namespace Project.BLL.Services
             await _unitOfWork.StudentAssignmentSubmissions.AddAsync(submission);
             await _unitOfWork.SaveChangesAsync();
 
+            // Notify teacher about submission
+            var assignmentCst = await _unitOfWork.ClassSubjectTeachers.GetByIdAsync(assignment.ClassSubjectTeacherId);
+            if (assignmentCst != null)
+            {
+                var subEnrollment = await _unitOfWork.StudentEnrollments.GetByIdAsync(dto.EnrollmentId);
+                var studentName = subEnrollment?.Student?.FullName ?? "طالب";
+
+                await _notificationService.SendNotificationAsync(new SendNotificationRequest
+                {
+                    UserId = assignmentCst.TeacherId,
+                    Title = "تقديم واجب",
+                    Body = $"قام الطالب {studentName} بتقديم الواجب: {assignment.Title}",
+                    Type = NotificationType.HomeworkSubmitted
+                });
+            }
+
             var resultDto = _mapper.Map<GetAssignmentSubmissionDto>(submission);
             return OperationResult<GetAssignmentSubmissionDto>.Success(resultDto, "تم إنشاء التسليم بنجاح");
         }
@@ -194,6 +213,31 @@ namespace Project.BLL.Services
 
             _unitOfWork.StudentAssignmentSubmissions.Update(submission);
             await _unitOfWork.SaveChangesAsync();
+
+            // Notify student and parents about grading
+            var subEnrollment = await _unitOfWork.StudentEnrollments.GetByIdAsync(submission.EnrollmentId);
+            if (subEnrollment != null)
+            {
+                var recipients = new List<int>();
+                var student = await _unitOfWork.Students.GetByIdAsync(subEnrollment.StudentId);
+                if (student?.UserId != null)
+                    recipients.Add(student.UserId.Value);
+
+                var parentUsers = await _unitOfWork.ParentStudents
+                    .FindAsync(ps => ps.StudentId == subEnrollment.StudentId);
+                recipients.AddRange(parentUsers.Select(p => p.ParentId));
+
+                if (recipients.Count != 0)
+                {
+                    await _notificationService.SendBulkNotificationAsync(new SendBulkNotificationRequest
+                    {
+                        UserIds = recipients.Distinct().ToList(),
+                        Title = "تصحيح الواجب",
+                        Body = $"تم تصحيح الواجب. الدرجة: {submission.Score} من {submission.MaxScore}",
+                        Type = NotificationType.HomeworkGraded
+                    });
+                }
+            }
 
             var dto = _mapper.Map<GetAssignmentSubmissionDto>(submission);
             return OperationResult<GetAssignmentSubmissionDto>.Success(dto, "تم تصحيح التسليم بنجاح");

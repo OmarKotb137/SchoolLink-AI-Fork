@@ -36,7 +36,7 @@ export const routes: Routes = [
   { path: 'chat-ai', canActivate: [authGuard], loadComponent: () => import('./features/chat-ai/chat-ai').then(c => c.ChatAi) },
   { path: 'notifications', canActivate: [authGuard], loadComponent: () => import('./features/notifications/notifications').then(c => c.Notifications) },
   { path: 'digital-library', canActivate: [authGuard], loadComponent: () => import('./features/digital-library/digital-library').then(c => c.DigitalLibrary) },
-  { path: 'reports', canActivate: [authGuard], loadComponent: () => import('./features/reports/reports').then(c => c.Reports) },
+  { path: 'reports', canActivate: [authGuard], data: { roles: ['parent'] }, loadComponent: () => import('./features/reports/reports').then(c => c.Reports) },
   { path: 'reports-academic', canActivate: [authGuard], loadComponent: () => import('./features/reports-academic/reports-academic').then(c => c.ReportsAcademic) },
   { path: 'reports-training', canActivate: [authGuard], loadComponent: () => import('./features/reports-training/reports-training').then(c => c.ReportsTraining) },
   { path: 'analysis-ai', canActivate: [authGuard], loadComponent: () => import('./features/analysis-ai/analysis-ai').then(c => c.AnalysisAi) },

@@ -2,7 +2,6 @@ import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
-import { Topbar } from '../../layouts/topbar/topbar';
 import { ClassSubjectTeacherService, ClassSubjectTeacher } from '../../core/services/class-subject-teacher.service';
 import { ClassService, ClassEntity } from '../../core/services/class.service';
 import { SubjectService, Subject } from '../../core/services/subject.service';
@@ -22,7 +21,7 @@ const DAY_LABELS: Record<string, string> = {
 @Component({
   selector: 'app-teacher-assignments',
   standalone: true,
-  imports: [CommonModule, FormsModule, Sidebar, Topbar],
+  imports: [CommonModule, FormsModule, Sidebar],
   templateUrl: './teacher-assignments.html',
   styleUrl: './teacher-assignments.css',
 })

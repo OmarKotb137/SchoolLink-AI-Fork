@@ -3,7 +3,6 @@ import { FormsModule } from '@angular/forms';
 import { firstValueFrom, forkJoin, Subject } from 'rxjs';
 import { map, takeUntil } from 'rxjs/operators';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
-import { Topbar } from '../../layouts/topbar/topbar';
 import { GradeMonitorService, Template, ClassItem, Student, SchoolProfile, EvaluationPeriod, Criteria } from './grade-monitor.service';
 import { GradeLevelService, GradeLevel } from '../../core/services/grade-level.service';
 import { AcademicYearService } from '../../core/services/academic-year.service';
@@ -12,7 +11,7 @@ import { WordGeneratorService } from './word-generator.service';
 
 @Component({
   selector: 'app-grade-monitor',
-  imports: [Sidebar, Topbar, FormsModule],
+  imports: [Sidebar, FormsModule],
   templateUrl: './grade-monitor.html',
   styleUrl: './grade-monitor.css',
 })

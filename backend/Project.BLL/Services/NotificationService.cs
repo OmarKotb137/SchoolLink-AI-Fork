@@ -120,7 +120,8 @@ public class NotificationService : INotificationService
     public async Task<OperationResult> SendBulkNotificationAsync(SendBulkNotificationRequest request)
     {
         var notifications = new List<Notification>();
-        foreach (var userId in request.UserIds)
+        var uniqueUserIds = request.UserIds.Distinct().ToList();
+        foreach (var userId in uniqueUserIds)
         {
             var user = await _unitOfWork.Users.GetByIdAsync(userId);
             if (user == null || user.IsDeleted || !user.IsActive)

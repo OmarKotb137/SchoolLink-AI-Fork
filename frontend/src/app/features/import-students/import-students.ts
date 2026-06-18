@@ -1,12 +1,11 @@
 import { Component, inject, signal } from '@angular/core';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
-import { Topbar } from '../../layouts/topbar/topbar';
 import { StudentImportService, ImportedStudent } from '../../core/services/student-import.service';
 import { AcademicYearService } from '../../core/services/academic-year.service';
 
 @Component({
   selector: 'app-import-students',
-  imports: [Sidebar, Topbar],
+  imports: [Sidebar],
   templateUrl: './import-students.html',
   styleUrl: './import-students.css'
 })
