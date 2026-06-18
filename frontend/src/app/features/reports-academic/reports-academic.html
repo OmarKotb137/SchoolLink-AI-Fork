@@ -47,6 +47,16 @@
               <div class="w-full bg-surface-container-low h-2 rounded-full mt-2"><div class="bg-secondary h-2 rounded-full" style="width:90%"></div></div>
             </div>
           </div>
+          <div class="grid grid-cols-12 gap-4 mb-4">
+            <div class="col-span-12 lg:col-span-6 bg-white rounded-xl border border-outline-variant shadow-sm p-4">
+              <h3 class="text-headline-sm font-headline-sm text-on-surface mb-3">مقارنة الأداء الأسبوعي</h3>
+              <div class="h-64"><canvas #weeklyChart></canvas></div>
+            </div>
+            <div class="col-span-12 lg:col-span-6 bg-white rounded-xl border border-outline-variant shadow-sm p-4">
+              <h3 class="text-headline-sm font-headline-sm text-on-surface mb-3">متوسط الأداء الشهري</h3>
+              <div class="h-64"><canvas #monthlyChart></canvas></div>
+            </div>
+          </div>
           <div class="bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden mb-4">
             <div class="p-4 border-b border-outline-variant flex justify-between items-center">
               <h3 class="text-headline-sm font-headline-sm text-on-surface">سجل الرصد الأسبوعي</h3>
