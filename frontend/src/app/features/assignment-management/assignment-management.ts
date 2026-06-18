@@ -4,7 +4,6 @@ import { FormsModule } from '@angular/forms';
 import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
-import { Topbar } from '../../layouts/topbar/topbar';
 import {
   AssignmentService,
   AssignmentItem, AssignmentDetail, AssignmentStats, AssignmentFilter,
@@ -15,7 +14,7 @@ import { AcademicYearService } from '../../core/services/academic-year.service';
 
 @Component({
   selector: 'app-assignment-management',
-  imports: [Sidebar, Topbar, FormsModule, NgClass],
+  imports: [Sidebar, FormsModule, NgClass],
   templateUrl: './assignment-management.html',
   styleUrl: './assignment-management.css'
 })
