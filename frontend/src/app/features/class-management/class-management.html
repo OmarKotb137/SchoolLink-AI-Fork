@@ -1,79 +1,104 @@
 <app-sidebar [(isOpen)]="sidebarOpen" />
 <div class="main-content">
-  <main class="pt-16 min-h-screen bg-gray-50 flex flex-col">
+  <main class="pt-16 min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50 flex flex-col">
     <div class="flex-1 p-4 md:p-6 lg:p-8">
       <div class="max-w-7xl mx-auto space-y-6 pb-10">
 
         <!-- Header / Hero Section -->
-        <section class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50">
-          <div>
-            <span class="text-sm font-medium text-blue-600 mb-1 block">Class Management</span>
-            <h2 class="text-2xl font-bold text-gray-900 mb-2">إدارة الفصول الدراسية</h2>
-            <p class="text-sm text-gray-500 max-w-2xl">
-              واجهة أكثر ترتيبًا لإدارة الفصول وربطها بالمراحل والسنوات الدراسية مع فلترة أسرع وقراءة أوضح للقائمة.
-            </p>
+        <section class="cm-hero animate-fade-up">
+          <div class="cm-hero-glow"></div>
+          <div class="cm-hero-body">
+            <div class="cm-hero-icon">
+              <span class="material-symbols-outlined" style="font-size:28px">meeting_room</span>
+            </div>
+            <div>
+              <span class="cm-hero-eyebrow">
+                <span class="material-symbols-outlined" style="font-size:13px;vertical-align:middle">apartment</span>
+                Class Management
+              </span>
+              <h2 class="cm-hero-title">إدارة الفصول الدراسية</h2>
+              <p class="cm-hero-desc">
+                واجهة أكثر ترتيبًا لإدارة الفصول وربطها بالمراحل والسنوات الدراسية مع فلترة أسرع وقراءة أوضح للقائمة.
+              </p>
+            </div>
           </div>
 
-          <div class="flex items-center gap-4 w-full md:w-auto">
-            <div class="bg-blue-50 border border-blue-100 p-4 rounded-2xl flex-1 md:w-40 text-center">
-              <span class="block text-xs text-blue-600 font-medium mb-1">الفصول المعروضة</span>
-              <strong class="block text-2xl font-bold text-blue-900">{{ classes().length }}</strong>
+          <div class="cm-hero-stats">
+            <div class="cm-stat-pill cm-stat-pill-accent">
+              <span class="cm-stat-pill-label">الفصول المعروضة</span>
+              <strong class="cm-stat-pill-value">{{ classes().length }}</strong>
             </div>
-            <div class="bg-gray-50 border border-gray-100 p-4 rounded-2xl flex-1 md:w-48 text-center">
-              <span class="block text-xs text-gray-500 font-medium mb-1">حالة الفلترة</span>
-              <strong class="block text-lg font-bold text-gray-900">{{ selectedYearFilter || selectedGradeFilter ? 'عرض مفلتر' : 'كل الفصول' }}</strong>
+            <div class="cm-stat-pill">
+              <span class="cm-stat-pill-label">حالة الفلترة</span>
+              <strong class="cm-stat-pill-value cm-stat-pill-value-sm">{{ selectedYearFilter || selectedGradeFilter ? 'عرض مفلتر' : 'كل الفصول' }}</strong>
+            </div>
+            <div class="cm-stat-pill">
+              <span class="cm-stat-pill-label">عدد صفحات القائمة</span>
+              <strong class="cm-stat-pill-value cm-stat-pill-value-sm">{{ totalPages() }}</strong>
             </div>
           </div>
         </section>
 
         <!-- Feedback Messages -->
         <div class="flex flex-col gap-3">
-          <div *ngIf="errorMessage()" class="flex items-center gap-3 p-4 text-sm text-red-800 rounded-2xl bg-red-50 border border-red-200">
-            <span class="material-symbols-outlined text-lg">error</span>
-            <span class="font-medium">{{ errorMessage() }}</span>
+          <div *ngIf="errorMessage()" class="cm-banner cm-banner-error">
+            <span class="material-symbols-outlined cm-banner-icon">error</span>
+            <span>{{ errorMessage() }}</span>
           </div>
-          <div *ngIf="successMessage()" class="flex items-center gap-3 p-4 text-sm text-green-800 rounded-2xl bg-emerald-50 border border-green-200">
-            <span class="material-symbols-outlined text-lg">check_circle</span>
-            <span class="font-medium">{{ successMessage() }}</span>
+          <div *ngIf="successMessage()" class="cm-banner cm-banner-success">
+            <span class="material-symbols-outlined cm-banner-icon">check_circle</span>
+            <span>{{ successMessage() }}</span>
           </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <!-- Editor Form -->
-          <section class="lg:col-span-4 bg-white rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50 h-fit">
-            <div class="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-lg">
-              <div>
-                <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
-                  <span class="material-symbols-outlined text-blue-600">{{ editingClassId() ? 'edit' : 'school' }}</span>
-                  {{ editingClassId() ? 'تعديل بيانات الفصل' : 'إضافة فصل جديد' }}
-                </h3>
-              </div>
-              <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-1 rounded border border-blue-200">
+        <!-- ═══ VERTICAL LAYOUT: Form on top, Table below ════════════════ -->
+        <div class="flex flex-col gap-6">
+
+          <!-- Editor Form — horizontal bar -->
+          <section class="cm-card cm-editor-card animate-fade-up">
+            <div class="cm-card-header">
+              <h3 class="cm-card-title">
+                <span class="material-symbols-outlined">{{ editingClassId() ? 'edit' : 'school' }}</span>
+                {{ editingClassId() ? 'تعديل بيانات الفصل' : 'إضافة فصل جديد' }}
+              </h3>
+              <span class="cm-chip" [class.cm-chip-new]="!editingClassId()" [class.cm-chip-edit]="editingClassId()">
                 {{ editingClassId() ? 'تعديل' : 'جديد' }}
               </span>
             </div>
 
-            <div class="p-5 space-y-5">
-              <div>
-                <label class="block mb-2 text-sm font-medium text-gray-900">اسم الفصل</label>
+            <div class="cm-form cm-form-h">
+              <!-- Field: اسم الفصل -->
+              <div class="cm-field">
+                <label class="cm-label">
+                  <span class="material-symbols-outlined">badge</span>
+                  اسم الفصل
+                </label>
                 <input
                   type="text"
                   [(ngModel)]="newClass.name"
-                  class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5"
+                  class="cm-input"
                   placeholder="مثال: 1/أ">
               </div>
 
-              <div>
-                <label class="block mb-2 text-sm font-medium text-gray-900">المرحلة الدراسية</label>
-                <select [(ngModel)]="newClass.gradeLevelId" class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5">
+              <!-- Field: المرحلة -->
+              <div class="cm-field">
+                <label class="cm-label">
+                  <span class="material-symbols-outlined">stairs</span>
+                  المرحلة الدراسية
+                </label>
+                <select [(ngModel)]="newClass.gradeLevelId" class="cm-select">
                   <option [ngValue]="0">-- اختر المرحلة --</option>
                   <option *ngFor="let g of gradeLevels()" [ngValue]="g.id">{{ g.name }}</option>
                 </select>
               </div>
 
-              <div>
-                <label class="block mb-2 text-sm font-medium text-gray-900">السنة الدراسية</label>
-                <select [(ngModel)]="newClass.academicYearId" class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5">
+              <!-- Field: السنة -->
+              <div class="cm-field">
+                <label class="cm-label">
+                  <span class="material-symbols-outlined">calendar_today</span>
+                  السنة الدراسية
+                </label>
+                <select [(ngModel)]="newClass.academicYearId" class="cm-select">
                   <option [ngValue]="0">-- اختر السنة --</option>
                   <option *ngFor="let y of academicYears()" [ngValue]="y.id">
                     {{ y.name }} {{ y.isCurrent ? '(الحالية)' : '' }}
@@ -81,48 +106,56 @@
                 </select>
               </div>
 
-              <div class="flex items-center gap-3 pt-2">
+              <!-- Actions -->
+              <div class="cm-form-h-actions">
                 <button
                   *ngIf="editingClassId()"
                   (click)="cancelEdit()"
-                  class="flex-1 text-gray-900 bg-white border border-gray-200 focus:outline-none hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 focus:ring-4 focus:ring-gray-100 font-medium rounded-2xl text-sm px-5 py-2.5 transition-colors">
+                  class="cm-btn cm-btn-ghost cm-btn-sm">
                   إلغاء
                 </button>
-
                 <button
                   (click)="saveClass()"
-                  class="flex-1 text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-lg transform transition-all hover:-translate-y-0.5 focus:ring-4 focus:ring-indigo-300 font-medium rounded-2xl text-sm px-5 py-2.5 transition-colors flex items-center justify-center gap-2">
-                  <span class="material-symbols-outlined text-lg">save</span>
+                  class="cm-btn cm-btn-primary">
+                  <span class="material-symbols-outlined">save</span>
                   {{ editingClassId() ? 'حفظ التحديث' : 'إضافة الفصل' }}
                 </button>
               </div>
             </div>
           </section>
 
-          <!-- Data Table -->
-          <section class="lg:col-span-8 bg-white rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50 overflow-hidden flex flex-col">
-            <div class="p-5 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gray-50/50">
-              <div>
-                <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
-                  <span class="material-symbols-outlined text-blue-600">dataset</span>
-                  قائمة الفصول
-                </h3>
-              </div>
+          <!-- Data Table — full width -->
+          <section class="cm-card flex flex-col animate-fade-up" style="animation-delay:.08s">
+            <div class="cm-card-header">
+              <h3 class="cm-card-title">
+                <span class="material-symbols-outlined">dataset</span>
+                قائمة الفصول
+              </h3>
+              <span class="cm-badge cm-badge-blue">
+                <span class="material-symbols-outlined" style="font-size:14px">meeting_room</span>
+                {{ classes().length }} فصل
+              </span>
             </div>
 
             <!-- Filters Panel -->
-            <div class="flex flex-col sm:flex-row gap-4 p-5 border-b border-gray-100 bg-white">
-              <div class="flex-1">
-                <label class="block mb-2 text-sm font-medium text-gray-900">فلترة بالمرحلة</label>
-                <select [(ngModel)]="selectedGradeFilter" (change)="onFilterChange()" class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5">
+            <div class="cm-filters">
+              <div class="cm-filter-field">
+                <label class="cm-label">
+                  <span class="material-symbols-outlined">stairs</span>
+                  فلترة بالمرحلة
+                </label>
+                <select [(ngModel)]="selectedGradeFilter" (change)="onFilterChange()" class="cm-select">
                   <option [ngValue]="null">كل المراحل الدراسية</option>
                   <option *ngFor="let g of gradeLevels()" [ngValue]="g.id">{{ g.name }}</option>
                 </select>
               </div>
 
-              <div class="flex-1">
-                <label class="block mb-2 text-sm font-medium text-gray-900">فلترة بالسنة</label>
-                <select [(ngModel)]="selectedYearFilter" (change)="onFilterChange()" class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5">
+              <div class="cm-filter-field">
+                <label class="cm-label">
+                  <span class="material-symbols-outlined">calendar_today</span>
+                  فلترة بالسنة
+                </label>
+                <select [(ngModel)]="selectedYearFilter" (change)="onFilterChange()" class="cm-select">
                   <option [ngValue]="null">كل السنوات الدراسية</option>
                   <option *ngFor="let y of academicYears()" [ngValue]="y.id">{{ y.name }}</option>
                 </select>
@@ -130,69 +163,72 @@
             </div>
 
             <!-- Table -->
-            <div class="relative overflow-x-auto flex-1">
-              <table class="w-full text-sm text-right text-gray-500">
-                <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-100">
+            <div class="cm-table-wrap flex-1">
+              <table class="cm-table">
+                <thead>
                   <tr>
-                    <th scope="col" class="px-6 py-4">اسم الفصل</th>
-                    <th scope="col" class="px-6 py-4">المرحلة الدراسية</th>
-                    <th scope="col" class="px-6 py-4">السنة الدراسية</th>
-                    <th scope="col" class="px-6 py-4 text-center">إجراءات</th>
+                    <th scope="col">اسم الفصل</th>
+                    <th scope="col">المرحلة الدراسية</th>
+                    <th scope="col">السنة الدراسية</th>
+                    <th scope="col" class="text-center">إجراءات</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr *ngFor="let cls of paginatedClasses()" class="bg-white border-b border-gray-100 hover:bg-blue-50 transition-colors">
-                    <td class="px-6 py-4 font-bold text-gray-900">
-                      {{ cls.name }}
+                  <tr *ngFor="let cls of paginatedClasses(); let i = index"
+                      class="cm-row-enter"
+                      [style.animation-delay]="(i * 45) + 'ms'">
+                    <td>
+                      <div class="cm-name-cell">
+                        <span class="cm-name-avatar">{{ cls.name.charAt(0) }}</span>
+                        {{ cls.name }}
+                      </div>
                     </td>
-                    <td class="px-6 py-4">
-                      <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded border border-blue-200">
-                        {{ cls.gradeLevelName || 'غير محدد' }}
-                      </span>
+                    <td>
+                      <span class="cm-badge cm-badge-blue">{{ cls.gradeLevelName || 'غير محدد' }}</span>
                     </td>
-                    <td class="px-6 py-4">
-                      <span class="bg-gray-100 text-gray-800 text-xs font-medium px-2.5 py-0.5 rounded border border-gray-100">
-                        {{ cls.academicYearName || cls.academicYearId }}
-                      </span>
+                    <td>
+                      <span class="cm-badge cm-badge-gray">{{ cls.academicYearName || cls.academicYearId }}</span>
                     </td>
-                    <td class="px-6 py-4 text-center">
-                      <div class="flex items-center justify-center gap-2 flex-wrap">
+                    <td>
+                      <div class="cm-row-actions">
                         <button
                           (click)="openStudentsModal(cls)"
-                          class="px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-2xl hover:bg-blue-100 hover:shadow-md transition-all hover:-translate-y-0.5 flex items-center gap-2"
+                          class="cm-action-btn cm-action-view"
                           title="عرض كل طلاب هذا الفصل">
-                          <span class="material-symbols-outlined text-sm">groups</span>
-                          طلاب الفصل
+                          <span class="material-symbols-outlined">groups</span>
+                          <span class="cm-action-label">طلاب الفصل</span>
                         </button>
                         <button
                           (click)="openPickerModal(cls)"
-                          class="px-4 py-2 text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-2xl hover:bg-emerald-100 hover:shadow-md transition-all hover:-translate-y-0.5 flex items-center gap-2"
+                          class="cm-action-btn cm-action-enroll"
                           title="إضافة طلاب جدد لهذا الفصل">
-                          <span class="material-symbols-outlined text-sm">person_add</span>
-                          إضافة طلاب
+                          <span class="material-symbols-outlined">person_add</span>
+                          <span class="cm-action-label">إضافة طلاب</span>
                         </button>
                         <button
                           (click)="editClass(cls)"
-                          class="p-2 text-blue-600 hover:bg-blue-50 rounded-2xl transition-colors"
+                          class="cm-icon-btn cm-icon-btn-edit"
                           title="تعديل">
-                          <span class="material-symbols-outlined text-sm">edit</span>
+                          <span class="material-symbols-outlined">edit</span>
                         </button>
                         <button
                           (click)="deleteClass(cls.id)"
-                          class="p-2 text-red-600 hover:bg-red-50 rounded-2xl transition-colors"
+                          class="cm-icon-btn cm-icon-btn-delete"
                           title="حذف">
-                          <span class="material-symbols-outlined text-sm">delete</span>
+                          <span class="material-symbols-outlined">delete</span>
                         </button>
                       </div>
                     </td>
                   </tr>
 
                   <tr *ngIf="classes().length === 0">
-                    <td colspan="4" class="px-6 py-12 text-center">
-                      <div class="flex flex-col items-center justify-center text-gray-500">
-                        <span class="material-symbols-outlined text-4xl mb-3 text-gray-400">meeting_room</span>
-                        <p class="text-base font-medium text-gray-900 mb-1">لا توجد فصول دراسية مطابقة</p>
-                        <p class="text-sm">قم بإضافة فصول جديدة أو غير الفلاتر</p>
+                    <td colspan="4" class="p-0">
+                      <div class="cm-empty">
+                        <div class="cm-empty-icon-wrap">
+                          <span class="material-symbols-outlined">meeting_room</span>
+                        </div>
+                        <p class="cm-empty-title">لا توجد فصول دراسية مطابقة</p>
+                        <p class="cm-empty-sub">قم بإضافة فصول جديدة أو غير الفلاتر</p>
                       </div>
                     </td>
                   </tr>
@@ -202,587 +238,475 @@
 
             <!-- Pagination -->
             @if (totalPages() > 1) {
-              <div class="flex flex-col sm:flex-row items-center justify-between p-4 bg-gray-50 border-t border-gray-100 gap-4">
-                <span class="text-sm text-gray-700">
-                  إظهار <span class="font-semibold text-gray-900">{{ rangeStart() }}</span> إلى <span class="font-semibold text-gray-900">{{ rangeEnd() }}</span> من أصل <span class="font-semibold text-gray-900">{{ classes().length }}</span> فصل
+              <div class="cm-pagination">
+                <span class="cm-pagination-info">
+                  إظهار <strong>{{ rangeStart() }}</strong> إلى <strong>{{ rangeEnd() }}</strong> من أصل <strong>{{ classes().length }}</strong> فصل
                 </span>
-
-                <div class="flex items-center gap-2">
-                  <button class="flex items-center justify-center px-3 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed" [disabled]="currentPage() === 1" (click)="prevPage()">
-                    <span class="material-symbols-outlined text-sm mr-1">chevron_right</span>
+                <div class="cm-pagination-controls">
+                  <button class="cm-page-nav-btn" [disabled]="currentPage() === 1" (click)="prevPage()">
+                    <span class="material-symbols-outlined" style="font-size:16px">chevron_right</span>
                     السابق
                   </button>
-
                   <div class="hidden sm:flex items-center gap-1">
                     @for (p of pages(); track trackByPageIndex($index, p)) {
                       @if (p === '...') {
-                        <span class="flex items-center justify-center w-8 h-8 text-sm font-medium text-gray-400">…</span>
+                        <span class="cm-page-dots">…</span>
                       } @else {
-                        <button class="flex items-center justify-center w-8 h-8 text-sm font-medium rounded-2xl transition-colors border"
-                                [class.bg-blue-600]="p === currentPage()"
-                                [class.text-white]="p === currentPage()"
-                                [class.border-blue-600]="p === currentPage()"
-                                [class.bg-white]="p !== currentPage()"
-                                [class.text-gray-900]="p !== currentPage()"
-                                [class.border-gray-200]="p !== currentPage()"
-                                [class.hover:bg-gray-50]="p !== currentPage()"
-                                (click)="goToPage(+p)">
-                          {{ p }}
-                        </button>
+                        <button class="cm-page-btn" [class.active]="p === currentPage()" (click)="goToPage(+p)">{{ p }}</button>
                       }
                     }
                   </div>
-
-                  <button class="flex items-center justify-center px-3 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed" [disabled]="currentPage() === totalPages()" (click)="nextPage()">
+                  <button class="cm-page-nav-btn" [disabled]="currentPage() === totalPages()" (click)="nextPage()">
                     التالي
-                    <span class="material-symbols-outlined text-sm ml-1">chevron_left</span>
+                    <span class="material-symbols-outlined" style="font-size:16px">chevron_left</span>
                   </button>
                 </div>
               </div>
             }
           </section>
         </div>
+        <!-- ═══ END LAYOUT ══════════════════════════════════════════════ -->
 
       </div>
     </div>
   </main>
 </div>
 
-<!-- ══ Floating inline confirm bars (fixed bottom) ════════════════════════ -->
-
+<!-- ══ Floating inline confirm bar ══════════════════════════════════════ -->
 @if (deleteClassConfirmId()) {
   <div class="fixed bottom-6 inset-x-0 z-[300] flex justify-center px-4 pointer-events-none">
-    <div class="bg-white border border-red-200 rounded-2xl shadow-xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3 max-w-xl w-full pointer-events-auto">
-      <span class="material-symbols-outlined text-red-600 text-xl shrink-0">warning</span>
-      <span class="text-sm font-medium text-gray-900">هل أنت متأكد من حذف هذا الفصل الدراسي؟ سيتم حذف جميع البيانات المرتبطة به نهائيًا.</span>
-      <div class="flex gap-2 sm:mr-auto shrink-0">
-        <button class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 transition-colors" type="button" (click)="cancelDeleteClass()">إلغاء</button>
-        <button class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-2xl transition-colors" type="button" (click)="confirmDeleteClass()">تأكيد الحذف</button>
+    <div class="cm-confirm-bar pointer-events-auto">
+      <span class="material-symbols-outlined cm-confirm-icon">warning</span>
+      <span class="cm-confirm-text">هل أنت متأكد من حذف هذا الفصل الدراسي؟ سيتم حذف جميع البيانات المرتبطة به نهائيًا.</span>
+      <div class="cm-confirm-actions">
+        <button class="cm-btn cm-btn-ghost cm-btn-sm" type="button" (click)="cancelDeleteClass()">إلغاء</button>
+        <button class="cm-btn cm-btn-danger cm-btn-sm" type="button" (click)="confirmDeleteClass()">تأكيد الحذف</button>
       </div>
     </div>
   </div>
 }
 
+<!-- ══ Students Modal ════════════════════════════════════════════════════ -->
 @if (showStudentsModal()) {
-  <div class="fixed inset-0 lg:right-[280px] z-[60] flex items-center justify-center bg-gray-900/50 backdrop-blur-sm p-4">
-    <div class="bg-white rounded-3xl shadow-xl w-full max-w-6xl max-h-[90vh] flex flex-col overflow-hidden">
-      <div class="px-6 py-4 border-b border-gray-200 flex items-start justify-between gap-4 bg-gray-50">
-        <div class="space-y-3 min-w-0">
-          <div>
-            <p class="text-sm font-medium text-blue-600">طلاب الفصل</p>
-            <h3 class="text-xl font-bold text-gray-900">
-              {{ selectedClassForStudents()?.name || 'الفصل الدراسي' }}
-            </h3>
-          </div>
-
-          <div class="flex flex-wrap items-center gap-2 text-xs">
-            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border bg-blue-50 text-blue-700 border-blue-200">
-              {{ studentsBrowserResult()?.gradeLevelName || selectedClassForStudents()?.gradeLevelName || 'المرحلة غير محددة' }}
-            </span>
-            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border bg-gray-100 text-gray-700 border-gray-200">
-              {{ studentsBrowserResult()?.academicYearName || selectedClassForStudents()?.academicYearName || 'السنة الدراسية' }}
-            </span>
-            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border bg-emerald-50 text-emerald-700 border-emerald-200">
-              إجمالي الطلاب: {{ getStudentsTotalCount() }}
-            </span>
-            <span *ngIf="hasStudentSearch()" class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border bg-indigo-50 text-indigo-700 border-indigo-200">
-              نتائج البحث: {{ getStudentsFilteredCount() }}
-            </span>
+  <div class="cm-modal-overlay fixed inset-0 lg:right-[280px] z-[60] overflow-y-auto bg-gray-900/55 backdrop-blur-sm p-4">
+    <div class="cm-modal-centering">
+      <div class="cm-modal w-full max-w-6xl flex flex-col">
+        <div class="cm-modal-header">
+          <div class="cm-hero-glow"></div>
+          <div class="cm-modal-header-row">
+            <div class="space-y-3 min-w-0">
+              <div>
+                <p class="cm-modal-eyebrow">طلاب الفصل</p>
+                <h3 class="cm-modal-title">{{ selectedClassForStudents()?.name || 'الفصل الدراسي' }}</h3>
+              </div>
+              <div class="cm-modal-badge-row">
+                <span class="cm-modal-badge">
+                  <span class="material-symbols-outlined" style="font-size:14px">stairs</span>
+                  {{ studentsBrowserResult()?.gradeLevelName || selectedClassForStudents()?.gradeLevelName || 'المرحلة غير محددة' }}
+                </span>
+                <span class="cm-modal-badge is-soft">
+                  <span class="material-symbols-outlined" style="font-size:14px">calendar_today</span>
+                  {{ studentsBrowserResult()?.academicYearName || selectedClassForStudents()?.academicYearName || 'السنة الدراسية' }}
+                </span>
+                <span class="cm-modal-badge">
+                  <span class="material-symbols-outlined" style="font-size:14px">groups</span>
+                  إجمالي الطلاب: {{ getStudentsTotalCount() }}
+                </span>
+                <span *ngIf="hasStudentSearch()" class="cm-modal-badge is-soft">
+                  <span class="material-symbols-outlined" style="font-size:14px">search</span>
+                  نتائج البحث: {{ getStudentsFilteredCount() }}
+                </span>
+              </div>
+            </div>
+            <button type="button" (click)="closeStudentsModal()" class="cm-modal-close" title="إغلاق">
+              <span class="material-symbols-outlined">close</span>
+            </button>
           </div>
         </div>
 
-        <button
-          type="button"
-          (click)="closeStudentsModal()"
-          class="w-10 h-10 flex items-center justify-center rounded-2xl border border-gray-200 bg-white text-gray-500 hover:bg-gray-100 transition-colors"
-          title="إغلاق">
-          <span class="material-symbols-outlined text-lg">close</span>
-        </button>
-      </div>
-
-      <div class="p-6 overflow-y-auto flex-1 space-y-6">
-        <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-lg">
-          <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-end">
-            <div class="lg:col-span-7">
-              <label class="block mb-2 text-sm font-medium text-gray-900">ابحث باسم الطالب</label>
-              <input
-                type="text"
-                [(ngModel)]="studentSearchTerm"
-                (keyup.enter)="applyStudentSearch()"
-                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5"
-                placeholder="اكتب اسم الطالب ثم اضغط Enter أو زر البحث" />
-            </div>
-
-            <div class="lg:col-span-2">
-              <label class="block mb-2 text-sm font-medium text-gray-900">عدد الصفوف</label>
-              <select
-                [ngModel]="studentsItemsPerPage()"
-                (ngModelChange)="studentsItemsPerPage.set($event)"
-                (change)="onStudentsPageSizeChange()"
-                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5">
-                <option [ngValue]="10">10</option>
-                <option [ngValue]="20">20</option>
-                <option [ngValue]="50">50</option>
-              </select>
-            </div>
-
-            <div class="lg:col-span-3 flex flex-wrap gap-3">
-              <button
-                type="button"
-                (click)="applyStudentSearch()"
-                class="px-4 py-2 text-sm font-medium text-white rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-lg transform transition-all hover:-translate-y-0.5 flex items-center gap-2">
-                <span class="material-symbols-outlined text-sm">search</span>
-                بحث
-              </button>
-
-              <button
-                type="button"
-                (click)="clearStudentSearch()"
-                class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 flex items-center gap-2">
-                <span class="material-symbols-outlined text-sm">refresh</span>
-                إعادة ضبط
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div *ngIf="studentsModalError()" class="flex items-center gap-3 p-4 text-sm text-red-800 rounded-2xl bg-red-50 border border-red-200">
-          <span class="material-symbols-outlined text-lg">error</span>
-          <span class="font-medium">{{ studentsModalError() }}</span>
-        </div>
-
-        <div class="bg-white rounded-2xl border border-gray-100 shadow-lg overflow-hidden">
-          <div class="px-5 py-4 border-b border-gray-100 bg-gray-50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div>
-              <h4 class="text-base font-bold text-gray-900">قائمة الطلاب</h4>
-              <p class="text-sm text-gray-500">
-                عرض {{ studentRangeStart() }} إلى {{ studentRangeEnd() }} من أصل {{ studentFilteredCount() }} طالب
-              </p>
-            </div>
-
-            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border bg-gray-100 text-gray-700 border-gray-200">
-              الصفحة {{ studentsCurrentPage() }} من {{ totalStudentPages() }}
-            </span>
-          </div>
-
-          <div *ngIf="studentsModalLoading()" class="p-10 flex flex-col items-center justify-center gap-3 text-gray-500">
-            <span class="material-symbols-outlined text-4xl animate-pulse text-blue-600">progress_activity</span>
-            <p class="text-sm font-medium">جارٍ تحميل طلاب الفصل...</p>
-          </div>
-
-          <div *ngIf="!studentsModalLoading()" class="overflow-x-auto">
-            <table class="w-full text-sm text-right text-gray-500">
-              <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th scope="col" class="px-6 py-4">اسم الطالب</th>
-                  <th scope="col" class="px-6 py-4">النوع</th>
-                  <th scope="col" class="px-6 py-4">الحالة</th>
-                  <th scope="col" class="px-6 py-4">تاريخ الانضمام</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                <tr *ngFor="let student of classStudents()" class="bg-white border-b border-gray-100 hover:bg-blue-50 transition-colors">
-                  <td class="px-6 py-4 font-bold text-gray-900">
-                    {{ student.studentName }}
-                  </td>
-                  <td class="px-6 py-4 text-gray-700">
-                    {{ getGenderLabel(student.gender) }}
-                  </td>
-                  <td class="px-6 py-4">
-                    <span
-                      class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border"
-                      [class.bg-emerald-50]="student.isActive"
-                      [class.text-emerald-700]="student.isActive"
-                      [class.border-emerald-200]="student.isActive"
-                      [class.bg-gray-100]="!student.isActive"
-                      [class.text-gray-600]="!student.isActive"
-                      [class.border-gray-200]="!student.isActive">
-                      {{ student.isActive ? 'نشط' : 'غير نشط' }}
-                    </span>
-                  </td>
-                  <td class="px-6 py-4 text-gray-700">
-                    {{ formatDisplayDate(student.enrolledAt) }}
-                  </td>
-                </tr>
-
-                <tr *ngIf="classStudents().length === 0">
-                  <td colspan="4" class="px-6 py-12 text-center">
-                    <div class="flex flex-col items-center justify-center text-gray-500">
-                      <span class="material-symbols-outlined text-4xl mb-3 text-gray-400">groups</span>
-                      <p class="text-base font-medium text-gray-900 mb-1">لا توجد نتائج لعرضها</p>
-                      <p class="text-sm">جرّب تغيير عبارة البحث أو راجع بيانات الفصل.</p>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <div class="px-6 py-4 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-4 bg-gray-50">
-        <span class="text-sm text-gray-700">
-          إظهار {{ studentRangeStart() }} إلى {{ studentRangeEnd() }} من أصل {{ studentFilteredCount() }} طالب
-        </span>
-
-        <div class="flex items-center gap-2">
-          <button
-            type="button"
-            class="flex items-center justify-center px-3 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
-            [disabled]="studentsCurrentPage() === 1 || studentsModalLoading()"
-            (click)="prevStudentsPage()">
-            <span class="material-symbols-outlined text-sm mr-1">chevron_right</span>
-            السابق
-          </button>
-
-          <div class="hidden sm:flex items-center gap-1">
-            @for (p of studentPages(); track studentTrackByPageIndex($index, p)) {
-              @if (p === '...') {
-                <span class="flex items-center justify-center w-8 h-8 text-sm font-medium text-gray-400">…</span>
-              } @else {
-                <button
-                  type="button"
-                  class="flex items-center justify-center w-8 h-8 text-sm font-medium rounded-2xl transition-colors border"
-                  [class.bg-blue-600]="p === studentsCurrentPage()"
-                  [class.text-white]="p === studentsCurrentPage()"
-                  [class.border-blue-600]="p === studentsCurrentPage()"
-                  [class.bg-white]="p !== studentsCurrentPage()"
-                  [class.text-gray-900]="p !== studentsCurrentPage()"
-                  [class.border-gray-200]="p !== studentsCurrentPage()"
-                  [class.hover:bg-gray-50]="p !== studentsCurrentPage()"
-                  [disabled]="studentsModalLoading()"
-                  (click)="goToStudentsPage(+p)">
-                  {{ p }}
+        <div class="cm-modal-body flex-1 space-y-5">
+          <div class="cm-panel">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-end">
+              <div class="lg:col-span-7 cm-field">
+                <label class="cm-label">
+                  <span class="material-symbols-outlined">search</span>
+                  ابحث باسم الطالب
+                </label>
+                <input
+                  type="text"
+                  [(ngModel)]="studentSearchTerm"
+                  (keyup.enter)="applyStudentSearch()"
+                  class="cm-input"
+                  placeholder="اكتب اسم الطالب ثم اضغط Enter أو زر البحث" />
+              </div>
+              <div class="lg:col-span-2 cm-field">
+                <label class="cm-label">عدد الصفوف</label>
+                <select
+                  [ngModel]="studentsItemsPerPage()"
+                  (ngModelChange)="studentsItemsPerPage.set($event)"
+                  (change)="onStudentsPageSizeChange()"
+                  class="cm-select">
+                  <option [ngValue]="10">10</option>
+                  <option [ngValue]="20">20</option>
+                  <option [ngValue]="50">50</option>
+                </select>
+              </div>
+              <div class="lg:col-span-3 flex flex-wrap gap-2">
+                <button type="button" (click)="applyStudentSearch()" class="cm-btn cm-btn-primary cm-btn-sm">
+                  <span class="material-symbols-outlined" style="font-size:16px">search</span>
+                  بحث
                 </button>
-              }
-            }
+                <button type="button" (click)="clearStudentSearch()" class="cm-btn cm-btn-ghost cm-btn-sm">
+                  <span class="material-symbols-outlined" style="font-size:16px">refresh</span>
+                  إعادة ضبط
+                </button>
+              </div>
+            </div>
           </div>
 
-          <button
-            type="button"
-            class="flex items-center justify-center px-3 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
-            [disabled]="studentsCurrentPage() === totalStudentPages() || studentsModalLoading()"
-            (click)="nextStudentsPage()">
-            التالي
-            <span class="material-symbols-outlined text-sm ml-1">chevron_left</span>
-          </button>
+          <div *ngIf="studentsModalError()" class="cm-banner cm-banner-error">
+            <span class="material-symbols-outlined cm-banner-icon">error</span>
+            <span>{{ studentsModalError() }}</span>
+          </div>
+
+          <div class="cm-card">
+            <div class="cm-section-bar">
+              <div class="cm-subhead">
+                <h4 class="cm-subhead-title">قائمة الطلاب</h4>
+                <p class="cm-subhead-sub">
+                  عرض {{ studentRangeStart() }} إلى {{ studentRangeEnd() }} من أصل {{ studentFilteredCount() }} طالب
+                </p>
+              </div>
+              <span class="cm-badge cm-badge-gray">الصفحة {{ studentsCurrentPage() }} من {{ totalStudentPages() }}</span>
+            </div>
+
+            <div *ngIf="studentsModalLoading()" class="cm-loading">
+              <span class="material-symbols-outlined cm-loading-icon cm-spin">progress_activity</span>
+              <p class="cm-loading-text">جارٍ تحميل طلاب الفصل...</p>
+            </div>
+
+            <div *ngIf="!studentsModalLoading()" class="cm-table-wrap">
+              <table class="cm-table">
+                <thead>
+                  <tr>
+                    <th scope="col">اسم الطالب</th>
+                    <th scope="col">النوع</th>
+                    <th scope="col">الحالة</th>
+                    <th scope="col">تاريخ الانضمام</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let student of classStudents(); let i = index" class="cm-row-enter" [style.animation-delay]="(i * 35) + 'ms'">
+                    <td>
+                      <div class="cm-name-cell">
+                        <span class="cm-name-avatar">{{ student.studentName.charAt(0) }}</span>
+                        {{ student.studentName }}
+                      </div>
+                    </td>
+                    <td>{{ getGenderLabel(student.gender) }}</td>
+                    <td>
+                      <span class="cm-badge"
+                        [class.cm-badge-green]="student.isActive"
+                        [class.cm-badge-gray]="!student.isActive">
+                        {{ student.isActive ? 'نشط' : 'غير نشط' }}
+                      </span>
+                    </td>
+                    <td>{{ formatDisplayDate(student.enrolledAt) }}</td>
+                  </tr>
+                  <tr *ngIf="classStudents().length === 0">
+                    <td colspan="4" class="p-0">
+                      <div class="cm-empty">
+                        <div class="cm-empty-icon-wrap"><span class="material-symbols-outlined">groups</span></div>
+                        <p class="cm-empty-title">لا توجد نتائج لعرضها</p>
+                        <p class="cm-empty-sub">جرّب تغيير عبارة البحث أو راجع بيانات الفصل.</p>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="cm-modal-footer">
+          <span class="cm-pagination-info">
+            إظهار {{ studentRangeStart() }} إلى {{ studentRangeEnd() }} من أصل {{ studentFilteredCount() }} طالب
+          </span>
+          <div class="cm-pagination-controls">
+            <button type="button" class="cm-page-nav-btn"
+              [disabled]="studentsCurrentPage() === 1 || studentsModalLoading()"
+              (click)="prevStudentsPage()">
+              <span class="material-symbols-outlined" style="font-size:16px">chevron_right</span>
+              السابق
+            </button>
+            <div class="hidden sm:flex items-center gap-1">
+              @for (p of studentPages(); track studentTrackByPageIndex($index, p)) {
+                @if (p === '...') {
+                  <span class="cm-page-dots">…</span>
+                } @else {
+                  <button type="button" class="cm-page-btn"
+                    [class.active]="p === studentsCurrentPage()"
+                    [disabled]="studentsModalLoading()"
+                    (click)="goToStudentsPage(+p)">{{ p }}</button>
+                }
+              }
+            </div>
+            <button type="button" class="cm-page-nav-btn"
+              [disabled]="studentsCurrentPage() === totalStudentPages() || studentsModalLoading()"
+              (click)="nextStudentsPage()">
+              التالي
+              <span class="material-symbols-outlined" style="font-size:16px">chevron_left</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
   </div>
 }
 
+<!-- ══ Picker Modal ══════════════════════════════════════════════════════ -->
 @if (showPickerModal()) {
-  <div class="fixed inset-0 lg:right-[280px] z-[60] flex items-center justify-center bg-gray-900/50 backdrop-blur-sm p-4">
-    <div class="bg-white rounded-3xl shadow-xl w-full max-w-6xl max-h-[90vh] flex flex-col overflow-hidden">
+  <div class="cm-modal-overlay fixed inset-0 lg:right-[280px] z-[60] overflow-y-auto bg-gray-900/55 backdrop-blur-sm p-4">
+    <div class="cm-modal-centering">
+      <div class="cm-modal w-full max-w-6xl flex flex-col">
 
-      <!-- Header -->
-      <div class="px-6 py-4 border-b border-gray-200 flex items-start justify-between gap-4 bg-gray-50">
-        <div class="space-y-2 min-w-0">
-          <p class="text-sm font-medium text-emerald-600">إضافة طلاب للفصل</p>
-          <h3 class="text-xl font-bold text-gray-900">
-            {{ selectedClassForPicker()?.name || 'الفصل الدراسي' }}
-          </h3>
-          <div class="flex flex-wrap items-center gap-2 text-xs">
-            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border bg-blue-50 text-blue-700 border-blue-200">
-              {{ selectedClassForPicker()?.gradeLevelName || 'المرحلة غير محددة' }}
-            </span>
-            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border bg-gray-100 text-gray-700 border-gray-200">
-              {{ selectedClassForPicker()?.academicYearName || 'السنة الدراسية' }}
-            </span>
-            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border bg-emerald-50 text-emerald-700 border-emerald-200">
-              متاح للتسجيل: {{ availableTotal() }}
-            </span>
-            @if (selectedStudentIds().size > 0) {
-              <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border bg-indigo-50 text-indigo-700 border-indigo-200">
-                محدد: {{ selectedStudentIds().size }}
-              </span>
-            }
+        <div class="cm-modal-header is-emerald">
+          <div class="cm-hero-glow"></div>
+          <div class="cm-modal-header-row">
+            <div class="space-y-2 min-w-0">
+              <p class="cm-modal-eyebrow">إضافة طلاب للفصل</p>
+              <h3 class="cm-modal-title">{{ selectedClassForPicker()?.name || 'الفصل الدراسي' }}</h3>
+              <div class="cm-modal-badge-row">
+                <span class="cm-modal-badge">
+                  <span class="material-symbols-outlined" style="font-size:14px">stairs</span>
+                  {{ selectedClassForPicker()?.gradeLevelName || 'المرحلة غير محددة' }}
+                </span>
+                <span class="cm-modal-badge is-soft">
+                  <span class="material-symbols-outlined" style="font-size:14px">calendar_today</span>
+                  {{ selectedClassForPicker()?.academicYearName || 'السنة الدراسية' }}
+                </span>
+                <span class="cm-modal-badge">
+                  <span class="material-symbols-outlined" style="font-size:14px">person_search</span>
+                  متاح للتسجيل: {{ availableTotal() }}
+                </span>
+                @if (selectedStudentIds().size > 0) {
+                  <span class="cm-modal-badge is-soft">
+                    <span class="material-symbols-outlined" style="font-size:14px">check_circle</span>
+                    محدد: {{ selectedStudentIds().size }}
+                  </span>
+                }
+              </div>
+            </div>
+            <button type="button" (click)="closePickerModal()" class="cm-modal-close" title="إغلاق">
+              <span class="material-symbols-outlined">close</span>
+            </button>
           </div>
         </div>
-        <button
-          type="button"
-          (click)="closePickerModal()"
-          class="w-10 h-10 flex items-center justify-center rounded-2xl border border-gray-200 bg-white text-gray-500 hover:bg-gray-100 transition-colors"
-          title="إغلاق">
-          <span class="material-symbols-outlined text-lg">close</span>
-        </button>
-      </div>
 
-      <div class="p-6 overflow-y-auto flex-1 space-y-5">
+        <div class="cm-modal-body flex-1 space-y-5">
 
-        <!-- Filter Bar -->
-        <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-4">
-
-          <!-- Row 1: Search + Sort -->
-          <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-end">
-            <div class="lg:col-span-6">
-              <label class="block mb-2 text-sm font-medium text-gray-900">بحث باسم الطالب</label>
-              <input
-                type="text"
-                [(ngModel)]="pickerSearchTerm"
-                (keyup.enter)="applyPickerSearch()"
-                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-2xl focus:ring-emerald-500 focus:border-emerald-500 block w-full p-2.5"
-                placeholder="اكتب اسم الطالب ثم اضغط Enter"/>
-            </div>
-
-            <div class="lg:col-span-3">
-              <label class="block mb-2 text-sm font-medium text-gray-900">ترتيب</label>
-              <div class="flex gap-2">
-                <button
-                  type="button"
-                  (click)="changeSortBy('name')"
-                  class="flex-1 px-3 py-2 text-xs font-medium rounded-2xl border transition-all flex items-center justify-center gap-1"
-                  [class.bg-emerald-600]="sortBy() === 'name'"
-                  [class.text-white]="sortBy() === 'name'"
-                  [class.border-emerald-600]="sortBy() === 'name'"
-                  [class.bg-white]="sortBy() !== 'name'"
-                  [class.text-gray-700]="sortBy() !== 'name'"
-                  [class.border-gray-200]="sortBy() !== 'name'">
-                  <span class="material-symbols-outlined text-sm">sort_by_alpha</span>
-                  الاسم
-                  @if (sortBy() === 'name') {
-                    <span class="material-symbols-outlined text-xs">
-                      {{ sortDescending() ? 'arrow_downward' : 'arrow_upward' }}
-                    </span>
-                  }
+          <div class="cm-panel">
+            <!-- Row 1: Search + Sort -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-end">
+              <div class="lg:col-span-6 cm-field">
+                <label class="cm-label">
+                  <span class="material-symbols-outlined">search</span>
+                  بحث باسم الطالب
+                </label>
+                <input
+                  type="text"
+                  [(ngModel)]="pickerSearchTerm"
+                  (keyup.enter)="applyPickerSearch()"
+                  class="cm-input"
+                  placeholder="اكتب اسم الطالب ثم اضغط Enter"/>
+              </div>
+              <div class="lg:col-span-3 cm-field">
+                <label class="cm-label">ترتيب</label>
+                <div class="cm-sort-toggle">
+                  <button type="button" (click)="changeSortBy('name')" class="cm-sort-btn" [class.active]="sortBy() === 'name'">
+                    <span class="material-symbols-outlined">sort_by_alpha</span>
+                    الاسم
+                    @if (sortBy() === 'name') {
+                      <span class="material-symbols-outlined">{{ sortDescending() ? 'arrow_downward' : 'arrow_upward' }}</span>
+                    }
+                  </button>
+                  <button type="button" (click)="changeSortBy('birthdate')" class="cm-sort-btn" [class.active]="sortBy() === 'birthdate'">
+                    <span class="material-symbols-outlined">cake</span>
+                    الميلاد
+                    @if (sortBy() === 'birthdate') {
+                      <span class="material-symbols-outlined">{{ sortDescending() ? 'arrow_downward' : 'arrow_upward' }}</span>
+                    }
+                  </button>
+                </div>
+              </div>
+              <div class="lg:col-span-3 flex gap-2">
+                <button type="button" (click)="applyPickerSearch()" class="cm-btn cm-btn-emerald cm-btn-sm cm-btn-block">
+                  <span class="material-symbols-outlined" style="font-size:16px">search</span>
+                  بحث
                 </button>
-                <button
-                  type="button"
-                  (click)="changeSortBy('birthdate')"
-                  class="flex-1 px-3 py-2 text-xs font-medium rounded-2xl border transition-all flex items-center justify-center gap-1"
-                  [class.bg-emerald-600]="sortBy() === 'birthdate'"
-                  [class.text-white]="sortBy() === 'birthdate'"
-                  [class.border-emerald-600]="sortBy() === 'birthdate'"
-                  [class.bg-white]="sortBy() !== 'birthdate'"
-                  [class.text-gray-700]="sortBy() !== 'birthdate'"
-                  [class.border-gray-200]="sortBy() !== 'birthdate'">
-                  <span class="material-symbols-outlined text-sm">cake</span>
-                  الميلاد
-                  @if (sortBy() === 'birthdate') {
-                    <span class="material-symbols-outlined text-xs">
-                      {{ sortDescending() ? 'arrow_downward' : 'arrow_upward' }}
-                    </span>
-                  }
+                <button type="button" (click)="clearPickerSearch()" class="cm-btn cm-btn-ghost cm-btn-sm cm-btn-block">
+                  <span class="material-symbols-outlined" style="font-size:16px">refresh</span>
+                  مسح
                 </button>
               </div>
             </div>
 
-            <div class="lg:col-span-3 flex gap-2">
-              <button
-                type="button"
-                (click)="applyPickerSearch()"
-                class="flex-1 px-4 py-2 text-sm font-medium text-white rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-md hover:shadow-lg transform transition-all hover:-translate-y-0.5 flex items-center justify-center gap-2">
-                <span class="material-symbols-outlined text-sm">search</span>
-                بحث
-              </button>
-              <button
-                type="button"
-                (click)="clearPickerSearch()"
-                class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 flex items-center justify-center gap-2">
-                <span class="material-symbols-outlined text-sm">refresh</span>
-                مسح
-              </button>
+            <!-- Row 2: Birth Date Filter -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-end cm-panel-divider">
+              <div class="lg:col-span-3 cm-field">
+                <label class="cm-label">تاريخ الميلاد من</label>
+                <input type="date" [ngModel]="birthDateFrom()" (ngModelChange)="birthDateFrom.set($event)" class="cm-input"/>
+              </div>
+              <div class="lg:col-span-3 cm-field">
+                <label class="cm-label">تاريخ الميلاد إلى</label>
+                <input type="date" [ngModel]="birthDateTo()" (ngModelChange)="birthDateTo.set($event)" class="cm-input"/>
+              </div>
+              <div class="lg:col-span-3 flex gap-2">
+                <button type="button" (click)="applyPickerDateFilter()" class="cm-btn cm-btn-soft cm-btn-sm cm-btn-block">
+                  <span class="material-symbols-outlined" style="font-size:16px">filter_alt</span>
+                  تطبيق
+                </button>
+                <button type="button" (click)="clearPickerDateFilter()" class="cm-btn cm-btn-ghost cm-btn-sm cm-btn-block">
+                  <span class="material-symbols-outlined" style="font-size:16px">filter_alt_off</span>
+                  مسح
+                </button>
+              </div>
+              <div class="lg:col-span-3 flex gap-2">
+                <button type="button" (click)="selectAllVisible()" [disabled]="availableStudents().length === 0" class="cm-btn cm-btn-soft-indigo cm-btn-sm cm-btn-block">
+                  <span class="material-symbols-outlined" style="font-size:16px">select_all</span>
+                  تحديد الكل
+                </button>
+                <button type="button" (click)="clearSelection()" [disabled]="selectedStudentIds().size === 0" class="cm-btn cm-btn-soft-danger cm-btn-sm cm-btn-block">
+                  <span class="material-symbols-outlined" style="font-size:16px">deselect</span>
+                  إلغاء
+                </button>
+              </div>
             </div>
           </div>
 
-          <!-- Row 2: Birth Date Filter -->
-          <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-end border-t border-gray-100 pt-4">
-            <div class="lg:col-span-3">
-              <label class="block mb-2 text-sm font-medium text-gray-900">تاريخ الميلاد من</label>
-              <input
-                type="date"
-                [ngModel]="birthDateFrom()"
-                (ngModelChange)="birthDateFrom.set($event)"
-                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-2xl focus:ring-emerald-500 focus:border-emerald-500 block w-full p-2.5"/>
-            </div>
-            <div class="lg:col-span-3">
-              <label class="block mb-2 text-sm font-medium text-gray-900">تاريخ الميلاد إلى</label>
-              <input
-                type="date"
-                [ngModel]="birthDateTo()"
-                (ngModelChange)="birthDateTo.set($event)"
-                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-2xl focus:ring-emerald-500 focus:border-emerald-500 block w-full p-2.5"/>
-            </div>
-            <div class="lg:col-span-3 flex gap-2">
-              <button
-                type="button"
-                (click)="applyPickerDateFilter()"
-                class="flex-1 px-4 py-2 text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-2xl hover:bg-emerald-100 transition-all flex items-center justify-center gap-2">
-                <span class="material-symbols-outlined text-sm">filter_alt</span>
-                تطبيق
-              </button>
-              <button
-                type="button"
-                (click)="clearPickerDateFilter()"
-                class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 transition-all flex items-center justify-center gap-2">
-                <span class="material-symbols-outlined text-sm">filter_alt_off</span>
-                مسح
-              </button>
-            </div>
-            <div class="lg:col-span-3 flex gap-2">
-              <button
-                type="button"
-                (click)="selectAllVisible()"
-                [disabled]="availableStudents().length === 0"
-                class="flex-1 px-3 py-2 text-xs font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-2xl hover:bg-indigo-100 transition-all flex items-center justify-center gap-1 disabled:opacity-50">
-                <span class="material-symbols-outlined text-sm">select_all</span>
-                تحديد الكل
-              </button>
-              <button
-                type="button"
-                (click)="clearSelection()"
-                [disabled]="selectedStudentIds().size === 0"
-                class="flex-1 px-3 py-2 text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded-2xl hover:bg-red-100 transition-all flex items-center justify-center gap-1 disabled:opacity-50">
-                <span class="material-symbols-outlined text-sm">deselect</span>
-                إلغاء
-              </button>
-            </div>
+          <div *ngIf="pickerError()" class="cm-banner cm-banner-error">
+            <span class="material-symbols-outlined cm-banner-icon">error</span>
+            <span>{{ pickerError() }}</span>
           </div>
-        </div>
-
-        <!-- Feedback Messages -->
-        <div *ngIf="pickerError()" class="flex items-center gap-3 p-4 text-sm text-red-800 rounded-2xl bg-red-50 border border-red-200">
-          <span class="material-symbols-outlined text-lg">error</span>
-          <span class="font-medium">{{ pickerError() }}</span>
-        </div>
-        <div *ngIf="enrollError()" class="flex items-center gap-3 p-4 text-sm text-red-800 rounded-2xl bg-red-50 border border-red-200">
-          <span class="material-symbols-outlined text-lg">warning</span>
-          <span class="font-medium">{{ enrollError() }}</span>
-        </div>
-        <div *ngIf="enrollSuccess()" class="flex items-center gap-3 p-4 text-sm text-emerald-800 rounded-2xl bg-emerald-50 border border-emerald-200">
-          <span class="material-symbols-outlined text-lg">check_circle</span>
-          <span class="font-medium">{{ enrollSuccess() }}</span>
-        </div>
-
-        <!-- Students Table -->
-        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          <div class="px-5 py-4 border-b border-gray-100 bg-gray-50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div>
-              <h4 class="text-base font-bold text-gray-900">الطلاب المتاحون للتسجيل</h4>
-              <p class="text-sm text-gray-500">
-                عرض {{ pickerRangeStart() }} إلى {{ pickerRangeEnd() }} من أصل {{ availableTotal() }} طالب
-              </p>
-            </div>
-            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border bg-gray-100 text-gray-700 border-gray-200">
-              الصفحة {{ availablePage() }} من {{ availableTotalPages() }}
-            </span>
+          <div *ngIf="enrollError()" class="cm-banner cm-banner-error">
+            <span class="material-symbols-outlined cm-banner-icon">warning</span>
+            <span>{{ enrollError() }}</span>
+          </div>
+          <div *ngIf="enrollSuccess()" class="cm-banner cm-banner-success">
+            <span class="material-symbols-outlined cm-banner-icon">check_circle</span>
+            <span>{{ enrollSuccess() }}</span>
           </div>
 
-          <!-- Loading -->
-          <div *ngIf="pickerLoading()" class="p-10 flex flex-col items-center justify-center gap-3 text-gray-500">
-            <span class="material-symbols-outlined text-4xl animate-pulse text-emerald-600">progress_activity</span>
-            <p class="text-sm font-medium">جارى تحميل الطلاب...</p>
+          <div class="cm-card">
+            <div class="cm-section-bar">
+              <div class="cm-subhead">
+                <h4 class="cm-subhead-title">الطلاب المتاحون للتسجيل</h4>
+                <p class="cm-subhead-sub">
+                  عرض {{ pickerRangeStart() }} إلى {{ pickerRangeEnd() }} من أصل {{ availableTotal() }} طالب
+                </p>
+              </div>
+              <span class="cm-badge cm-badge-gray">الصفحة {{ availablePage() }} من {{ availableTotalPages() }}</span>
+            </div>
+
+            <div *ngIf="pickerLoading()" class="cm-loading">
+              <span class="material-symbols-outlined cm-loading-icon cm-spin" style="color:#059669">progress_activity</span>
+              <p class="cm-loading-text">جارى تحميل الطلاب...</p>
+            </div>
+
+            <div *ngIf="!pickerLoading()" class="cm-table-wrap">
+              <table class="cm-table">
+                <thead>
+                  <tr>
+                    <th scope="col" class="w-12"></th>
+                    <th scope="col">اسم الطالب</th>
+                    <th scope="col">الرقم القومي</th>
+                    <th scope="col">النوع</th>
+                    <th scope="col">تاريخ الميلاد</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    *ngFor="let student of availableStudents(); let i = index"
+                    (click)="toggleStudentSelection(student.id)"
+                    class="cm-row-enter cm-select-row"
+                    [class.is-selected]="isStudentSelected(student.id)"
+                    [style.animation-delay]="(i * 30) + 'ms'">
+                    <td>
+                      <input
+                        type="checkbox"
+                        [checked]="isStudentSelected(student.id)"
+                        (change)="toggleStudentSelection(student.id)"
+                        (click)="$event.stopPropagation()"
+                        class="cm-checkbox"/>
+                    </td>
+                    <td>
+                      <div class="cm-name-cell">
+                        <span class="cm-name-avatar" style="background:linear-gradient(135deg,#059669,#0d9488)">{{ student.fullName.charAt(0) }}</span>
+                        {{ student.fullName }}
+                      </div>
+                    </td>
+                    <td>{{ student.nationalId || '—' }}</td>
+                    <td>{{ getGenderLabel(student.gender) }}</td>
+                    <td>{{ formatDisplayDate(student.birthDate) }}</td>
+                  </tr>
+                  <tr *ngIf="availableStudents().length === 0">
+                    <td colspan="5" class="p-0">
+                      <div class="cm-empty">
+                        <div class="cm-empty-icon-wrap"><span class="material-symbols-outlined">person_search</span></div>
+                        <p class="cm-empty-title">لا يوجد طلاب متاحون</p>
+                        <p class="cm-empty-sub">جميع الطلاب مسجلون بالفعل أو جرّب تغيير الفلتر.</p>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
 
-          <!-- Table -->
-          <div *ngIf="!pickerLoading()" class="overflow-x-auto">
-            <table class="w-full text-sm text-right text-gray-500">
-              <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th scope="col" class="px-4 py-4 w-12"></th>
-                  <th scope="col" class="px-6 py-4">اسم الطالب</th>
-                  <th scope="col" class="px-6 py-4">الرقم القومي</th>
-                  <th scope="col" class="px-6 py-4">النوع</th>
-                  <th scope="col" class="px-6 py-4">تاريخ الميلاد</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  *ngFor="let student of availableStudents()"
-                  (click)="toggleStudentSelection(student.id)"
-                  class="bg-white border-b border-gray-100 hover:bg-emerald-50 transition-colors cursor-pointer"
-                  [class.bg-emerald-50]="isStudentSelected(student.id)"
-                  [class.border-emerald-200]="isStudentSelected(student.id)">
-                  <td class="px-4 py-4">
-                    <input
-                      type="checkbox"
-                      [checked]="isStudentSelected(student.id)"
-                      (change)="toggleStudentSelection(student.id)"
-                      (click)="$event.stopPropagation()"
-                      class="w-4 h-4 text-emerald-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500"/>
-                  </td>
-                  <td class="px-6 py-4 font-bold text-gray-900">{{ student.fullName }}</td>
-                  <td class="px-6 py-4 text-gray-600">{{ student.nationalId || '—' }}</td>
-                  <td class="px-6 py-4">{{ getGenderLabel(student.gender) }}</td>
-                  <td class="px-6 py-4 text-gray-700">{{ formatDisplayDate(student.birthDate) }}</td>
-                </tr>
-
-                <tr *ngIf="availableStudents().length === 0">
-                  <td colspan="5" class="px-6 py-12 text-center">
-                    <div class="flex flex-col items-center justify-center text-gray-500">
-                      <span class="material-symbols-outlined text-4xl mb-3 text-gray-400">person_search</span>
-                      <p class="text-base font-medium text-gray-900 mb-1">لا يوجد طلاب متاحون</p>
-                      <p class="text-sm">جميع الطلاب مسجلون بالفعل أو جرّب تغيير الفلتر.</p>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- Pagination -->
-        @if (availableTotalPages() > 1) {
-          <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <span class="text-sm text-gray-700">
-              إظهار <span class="font-semibold text-gray-900">{{ pickerRangeStart() }}</span> إلى <span class="font-semibold text-gray-900">{{ pickerRangeEnd() }}</span> من أصل <span class="font-semibold text-gray-900">{{ availableTotal() }}</span> طالب
-            </span>
-            <div class="flex items-center gap-2">
-              <button
-                type="button"
-                class="flex items-center justify-center px-3 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                [disabled]="availablePage() === 1 || pickerLoading()"
-                (click)="prevPickerPage()">
-                <span class="material-symbols-outlined text-sm mr-1">chevron_right</span>
-                السابق
-              </button>
-              <span class="text-sm text-gray-600 font-medium">
-                {{ availablePage() }} / {{ availableTotalPages() }}
+          @if (availableTotalPages() > 1) {
+            <div class="cm-pagination" style="border-top:none;background:transparent;padding:0;">
+              <span class="cm-pagination-info">
+                إظهار <strong>{{ pickerRangeStart() }}</strong> إلى <strong>{{ pickerRangeEnd() }}</strong> من أصل <strong>{{ availableTotal() }}</strong> طالب
               </span>
-              <button
-                type="button"
-                class="flex items-center justify-center px-3 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                [disabled]="availablePage() === availableTotalPages() || pickerLoading()"
-                (click)="nextPickerPage()">
-                التالي
-                <span class="material-symbols-outlined text-sm ml-1">chevron_left</span>
-              </button>
+              <div class="cm-pagination-controls">
+                <button type="button" class="cm-page-nav-btn"
+                  [disabled]="availablePage() === 1 || pickerLoading()"
+                  (click)="prevPickerPage()">
+                  <span class="material-symbols-outlined" style="font-size:16px">chevron_right</span>
+                  السابق
+                </button>
+                <span class="cm-pagination-info" style="font-weight:700">{{ availablePage() }} / {{ availableTotalPages() }}</span>
+                <button type="button" class="cm-page-nav-btn"
+                  [disabled]="availablePage() === availableTotalPages() || pickerLoading()"
+                  (click)="nextPickerPage()">
+                  التالي
+                  <span class="material-symbols-outlined" style="font-size:16px">chevron_left</span>
+                </button>
+              </div>
             </div>
-          </div>
-        }
-      </div>
+          }
+        </div>
 
-      <!-- Footer: Enroll Date + Confirm -->
-      <div class="px-6 py-4 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-4 bg-gray-50">
-        <div class="flex items-center gap-3">
-          <label class="text-sm font-medium text-gray-900 whitespace-nowrap">تاريخ التسجيل:</label>
-          <input
-            type="date"
-            [(ngModel)]="enrollDate"
-            class="bg-white border border-gray-300 text-gray-900 text-sm rounded-2xl focus:ring-emerald-500 focus:border-emerald-500 p-2"/>
+        <div class="cm-modal-footer">
+          <div class="flex items-center gap-3">
+            <label class="cm-label whitespace-nowrap">تاريخ التسجيل:</label>
+            <input type="date" [(ngModel)]="enrollDate" class="cm-input" style="width:auto"/>
+          </div>
+          <div class="flex items-center gap-3 flex-wrap">
+            <span class="cm-pagination-info">
+              <strong style="color:#4338ca">{{ selectedStudentIds().size }}</strong> طالب محدد
+            </span>
+            <button type="button" (click)="closePickerModal()" class="cm-btn cm-btn-ghost cm-btn-sm">إغلاق</button>
+            <button type="button" (click)="confirmBulkEnroll()"
+              [disabled]="selectedStudentIds().size === 0 || enrolling() || !enrollDate"
+              class="cm-btn cm-btn-emerald">
+              <span *ngIf="enrolling()" class="material-symbols-outlined text-sm cm-spin">progress_activity</span>
+              <span *ngIf="!enrolling()" class="material-symbols-outlined text-sm">how_to_reg</span>
+              {{ enrolling() ? 'جارى التسجيل...' : 'تسجيل الطلاب' }}
+            </button>
+          </div>
         </div>
-        <div class="flex items-center gap-3">
-          <span class="text-sm text-gray-600">
-            <span class="font-semibold text-indigo-700">{{ selectedStudentIds().size }}</span> طالب محدد
-          </span>
-          <button
-            type="button"
-            (click)="closePickerModal()"
-            class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 transition-all">
-            إغلاق
-          </button>
-          <button
-            type="button"
-            (click)="confirmBulkEnroll()"
-            [disabled]="selectedStudentIds().size === 0 || enrolling() || !enrollDate"
-            class="px-6 py-2 text-sm font-medium text-white rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-md hover:shadow-lg transform transition-all hover:-translate-y-0.5 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
-            <span *ngIf="enrolling()" class="material-symbols-outlined text-sm animate-spin">progress_activity</span>
-            <span *ngIf="!enrolling()" class="material-symbols-outlined text-sm">how_to_reg</span>
-            {{ enrolling() ? 'جارى التسجيل...' : 'تسجيل الطلاب' }}
-          </button>
-        </div>
+
       </div>
     </div>
   </div>
