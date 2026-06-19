@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, OnDestroy, computed, inject, signal } from '@angular/core';
 import { CommonModule }                       from '@angular/common';
 import { Sidebar }                            from '../../layouts/sidebar/sidebar';
 import { TimetableService }                   from '../../core/services/timetable.service';
@@ -16,7 +16,7 @@ import {
   templateUrl: './class-schedule.html',
   styleUrl:    './class-schedule.css',
 })
-export class ClassSchedule implements OnInit {
+export class ClassSchedule implements OnInit, OnDestroy {
   sidebarOpen  = signal(false);
   displayUserName = localStorage.getItem('fullName') || localStorage.getItem('username') || 'الطالب';
 
@@ -26,6 +26,18 @@ export class ClassSchedule implements OnInit {
   isLoading    = signal(true);
   errorMessage = signal<string | null>(null);
   hasLoaded    = signal(false);
+
+  /* ── live clock tick ─────────────────────────────────────────── */
+  /** نبضة بسيطة كل 30 ثانية فقط لتحديث "الحصة الحالية" تلقائيًا من غير ما المستخدم يعمل أي حركة */
+  nowTick = signal(Date.now());
+  private liveTimer?: ReturnType<typeof setInterval>;
+
+  /* ── mobile agenda state (UI-only, لا يلمس البيانات) ─────────── */
+  selectedDay = signal<string>('');
+
+  selectDay(value: string) {
+    this.selectedDay.set(value);
+  }
 
   /* ── helpers ─────────────────────────────────────────────────── */
 
@@ -47,7 +59,16 @@ export class ClassSchedule implements OnInit {
 
   /* ── lifecycle ─────────────────────────────────────────────────── */
 
-  ngOnInit() { this.loadSchedule(); }
+  ngOnInit() {
+    // الافتراضي على الموبايل: يفتح على اليوم الحالي لو ضمن أيام الدراسة، وإلا أول يوم
+    this.selectedDay.set(this.days.some(d => d.value === this.todayValue) ? this.todayValue : this.days[0].value);
+    this.loadSchedule();
+    this.liveTimer = setInterval(() => this.nowTick.set(Date.now()), 30000);
+  }
+
+  ngOnDestroy() {
+    if (this.liveTimer) clearInterval(this.liveTimer);
+  }
 
   loadSchedule() {
     this.isLoading.set(true);
@@ -83,24 +104,53 @@ export class ClassSchedule implements OnInit {
 
   /** رقم الحصة الحالية بناءً على الوقت، أو null لو مش في وقت حصة */
   getCurrentPeriodNum(): number | null {
+    this.nowTick();
     return getCurrentPeriodNumber(this.periods());
   }
 
-  /* ── subject color ────────────────────────────────────────────── */
+  isCurrentCell(dayValue: string, periodNum: number): boolean {
+    return this.isToday(dayValue) && this.getCurrentPeriodNum() === periodNum;
+  }
+
+  /** الحصة الجارية دلوقتي بالنسبة لليوم الحالي فقط (لعرضها في الهيدر) */
+  getCurrentLessonSlot(): TimetableSlotDto | null {
+    const periodNum = this.getCurrentPeriodNum();
+    if (periodNum === null) return null;
+    return this.getSlot(this.todayValue, periodNum);
+  }
+
+  /* ── subject color & icon ────────────────────────────────────── */
 
   private readonly palette = [
-    'sch-subj-blue',
-    'sch-subj-cyan',
-    'sch-subj-green',
-    'sch-subj-orange',
-    'sch-subj-purple',
+    'cs-subj-blue',
+    'cs-subj-cyan',
+    'cs-subj-green',
+    'cs-subj-orange',
+    'cs-subj-purple',
   ];
 
-  getSubjectColor(name: string | null): string {
-    if (!name) return 'sch-subj-gray';
+  private readonly icons = [
+    'calculate',
+    'language',
+    'biotech',
+    'history_edu',
+    'palette',
+  ];
+
+  private hashName(name: string): number {
     let h = 0;
     for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
-    return this.palette[Math.abs(h) % this.palette.length];
+    return Math.abs(h);
+  }
+
+  getSubjectColor(name: string | null): string {
+    if (!name) return 'cs-subj-gray';
+    return this.palette[this.hashName(name) % this.palette.length];
+  }
+
+  getSubjectIcon(name: string | null): string {
+    if (!name) return 'menu_book';
+    return this.icons[this.hashName(name) % this.icons.length];
   }
 
   /* ── stats ────────────────────────────────────────────────────── */
@@ -109,17 +159,22 @@ export class ClassSchedule implements OnInit {
     return this.timetable()?.slots?.filter(s => !s.isBreak).length ?? 0;
   }
 
-  get uniqueSubjects(): Array<{ name: string; color: string }> {
-    const seen = new Map<string, string>();
+  get uniqueSubjects(): Array<{ name: string; color: string; icon: string }> {
+    const seen = new Map<string, { color: string; icon: string }>();
     this.timetable()?.slots?.forEach(s => {
       if (!s.isBreak && s.subjectName && !seen.has(s.subjectName))
-        seen.set(s.subjectName, this.getSubjectColor(s.subjectName));
+        seen.set(s.subjectName, { color: this.getSubjectColor(s.subjectName), icon: this.getSubjectIcon(s.subjectName) });
     });
-    return [...seen.entries()].map(([name, color]) => ({ name, color }));
+    return [...seen.entries()].map(([name, v]) => ({ name, color: v.color, icon: v.icon }));
   }
 
   /** اسم اليوم الحالي بالعربي */
   getTodayLabel(): string {
     return this.days.find(d => d.value === this.todayValue)?.label ?? '';
+  }
+
+  /** هل اليوم الحالي ضمن أيام الدراسة المعروضة؟ */
+  get isTodaySchoolDay(): boolean {
+    return this.days.some(d => d.value === this.todayValue);
   }
 }

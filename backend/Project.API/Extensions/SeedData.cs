@@ -29,14 +29,12 @@ public static class SeedData
         }
         await ctx.Database.MigrateAsync();
 
-        // ── Seed current-week activity so charts always have data ─────────
-        await SeedCurrentWeekActivity(ctx);
-
         // ── Guard: seed only once ──────────────────────────────────────────
         bool hasExistingData = await ctx.Users.IgnoreQueryFilters().AnyAsync();
         if (hasExistingData)
         {
             // Database has old data — run upgrade seeding for new sections
+            await SeedCurrentWeekActivity(ctx);
             await SeedUpgrades(ctx);
             return;
         }
@@ -315,7 +313,7 @@ public static class SeedData
             {
                 for (int p = 0; p < slotTimes.Length; p++)
                 {
-                    var code = codes7[(d * slotTimes.Length + p) % 7];
+                    var code = codes7[(d * slotTimes.Length + p + ci) % 7];
                     slots.Add(new TimetableSlot
                     {
                         TimetableId           = tt.Id,
@@ -966,7 +964,364 @@ public static class SeedData
         await ctx.SaveChangesAsync();
 
         // =================================================================
-        // 24. Conversation + Participants + Message + BlockedUser
+        // 25. Exams + Assignments for all subjects (2 MCQ + 2 TF + 1 Essay each)
+        // =================================================================
+
+        // ── Helper: seed one exam ──────────────────────────────────────────
+        async Task SeedOneExam(AppDbContext ctx, SchoolClass cls, string subjCode,
+            string title, int duration, decimal totalScore,
+            params (string text, QuestionType qType, string[] opts, string correct, decimal pts)[] qDefs)
+        {
+            var cst = cstList.First(c => c.ClassId == cls.Id && c.SubjectId == S[subjCode].Id);
+            GradeLevel grade;
+            if      (cls.GradeLevelId == grade1.Id) grade = grade1;
+            else if (cls.GradeLevelId == grade2.Id) grade = grade2;
+            else                                    grade = grade3;
+
+            var exam = new Exam
+            {
+                ClassSubjectTeacherId = cst.Id,
+                GradeLevelId = grade.Id,
+                Title = title,
+                StartTime = now.AddDays(2),
+                EndTime = now.AddDays(2).AddMinutes(duration),
+                DurationMinutes = duration,
+                TotalScore = totalScore,
+                Category = EvaluationCategory.Academic,
+                IsPublished = true,
+                CreatedAt = now, UpdatedAt = now
+            };
+            ctx.Exams.Add(exam);
+            await ctx.SaveChangesAsync();
+
+            var createdQuestions = new List<ExamQuestion>();
+            var createdOptions    = new List<ExamQuestionOption>();
+
+            for (int i = 0; i < qDefs.Length; i++)
+            {
+                var qd = qDefs[i];
+                var q = new ExamQuestion
+                {
+                    ExamId = exam.Id,
+                    QuestionText = qd.text,
+                    QuestionType = qd.qType,
+                    CorrectAnswer = qd.correct,
+                    DisplayOrder = i + 1,
+                    Points = qd.pts,
+                    CreatedAt = now, UpdatedAt = now
+                };
+                ctx.ExamQuestions.Add(q);
+                await ctx.SaveChangesAsync();
+                createdQuestions.Add(q);
+
+                for (int j = 0; j < qd.opts.Length; j++)
+                {
+                    var opt = new ExamQuestionOption
+                    {
+                        QuestionId = q.Id,
+                        OptionText = qd.opts[j],
+                        IsCorrect = qd.opts[j] == qd.correct,
+                        DisplayOrder = j + 1,
+                        CreatedAt = now, UpdatedAt = now
+                    };
+                    ctx.ExamQuestionOptions.Add(opt);
+                    await ctx.SaveChangesAsync();
+                    createdOptions.Add(opt);
+                }
+            }
+
+            var enr = enrollments.First(e => e.ClassId == cls.Id);
+            var attempt = new StudentExamAttempt
+            {
+                EnrollmentId = enr.Id,
+                ExamId = exam.Id,
+                StartedAt = now,
+                SubmittedAt = now.AddMinutes(duration - 5),
+                Score = totalScore - 8, // one wrong answer
+                TotalScore = totalScore,
+                IsGraded = true,
+                CreatedAt = now, UpdatedAt = now
+            };
+            ctx.StudentExamAttempts.Add(attempt);
+            await ctx.SaveChangesAsync();
+
+            foreach (var q in createdQuestions)
+            {
+                bool isWrong = q.DisplayOrder == 4; // wrong on 1st TrueFalse
+                var ans = new StudentExamAnswer
+                {
+                    AttemptId = attempt.Id,
+                    QuestionId = q.Id,
+                    IsCorrect = !isWrong,
+                    PointsEarned = isWrong ? 0 : q.Points,
+                    CreatedAt = now, UpdatedAt = now
+                };
+
+                if (q.QuestionType == QuestionType.MultipleChoice)
+                {
+                    var correctOpt = createdOptions.First(o => o.QuestionId == q.Id && o.IsCorrect);
+                    ans.SelectedOptionId = correctOpt.Id;
+                    ans.AnswerText = correctOpt.OptionText;
+                }
+                else if (q.QuestionType == QuestionType.TrueFalse)
+                {
+                    ans.BooleanAnswer = isWrong ? !bool.Parse(q.CorrectAnswer!) : bool.Parse(q.CorrectAnswer!);
+                    ans.AnswerText = ans.BooleanAnswer.Value ? "True" : "False";
+                }
+                else
+                {
+                    ans.AnswerText = "إجابة الطالب: " + q.CorrectAnswer;
+                }
+                ctx.StudentExamAnswers.Add(ans);
+            }
+            await ctx.SaveChangesAsync();
+        }
+
+        // ── Helper: seed one assignment ────────────────────────────────────
+        async Task SeedOneAssignment(AppDbContext ctx, SchoolClass cls, string subjCode,
+            string title, decimal maxScore,
+            params (string text, QuestionType qType, string[] opts, string correct, decimal pts)[] qDefs)
+        {
+            var cst = cstList.First(c => c.ClassId == cls.Id && c.SubjectId == S[subjCode].Id);
+
+            var assignment = new Assignment
+            {
+                ClassSubjectTeacherId = cst.Id,
+                Title = title,
+                Description = $"واجب في مادة {S[subjCode].Name}",
+                DueDate = now.AddDays(14),
+                MaxScore = maxScore,
+                IsAutoGraded = true,
+                Category = EvaluationCategory.Academic,
+                IsPublished = true,
+                CreatedAt = now, UpdatedAt = now
+            };
+            ctx.Assignments.Add(assignment);
+            await ctx.SaveChangesAsync();
+
+            var createdQuestions = new List<AssignmentQuestion>();
+            var createdOptions    = new List<AssignmentQuestionOption>();
+
+            for (int i = 0; i < qDefs.Length; i++)
+            {
+                var qd = qDefs[i];
+                var q = new AssignmentQuestion
+                {
+                    AssignmentId = assignment.Id,
+                    QuestionText = qd.text,
+                    QuestionType = qd.qType,
+                    CorrectAnswer = qd.correct,
+                    DisplayOrder = i + 1,
+                    Points = qd.pts,
+                    CreatedAt = now, UpdatedAt = now
+                };
+                ctx.AssignmentQuestions.Add(q);
+                await ctx.SaveChangesAsync();
+                createdQuestions.Add(q);
+
+                for (int j = 0; j < qd.opts.Length; j++)
+                {
+                    var opt = new AssignmentQuestionOption
+                    {
+                        QuestionId = q.Id,
+                        OptionText = qd.opts[j],
+                        IsCorrect = qd.opts[j] == qd.correct,
+                        DisplayOrder = j + 1,
+                        CreatedAt = now, UpdatedAt = now
+                    };
+                    ctx.AssignmentQuestionOptions.Add(opt);
+                    await ctx.SaveChangesAsync();
+                    createdOptions.Add(opt);
+                }
+            }
+
+            var enr = enrollments.First(e => e.ClassId == cls.Id);
+            var submission = new StudentAssignmentSubmission
+            {
+                EnrollmentId = enr.Id,
+                AssignmentId = assignment.Id,
+                SubmittedAt = now,
+                Score = maxScore - 8,
+                MaxScore = maxScore,
+                IsGraded = true,
+                AIFeedback = "أحسنت! معظم الإجابات صحيحة.",
+                CreatedAt = now, UpdatedAt = now
+            };
+            ctx.StudentAssignmentSubmissions.Add(submission);
+            await ctx.SaveChangesAsync();
+
+            foreach (var q in createdQuestions)
+            {
+                bool isWrong = q.DisplayOrder == 3; // wrong on 2nd MCQ
+                var ans = new StudentAssignmentAnswer
+                {
+                    SubmissionId = submission.Id,
+                    QuestionId = q.Id,
+                    IsCorrect = !isWrong,
+                    PointsEarned = isWrong ? 0 : q.Points,
+                    CreatedAt = now, UpdatedAt = now
+                };
+
+                if (q.QuestionType == QuestionType.MultipleChoice)
+                {
+                    var correctOpt = createdOptions.First(o => o.QuestionId == q.Id && o.IsCorrect);
+                    ans.SelectedOptionId = correctOpt.Id;
+                    ans.AnswerText = correctOpt.OptionText;
+                }
+                else if (q.QuestionType == QuestionType.TrueFalse)
+                {
+                    ans.BooleanAnswer = isWrong ? !bool.Parse(q.CorrectAnswer!) : bool.Parse(q.CorrectAnswer!);
+                    ans.AnswerText = ans.BooleanAnswer.Value ? "True" : "False";
+                }
+                else
+                {
+                    ans.AnswerText = "إجابة الطالب: " + q.CorrectAnswer;
+                }
+                ctx.StudentAssignmentAnswers.Add(ans);
+            }
+            await ctx.SaveChangesAsync();
+        }
+
+        // ===================================================================
+        // ╔══════════════════════════════════════════════════════════════════╗
+        // ║  EXAMS                                                          ║
+        // ╚══════════════════════════════════════════════════════════════════╝
+        // ===================================================================
+
+        // ARABIC — Class 1/1
+        await SeedOneExam(ctx, class1, "ARB", "اختبار اللغة العربية الشامل", 45, 50,
+            ("ما إعراب كلمة 'الكتاب' في جملة 'قرأت الكتاب'؟", QuestionType.MultipleChoice, new[]{"مفعول به","فاعل","مبتدأ","خبر"}, "مفعول به", 10m),
+            ("اختر الجملة الصحيحة:", QuestionType.MultipleChoice, new[]{"التلميذ مجتهد","التلميذ مجتهداً","التلميذ مجتهدٌ","التلميذ مجتهدٍ"}, "التلميذ مجتهد", 10m),
+            ("الفعل الماضي يدل على حدث وقع في الماضي.", QuestionType.TrueFalse, new[]{"True","False"}, "True", 10m),
+            ("همزة الوصل تكتب تحت الألف.", QuestionType.TrueFalse, new[]{"True","False"}, "False", 10m),
+            ("اكتب فقرة من 3 أسطر عن أهمية القراءة.", QuestionType.Essay, Array.Empty<string>(), "القراءة تنمي العقل وتوسع المدارك وتثري الثقافة", 10m)
+        );
+
+        // COMPUTER — Class 1/1
+        await SeedOneExam(ctx, class1, "CMP", "اختبار الحاسب الآلي", 30, 50,
+            ("من وحدات الإدخال في الحاسوب:", QuestionType.MultipleChoice, new[]{"لوحة المفاتيح","الشاشة","السماعات","الطابعة"}, "لوحة المفاتيح", 10m),
+            ("الذاكرة RAM هي ذاكرة:", QuestionType.MultipleChoice, new[]{"متطايرة","دائمة","خارجية","بطيئة"}, "متطايرة", 10m),
+            ("الحاسوب يستقبل الأوامر عن طريق وحدات الإدخال.", QuestionType.TrueFalse, new[]{"True","False"}, "True", 10m),
+            ("الإنترنت من اختراعات القرن العشرين.", QuestionType.TrueFalse, new[]{"True","False"}, "True", 10m),
+            ("صف أهم استخدامات الحاسوب في حياتنا اليومية.", QuestionType.Essay, Array.Empty<string>(), "يستخدم الحاسوب في التعليم والعمل والاتصالات والترفيه", 10m)
+        );
+
+        // ENGLISH — Class 1/2
+        await SeedOneExam(ctx, class2, "ENG", "English Exam", 40, 50,
+            ("Choose the correct answer: I ___ a student.", QuestionType.MultipleChoice, new[]{"am","is","are","be"}, "am", 10m),
+            ("What is the capital of Egypt?", QuestionType.MultipleChoice, new[]{"Cairo","London","Paris","Rome"}, "Cairo", 10m),
+            ("The sun rises in the east.", QuestionType.TrueFalse, new[]{"True","False"}, "True", 10m),
+            ("There are 8 days in a week.", QuestionType.TrueFalse, new[]{"True","False"}, "False", 10m),
+            ("Write 4 sentences about your daily routine.", QuestionType.Essay, Array.Empty<string>(), "I wake up at 7 am. I go to school. I study hard. I play with friends.", 10m)
+        );
+
+        // MATH — Class 2/1
+        await SeedOneExam(ctx, class3, "MTH", "اختبار الرياضيات", 45, 50,
+            ("ما ناتج 15 + 27؟", QuestionType.MultipleChoice, new[]{"42","32","52","62"}, "42", 10m),
+            ("الجذر التربيعي للعدد 64 هو:", QuestionType.MultipleChoice, new[]{"6","7","8","9"}, "8", 10m),
+            ("العدد الأولي هو عدد يقبل القسمة على نفسه وعلى الواحد فقط.", QuestionType.TrueFalse, new[]{"True","False"}, "True", 10m),
+            ("حاصل ضرب 5 × 0 = 5.", QuestionType.TrueFalse, new[]{"True","False"}, "False", 10m),
+            ("اشرح كيفية إيجاد مساحة المستطيل مع مثال.", QuestionType.Essay, Array.Empty<string>(), "مساحة المستطيل = الطول × العرض. مثال: مستطيل طوله 5 وعرضه 3 فمساحته 15", 10m)
+        );
+
+        // SCIENCE — Class 2/2
+        await SeedOneExam(ctx, class4, "SCI", "اختبار العلوم", 40, 50,
+            ("أي مما يلي مصدر متجدد للطاقة؟", QuestionType.MultipleChoice, new[]{"الطاقة الشمسية","الفحم","البترول","الغاز الطبيعي"}, "الطاقة الشمسية", 10m),
+            ("جهاز التنفس في الإنسان يبدأ بـ:", QuestionType.MultipleChoice, new[]{"الأنف","الرئتين","القصبة الهوائية","الحجاب الحاجز"}, "الأنف", 10m),
+            ("الماء يغلي عند درجة حرارة 100° مئوية.", QuestionType.TrueFalse, new[]{"True","False"}, "True", 10m),
+            ("الأرض أكبر كواكب المجموعة الشمسية.", QuestionType.TrueFalse, new[]{"True","False"}, "False", 10m),
+            ("اشرح عملية البناء الضوئي بإيجاز.", QuestionType.Essay, Array.Empty<string>(), "عملية تحول النبات الطاقة الضوئية إلى طاقة كيميائية باستخدام الماء وثاني أكسيد الكربون", 10m)
+        );
+
+        // SOCIAL STUDIES — Class 3/1
+        await SeedOneExam(ctx, class5, "SOC", "اختبار الدراسات الاجتماعية", 45, 50,
+            ("عاصمة مصر هي:", QuestionType.MultipleChoice, new[]{"القاهرة","الإسكندرية","الجيزة","أسوان"}, "القاهرة", 10m),
+            ("يطل مصر على:", QuestionType.MultipleChoice, new[]{"البحر المتوسط والبحر الأحمر","البحر المتوسط فقط","البحر الأحمر فقط","المحيط الأطلسي"}, "البحر المتوسط والبحر الأحمر", 10m),
+            ("نهر النيل أطول نهر في العالم.", QuestionType.TrueFalse, new[]{"True","False"}, "True", 10m),
+            ("تقع مصر في قارة أوروبا.", QuestionType.TrueFalse, new[]{"True","False"}, "False", 10m),
+            ("اكتب عن أهمية نهر النيل لمصر.", QuestionType.Essay, Array.Empty<string>(), "نهر النيل شريان الحياة لمصر حيث يوفر المياه للشرب والزراعة والطاقة الكهرومائية", 10m)
+        );
+
+        // ISLAMIC — Class 3/2
+        await SeedOneExam(ctx, class6, "ISL", "اختبار التربية الإسلامية", 30, 50,
+            ("أركان الإسلام هي:", QuestionType.MultipleChoice, new[]{"خمسة","ستة","سبعة","أربعة"}, "خمسة", 10m),
+            ("الصلاة الثانية في اليوم هي:", QuestionType.MultipleChoice, new[]{"الظهر","العصر","المغرب","العشاء"}, "الظهر", 10m),
+            ("الصوم من أركان الإسلام.", QuestionType.TrueFalse, new[]{"True","False"}, "True", 10m),
+            ("الزكاة واجبة على كل مسلم.", QuestionType.TrueFalse, new[]{"True","False"}, "True", 10m),
+            ("اكتب عن أهمية الصلاة في حياة المسلم.", QuestionType.Essay, Array.Empty<string>(), "الصلاة عماد الدين وهي أول ما يحاسب عليه العبد يوم القيامة وتنهى عن الفحشاء والمنكر", 10m)
+        );
+
+        // ===================================================================
+        // ╔══════════════════════════════════════════════════════════════════╗
+        // ║  ASSIGNMENTS                                                     ║
+        // ╚══════════════════════════════════════════════════════════════════╝
+        // ===================================================================
+
+        // ARABIC — Class 1/1
+        await SeedOneAssignment(ctx, class1, "ARB", "واجب اللغة العربية الأسبوعي", 50,
+            ("اختر المعنى الصحيح لكلمة 'شجاعة':", QuestionType.MultipleChoice, new[]{"قوة القلب","الضعف","الجبن","الخوف"}, "قوة القلب", 10m),
+            ("ما جمع كلمة 'كتاب'؟", QuestionType.MultipleChoice, new[]{"كتب","كتابة","كاتب","مكتب"}, "كتب", 10m),
+            ("الفعل 'يكتب' فعل مضارع.", QuestionType.TrueFalse, new[]{"True","False"}, "True", 10m),
+            ("الهمزة في كلمة 'أحمد' همزة قطع.", QuestionType.TrueFalse, new[]{"True","False"}, "True", 10m),
+            ("اكتب 3 جمل عن أهمية العلم.", QuestionType.Essay, Array.Empty<string>(), "العلم يرفع الأمم. بالعلم تتقدم المجتمعات. العلم نور والجهل ظلام.", 10m)
+        );
+
+        // COMPUTER — Class 1/1
+        await SeedOneAssignment(ctx, class1, "CMP", "واجب الحاسب الآلي", 50,
+            ("من وحدات الإخراج في الحاسوب:", QuestionType.MultipleChoice, new[]{"الشاشة","الفأرة","لوحة المفاتيح","الماسح الضوئي"}, "الشاشة", 10m),
+            ("نظام التشغيل من أمثلة:", QuestionType.MultipleChoice, new[]{"البرامج التطبيقية","برامج النظام","برامج التسلية","برامج الرسم"}, "برامج النظام", 10m),
+            ("يمكن تخزين الملفات في مجلدات.", QuestionType.TrueFalse, new[]{"True","False"}, "True", 10m),
+            ("الماوس من وحدات الإخراج.", QuestionType.TrueFalse, new[]{"True","False"}, "False", 10m),
+            ("اذكر 3 أنواع من أجهزة الحاسوب.", QuestionType.Essay, Array.Empty<string>(), "الحاسوب الشخصي - الحاسوب المحمول - الحاسوب اللوحي", 10m)
+        );
+
+        // ENGLISH — Class 1/2
+        await SeedOneAssignment(ctx, class2, "ENG", "English Homework", 50,
+            ("Choose: She ___ to school every day.", QuestionType.MultipleChoice, new[]{"goes","go","going","went"}, "goes", 10m),
+            ("The opposite of 'big' is:", QuestionType.MultipleChoice, new[]{"small","large","huge","tall"}, "small", 10m),
+            ("Dogs can fly.", QuestionType.TrueFalse, new[]{"True","False"}, "False", 10m),
+            ("Tuesday comes after Monday.", QuestionType.TrueFalse, new[]{"True","False"}, "True", 10m),
+            ("Write 3 sentences about your family.", QuestionType.Essay, Array.Empty<string>(), "My family has 4 members. My father is a teacher. My mother is a doctor.", 10m)
+        );
+
+        // MATH — Class 2/1
+        await SeedOneAssignment(ctx, class3, "MTH", "واجب الرياضيات الأسبوعي", 50,
+            ("ما ناتج 100 − 37؟", QuestionType.MultipleChoice, new[]{"63","73","67","77"}, "63", 10m),
+            ("أي الأعداد التالية عدد زوجي؟", QuestionType.MultipleChoice, new[]{"24","17","9","5"}, "24", 10m),
+            ("العدد 7 هو عدد أولي.", QuestionType.TrueFalse, new[]{"True","False"}, "True", 10m),
+            ("25 ÷ 5 = 4.", QuestionType.TrueFalse, new[]{"True","False"}, "False", 10m),
+            ("كيف تجد محيط المستطيل؟ اشرح مع مثال.", QuestionType.Essay, Array.Empty<string>(), "محيط المستطيل = 2 × (الطول + العرض). مثال: مستطيل طوله 4 وعرضه 3 فمحيطه 14", 10m)
+        );
+
+        // SCIENCE — Class 2/2
+        await SeedOneAssignment(ctx, class4, "SCI", "واجب العلوم", 50,
+            ("أي مما يلي حيوان لاحم؟", QuestionType.MultipleChoice, new[]{"الأسد","البقرة","الغزال","الحصان"}, "الأسد", 10m),
+            ("الجهاز المسؤول عن ضخ الدم في الإنسان هو:", QuestionType.MultipleChoice, new[]{"القلب","الكبد","المعدة","الكلى"}, "القلب", 10m),
+            ("النباتات تصنع غذائها بنفسها.", QuestionType.TrueFalse, new[]{"True","False"}, "True", 10m),
+            ("الإنسان يحتاج إلى الأكسجين ليعيش.", QuestionType.TrueFalse, new[]{"True","False"}, "True", 10m),
+            ("اشرح دورة حياة الفراشة.", QuestionType.Essay, Array.Empty<string>(), "بيضة ← يرقة ← شرنقة ← فراشة مكتملة", 10m)
+        );
+
+        // SOCIAL STUDIES — Class 3/1
+        await SeedOneAssignment(ctx, class5, "SOC", "واجب الدراسات الاجتماعية", 50,
+            ("محافظة الجيزة تشتهر بـ:", QuestionType.MultipleChoice, new[]{"الأهرامات","قناة السويس","السد العالي","الصحراء الغربية"}, "الأهرامات", 10m),
+            ("عاصمة محافظة الإسكندرية هي:", QuestionType.MultipleChoice, new[]{"الإسكندرية","القاهرة","طنطا","المنصورة"}, "الإسكندرية", 10m),
+            ("مصر بلد عربي وإفريقي.", QuestionType.TrueFalse, new[]{"True","False"}, "True", 10m),
+            ("الصحراء الكبرى تقع في جنوب مصر.", QuestionType.TrueFalse, new[]{"True","False"}, "False", 10m),
+            ("اكتب عن السياحة في مصر.", QuestionType.Essay, Array.Empty<string>(), "مصر تتميز بمعالم سياحية رائعة مثل الأهرامات والمتاحف والشواطئ الجميلة", 10m)
+        );
+
+        // ISLAMIC — Class 3/2
+        await SeedOneAssignment(ctx, class6, "ISL", "واجب التربية الإسلامية", 50,
+            ("كم عدد أسماء الله الحسنى؟", QuestionType.MultipleChoice, new[]{"99","100","50","77"}, "99", 10m),
+            ("أركان الإيمان هي:", QuestionType.MultipleChoice, new[]{"ستة","خمسة","سبعة","ثمانية"}, "ستة", 10m),
+            ("صلاة الفجر ركعتان.", QuestionType.TrueFalse, new[]{"True","False"}, "True", 10m),
+            ("شهر رمضان هو شهر الصيام.", QuestionType.TrueFalse, new[]{"True","False"}, "True", 10m),
+            ("اكتب 3 أحاديث عن فضل الصدقة.", QuestionType.Essay, Array.Empty<string>(), "قال رسول الله ﷺ: الصدقة تطفئ الخطيئة. قال: يد الله مع المتصدق. قال: داووا مرضاكم بالصدقة.", 10m)
+        );
+
+        // =================================================================
+        // 26. Conversation + Participants + Message + BlockedUser
         // =================================================================
         var conversation = new Conversation
         {
@@ -1222,6 +1577,9 @@ public static class SeedData
             CreatedAt = now, UpdatedAt = now
         });
         await ctx.SaveChangesAsync();
+
+        // ── Seed current-week activity ──────────────────────────────────────
+        await SeedCurrentWeekActivity(ctx);
     }
 
     // =========================================================================
