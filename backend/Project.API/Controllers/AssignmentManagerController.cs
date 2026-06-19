@@ -135,18 +135,19 @@ public class AssignmentManagerController : ControllerBase
             yearId = currentYear?.Id ?? 0;
         }
 
-        int? cstId = null;
-        if (role == "Teacher")
+        // نستخدم نفس منطق تصفية GetAll (TeacherId + AcademicYearId) حتى تعكس
+        // الإحصائيات واجبات المُعلِّم الحالي فقط — بدلاً من الاعتماد على شرط
+        // CST واحد كان يفشل لأي معلِّم يُدرِّس أكثر من فصل.
+        // PageSize كبيرة لجلب كل الواجبات دفعة واحدة (الإحصائيات على الإجمالي، لا على صفحة واحدة).
+        var filter = new AssignmentFilterDto
         {
-            var csts = await _context.ClassSubjectTeachers
-                .Where(c => c.TeacherId == userId && c.AcademicYearId == yearId && !c.IsDeleted)
-                .Select(c => c.Id)
-                .ToListAsync();
-            if (csts.Count == 1)
-                cstId = csts[0];
-        }
+            TeacherId = role == "Teacher" ? userId : 0,
+            AcademicYearId = yearId,
+            Page = 1,
+            PageSize = 1000,
+        };
 
-        var result = await _service.GetStatsAsync(cstId);
+        var result = await _service.GetStatsAsync(filter);
         return Ok(result);
     }
 

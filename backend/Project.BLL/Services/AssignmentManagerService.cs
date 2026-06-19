@@ -393,16 +393,18 @@ public class AssignmentManagerService : IAssignmentManagerService
         return OperationResult.Success("تم حذف الواجب بنجاح");
     }
 
-    public async Task<OperationResult<AssignmentManagerStatsDto>> GetStatsAsync(int? classSubjectTeacherId = null)
+    public async Task<OperationResult<AssignmentManagerStatsDto>> GetStatsAsync(AssignmentFilterDto filter)
     {
-        var items = await GetAllAsync(classSubjectTeacherId);
-        if (!items.IsSuccess || items.Data is null)
+        // نعتمد على نفس مصدر بيانات القائمة (GetFilteredAsync) حتى تبقى
+        // الإحصائيات متناسقة 100% مع الواجبات المعروضة لنفس المُعلِّم/السنة.
+        var filtered = await GetFilteredAsync(filter);
+        if (!filtered.IsSuccess || filtered.Data is null)
             return OperationResult<AssignmentManagerStatsDto>.Success(new AssignmentManagerStatsDto());
 
-        var list = items.Data;
+        var list = filtered.Data.Items.ToList();
         return OperationResult<AssignmentManagerStatsDto>.Success(new AssignmentManagerStatsDto
         {
-            Total = list.Count,
+            Total = filtered.Data.TotalCount,
             Active = list.Count(a => a.Status == "open"),
             AvgDelivery = list.Count > 0
                 ? Math.Round(list.Average(a => a.Total > 0 ? (double)a.Submitted / a.Total * 100 : 0), 1)
