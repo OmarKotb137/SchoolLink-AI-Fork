@@ -79,6 +79,8 @@ public class DailyAbsenceService : IDailyAbsenceService
                 u.Role == UserRole.Admin && u.IsActive && !u.IsDeleted);
 
             var allRecipients = parentIds.Concat(admins.Select(a => a.Id)).Distinct().ToList();
+            if (student?.UserId != null)
+                allRecipients.Add(student.UserId.Value);
             if (allRecipients.Count != 0)
             {
                 await _notificationService.SendBulkNotificationAsync(new SendBulkNotificationRequest

@@ -1,0 +1,185 @@
+<app-sidebar [(isOpen)]="sidebarOpen" />
+<div class="main-content">
+  <main class="pt-24 px-margin-mobile md:px-margin-desktop pb-24 lg:pb-12">
+    <div class="max-w-6xl mx-auto space-y-stack-lg">
+
+      <!-- Header -->
+      <div>
+        <h1 class="font-headline-lg text-headline-lg" style="font-weight:800;background:linear-gradient(135deg,#00236f,#6b7280);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">
+          إدارة طلبات الاجتماعات
+        </h1>
+        <p class="text-outline font-body-md mt-1">مشاهدة وإدارة طلبات الاجتماعات المقدمة من أولياء الأمور</p>
+      </div>
+
+      <!-- Filter Tabs -->
+      <div class="glass-tabs">
+        <button class="glass-tab" [class.active]="activeFilter() === 'all'" (click)="setFilter('all')">الكل ({{ counts.all }})</button>
+        <button class="glass-tab" [class.active]="activeFilter() === 'pending'" (click)="setFilter('pending')">قيد الانتظار ({{ counts.pending }})</button>
+        <button class="glass-tab" [class.active]="activeFilter() === 'approved'" (click)="setFilter('approved')">تمت الموافقة ({{ counts.approved }})</button>
+        <button class="glass-tab" [class.active]="activeFilter() === 'rejected'" (click)="setFilter('rejected')">مرفوض ({{ counts.rejected }})</button>
+        <button class="glass-tab" [class.active]="activeFilter() === 'completed'" (click)="setFilter('completed')">تم الإنتهاء ({{ counts.completed }})</button>
+      </div>
+
+      <!-- Loading -->
+      @if (loading()) {
+        <div class="flex justify-center py-12">
+          <div class="loading-spinner"></div>
+        </div>
+      }
+
+      <!-- Empty -->
+      @if (!loading() && filteredRequests().length === 0) {
+        <div class="glass-card text-center py-12">
+          <span class="material-symbols-outlined text-5xl text-outline">meeting_room</span>
+          <h3 class="font-headline-md text-body-lg mt-4 text-outline">لا توجد طلبات</h3>
+          <p class="text-outline font-body-md mt-1">لا توجد طلبات اجتماع في هذا التصنيف</p>
+        </div>
+      }
+
+      <!-- Requests Table -->
+      @if (!loading() && filteredRequests().length > 0) {
+        <div class="glass-card" style="padding:0;overflow:hidden;">
+          <div class="table-responsive">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>ولي الأمر</th>
+                  <th>الطالب</th>
+                  <th>السبب</th>
+                  <th>التاريخ المفضل</th>
+                  <th>الحالة</th>
+                  <th>تاريخ الطلب</th>
+                  <th>الإجراءات</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (req of filteredRequests(); track req.id; let i = $index) {
+                  <tr>
+                    <td class="text-outline">{{ i + 1 }}</td>
+                    <td><strong>{{ req.parentName }}</strong></td>
+                    <td>{{ req.studentName }}</td>
+                    <td>
+                      <div class="reason-cell">{{ req.reason }}</div>
+                      @if (req.notes) {
+                        <div class="notes-cell">{{ req.notes }}</div>
+                      }
+                    </td>
+                    <td class="text-outline">{{ req.preferredDate ? formatDate(req.preferredDate) : '—' }}</td>
+                    <td>
+                      <span class="status-badge" style="background:{{ getStatusColor(req.status) }}11;color:{{ getStatusColor(req.status) }};">
+                        <span class="material-symbols-outlined" style="font-size:14px;">{{ getStatusIcon(req.status) }}</span>
+                        {{ getStatusLabel(req.status) }}
+                      </span>
+                      @if (req.handledByName) {
+                        <div class="text-label-sm text-outline mt-1">بواسطة: {{ req.handledByName }}</div>
+                      }
+                    </td>
+                    <td class="text-outline text-label-sm">{{ formatDateTime(req.createdAt) }}</td>
+                    <td>
+                      <div class="actions-cell">
+                        @if (normalizeStatus(req.status) === 0) {  <!-- Pending -->
+                          <button class="action-btn action-approve" title="موافقة" (click)="openApproveModal(req)">
+                            <span class="material-symbols-outlined">check_circle</span>
+                          </button>
+                          <button class="action-btn action-reject" title="رفض" (click)="openRejectModal(req)">
+                            <span class="material-symbols-outlined">cancel</span>
+                          </button>
+                        }
+                        @if (normalizeStatus(req.status) === 1) {  <!-- Approved -->
+                          <button class="action-btn action-complete" title="إنهاء" (click)="completeRequest(req)">
+                            <span class="material-symbols-outlined">task_alt</span>
+                          </button>
+                        }
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      }
+
+      <!-- Approve Modal -->
+      @if (showApproveModal()) {
+        <div class="modal-overlay" (click)="closeApproveModal()">
+          <div class="modal-content" (click)="$event.stopPropagation()">
+            <div class="modal-header">
+              <h2 class="font-headline-md text-headline-md" style="font-weight:700;">الموافقة على طلب الاجتماع</h2>
+              <button class="modal-close" (click)="closeApproveModal()">
+                <span class="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div class="modal-body">
+              <div class="form-group">
+                <label class="form-label">التاريخ *</label>
+                <input type="date" class="glass-input"
+                       [value]="approveDate()"
+                       (input)="onApproveDateChange($event)" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">الوقت *</label>
+                <input type="time" class="glass-input"
+                       [value]="approveTime()"
+                       (input)="onApproveTimeChange($event)" />
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button class="secondary-btn" (click)="closeApproveModal()">إلغاء</button>
+              <button class="gradient-btn"
+                      [disabled]="!approveDate() || !approveTime() || approveSubmitting()"
+                      (click)="submitApprove()">
+                @if (approveSubmitting()) {
+                  <span class="loading-spinner-small"></span>
+                  <span>جاري...</span>
+                } @else {
+                  <span class="material-symbols-outlined" style="font-size:18px;">check_circle</span>
+                  <span>موافقة</span>
+                }
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- Reject Modal -->
+      @if (showRejectModal()) {
+        <div class="modal-overlay" (click)="closeRejectModal()">
+          <div class="modal-content" (click)="$event.stopPropagation()">
+            <div class="modal-header">
+              <h2 class="font-headline-md text-headline-md" style="font-weight:700;">رفض طلب الاجتماع</h2>
+              <button class="modal-close" (click)="closeRejectModal()">
+                <span class="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div class="modal-body">
+              <div class="form-group">
+                <label class="form-label">سبب الرفض</label>
+                  <textarea class="glass-textarea" rows="3"
+                          [value]="rejectReason()"
+                          (input)="onRejectReasonChange($event)"
+                          placeholder="اذكر سبب الرفض (اختياري)"></textarea>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button class="secondary-btn" (click)="closeRejectModal()">إلغاء</button>
+              <button class="danger-btn"
+                      [disabled]="rejectSubmitting()"
+                      (click)="submitReject()">
+                @if (rejectSubmitting()) {
+                  <span class="loading-spinner-small"></span>
+                  <span>جاري...</span>
+                } @else {
+                  <span class="material-symbols-outlined" style="font-size:18px;">cancel</span>
+                  <span>رفض</span>
+                }
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+
+    </div>
+  </main>
+</div>

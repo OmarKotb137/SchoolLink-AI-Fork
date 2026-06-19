@@ -9,8 +9,8 @@ public class ParentMeetingRequestDto
     public string ParentName { get; set; } = string.Empty;
     public int StudentId { get; set; }
     public string StudentName { get; set; } = string.Empty;
-    public int? TeacherId { get; set; }
-    public string? TeacherName { get; set; }
+    public int? HandledById { get; set; }
+    public string? HandledByName { get; set; }
     public string Reason { get; set; } = string.Empty;
     public DateTime? PreferredDate { get; set; }
     public DateTime? ScheduledDate { get; set; }

@@ -15,12 +15,14 @@ public class AnnouncementService : IAnnouncementService
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper _mapper;
     private readonly INotificationService _notificationService;
+    private readonly INotificationPushService _pushService;
 
-    public AnnouncementService(IUnitOfWork unitOfWork, IMapper mapper, INotificationService notificationService)
+    public AnnouncementService(IUnitOfWork unitOfWork, IMapper mapper, INotificationService notificationService, INotificationPushService pushService)
     {
         _unitOfWork = unitOfWork;
         _mapper = mapper;
         _notificationService = notificationService;
+        _pushService = pushService;
     }
 
     public async Task<OperationResult<AnnouncementDto>> CreateAnnouncementAsync(CreateAnnouncementRequest request)
@@ -40,7 +42,7 @@ public class AnnouncementService : IAnnouncementService
         await _unitOfWork.Announcements.AddAsync(announcement);
         await _unitOfWork.SaveChangesAsync();
 
-        // send notification
+        // send notification + save AnnouncementUser records
         var notifType = request.Category switch
         {
             Domain.Enums.AnnouncementType.Event => NotificationType.SchoolEvent,
@@ -48,7 +50,7 @@ public class AnnouncementService : IAnnouncementService
             Domain.Enums.AnnouncementType.Emergency => NotificationType.EmergencyAlert,
             _ => NotificationType.Announcement
         };
-        await SendAnnouncementNotificationAsync(notifType, request);
+        await SendAnnouncementNotificationAsync(announcement.Id, notifType, request);
 
         var dto = _mapper.Map<AnnouncementDto>(announcement);
         dto.AuthorName = author.FullName;
@@ -63,6 +65,8 @@ public class AnnouncementService : IAnnouncementService
             return OperationResult<AnnouncementDto>.Failure($"Announcement with id {id} not found");
 
         var dto = _mapper.Map<AnnouncementDto>(announcement);
+        dto.TargetedUserCount = await _unitOfWork.AnnouncementUsers
+            .CountAsync(au => au.AnnouncementId == id);
         return OperationResult<AnnouncementDto>.Success(dto, "Announcement retrieved successfully");
     }
 
@@ -98,6 +102,31 @@ public class AnnouncementService : IAnnouncementService
         _unitOfWork.Announcements.Update(announcement);
         await _unitOfWork.SaveChangesAsync();
 
+        // تحديث الإشعارات الموجودة بدل إنشاء إشعارات جديدة (عشان منعملش duplicate)
+        var announcementRef = $@"""referenceId"":{id}";
+        var existingNotifications = (await _unitOfWork.Notifications
+            .FindAsync(n => n.DataJson != null && n.DataJson.Contains(announcementRef))).ToList();
+
+        if (existingNotifications.Any())
+        {
+            foreach (var n in existingNotifications)
+            {
+                n.Title = request.Title;
+                n.Body = request.Body;
+                n.IsRead = false;
+                n.ReadAt = null;
+                _unitOfWork.Notifications.Update(n);
+            }
+
+            // Push التحديث لكل المستخدمين في الوقت الفعلي
+            foreach (var notifDto in existingNotifications.Select(n => _mapper.Map<NotificationDto>(n)))
+            {
+                await _pushService.PushToUserAsync(notifDto.UserId, notifDto);
+            }
+
+            await _unitOfWork.SaveChangesAsync();
+        }
+
         var dto = _mapper.Map<AnnouncementDto>(announcement);
         dto.AuthorName = caller.FullName;
 
@@ -117,6 +146,14 @@ public class AnnouncementService : IAnnouncementService
         if (!caller.Role.IsAdminLike() && announcement.AuthorId != callerUserId)
             return OperationResult.Failure("Only the author or an Admin can delete this announcement");
 
+        // مسح كل AnnouncementUser records عشان الإعلان يختفي من عند كل المستخدمين
+        var announcementUsers = await _unitOfWork.AnnouncementUsers
+            .FindAsync(au => au.AnnouncementId == id);
+        if (announcementUsers.Any())
+        {
+            _unitOfWork.AnnouncementUsers.SoftDeleteRange(announcementUsers);
+        }
+
         _unitOfWork.Announcements.SoftDelete(announcement);
         await _unitOfWork.SaveChangesAsync();
         return OperationResult.Success("Announcement deleted successfully");
@@ -128,9 +165,37 @@ public class AnnouncementService : IAnnouncementService
         if (caller == null)
             return OperationResult<IEnumerable<AnnouncementDto>>.Failure("Caller not found");
 
+        // تنظيف تلقائي: نحذف الـ AnnouncementUser records للإعلانات المنتهية + نسوفت ديلت للإعلان
+        await CleanupExpiredAnnouncementsAsync(callerUserId);
+
         var announcements = await _unitOfWork.Announcements.GetExpiredAsync();
         var dtos = _mapper.Map<IEnumerable<AnnouncementDto>>(announcements.OrderByDescending(a => a.CreatedAt));
+        await PopulateTargetedCounts(dtos);
         return OperationResult<IEnumerable<AnnouncementDto>>.Success(dtos);
+    }
+
+    public async Task<OperationResult> CleanupExpiredAnnouncementsAsync(int callerUserId)
+    {
+        var expired = await _unitOfWork.Announcements.GetExpiredAsync();
+        foreach (var announcement in expired)
+        {
+            // 1. امسح AnnouncementUser records عشان الإعلان يختفي من المستخدمين
+            var announcementUsers = await _unitOfWork.AnnouncementUsers
+                .FindAsync(au => au.AnnouncementId == announcement.Id);
+            if (announcementUsers.Any())
+            {
+                _unitOfWork.AnnouncementUsers.SoftDeleteRange(announcementUsers);
+            }
+
+            // 2. soft delete الإعلان نفسه
+            if (!announcement.IsDeleted)
+            {
+                _unitOfWork.Announcements.SoftDelete(announcement);
+            }
+        }
+
+        await _unitOfWork.SaveChangesAsync();
+        return OperationResult.Success($"تم تنظيف {expired.Count} إعلان منتهي");
     }
 
     public async Task<OperationResult<IEnumerable<AnnouncementDto>>> GetActiveAnnouncementsAsync(GetAnnouncementsFilter filter)
@@ -138,6 +203,9 @@ public class AnnouncementService : IAnnouncementService
         var caller = await _unitOfWork.Users.GetByIdAsync(filter.CallerUserId);
         if (caller == null)
             return OperationResult<IEnumerable<AnnouncementDto>>.Failure("Caller not found");
+
+        // تنظيف تلقائي: نحذف الإعلانات المنتهية
+        await CleanupExpiredAnnouncementsAsync(filter.CallerUserId);
 
         var announcements = await _unitOfWork.Announcements.GetActiveAsync();
 
@@ -171,6 +239,7 @@ public class AnnouncementService : IAnnouncementService
 
         var dtos = _mapper.Map<IEnumerable<AnnouncementDto>>(filtered
             .OrderByDescending(a => a.CreatedAt));
+        await PopulateTargetedCounts(dtos);
 
         return OperationResult<IEnumerable<AnnouncementDto>>.Success(dtos);
     }
@@ -186,6 +255,7 @@ public class AnnouncementService : IAnnouncementService
                                      (a.Body != null && a.Body.ToLower().Contains(termLower)));
 
         var dtos = _mapper.Map<IEnumerable<AnnouncementDto>>(matches.OrderByDescending(a => a.CreatedAt));
+        await PopulateTargetedCounts(dtos);
         return OperationResult<IEnumerable<AnnouncementDto>>.Success(dtos);
     }
 
@@ -201,7 +271,7 @@ public class AnnouncementService : IAnnouncementService
         var totalCount = filtered.Count;
         var paged = filtered.Skip((filter.Page - 1) * filter.PageSize).Take(filter.PageSize).ToList();
         var dtos = _mapper.Map<IEnumerable<AnnouncementDto>>(paged);
-
+        await PopulateTargetedCounts(dtos);
         return OperationResult<PagedResult<AnnouncementDto>>.Success(new PagedResult<AnnouncementDto>
         {
             Items = dtos,
@@ -211,7 +281,16 @@ public class AnnouncementService : IAnnouncementService
         });
     }
 
-    private async Task SendAnnouncementNotificationAsync(NotificationType type, CreateAnnouncementRequest request)
+    private async Task PopulateTargetedCounts(IEnumerable<AnnouncementDto> dtos)
+    {
+        foreach (var dto in dtos)
+        {
+            dto.TargetedUserCount = await _unitOfWork.AnnouncementUsers
+                .CountAsync(au => au.AnnouncementId == dto.Id && !au.IsDeleted);
+        }
+    }
+
+    private async Task SendAnnouncementNotificationAsync(int announcementId, NotificationType type, CreateAnnouncementRequest request)
     {
         var recipients = new List<int>();
 
@@ -231,7 +310,7 @@ public class AnnouncementService : IAnnouncementService
                 }
                 if (request.IsForAllParents)
                 {
-                    var parentLinks = await _unitOfWork.ParentStudents.FindAsync(ps => true);
+                    var parentLinks = await _unitOfWork.ParentStudents.FindAsync(ps => ps.IsDeleted == false);
                     recipients.AddRange(parentLinks.Select(ps => ps.ParentId));
                 }
                 if (request.IsForAllTeachers)
@@ -274,14 +353,27 @@ public class AnnouncementService : IAnnouncementService
             }
         }
 
-        if (recipients.Count == 0) return;
+        var uniqueRecipients = recipients.Distinct().ToList();
+        if (uniqueRecipients.Count == 0) return;
 
+        // Send notifications — نربط الإشعار بالإعلان عشان نقدر نحدثه بعدين
         await _notificationService.SendBulkNotificationAsync(new SendBulkNotificationRequest
         {
-            UserIds = recipients.Distinct().ToList(),
+            UserIds = uniqueRecipients,
             Title = request.Title,
             Body = request.Body,
-            Type = type
+            Type = type,
+            DataJson = System.Text.Json.JsonSerializer.Serialize(new { referenceType = "announcement", referenceId = announcementId })
         });
+
+        // Save AnnouncementUser records to track who was targeted
+        var announcementUsers = uniqueRecipients.Select(userId => new AnnouncementUser
+        {
+            AnnouncementId = announcementId,
+            UserId = userId
+        }).ToList();
+
+        await _unitOfWork.AnnouncementUsers.AddRangeAsync(announcementUsers);
+        await _unitOfWork.SaveChangesAsync();
     }
 }

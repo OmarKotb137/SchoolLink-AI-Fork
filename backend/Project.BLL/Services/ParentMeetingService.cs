@@ -45,14 +45,20 @@ public class ParentMeetingService : IParentMeetingService
         await _unitOfWork.ParentMeetingRequests.AddAsync(entity);
         await _unitOfWork.SaveChangesAsync();
 
-        // Notify admins
+        // Notify admins + الطالب صاحب الشأن
+        var recipients = new List<int>();
         var admins = await _unitOfWork.Users.FindAsync(u =>
             u.Role == UserRole.Admin && u.IsActive && !u.IsDeleted);
-        if (admins.Any())
+        recipients.AddRange(admins.Select(a => a.Id));
+        if (student.UserId != null)
+            recipients.Add(student.UserId.Value);
+
+        recipients = recipients.Distinct().ToList();
+        if (recipients.Count != 0)
         {
             await _notificationService.SendBulkNotificationAsync(new SendBulkNotificationRequest
             {
-                UserIds = admins.Select(a => a.Id).ToList(),
+                UserIds = recipients,
                 Title = "طلب اجتماع مع ولي أمر",
                 Body = $"طلب ولي الأمر {parent.FullName} اجتماعاً بخصوص الطالب {student.FullName}",
                 Type = NotificationType.ParentMeetingRequest
@@ -66,7 +72,7 @@ public class ParentMeetingService : IParentMeetingService
         return OperationResult<ParentMeetingRequestDto>.Success(dto, "تم إنشاء طلب الاجتماع بنجاح");
     }
 
-    public async Task<OperationResult<ParentMeetingRequestDto>> ApproveRequestAsync(int requestId, int teacherId, DateTime scheduledDate)
+    public async Task<OperationResult<ParentMeetingRequestDto>> ApproveRequestAsync(int requestId, int adminId, DateTime scheduledDate)
     {
         var request = await _unitOfWork.ParentMeetingRequests.GetByIdAsync(requestId);
         if (request == null || request.IsDeleted)
@@ -75,12 +81,12 @@ public class ParentMeetingService : IParentMeetingService
         if (request.Status == MeetingRequestStatus.Approved)
             return OperationResult<ParentMeetingRequestDto>.Failure("طلب الاجتماع تمت الموافقة عليه مسبقاً");
 
-        var teacher = await _unitOfWork.Users.GetByIdAsync(teacherId);
-        if (teacher == null || teacher.IsDeleted)
-            return OperationResult<ParentMeetingRequestDto>.Failure("المعلم غير موجود");
+        var admin = await _unitOfWork.Users.GetByIdAsync(adminId);
+        if (admin == null || admin.IsDeleted)
+            return OperationResult<ParentMeetingRequestDto>.Failure("المستخدم غير موجود");
 
         request.Status = MeetingRequestStatus.Approved;
-        request.TeacherId = teacherId;
+        request.HandledById = adminId; // بنحفظ مين اللي وافق
         request.ScheduledDate = scheduledDate;
         _unitOfWork.ParentMeetingRequests.Update(request);
         await _unitOfWork.SaveChangesAsync();
@@ -90,7 +96,7 @@ public class ParentMeetingService : IParentMeetingService
         {
             UserId = request.ParentId,
             Title = "تمت الموافقة على طلب الاجتماع",
-            Body = $"تمت الموافقة على طلب الاجتماع مع {(teacher.Role == UserRole.Teacher ? teacher.FullName : "الإدارة")} بتاريخ {scheduledDate:yyyy-MM-dd HH:mm}",
+            Body = $"تمت الموافقة على طلب الاجتماع بتاريخ {scheduledDate:yyyy-MM-dd HH:mm}",
             Type = NotificationType.ParentMeetingRequest
         });
 
@@ -98,7 +104,7 @@ public class ParentMeetingService : IParentMeetingService
         return OperationResult<ParentMeetingRequestDto>.Success(dto, "تمت الموافقة على طلب الاجتماع");
     }
 
-    public async Task<OperationResult<ParentMeetingRequestDto>> RejectRequestAsync(int requestId, int teacherId, string? reason)
+    public async Task<OperationResult<ParentMeetingRequestDto>> RejectRequestAsync(int requestId, int adminId, string? reason)
     {
         var request = await _unitOfWork.ParentMeetingRequests.GetByIdAsync(requestId);
         if (request == null || request.IsDeleted)
@@ -108,7 +114,7 @@ public class ParentMeetingService : IParentMeetingService
             return OperationResult<ParentMeetingRequestDto>.Failure("طلب الاجتماع تم رفضه مسبقاً");
 
         request.Status = MeetingRequestStatus.Rejected;
-        request.TeacherId = teacherId;
+        request.HandledById = adminId; // بنحفظ مين اللي رفض
         request.Notes = reason;
         _unitOfWork.ParentMeetingRequests.Update(request);
         await _unitOfWork.SaveChangesAsync();
@@ -157,7 +163,19 @@ public class ParentMeetingService : IParentMeetingService
     public async Task<OperationResult<IEnumerable<ParentMeetingRequestDto>>> GetRequestsByTeacherAsync(int teacherId)
     {
         var requests = await _unitOfWork.ParentMeetingRequests
-            .FindAsync(r => r.TeacherId == teacherId && !r.IsDeleted);
+            .FindAsync(r => r.HandledById == teacherId && !r.IsDeleted);
+
+        var dtos = new List<ParentMeetingRequestDto>();
+        foreach (var request in requests.OrderByDescending(r => r.CreatedAt))
+            dtos.Add(await BuildDtoAsync(request));
+
+        return OperationResult<IEnumerable<ParentMeetingRequestDto>>.Success(dtos);
+    }
+
+    public async Task<OperationResult<IEnumerable<ParentMeetingRequestDto>>> GetAllRequestsAsync()
+    {
+        var requests = await _unitOfWork.ParentMeetingRequests
+            .FindAsync(r => !r.IsDeleted);
 
         var dtos = new List<ParentMeetingRequestDto>();
         foreach (var request in requests.OrderByDescending(r => r.CreatedAt))
@@ -186,10 +204,10 @@ public class ParentMeetingService : IParentMeetingService
         var student = await _unitOfWork.Students.GetByIdAsync(request.StudentId);
         dto.StudentName = student?.FullName ?? "";
 
-        if (request.TeacherId.HasValue)
+        if (request.HandledById.HasValue)
         {
-            var teacher = await _unitOfWork.Users.GetByIdAsync(request.TeacherId.Value);
-            dto.TeacherName = teacher?.FullName ?? "";
+            var handler = await _unitOfWork.Users.GetByIdAsync(request.HandledById.Value);
+            dto.HandledByName = handler?.FullName ?? "";
         }
 
         return dto;

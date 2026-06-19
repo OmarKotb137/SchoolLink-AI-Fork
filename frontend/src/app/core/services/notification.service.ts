@@ -9,12 +9,31 @@ export interface NotificationDto {
   userId: number;
   title: string;
   body: string;
-  type: number;
+  type: number | string;  // REST API ترجع string (بسبب JsonStringEnumConverter)، SignalR ترجع number
   typeName?: string;
   isRead: boolean;
   dataJson?: string;
   createdAt: string;
   createdSince?: string;
+}
+
+/** تحويل نوع الإشعار من string (الوارد من REST API) إلى number (الذي تفهمه دوال التصنيف) */
+export function normalizeNotifType(type: number | string | undefined): number {
+  if (type === undefined || type === null) return 0;
+  if (typeof type === 'number') return type;
+  // Map enum string → number
+  const map: Record<string, number> = {
+    GradeAlert: 1, BehaviorAlert: 2, AbsenceAlert: 3, NewAssignment: 4,
+    ExamReminder: 5, MonthlyReport: 6, GradePublished: 7, SystemAlert: 8,
+    ImprovementAlert: 9, PositiveBehavior: 10, DisciplinaryAction: 11,
+    TopStudent: 16, GradeThresholdAlert: 26, AcademicProbation: 27,
+    ExcessiveAbsenceWarning: 28, Announcement: 17, SchoolEvent: 18,
+    Holiday: 19, EmergencyAlert: 20, ScheduleChanged: 21, SubstituteTeacher: 22,
+    NewMessage: 23, GroupChatInvite: 24, ParentMeetingRequest: 29,
+    HomeworkSubmitted: 12, HomeworkGraded: 13, Exam: 14, ExamResult: 15,
+    ExamScheduleChanged: 32, ExamSchedulePublished: 33, ExamCheatingAlert: 34,
+  };
+  return map[type] ?? 0;
 }
 
 @Injectable({ providedIn: 'root' })

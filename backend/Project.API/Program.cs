@@ -1,7 +1,9 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.IdentityModel.Tokens;
 using Project.API.Extensions;
+using Project.API.Hubs;
 using Project.API.Middleware;
 using Serilog;
 
@@ -37,6 +39,7 @@ try
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen();
     builder.Services.AddSignalR();
+    builder.Services.AddSingleton<IUserIdProvider, CustomUserIdProvider>();
     builder.Services.AddApplicationServices(builder.Configuration);
     builder.Services.AddHostedService<Project.API.Services.ExamAutoSubmitService>();
 

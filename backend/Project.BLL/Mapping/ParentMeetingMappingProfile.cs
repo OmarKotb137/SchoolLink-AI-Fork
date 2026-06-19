@@ -14,15 +14,15 @@ public class ParentMeetingMappingProfile : Profile
             .ForMember(d => d.CreatedAt, o => o.Ignore())
             .ForMember(d => d.UpdatedAt, o => o.Ignore())
             .ForMember(d => d.Status, o => o.Ignore())
-            .ForMember(d => d.TeacherId, o => o.Ignore())
+            .ForMember(d => d.HandledById, o => o.Ignore())
             .ForMember(d => d.ScheduledDate, o => o.Ignore())
             .ForMember(d => d.Parent, o => o.Ignore())
             .ForMember(d => d.Student, o => o.Ignore())
-            .ForMember(d => d.Teacher, o => o.Ignore());
+            .ForMember(d => d.HandledBy, o => o.Ignore());
 
         CreateMap<ParentMeetingRequest, ParentMeetingRequestDto>()
             .ForMember(d => d.ParentName, o => o.Ignore())
             .ForMember(d => d.StudentName, o => o.Ignore())
-            .ForMember(d => d.TeacherName, o => o.Ignore());
+            .ForMember(d => d.HandledByName, o => o.Ignore());
     }
 }

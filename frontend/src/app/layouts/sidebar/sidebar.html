@@ -7,16 +7,21 @@
       <h2 class="font-headline-md text-headline-md text-primary font-bold">SchoolLink AI</h2>
       <p class="font-body-md text-body-md text-on-surface-variant">نظام الإدارة الذكي</p>
     </div>
-    <nav style="display:flex;flex-direction:column;gap:2px;flex:1;overflow-y:auto;">
-      @for (item of items(); track item.label) {
-        <a class="sdbr-item"
-           (click)="navigate(item.route)"
-           [routerLink]="item.route"
-           routerLinkActive="active"
-           [routerLinkActiveOptions]="{exact: true}">
-          <span class="material-symbols-outlined ico">{{ item.icon }}</span>
-          <span>{{ item.label }}</span>
-        </a>
+    <nav style="display:flex;flex-direction:column;flex:1;overflow-y:auto;padding:8px 0;">
+      @for (section of sections(); track trackBySection($index, section)) {
+        <div class="sdbr-section">
+          <span class="sdbr-section-title">{{ section.title }}</span>
+          @for (item of section.items; track trackByItem($index, item)) {
+            <a class="sdbr-item"
+               (click)="navigate(item.route)"
+               [routerLink]="item.route"
+               routerLinkActive="active"
+               [routerLinkActiveOptions]="{exact: true}">
+              <span class="material-symbols-outlined ico">{{ item.icon }}</span>
+              <span>{{ item.label }}</span>
+            </a>
+          }
+        </div>
       }
     </nav>
     <div>
@@ -42,4 +47,3 @@
 @if (isOpen()) {
   <div id="sidebarOverlay" class="show" (click)="toggle()"></div>
 }
-

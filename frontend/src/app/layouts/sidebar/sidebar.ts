@@ -1,9 +1,9 @@
 import { Component, inject, input, output, computed } from '@angular/core';
 import { RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
-import { ROLE_MENUS, SidebarMenuItem } from '../../shared/menus';
+import { ROLE_MENUS, SidebarMenuItem, SidebarMenuSection } from '../../shared/menus';
 import { RoleService } from '../../shared/role.service';
-export type { SidebarMenuItem };
+export type { SidebarMenuItem, SidebarMenuSection };
 
 @Component({
   selector: 'app-sidebar',
@@ -12,7 +12,7 @@ export type { SidebarMenuItem };
   styleUrl: './sidebar.css'
 })
 export class Sidebar {
-  menuItems = input<SidebarMenuItem[]>([]);
+  menuItems = input<SidebarMenuSection[]>([]);
   isOpen = input(false);
   isOpenChange = output<boolean>();
 
@@ -20,11 +20,19 @@ export class Sidebar {
   private authService = inject(AuthService);
   router = inject(Router);
 
-  items = computed(() => {
+  sections = computed(() => {
     const r = this.roleService.currentRole();
     if (r && ROLE_MENUS[r]) return ROLE_MENUS[r];
     return this.menuItems();
   });
+
+  trackBySection(_: number, section: SidebarMenuSection) {
+    return section.title;
+  }
+
+  trackByItem(_: number, item: SidebarMenuItem) {
+    return item.route;
+  }
 
   toggle() {
     this.isOpenChange.emit(!this.isOpen());

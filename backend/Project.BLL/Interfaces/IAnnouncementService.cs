@@ -14,4 +14,5 @@ public interface IAnnouncementService
     Task<OperationResult> DeleteAnnouncementAsync(int id, int callerUserId);
     Task<OperationResult<IEnumerable<AnnouncementDto>>> SearchAnnouncementsAsync(string term);
     Task<OperationResult<PagedResult<AnnouncementDto>>> GetAnnouncementsByAuthorAsync(int authorId, PaginationFilter filter);
+    Task<OperationResult> CleanupExpiredAnnouncementsAsync(int callerUserId);
 }

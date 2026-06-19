@@ -8,7 +8,8 @@ public class AnnouncementMappingProfile : Profile
     public AnnouncementMappingProfile()
     {
         CreateMap<Announcement, AnnouncementDto>()
-            .ForMember(d => d.AuthorName, o => o.MapFrom(s => s.Author.FullName));
+            .ForMember(d => d.AuthorName, o => o.MapFrom(s => s.Author.FullName))
+            .ForMember(d => d.TargetedUserCount, o => o.Ignore());
 
         CreateMap<CreateAnnouncementRequest, Announcement>()
             .ForMember(d => d.Id, o => o.Ignore())

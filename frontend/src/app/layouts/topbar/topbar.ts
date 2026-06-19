@@ -41,9 +41,21 @@ export class Topbar implements OnInit {
     return role ? roleLabels[role] ?? '' : '';
   });
 
-  navItems = computed(() => {
+  /** Flatten sections into a single items array for search & navigation lookup */
+  private flatItems = computed(() => {
     const role = this.roleService.currentRole();
-    const items: SidebarMenuItem[] = role ? (ROLE_MENUS[role] ?? []) : [];
+    const sections = role ? (ROLE_MENUS[role] ?? []) : [];
+    const items: SidebarMenuItem[] = [];
+    for (const section of sections) {
+      for (const item of section.items) {
+        items.push(item);
+      }
+    }
+    return items;
+  });
+
+  navItems = computed(() => {
+    const items = this.flatItems();
     const homeItem = items[0];
     const chatItem = items.find((i: SidebarMenuItem) => i.icon === 'chat');
     const notifItem = items.find((i: SidebarMenuItem) => i.icon === 'notifications');
@@ -58,8 +70,7 @@ export class Topbar implements OnInit {
     const q = this.searchQuery().trim().toLowerCase();
     if (!q) return [];
 
-    const role = this.roleService.currentRole();
-    const items: SidebarMenuItem[] = role ? (ROLE_MENUS[role] ?? []) : [];
+    const items = this.flatItems();
     if (!items.length) return [];
 
     return items

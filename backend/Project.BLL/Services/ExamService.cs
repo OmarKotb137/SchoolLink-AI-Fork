@@ -239,6 +239,26 @@ namespace Project.BLL.Services
                             Body = $"تم نشر نتائج الامتحان: {publishedExam.Title}",
                             Type = NotificationType.ExamResult
                         });
+
+                        // كمان نبعت إشعار لأولياء الأمور
+                        var parentIds = new List<int>();
+                        foreach (var enrollment in enrollments)
+                        {
+                            var parentLinks = await _unitOfWork.ParentStudents
+                                .FindAsync(ps => ps.StudentId == enrollment.StudentId);
+                            parentIds.AddRange(parentLinks.Select(ps => ps.ParentId));
+                        }
+                        parentIds = parentIds.Distinct().ToList();
+                        if (parentIds.Count != 0)
+                        {
+                            await _notificationService.SendBulkNotificationAsync(new SendBulkNotificationRequest
+                            {
+                                UserIds = parentIds,
+                                Title = "نتائج الامتحان",
+                                Body = $"تم نشر نتائج الامتحان: {publishedExam.Title}",
+                                Type = NotificationType.ExamResult
+                            });
+                        }
                     }
                 }
             }

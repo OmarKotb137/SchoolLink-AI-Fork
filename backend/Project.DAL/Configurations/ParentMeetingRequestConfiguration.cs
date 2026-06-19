@@ -31,9 +31,9 @@ namespace Project.DAL.Configurations
                 .HasForeignKey(x => x.StudentId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            builder.HasOne(x => x.Teacher)
+            builder.HasOne(x => x.HandledBy)
                 .WithMany()
-                .HasForeignKey(x => x.TeacherId)
+                .HasForeignKey(x => x.HandledById)
                 .OnDelete(DeleteBehavior.Restrict);
 
             builder.HasQueryFilter(x => !x.IsDeleted);

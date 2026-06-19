@@ -2,7 +2,7 @@
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
-import { NotificationService, NotificationDto } from '../../core/services/notification.service';
+import { NotificationService, NotificationDto, normalizeNotifType } from '../../core/services/notification.service';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationSignalRService } from '../../core/services/notification-signalr.service';
 
@@ -35,14 +35,20 @@ export class Notifications implements OnInit {
 
     // Start SignalR connection for real-time notifications
     this.notifSignalR.startConnection();
+    // نفضّل الإشعار المخزّن عشان ما يتضفش تاني من useEffect
+    this.notifSignalR.clearNotification();
   }
 
   constructor() {
-    // React to new notifications from SignalR - prepend to list
+    // React to new notifications from SignalR - prepend to list (with dedup)
     effect(() => {
       const notif = this.notifSignalR.newNotification();
       if (notif) {
-        this.notifications.update(list => [notif, ...list]);
+        this.notifications.update(list => {
+          // منع التكرار: لو الإشعار موجود بالفعل (بنفس الـ id) — نتجاهله
+          if (list.some(n => n.id === notif.id)) return list;
+          return [notif, ...list];
+        });
         this.applyFilter();
       }
     });
@@ -109,19 +115,21 @@ export class Notifications implements OnInit {
     });
   }
 
-  private getCategory(type: number): 'academic' | 'general' | 'system' {
+  private getCategory(type: number | string): 'academic' | 'general' | 'system' {
+    const t = normalizeNotifType(type);
     const academic = [1, 2, 3, 6, 7, 9, 10, 11, 16, 26, 27, 28];
     const training = [4, 5, 12, 13, 14, 15, 32, 33, 34];
     const general = [17, 18, 19, 20, 21, 22, 23, 24, 29];
     const system = [8];
 
-    if (academic.includes(type) || training.includes(type)) return 'academic';
-    if (general.includes(type)) return 'general';
-    if (system.includes(type)) return 'system';
+    if (academic.includes(t) || training.includes(t)) return 'academic';
+    if (general.includes(t)) return 'general';
+    if (system.includes(t)) return 'system';
     return 'general';
   }
 
-  getTypeIcon(type: number): string {
+  getTypeIcon(type: number | string): string {
+    const t = normalizeNotifType(type);
     const icons: Record<number, string> = {
       1: 'grade',               // GradeAlert
       2: 'error',               // BehaviorAlert
@@ -155,30 +163,61 @@ export class Notifications implements OnInit {
       33: 'publish',            // ExamSchedulePublished
       34: 'block',              // ExamCheatingAlert
     };
-    return icons[type] ?? 'notifications';
+    return icons[t] ?? 'notifications';
   }
 
-  getTypeColor(type: number): string {
+  getTypeColor(type: number | string): string {
+    const t = normalizeNotifType(type);
     const academicColors = [1, 2, 3, 6, 7, 9, 10, 11, 16, 26, 27, 28];
     const trainingColors = [4, 5, 12, 13, 14, 15, 32, 33, 34];
     const generalColors = [17, 18, 19, 20, 21, 22, 23, 24, 29];
 
-    if (academicColors.includes(type)) return '#2563eb';
-    if (trainingColors.includes(type)) return '#7c3aed';
-    if (generalColors.includes(type)) return '#059669';
+    if (academicColors.includes(t)) return '#2563eb';
+    if (trainingColors.includes(t)) return '#7c3aed';
+    if (generalColors.includes(t)) return '#059669';
     return '#6b7280';
   }
 
-  getStatusLabel(type: number): string {
-    const category = this.getCategory(type);
-    switch (category) {
-      case 'academic': return 'أكاديمي';
-      case 'general': return 'عام';
-      case 'system': return 'النظام';
-    }
+  getStatusLabel(type: number | string): string {
+    const t = normalizeNotifType(type);
+    // عرض اسم النوع المحدد بدلاً من التصنيف العام
+    const typeNames: Record<number, string> = {
+      1: 'تنبيه درجة',
+      2: 'تنبيه سلوكي',
+      3: 'تسجيل غياب',
+      4: 'واجب جديد',
+      5: 'تذكير امتحان',
+      6: 'تقرير شهري',
+      7: 'نشر درجات',
+      8: 'تنبيه النظام',
+      9: 'تحسين الأداء',
+      10: 'سلوك إيجابي',
+      11: 'إجراء تأديبي',
+      12: 'واجب مسلم',
+      13: 'تصحيح واجب',
+      14: 'امتحان',
+      15: 'نتيجة امتحان',
+      16: 'طالب مميز',
+      17: 'إعلان',
+      18: 'فعالية',
+      19: 'إجازة',
+      20: 'طارئ',
+      21: 'تحديث جدول',
+      22: 'مدرس بديل',
+      23: 'رسالة جديدة',
+      24: 'دعوة محادثة',
+      26: 'تدني درجات',
+      27: 'إنذار أكاديمي',
+      28: 'تحذير غياب',
+      29: 'طلب اجتماع',
+      32: 'تحديث امتحان',
+      33: 'نشر امتحان',
+      34: 'تنبيه غش',
+    };
+    return typeNames[t] ?? 'إشعار';
   }
 
-  getStatusClass(type: number): string {
+  getStatusClass(type: number | string): string {
     const category = this.getCategory(type);
     switch (category) {
       case 'academic': return 'badge-academic';
