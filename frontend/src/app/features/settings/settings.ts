@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
 import { AcademicYearService, AcademicYear } from '../../core/services/academic-year.service';
 import { GradeLevelService, GradeLevel } from '../../core/services/grade-level.service';
+import { ResultVisibilityService, ResultVisibilityDto, SetVisibilityRequest } from '../../core/services/result-visibility.service';
 
 @Component({
   selector: 'app-settings',
@@ -14,12 +15,13 @@ import { GradeLevelService, GradeLevel } from '../../core/services/grade-level.s
 })
 export class Settings implements OnInit {
   sidebarOpen = signal(false);
-  activeTab = signal('academic'); // 'permissions' | 'academic'
+  activeTab = signal('academic'); // 'permissions' | 'academic' | 'results'
   displayUserName = localStorage.getItem('fullName') || localStorage.getItem('username') || 'المشرف';
 
   // Services
   private academicYearService = inject(AcademicYearService);
   private gradeLevelService = inject(GradeLevelService);
+  private resultVisibilityService = inject(ResultVisibilityService);
 
   // State
   academicYears = signal<AcademicYear[]>([]);
@@ -42,13 +44,31 @@ export class Settings implements OnInit {
 
   readonly stageOptions = ['ابتدائي', 'إعدادي', 'ثانوي'];
 
+  // Result visibility state
+  visibilitySettings = signal<ResultVisibilityDto[]>([]);
+  selectedYearForVisibility = signal<number | null>(null);
+  selectedTermForVisibility = signal<string>('FirstSemester');
+  isVisible = signal<boolean>(false);
+  visibleFrom = signal<string | null>(null);
+  visibleUntil = signal<string | null>(null);
+  editingVisibilityId = signal<number | null>(null);
+  visibilityError = signal<string | null>(null);
+  visibilitySuccess = signal<string | null>(null);
+  terms = [
+    { value: 'FirstSemester', label: 'الترم الأول' },
+    { value: 'SecondSemester', label: 'الترم الثاني' },
+  ];
+
   ngOnInit() {
     this.loadData();
   }
 
   loadData() {
     this.academicYearService.getAll().subscribe({
-      next: (data) => this.academicYears.set(data.data ?? data),
+      next: (data) => {
+        this.academicYears.set(data.data ?? data);
+        this.loadVisibilitySettings();
+      },
       error: (err) => console.error('Failed to load academic years', err),
     });
 
@@ -210,5 +230,152 @@ export class Settings implements OnInit {
         this.gradeError.set(this.extractErrorMessage(err, 'حدث خطأ أثناء حذف المرحلة الدراسية'));
       },
     });
+  }
+
+  // ─── Result Visibility Methods ──────────────────────────────────────────────
+
+  loadVisibilitySettings() {
+    this.resultVisibilityService.getAll().subscribe({
+      next: (res) => {
+        this.visibilitySettings.set(res?.data ?? []);
+      },
+      error: () => this.visibilitySettings.set([]),
+    });
+  }
+
+  saveVisibility() {
+    if (!this.selectedYearForVisibility()) return;
+    this.visibilityError.set(null);
+    this.visibilitySuccess.set(null);
+
+    const editId = this.editingVisibilityId();
+    const isEditing = editId !== null;
+
+    // Map term string to number for API
+    const termNumber = this.selectedTermForVisibility() === 'SecondSemester' ? 2 : 1;
+
+    if (isEditing) {
+      this.resultVisibilityService.update(editId!, {
+        isVisible: this.isVisible(),
+        visibleFrom: this.visibleFrom(),
+        visibleUntil: this.visibleUntil(),
+      }).subscribe({
+        next: () => {
+          this.resetVisibilityForm();
+          this.loadVisibilitySettings();
+          this.showVisibilitySuccess('تم تحديث إعدادات إظهار النتائج بنجاح');
+        },
+        error: (err) => {
+          this.visibilityError.set(this.extractErrorMessage(err, 'حدث خطأ أثناء تحديث الإعدادات'));
+        },
+      });
+    } else {
+      const request: SetVisibilityRequest = {
+        academicYearId: this.selectedYearForVisibility()!,
+        term: termNumber,
+        isVisible: this.isVisible(),
+        visibleFrom: this.visibleFrom(),
+        visibleUntil: this.visibleUntil(),
+      };
+      this.resultVisibilityService.setVisibility(request).subscribe({
+        next: () => {
+          this.resetVisibilityForm();
+          this.loadVisibilitySettings();
+          this.showVisibilitySuccess('تم حفظ إعدادات إظهار النتائج بنجاح');
+        },
+        error: (err) => {
+          this.visibilityError.set(this.extractErrorMessage(err, 'حدث خطأ أثناء حفظ الإعدادات'));
+        },
+      });
+    }
+  }
+
+  editVisibility(setting: ResultVisibilityDto) {
+    this.editingVisibilityId.set(setting.id);
+    this.selectedYearForVisibility.set(setting.academicYearId);
+    this.selectedTermForVisibility.set(setting.term);
+    this.isVisible.set(setting.isVisible);
+    this.visibleFrom.set(setting.visibleFrom);
+    this.visibleUntil.set(setting.visibleUntil);
+    this.visibilityError.set(null);
+    this.visibilitySuccess.set(null);
+  }
+
+  deleteVisibility(id: number) {
+    this.resultVisibilityService.delete(id).subscribe({
+      next: () => {
+        this.loadVisibilitySettings();
+        if (this.editingVisibilityId() === id) this.resetVisibilityForm();
+        this.showVisibilitySuccess('تم حذف إعدادات إظهار النتائج بنجاح');
+      },
+      error: (err) => {
+        this.visibilityError.set(this.extractErrorMessage(err, 'حدث خطأ أثناء الحذف'));
+      },
+    });
+  }
+
+  resetVisibilityForm() {
+    this.editingVisibilityId.set(null);
+    this.selectedYearForVisibility.set(null);
+    this.selectedTermForVisibility.set('FirstSemester');
+    this.isVisible.set(false);
+    this.visibleFrom.set(null);
+    this.visibleUntil.set(null);
+    this.visibilityError.set(null);
+    this.visibilitySuccess.set(null);
+  }
+
+  private showVisibilitySuccess(msg: string) {
+    this.visibilitySuccess.set(msg);
+    setTimeout(() => this.visibilitySuccess.set(null), 3000);
+  }
+
+  getAcademicYearName(id: number): string {
+    return this.academicYears().find(y => y.id === id)?.name || `سنة ${id}`;
+  }
+
+  getTermLabel(value: string): string {
+    return this.terms.find(t => t.value === value)?.label || `الترم ${value}`;
+  }
+
+  onAcademicYearChange() {
+    if (this.selectedYearForVisibility()) {
+      this.loadVisibilitySettings();
+      // Auto-fill form if there's an existing setting for this year+term
+      const yearId = this.selectedYearForVisibility();
+      const termVal = this.selectedTermForVisibility();
+      const existing = this.visibilitySettings().find(
+        s => s.academicYearId === yearId && s.term === termVal
+      );
+      if (existing) {
+        this.isVisible.set(existing.isVisible);
+        this.visibleFrom.set(existing.visibleFrom);
+        this.visibleUntil.set(existing.visibleUntil);
+        this.editingVisibilityId.set(existing.id);
+        this.visibilityError.set(null);
+        this.visibilitySuccess.set(null);
+      } else {
+        // New entry – keep year/term, clear edit mode
+        this.isVisible.set(false);
+        this.visibleFrom.set(null);
+        this.visibleUntil.set(null);
+        this.editingVisibilityId.set(null);
+        this.visibilityError.set(null);
+        this.visibilitySuccess.set(null);
+      }
+    }
+  }
+
+  onTermChange() {
+    this.onAcademicYearChange();
+  }
+
+  get filteredVisibilityByYear(): ResultVisibilityDto[] {
+    const yearId = this.selectedYearForVisibility();
+    let filtered = yearId
+      ? this.visibilitySettings().filter(s => s.academicYearId === yearId)
+      : this.visibilitySettings();
+    // Only show settings for valid terms (FirstSemester / SecondSemester)
+    return filtered.filter(s => s.term === 'FirstSemester' || s.term === 'SecondSemester');
   }
 }

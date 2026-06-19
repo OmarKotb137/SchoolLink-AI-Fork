@@ -30,6 +30,17 @@
             <span class="text-[11px] opacity-80">أدوار المستخدمين والوصول</span>
           </div>
         </button>
+
+        <button (click)="activeTab.set('results')"
+                [ngClass]="activeTab() === 'results' ? 'bg-blue-50 text-blue-700 border-blue-200 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50' : 'bg-white text-gray-700 border-transparent hover:bg-gray-50'"
+                class="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border transition-all text-right group">
+          <span class="material-symbols-outlined"
+                [style.font-variation-settings]="activeTab() === 'results' ? '\'FILL\' 1' : ''">visibility</span>
+          <div class="flex flex-col">
+            <span class="text-sm font-medium">النتائج</span>
+            <span class="text-[11px] opacity-80">إظهار نتائج نهاية الترم</span>
+          </div>
+        </button>
       </div>
     </div>
 
@@ -120,6 +131,103 @@
                   <input checked class="sr-only peer" type="checkbox"/>
                   <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-200 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                 </label>
+              </div>
+            </div>
+          </div>
+        </ng-container>
+
+        <!-- Results Visibility Tab -->
+        <ng-container *ngIf="activeTab() === 'results'">
+          <div class="mb-6">
+            <h2 class="text-xl font-bold text-gray-900 mb-1">التحكم في إظهار النتائج</h2>
+            <p class="text-sm text-gray-500">تحكم في ظهور نتيجة نهاية الترم لأولياء الأمور. امتحانات الشهور تظهر دائمًا في لوحة ولي الأمر.</p>
+          </div>
+
+          <div class="bg-white rounded-2xl p-5 md:p-6 border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50 mb-6">
+            <!-- Error -->
+            <div *ngIf="visibilityError()" class="flex items-center gap-3 p-4 mb-4 rounded-2xl bg-red-50 border border-red-200 text-red-800 text-sm">
+              <span class="material-symbols-outlined text-lg flex-shrink-0">error</span>
+              <span>{{ visibilityError() }}</span>
+              <button (click)="visibilityError.set(null)" class="mr-auto text-red-500 hover:text-red-700 rounded-2xl transition-colors">
+                <span class="material-symbols-outlined text-lg">close</span>
+              </button>
+            </div>
+
+            <!-- Success -->
+            <div *ngIf="visibilitySuccess()" class="flex items-center gap-3 p-4 mb-4 rounded-2xl bg-emerald-50 border border-green-200 text-green-800 text-sm">
+              <span class="material-symbols-outlined text-lg flex-shrink-0">check_circle</span>
+              <span>{{ visibilitySuccess() }}</span>
+            </div>
+
+            <!-- Form -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 bg-gray-50 p-4 rounded-2xl border border-gray-100">
+              <div>
+                <label class="block mb-2 text-sm font-medium text-gray-900">السنة الدراسية</label>
+                <select [(ngModel)]="selectedYearForVisibility" (change)="onAcademicYearChange()"
+                        class="bg-white border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5">
+                  <option [ngValue]="null" disabled>اختر السنة...</option>
+                  <option *ngFor="let year of academicYears()" [ngValue]="year.id">{{ year.name }}</option>
+                </select>
+              </div>
+              <div>
+                <label class="block mb-2 text-sm font-medium text-gray-900">الترم</label>
+                <select [(ngModel)]="selectedTermForVisibility" (change)="onTermChange()"
+                        class="bg-white border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5">
+                  <option *ngFor="let t of terms" [ngValue]="t.value">{{ t.label }}</option>
+                </select>
+              </div>
+              <div class="flex items-center gap-3">
+                <label class="relative inline-flex items-center cursor-pointer">
+                  <input type="checkbox" [(ngModel)]="isVisible" class="sr-only peer"/>
+                  <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-200 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
+                <span class="text-sm font-medium text-gray-900">{{ isVisible() ? 'النتائج ظاهرة' : 'النتائج مخفية' }}</span>
+              </div>
+              <div class="flex items-end gap-2">
+                <button *ngIf="editingVisibilityId()" (click)="resetVisibilityForm()" class="text-gray-900 bg-white border border-gray-200 hover:bg-gray-50 font-medium rounded-2xl text-sm px-4 py-2.5 transition-colors">إلغاء</button>
+                <button (click)="saveVisibility()" [disabled]="!selectedYearForVisibility()"
+                        class="text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md font-medium rounded-2xl text-sm px-5 py-2.5 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                  <span class="material-symbols-outlined text-lg">save</span>
+                  {{ editingVisibilityId() ? 'تحديث' : 'حفظ' }}
+                </button>
+              </div>
+            </div>
+
+            <!-- Existing Settings List -->
+            <h4 class="font-bold text-gray-900 mb-3">الإعدادات الحالية</h4>
+            <div *ngIf="filteredVisibilityByYear.length === 0" class="text-center py-8 text-gray-400">
+              <span class="material-symbols-outlined text-4xl mb-2">visibility_off</span>
+              <p class="text-sm">لا توجد إعدادات إظهار نتائج لهذه السنة</p>
+            </div>
+            <div class="space-y-3">
+              <div *ngFor="let setting of filteredVisibilityByYear"
+                   class="flex items-center justify-between p-4 border rounded-2xl bg-white border-gray-100 hover:border-blue-200 transition-all">
+                <div class="flex items-center gap-4">
+                  <div class="w-10 h-10 rounded-full flex items-center justify-center border"
+                       [class.bg-green-50]="setting.isVisible"
+                       [class.border-green-200]="setting.isVisible"
+                       [class.bg-red-50]="!setting.isVisible"
+                       [class.border-red-200]="!setting.isVisible">
+                    <span class="material-symbols-outlined text-sm"
+                          [ngClass]="setting.isVisible ? 'text-green-600' : 'text-red-600'">
+                      {{ setting.isVisible ? 'visibility' : 'visibility_off' }}
+                    </span>
+                  </div>
+                  <div>
+                    <span class="font-bold text-gray-900 block">{{ getAcademicYearName(setting.academicYearId) }}</span>
+                    <span class="text-xs text-gray-500">{{ getTermLabel(setting.term) }} — {{ setting.isVisible ? 'ظاهرة' : 'مخفية' }}</span>
+                    <span *ngIf="setting.visibleFrom" class="text-xs text-gray-400 mr-2">من {{ setting.visibleFrom | date:'short' }}</span>
+                    <span *ngIf="setting.visibleUntil" class="text-xs text-gray-400">حتى {{ setting.visibleUntil | date:'short' }}</span>
+                  </div>
+                </div>
+                <div class="flex items-center gap-1">
+                  <button (click)="editVisibility(setting)" class="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-2xl transition-colors" title="تعديل">
+                    <span class="material-symbols-outlined text-sm">edit</span>
+                  </button>
+                  <button (click)="deleteVisibility(setting.id)" class="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-2xl transition-colors" title="حذف">
+                    <span class="material-symbols-outlined text-sm">delete</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>

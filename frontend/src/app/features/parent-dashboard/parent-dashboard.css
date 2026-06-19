@@ -37,6 +37,15 @@
   width: 100%;
 }
 
+.weekly-chart-container {
+  position: relative;
+  height: 220px;
+  width: 100%;
+  background: var(--surface-container-low, #f8fafc);
+  border-radius: 12px;
+  padding: 12px;
+}
+
 .status-pill {
   display: inline-block;
   padding: 3px 12px;
@@ -59,6 +68,151 @@
   padding: 10px 12px;
 }
 
+/* ── Child Tab Buttons ─────────────────── */
+.child-tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--outline-variant, #e2e8f0);
+  background: var(--surface-container-low, #f8fafc);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.child-tab-btn:hover {
+  background: #eef2ff;
+  border-color: #6366f1;
+}
+.child-tab-btn.active {
+  background: #6366f1;
+  color: #fff;
+  border-color: #6366f1;
+}
+
+/* ── Term Pill Buttons ─────────────────── */
+.term-pill {
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--outline-variant, #e2e8f0);
+  background: var(--surface-container-low, #f8fafc);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.term-pill:hover {
+  background: #eef2ff;
+  border-color: #6366f1;
+}
+.term-pill.active {
+  background: #4338ca;
+  color: #fff;
+  border-color: #4338ca;
+}
+
+/* ── Subject Cards ─────────────────────── */
+.subject-card {
+  background: var(--surface-container-low, #f8fafc);
+  border-radius: 12px;
+  padding: 14px 16px;
+  border: 1px solid rgba(var(--outline-variant-rgb, 0,0,0), 0.08);
+  transition: all 0.2s;
+}
+.subject-card:hover {
+  border-color: #6366f1;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.08);
+}
+
+.subject-progress {
+  height: 8px;
+  background: var(--surface-container-high, #f1f5f9);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.subject-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.8s ease;
+}
+
+/* ── Grade Colors ──────────────────────── */
+.grade-excellent { color: #10b981; }
+.grade-good      { color: #f59e0b; }
+.grade-pass      { color: #f97316; }
+.grade-fail      { color: #ef4444; }
+
+/* ── Exam Cards ───────────────────────── */
+.exam-card {
+  background: var(--surface-container-low, #f8fafc);
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid rgba(var(--outline-variant-rgb, 0,0,0), 0.08);
+  transition: all 0.2s;
+}
+.exam-card:hover {
+  border-color: #f59e0b;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.1);
+}
+.exam-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #fef3c7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.exam-icon .material-symbols-outlined {
+  font-size: 18px;
+  color: #d97706;
+}
+.exam-date {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--outline, #94a3b8);
+  white-space: nowrap;
+}
+
+/* ── Recommendation Cards ─────────────── */
+.rec-card {
+  background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid #bbf7d0;
+}
+.rec-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.rec-list li {
+  position: relative;
+  padding-right: 16px;
+  margin-bottom: 6px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.rec-list li::before {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 8px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+}
+
+/* ── Progress Bar ─────────────────────── */
 .progress-bar {
   height: 8px;
   background: var(--surface-container-high, #f1f5f9);
@@ -71,6 +225,7 @@
   transition: width 0.6s ease;
 }
 
+/* ── Activities ───────────────────────── */
 .activity-item {
   display: flex;
   align-items: flex-start;
@@ -90,4 +245,77 @@
   border-radius: 50%;
   margin-top: 4px;
   flex-shrink: 0;
+}
+
+/* ── Week Detail Modal ────────────────── */
+.week-detail-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+.week-detail-card {
+  background: #fff;
+  border-radius: 20px;
+  width: 90%;
+  max-width: 380px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+  animation: slideUp 0.25s ease;
+  overflow: hidden;
+}
+.week-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #f1f5f9;
+}
+.week-detail-close {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: #f1f5f9;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+.week-detail-close:hover {
+  background: #e2e8f0;
+}
+.week-detail-close .material-symbols-outlined {
+  font-size: 18px;
+}
+.week-detail-body {
+  padding: 20px;
+}
+.week-detail-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+}
+.week-detail-divider {
+  height: 1px;
+  background: #f1f5f9;
+  margin: 4px 0;
+}
+.week-detail-footer {
+  margin-top: 16px;
+  text-align: center;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes slideUp {
+  from { transform: translateY(30px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }

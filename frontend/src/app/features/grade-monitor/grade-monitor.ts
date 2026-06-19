@@ -732,6 +732,7 @@ export class GradeMonitor implements OnInit {
               name: link.className || '',
               teacher: link.teacher || '',
               subject: link.subject || '',
+              subjectId: link.subjectId,
               year: '',
               template_id: link.templateId,
               students: (link.students || []).map((s: any) => ({
@@ -1266,6 +1267,9 @@ export class GradeMonitor implements OnInit {
   //  يُستدعى عند تغيير الفصل أو الأسبوع
   // ══════════════════════════════════════
   loadEvaluations() {
+    // امسح أي بيانات قديمة أولاً (مهم جداً قبل أي early return)
+    this.clearGradesInternal();
+
     if (!this.dataReady()) { this.pendingReload.set(true); return; }
     const cls = this.currentCls();
     const tmpl = this.currentTmpl();
@@ -1277,9 +1281,6 @@ export class GradeMonitor implements OnInit {
     this.loadingWeek.set(true);
 
     const type = this.entryType();
-
-    // ② امسح الداتا القديمة
-    this.clearGradesInternal();
 
     if (type === 'grades') {
       this.loadWeeklyGrades(cls, tmpl, wn);
@@ -1361,7 +1362,9 @@ export class GradeMonitor implements OnInit {
     const students = cls.students;
     if (!students.length) { this.loadingWeek.set(false); return; }
 
-    this.api.getAssessmentsByClass(cls.id, this.entryTerm())
+    const subjectId = cls.subjectId ?? tmpl.subjectId;
+
+    this.api.getAssessmentsByClass(cls.id, this.entryTerm(), subjectId)
       .pipe(takeUntil(this.cancelLoad$))
       .subscribe({
         next: (res) => {
@@ -1383,9 +1386,10 @@ export class GradeMonitor implements OnInit {
                           : null;
             if (examNum == null) continue;
 
-            const key = st.id + '_e' + examNum;
+            const enrollKey = st.enrollmentId ?? st.id;
+            const key = enrollKey + '_e' + examNum;
             exams[key] = a.score;
-            this.localExams[st.id + '_e' + examNum] = a.score;
+            this.localExams[key] = a.score;
           }
 
           if (Object.keys(exams).length) this.examValues.set(exams);
@@ -1403,7 +1407,8 @@ export class GradeMonitor implements OnInit {
   }
 
   private autoCalcFinalGrades(cls: ClassItem) {
-    this.api.recalculateFinalGrades(cls.id, this.entryTerm()).subscribe({
+    const subjectId = cls.subjectId ?? (this.currentTmpl()?.subjectId);
+    this.api.recalculateFinalGrades(cls.id, this.entryTerm(), subjectId).subscribe({
       next: (res) => {
         this.loadingWeek.set(false);
         if (res.isSuccess && res.data?.length) {
@@ -1426,24 +1431,33 @@ export class GradeMonitor implements OnInit {
       );
       if (!st) continue;
 
-      completeMap[st.id] = f.isComplete !== false;
-      maxMap[st.id] = f.maxTotal ?? 100;
+      const enrollKey = st.enrollmentId ?? st.id;
+
+      // لو فيه duplicate records، نفضل اللي عنده maxTotal أكبر
+      const existingMax = maxMap[enrollKey];
+      const currentMax = f.maxTotal ?? 0;
+      if (existingMax !== undefined && currentMax < existingMax) {
+        continue;
+      }
+
+      completeMap[enrollKey] = f.isComplete !== false;
+      maxMap[enrollKey] = f.maxTotal ?? 100;
 
       if (f.periodAvgScore > 0 || f.isComplete) {
-        this.localFinals[st.id + '_ma'] = f.periodAvgScore ?? 0;
-        gradeMap[st.id + '_ma'] = f.periodAvgScore ?? 0;
+        this.localFinals[enrollKey + '_ma'] = f.periodAvgScore ?? 0;
+        gradeMap[enrollKey + '_ma'] = f.periodAvgScore ?? 0;
       }
       if (f.assessment1Score > 0 || f.isComplete) {
-        this.localFinals[st.id + '_e1'] = f.assessment1Score ?? 0;
-        gradeMap[st.id + '_e1'] = f.assessment1Score ?? 0;
+        this.localFinals[enrollKey + '_e1'] = f.assessment1Score ?? 0;
+        gradeMap[enrollKey + '_e1'] = f.assessment1Score ?? 0;
       }
       if (f.assessment2Score > 0 || f.isComplete) {
-        this.localFinals[st.id + '_e2'] = f.assessment2Score ?? 0;
-        gradeMap[st.id + '_e2'] = f.assessment2Score ?? 0;
+        this.localFinals[enrollKey + '_e2'] = f.assessment2Score ?? 0;
+        gradeMap[enrollKey + '_e2'] = f.assessment2Score ?? 0;
       }
       if (f.finalExamScore > 0 || f.isComplete) {
-        this.localFinals[st.id + '_fe'] = f.finalExamScore ?? 0;
-        gradeMap[st.id + '_fe'] = f.finalExamScore ?? 0;
+        this.localFinals[enrollKey + '_fe'] = f.finalExamScore ?? 0;
+        gradeMap[enrollKey + '_fe'] = f.finalExamScore ?? 0;
       }
     }
 
@@ -1573,8 +1587,8 @@ export class GradeMonitor implements OnInit {
     }
   }
 
-  onExamChange(sid: number, examNum: number, val: any) {
-    const key = sid + '_e' + examNum;
+  onExamChange(st: any, examNum: number, val: any) {
+    const key = (st.enrollmentId ?? st.id) + '_e' + examNum;
     this.localExams[key] = val;
     if (val === null || val === undefined || val === '') {
       this.examValues.update(m => {
@@ -1590,8 +1604,8 @@ export class GradeMonitor implements OnInit {
     }
   }
 
-  onFinalChange(sid: number, field: string, val: any) {
-    const key = sid + '_' + field;
+  onFinalChange(st: any, field: string, val: any) {
+    const key = (st.enrollmentId ?? st.id) + '_' + field;
     this.finalTouched.add(key);
     this.localFinals[key] = val;
     if (val === null || val === undefined || val === '') {
@@ -1745,9 +1759,10 @@ export class GradeMonitor implements OnInit {
       const students = this.getStudents();
       const enrollMap = this.enrollmentMap();
       const classId = cls.id;
+      const subjectId = cls.subjectId ?? this.currentTmpl()?.subjectId;
 
       // أولا نجلب التقييمات الموجودة لنعرف ماذا ننشئ وماذا نحدث
-      this.api.getAssessmentsByClass(classId, this.entryTerm()).pipe(takeUntil(this.cancelLoad$)).subscribe({
+      this.api.getAssessmentsByClass(classId, this.entryTerm(), subjectId).pipe(takeUntil(this.cancelLoad$)).subscribe({
         next: (existingRes) => {
           const existingMap: Record<string, number> = {};
           if (existingRes.isSuccess && existingRes.data?.length) {
@@ -1769,8 +1784,8 @@ export class GradeMonitor implements OnInit {
           for (const st of students) {
             const enrollmentId = st.enrollmentId ?? enrollMap[st.id] ?? st.id;
             for (let examNum = 1; examNum <= 2; examNum++) {
-              const key = st.id + '_e' + examNum;
-              const rawScore = this.localExams[key];
+              const lookupKey = (st.enrollmentId ?? st.id) + '_e' + examNum;
+              const rawScore = this.localExams[lookupKey];
               if (rawScore == null || rawScore === '') continue;
               const score = this.normalizeHalfGrade(parseFloat(rawScore));
               if (isNaN(score)) continue;
@@ -1789,6 +1804,7 @@ export class GradeMonitor implements OnInit {
                 requests.push(
                   this.api.recordAssessment({
                     enrollmentId,
+                    subjectId,
                     assessmentType: examNum,
                     score,
                     maxScore: 15,
@@ -1823,14 +1839,16 @@ export class GradeMonitor implements OnInit {
 
     } else if (type === 'final') {
       const classId = cls.id;
+      const subjectId = cls.subjectId ?? this.currentTmpl()?.subjectId;
       const enrollMap = this.enrollmentMap();
       const students: { enrollmentId: number; monthlyExam1Score?: number | null; monthlyExam2Score?: number | null; semesterExamScore?: number | null }[] = [];
 
       for (const st of cls.students) {
         const enrollmentId = st.enrollmentId ?? enrollMap[st.id] ?? st.id;
-        const feRaw = this.localFinals[st.id + '_fe'];
-        const e1Raw = this.localFinals[st.id + '_e1'];
-        const e2Raw = this.localFinals[st.id + '_e2'];
+        const enrollKey = st.enrollmentId ?? st.id;
+        const feRaw = this.localFinals[enrollKey + '_fe'];
+        const e1Raw = this.localFinals[enrollKey + '_e1'];
+        const e2Raw = this.localFinals[enrollKey + '_e2'];
 
         const entry: any = { enrollmentId };
 
@@ -1850,7 +1868,7 @@ export class GradeMonitor implements OnInit {
         students.push(entry);
       }
 
-      this.api.calculateFullFinalGrades(classId, { students, term: this.entryTerm() }).subscribe({
+      this.api.calculateFullFinalGrades(classId, { students, term: this.entryTerm(), subjectId }).subscribe({
         next: (res) => {
           this.saving.set(false);
           if (res.isSuccess) {

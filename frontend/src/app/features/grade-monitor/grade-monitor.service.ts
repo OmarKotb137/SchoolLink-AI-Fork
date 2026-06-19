@@ -51,6 +51,7 @@ export interface ClassItem {
   name: string;
   teacher: string;
   subject: string;
+  subjectId?: number;
   year: string;
   template_id: number;
   students: Student[];
@@ -276,9 +277,12 @@ export class GradeMonitorService {
   }
 
   /** جلب تقييمات الامتحانات الشهرية لكل طلاب الفصل دفعة واحدة */
-  getAssessmentsByClass(classId: number, term?: number | null) {
+  getAssessmentsByClass(classId: number, term?: number | null, subjectId?: number | null) {
     let url = `${this.base}/PeriodicAssessments/by-class/${classId}`;
-    if (term) url += `?term=${term}`;
+    const params: string[] = [];
+    if (term) params.push(`term=${term}`);
+    if (subjectId != null) params.push(`subjectId=${subjectId}`);
+    if (params.length) url += '?' + params.join('&');
     return this.http.get<any>(url);
   }
 
@@ -304,13 +308,20 @@ export class GradeMonitorService {
     return this.http.post<any>(`${this.base}/FinalGrades/calculate-all/${classId}`, {});
   }
 
-  calculateFullFinalGrades(classId: number, request: { students: { enrollmentId: number; monthlyExam1Score?: number | null; monthlyExam2Score?: number | null; semesterExamScore?: number | null }[], term?: number | null }) {
+  calculateFullFinalGrades(classId: number, request: {
+      students: { enrollmentId: number; monthlyExam1Score?: number | null; monthlyExam2Score?: number | null; semesterExamScore?: number | null }[];
+      term?: number | null;
+      subjectId?: number | null;
+    }) {
     return this.http.post<any>(`${this.base}/FinalGrades/calculate-full/${classId}`, request);
   }
 
-  recalculateFinalGrades(classId: number, term?: number | null) {
+  recalculateFinalGrades(classId: number, term?: number | null, subjectId?: number | null) {
     let url = `${this.base}/FinalGrades/recalculate/${classId}`;
-    if (term) url += `?term=${term}`;
+    const params: string[] = [];
+    if (term) params.push(`term=${term}`);
+    if (subjectId != null) params.push(`subjectId=${subjectId}`);
+    if (params.length) url += '?' + params.join('&');
     return this.http.post<any>(url, {});
   }
 
@@ -318,9 +329,12 @@ export class GradeMonitorService {
     return this.http.get<any>(`${this.base}/FinalGrades/by-enrollment/${enrollmentId}`);
   }
 
-  getFinalGradesByClass(classId: number, term?: number | null) {
+  getFinalGradesByClass(classId: number, term?: number | null, subjectId?: number | null) {
     let url = `${this.base}/FinalGrades/by-class/${classId}`;
-    if (term) url += `?term=${term}`;
+    const params: string[] = [];
+    if (term) params.push(`term=${term}`);
+    if (subjectId != null) params.push(`subjectId=${subjectId}`);
+    if (params.length) url += '?' + params.join('&');
     return this.http.get<any>(url);
   }
 

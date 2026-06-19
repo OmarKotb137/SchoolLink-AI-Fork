@@ -68,7 +68,9 @@ public class ResultVisibilitySettingRepository
         ResultVisibilitySetting setting,
         CancellationToken ct = default)
     {
+        // Include soft-deleted records to avoid unique-index conflict
         var existing = await _context.ResultVisibilitySettings
+            .IgnoreQueryFilters()
             .FirstOrDefaultAsync(s =>
                 s.AcademicYearId == setting.AcademicYearId &&
                 s.Term           == setting.Term, ct);
@@ -77,6 +79,7 @@ public class ResultVisibilitySettingRepository
             await _context.ResultVisibilitySettings.AddAsync(setting, ct);
         else
         {
+            existing.IsDeleted      = false;  // restore if soft-deleted
             existing.IsVisible      = setting.IsVisible;
             existing.VisibleFrom    = setting.VisibleFrom;
             existing.VisibleUntil   = setting.VisibleUntil;

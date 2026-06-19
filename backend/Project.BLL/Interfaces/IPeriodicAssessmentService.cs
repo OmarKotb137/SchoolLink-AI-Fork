@@ -11,5 +11,5 @@ public interface IPeriodicAssessmentService
     Task<OperationResult> DeletePeriodicAssessmentAsync(int id);
     Task<OperationResult<IEnumerable<PeriodicAssessmentDto>>> GetByEnrollmentAsync(int enrollmentId, AcademicTerm? term = null);
     Task<OperationResult<PeriodicAssessmentDto>> GetPeriodicAssessmentByIdAsync(int id);
-    Task<OperationResult<IEnumerable<PeriodicAssessmentDto>>> GetByClassAsync(int classId, AcademicTerm? term = null);
+    Task<OperationResult<IEnumerable<PeriodicAssessmentDto>>> GetByClassAsync(int classId, AcademicTerm? term = null, int? subjectId = null);
 }

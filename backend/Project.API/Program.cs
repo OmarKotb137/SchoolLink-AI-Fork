@@ -88,7 +88,15 @@ try
     });
 
     var app = builder.Build();
-    await SeedData.Initialize(app.Services);
+
+    try
+    {
+        await SeedData.Initialize(app.Services);
+    }
+    catch (Exception ex)
+    {
+        Log.Warning(ex, "Seed data initialization skipped — this is normal during EF Core design-time operations");
+    }
 
     app.UseCors("AllowAngular");
 
@@ -111,9 +119,15 @@ try
     Log.Information("SchoolLink API is ready");
     app.Run();
 }
-catch (Exception ex)
+catch (Exception ex) when (ex.GetType().Name != "HostAbortedException")
 {
     Log.Fatal(ex, "Application terminated unexpectedly");
+}
+catch (Exception)
+{
+    // EF Core design-time tools abort the host during builder.Build() —
+    // HostAbortedException is expected and should not be logged as fatal.
+    throw;
 }
 finally
 {

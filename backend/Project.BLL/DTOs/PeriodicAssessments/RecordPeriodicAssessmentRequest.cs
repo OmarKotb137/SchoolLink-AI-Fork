@@ -5,6 +5,7 @@ namespace Project.BLL.DTOs.PeriodicAssessments;
 public class RecordPeriodicAssessmentRequest
 {
     public int EnrollmentId { get; set; }
+    public int? SubjectId { get; set; }
     public PeriodicAssessmentType AssessmentType { get; set; }
     public decimal Score { get; set; }
     public decimal MaxScore { get; set; }

@@ -66,6 +66,12 @@ public class ResultVisibilityService : IResultVisibilityService
         return OperationResult<bool>.Success(isVisible);
     }
 
+    public async Task<OperationResult<bool>> ExistsSettingAsync(int academicYearId, AcademicTerm term)
+    {
+        var exists = await _unitOfWork.ResultVisibilitySettings.ExistsByYearAndTermAsync(academicYearId, term);
+        return OperationResult<bool>.Success(exists);
+    }
+
     public async Task<OperationResult<IEnumerable<ResultVisibilityDto>>> GetAllSettingsAsync()
     {
         var settings = await _unitOfWork.ResultVisibilitySettings.FindAsync(s => true);

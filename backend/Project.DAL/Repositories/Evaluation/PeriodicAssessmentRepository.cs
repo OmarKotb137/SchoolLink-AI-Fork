@@ -15,6 +15,7 @@ public class PeriodicAssessmentRepository : Repository<PeriodicAssessment>, IPer
         int enrollmentId,
         PeriodicAssessmentType assessmentType,
         AcademicTerm? term = null,
+        int? subjectId = null,
         CancellationToken ct = default)
     {
         var query = _context.PeriodicAssessments
@@ -22,8 +23,13 @@ public class PeriodicAssessmentRepository : Repository<PeriodicAssessment>, IPer
                 pa.EnrollmentId == enrollmentId &&
                 pa.AssessmentType == assessmentType);
 
+        if (subjectId.HasValue)
+            query = query.Where(pa => pa.SubjectId == subjectId.Value);
+
         if (term.HasValue)
             query = query.Where(pa => pa.Term == term.Value);
+        else
+            query = query.Where(pa => pa.Term == null);
 
         return await query.FirstOrDefaultAsync(ct);
     }
@@ -66,6 +72,8 @@ public class PeriodicAssessmentRepository : Repository<PeriodicAssessment>, IPer
 
         if (term.HasValue)
             query = query.Where(pa => pa.Term == term.Value);
+        else
+            query = query.Where(pa => pa.Term == null);
 
         return await query
             .Include(pa => pa.Enrollment)
@@ -101,7 +109,7 @@ public class PeriodicAssessmentRepository : Repository<PeriodicAssessment>, IPer
         var list = assessments.ToList();
         if (!list.Any()) return;
 
-        var keys = list.Select(a => new { a.EnrollmentId, a.AssessmentType, a.Term }).Distinct().ToList();
+        var keys = list.Select(a => new { a.EnrollmentId, a.AssessmentType, a.Term, a.SubjectId }).Distinct().ToList();
         var enrollmentIds = keys.Select(k => k.EnrollmentId).Distinct().ToList();
 
         var existing = await _context.PeriodicAssessments
@@ -113,7 +121,8 @@ public class PeriodicAssessmentRepository : Repository<PeriodicAssessment>, IPer
             var ex = existing.FirstOrDefault(pa =>
                 pa.EnrollmentId == assessment.EnrollmentId &&
                 pa.AssessmentType == assessment.AssessmentType &&
-                pa.Term == assessment.Term);
+                pa.Term == assessment.Term &&
+                pa.SubjectId == assessment.SubjectId);
 
             if (ex is null)
                 await _context.PeriodicAssessments.AddAsync(assessment, ct);

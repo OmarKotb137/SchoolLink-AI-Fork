@@ -18,16 +18,21 @@ public static class SeedData
         var ctx = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         // ── Apply any pending migrations ───────────────────────────────────
-        // Auto-heal: if the DB has tables but zero migration history
-        // (happens when dotnet-ef drop targeted a different SQL instance
-        // than the one the app connects to at runtime), drop and recreate.
-        if (await ctx.Database.CanConnectAsync())
+        try
         {
-            var applied = (await ctx.Database.GetAppliedMigrationsAsync()).ToList();
-            if (!applied.Any())
-                await ctx.Database.EnsureDeletedAsync(); // wipe orphaned schema
+            if (await ctx.Database.CanConnectAsync())
+            {
+                var applied = (await ctx.Database.GetAppliedMigrationsAsync()).ToList();
+                if (!applied.Any())
+                    await ctx.Database.EnsureDeletedAsync();
+            }
+            await ctx.Database.MigrateAsync();
         }
-        await ctx.Database.MigrateAsync();
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "Migration skipped — likely running in EF Core design-time mode");
+            return;
+        }
 
         // ── Seed current-week activity so charts always have data ─────────
         await SeedCurrentWeekActivity(ctx);
@@ -655,67 +660,108 @@ public static class SeedData
         await ctx.SaveChangesAsync();
 
         // =================================================================
-        // 18. PeriodicAssessments (2 exams per enrollment)
+        // 18. PeriodicAssessments (monthly + final exams)
+        //     per enrollment × subject (Math + Arabic) × term (1st + 2nd)
         // =================================================================
-        var assessments = new List<PeriodicAssessment>();
+        var allAssessments = new List<PeriodicAssessment>();
         foreach (var enr in enrollments)
         {
-            assessments.Add(new PeriodicAssessment
+            foreach (var term in new[] { AcademicTerm.FirstSemester, AcademicTerm.SecondSemester })
             {
-                EnrollmentId   = enr.Id,
-                AssessmentType = PeriodicAssessmentType.MonthlyExam1,
-                Term           = AcademicTerm.FirstSemester,
-                Score          = rng.Next(9, 16),
-                MaxScore       = 15,
-                AssessmentDate = new DateOnly(2026, 3, 15),
-                CreatedAt = now, UpdatedAt = now
-            });
-            assessments.Add(new PeriodicAssessment
-            {
-                EnrollmentId   = enr.Id,
-                AssessmentType = PeriodicAssessmentType.MonthlyExam2,
-                Term           = AcademicTerm.FirstSemester,
-                Score          = rng.Next(9, 16),
-                MaxScore       = 15,
-                AssessmentDate = new DateOnly(2026, 4, 15),
-                CreatedAt = now, UpdatedAt = now
-            });
+                var isFirst = term == AcademicTerm.FirstSemester;
+                foreach (var (subjectKey, mathRange, arabRange) in new[] {
+                    ("MTH", (lo: 11, hi: 16), (lo: 20, hi: 31)),
+                    ("ARB", (lo: 8,  hi: 15), (lo: 20, hi: 31)) })
+                {
+                    var subjectId = S[subjectKey].Id;
+                    // MonthlyExam1
+                    allAssessments.Add(new PeriodicAssessment
+                    {
+                        EnrollmentId   = enr.Id,
+                        SubjectId      = subjectId,
+                        AssessmentType = PeriodicAssessmentType.MonthlyExam1,
+                        Term           = term,
+                        Score          = rng.Next(mathRange.lo, mathRange.hi),
+                        MaxScore       = 15,
+                        AssessmentDate = isFirst ? new DateOnly(2026, 3, 15) : new DateOnly(2026, 5, 10),
+                        CreatedAt = now, UpdatedAt = now
+                    });
+                    // MonthlyExam2
+                    allAssessments.Add(new PeriodicAssessment
+                    {
+                        EnrollmentId   = enr.Id,
+                        SubjectId      = subjectId,
+                        AssessmentType = PeriodicAssessmentType.MonthlyExam2,
+                        Term           = term,
+                        Score          = rng.Next(mathRange.lo, mathRange.hi),
+                        MaxScore       = 15,
+                        AssessmentDate = isFirst ? new DateOnly(2026, 4, 15) : new DateOnly(2026, 6, 5),
+                        CreatedAt = now, UpdatedAt = now
+                    });
+                    // SemesterExam (final exam /30)
+                    allAssessments.Add(new PeriodicAssessment
+                    {
+                        EnrollmentId   = enr.Id,
+                        SubjectId      = subjectId,
+                        AssessmentType = PeriodicAssessmentType.SemesterExam,
+                        Term           = term,
+                        Score          = rng.Next(arabRange.lo, arabRange.hi),
+                        MaxScore       = 30,
+                        AssessmentDate = isFirst ? new DateOnly(2026, 1, 20) : new DateOnly(2026, 7, 5),
+                        CreatedAt = now, UpdatedAt = now
+                    });
+                }
+            }
         }
-        ctx.PeriodicAssessments.AddRange(assessments);
+        ctx.PeriodicAssessments.AddRange(allAssessments);
         await ctx.SaveChangesAsync();
 
         // =================================================================
-        // 19. FinalGrades  (in-memory from assessments already created)
+        // 19. FinalGrades  (one per subject per enrollment per term)
         // =================================================================
-        var asmByEnr = assessments.GroupBy(a => a.EnrollmentId)
-                                   .ToDictionary(g => g.Key, g => g.ToList());
-        var finalGrades = enrollments.Select(enr =>
+        var asmLookup = allAssessments
+            .GroupBy(a => new { a.EnrollmentId, SubjectId = a.SubjectId ?? 0, Term = (int)a.Term! })
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        var allFinalGrades = new List<FinalGrade>();
+        foreach (var enr in enrollments)
         {
-            var asms = asmByEnr.GetValueOrDefault(enr.Id) ?? new();
-            var e1   = asms.FirstOrDefault(a => a.AssessmentType == PeriodicAssessmentType.MonthlyExam1)?.Score ?? 0;
-            var e2   = asms.FirstOrDefault(a => a.AssessmentType == PeriodicAssessmentType.MonthlyExam2)?.Score ?? 0;
-            var periodAvg = rng.Next(25, 41);
-            var written  = periodAvg + e1 + e2;
-            var finalExam= rng.Next(20, 31);
-            var total    = written + finalExam;
-            var isComplete = e1 > 0 && e2 > 0 && finalExam > 0;
-            return new FinalGrade
+            foreach (var term in new[] { AcademicTerm.FirstSemester, AcademicTerm.SecondSemester })
             {
-                EnrollmentId     = enr.Id,
-                Term             = AcademicTerm.FirstSemester,
-                PeriodAvgScore   = periodAvg,
-                Assessment1Score = e1,
-                Assessment2Score = e2,
-                WrittenTotal     = written,
-                FinalExamScore   = finalExam,
-                Total            = total > 100 ? 100 : total,
-                MaxTotal         = 100,
-                IsComplete       = isComplete,
-                IsPublished      = true,
-                CreatedAt = now, UpdatedAt = now
-            };
-        }).ToList();
-        ctx.FinalGrades.AddRange(finalGrades);
+                foreach (var subjectId in new[] { S["MTH"].Id, S["ARB"].Id })
+                {
+                    var key = new { EnrollmentId = enr.Id, SubjectId = subjectId, Term = (int)term };
+                    var asms = asmLookup.GetValueOrDefault(key) ?? new();
+                    var e1   = asms.FirstOrDefault(a => a.AssessmentType == PeriodicAssessmentType.MonthlyExam1)?.Score ?? 0;
+                    var e2   = asms.FirstOrDefault(a => a.AssessmentType == PeriodicAssessmentType.MonthlyExam2)?.Score ?? 0;
+                    var semExam = asms.FirstOrDefault(a => a.AssessmentType == PeriodicAssessmentType.SemesterExam)?.Score
+                                  ?? rng.Next(20, 31);
+                    var periodAvg = (int)Math.Round(subjectId == S["MTH"].Id
+                        ? rng.Next(28, 39) + rng.NextDouble()
+                        : rng.Next(25, 36) + rng.NextDouble());
+                    var written  = periodAvg + e1 + e2;
+                    var total    = written + semExam;
+                    var isComplete = e1 > 0 && e2 > 0 && semExam > 0;
+                    allFinalGrades.Add(new FinalGrade
+                    {
+                        EnrollmentId     = enr.Id,
+                        SubjectId        = subjectId,
+                        Term             = term,
+                        PeriodAvgScore   = periodAvg,
+                        Assessment1Score = e1,
+                        Assessment2Score = e2,
+                        WrittenTotal     = written,
+                        FinalExamScore   = semExam,
+                        Total            = total > 100 ? 100 : total,
+                        MaxTotal         = 100,
+                        IsComplete       = isComplete,
+                        IsPublished      = true,
+                        CreatedAt = now, UpdatedAt = now
+                    });
+                }
+            }
+        }
+        ctx.FinalGrades.AddRange(allFinalGrades);
         await ctx.SaveChangesAsync();
 
         // =================================================================

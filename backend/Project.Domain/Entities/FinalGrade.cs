@@ -5,6 +5,7 @@ namespace Project.Domain.Entities
     public class FinalGrade : BaseEntity
     {
         public int EnrollmentId { get; set; }
+        public int? SubjectId { get; set; }
         public AcademicTerm Term { get; set; }  // FirstSemester, SecondSemester
         public decimal PeriodAvgScore { get; set; }
         public decimal Assessment1Score { get; set; }
@@ -18,5 +19,6 @@ namespace Project.Domain.Entities
 
         // Navigation Properties
         public StudentEnrollment Enrollment { get; set; } = null!;
+        public Subject? Subject { get; set; }
     }
 }

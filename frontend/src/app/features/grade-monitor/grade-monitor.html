@@ -361,14 +361,14 @@
                           <td class="font-medium text-on-surface text-right">{{ st.name }}</td>
                           <td>
                             <input type="number" class="grade-num-inp" step="0.5"
-                                   [(ngModel)]="localExams[st.id + '_e1']"
-                                   (ngModelChange)="onExamChange(st.id, 1, $event)"
+                                   [(ngModel)]="localExams[(st.enrollmentId || st.id) + '_e1']"
+                                   (ngModelChange)="onExamChange(st, 1, $event)"
                                    min="0" max="15" />
                           </td>
                           <td>
                             <input type="number" class="grade-num-inp" step="0.5"
-                                   [(ngModel)]="localExams[st.id + '_e2']"
-                                   (ngModelChange)="onExamChange(st.id, 2, $event)"
+                                   [(ngModel)]="localExams[(st.enrollmentId || st.id) + '_e2']"
+                                   (ngModelChange)="onExamChange(st, 2, $event)"
                                    min="0" max="15" />
                           </td>
                         </tr>
@@ -394,34 +394,34 @@
                           <td class="font-medium text-on-surface text-right">{{ st.name }}</td>
                           <td>
                             <input type="number" class="grade-num-inp" step="0.5"
-                                   [(ngModel)]="localFinals[st.id + '_ma']"
-                                   (ngModelChange)="onFinalChange(st.id, 'ma', $event)"
+                                   [(ngModel)]="localFinals[(st.enrollmentId || st.id) + '_ma']"
+                                   (ngModelChange)="onFinalChange(st, 'ma', $event)"
                                    min="0" max="40" />
                           </td>
                           <td>
                             <input type="number" class="grade-num-inp" step="0.5"
-                                   [(ngModel)]="localFinals[st.id + '_e1']"
-                                   (ngModelChange)="onFinalChange(st.id, 'e1', $event)"
+                                   [(ngModel)]="localFinals[(st.enrollmentId || st.id) + '_e1']"
+                                   (ngModelChange)="onFinalChange(st, 'e1', $event)"
                                    min="0" max="15" />
                           </td>
                           <td>
                             <input type="number" class="grade-num-inp" step="0.5"
-                                   [(ngModel)]="localFinals[st.id + '_e2']"
-                                   (ngModelChange)="onFinalChange(st.id, 'e2', $event)"
+                                   [(ngModel)]="localFinals[(st.enrollmentId || st.id) + '_e2']"
+                                   (ngModelChange)="onFinalChange(st, 'e2', $event)"
                                    min="0" max="15" />
                           </td>
-                          <td class="grade-total">{{ finalWritten(st.id) }}</td>
+                          <td class="grade-total">{{ finalWritten(st.enrollmentId || st.id) }}</td>
                           <td>
                             <input type="number" class="grade-num-inp" step="0.5"
-                                   [(ngModel)]="localFinals[st.id + '_fe']"
-                                   (ngModelChange)="onFinalChange(st.id, 'fe', $event)"
+                                   [(ngModel)]="localFinals[(st.enrollmentId || st.id) + '_fe']"
+                                   (ngModelChange)="onFinalChange(st, 'fe', $event)"
                                    min="0" max="30" />
                           </td>
                            <td class="grade-total bg-primary/5 text-primary font-bold">
-                             @if (isFinalComplete(st.id)) {
-                               {{ finalTotal(st.id) }}
+                             @if (isFinalComplete(st.enrollmentId || st.id)) {
+                               {{ finalTotal(st.enrollmentId || st.id) }}
                              } @else {
-                               {{ finalTotal(st.id) }} / {{ finalMaxTotal(st.id) }}
+                               {{ finalTotal(st.enrollmentId || st.id) }} / {{ finalMaxTotal(st.enrollmentId || st.id) }}
                                <span class="material-symbols-outlined text-warning text-sm ml-1" title="بعض الدرجات لم تضف بعد">warning</span>
                              }
                            </td>
