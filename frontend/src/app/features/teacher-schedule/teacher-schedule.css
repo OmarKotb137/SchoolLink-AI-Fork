@@ -1,112 +1,585 @@
-.tt-grid { display: grid; gap: 1px; background-color: #e0e1f3; border-radius: 12px; overflow: hidden; }
-.tt-cell { background-color: #fff; padding: 12px; min-height: 80px; transition: all .2s ease; display:flex;flex-direction:column;justify-content:center; }
-.tt-cell.busy { background: linear-gradient(135deg, rgba(0,82,204,0.08), rgba(0,82,204,0.03)); border-right: 4px solid #0052cc; }
-.tt-cell.busy-cyan { background: linear-gradient(135deg, rgba(0,184,217,0.08), rgba(0,184,217,0.03)); border-right: 4px solid #00b8d9; }
-.tt-cell.busy-green { background: linear-gradient(135deg, rgba(54,179,126,0.08), rgba(54,179,126,0.03)); border-right: 4px solid #36B37E; }
-.tt-cell.busy-orange { background: linear-gradient(135deg, rgba(255,171,0,0.08), rgba(255,171,0,0.03)); border-right: 4px solid #FFAB00; }
-.tt-cell.busy-purple { background: linear-gradient(135deg, rgba(101,84,192,0.08), rgba(101,84,192,0.03)); border-right: 4px solid #6554C0; }
-.tt-cell.available { background: #f0fdf4; border-right: 4px solid #86efac; }
-.tt-header-cell { background: #f8f9ff; padding: 14px 12px; display:flex;align-items:center;justify-content:center;font-weight:600;color:#475569;border-bottom:2px solid #e0e1f3; }
-.tt-header-cell:first-child { border-left:3px solid #d0d5e8; position:relative; background:linear-gradient(to top left, #eef2ff 49%, #cbd5e1 49%, #cbd5e1 51%, #f8f9ff 51%); }
-.tt-header-cell:first-child .cp { position:absolute; font-size:12px; font-weight:600; }
-.tt-header-cell:first-child .cp-day { top:8px; left:8px; color:#64748b; font-weight:500; font-size:11px; }
-.tt-header-cell:first-child .cp-period { bottom:8px; right:8px; color:#00236f; }
-.break-cell { background: #f3f4f6; text-align: center; padding: 8px; font-size: 12px; font-weight: 600; color: #6b7280; display:flex;align-items:center;justify-content:center;gap:6px; }
+/* ═══════════════════════════════════════════════════════════
+   TEACHER SCHEDULE  —  Teacher timetable view (redesign)
+   Same design system as class-schedule (cs-* prefix shared
+   across both components — Angular scoping keeps them isolated)
+   ═══════════════════════════════════════════════════════════ */
 
-.teacher-hero {
+@media (prefers-reduced-motion: reduce) {
+  .cs-hero-blob, .cs-live-dot, .cs-now-dot, .cs-tl-dot.current,
+  .cs-slot-cell.current, .cs-row, .cs-tl-row, .cs-lesson-card, .cs-day-pill {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* ── Hero header ─────────────────────────────────────────── */
+.cs-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 28px;
+  padding: 28px 28px 24px;
+  color: #fff;
+  background: linear-gradient(135deg, #00236f 0%, #163d8f 55%, #1a4ec2 100%);
+  box-shadow: 0 20px 45px rgba(0, 35, 111, 0.28);
+}
+.cs-hero-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(2px);
+  opacity: .35;
+  pointer-events: none;
+}
+.cs-hero-blob-a {
+  width: 260px; height: 260px;
+  background: radial-gradient(circle, rgba(255,255,255,.5), transparent 70%);
+  top: -110px; inset-inline-end: -70px;
+  animation: cs-float 9s ease-in-out infinite;
+}
+.cs-hero-blob-b {
+  width: 180px; height: 180px;
+  background: radial-gradient(circle, rgba(144,168,255,.55), transparent 70%);
+  bottom: -90px; inset-inline-start: 10%;
+  animation: cs-float 11s ease-in-out infinite reverse;
+}
+@keyframes cs-float {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50%      { transform: translateY(14px) scale(1.06); }
+}
+
+.cs-hero-top {
+  position: relative;
+  z-index: 1;
   display: flex;
-  align-items: stretch;
+  flex-wrap: wrap;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 1rem;
-  padding: 1.5rem;
-  border-radius: 1.75rem;
-  border: 1px solid rgba(0, 35, 111, 0.08);
-  background:
-    radial-gradient(circle at top right, rgba(59, 130, 246, 0.14), transparent 26%),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(244, 247, 255, 0.94));
-  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.06);
+  gap: 20px;
 }
-
-.teacher-hero-copy {
-  flex: 1;
-  min-width: 0;
+.cs-hero-icon {
+  width: 52px; height: 52px;
+  border-radius: 18px;
+  background: rgba(255,255,255,.14);
+  border: 1px solid rgba(255,255,255,.18);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
 }
+.cs-hero-icon .material-symbols-outlined { font-size: 26px; }
 
-.teacher-eyebrow {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.35rem 0.75rem;
-  border-radius: 999px;
-  background: rgba(0, 35, 111, 0.08);
-  color: #00236f;
-  font-size: 0.78rem;
+.cs-hero-title {
+  font-size: 1.5rem;
   font-weight: 700;
-  margin-bottom: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  line-height: 1.3;
 }
+.cs-hero-sub { font-size: .85rem; color: rgba(255,255,255,.68); margin-top: 4px; }
 
-.teacher-hero-stats {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(180px, 1fr));
-  gap: 0.85rem;
-}
-
-.teacher-stat-card {
+.cs-today-panel {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 0.35rem;
-  padding: 1rem 1.05rem;
-  border-radius: 1.15rem;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(148, 163, 184, 0.22);
+  align-items: flex-end;
+  gap: 8px;
+  min-width: 220px;
 }
-
-.teacher-stat-card.accent {
-  border-color: rgba(0, 35, 111, 0.18);
-  background: linear-gradient(180deg, rgba(0, 35, 111, 0.06), rgba(255, 255, 255, 0.96));
+.cs-today-row { display: flex; align-items: center; gap: 8px; }
+.cs-live-dot {
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  background: #4ade80;
+  box-shadow: 0 0 0 0 rgba(74,222,128,.6);
+  animation: cs-pulse-ring 2s ease-out infinite;
+  flex-shrink: 0;
 }
+@keyframes cs-pulse-ring {
+  0%   { box-shadow: 0 0 0 0 rgba(74,222,128,.55); }
+  70%  { box-shadow: 0 0 0 7px rgba(74,222,128,0); }
+  100% { box-shadow: 0 0 0 0 rgba(74,222,128,0); }
+}
+.cs-today-label { font-size: .8rem; color: rgba(255,255,255,.68); }
+.cs-today-value { font-size: .95rem; font-weight: 700; }
 
-.teacher-stat-label {
-  font-size: 0.78rem;
-  color: #64748b;
+.cs-current-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: .78rem;
+  font-weight: 600;
+  background: rgba(255,255,255,.12);
+  border: 1px solid rgba(255,255,255,.16);
+}
+.cs-current-chip .material-symbols-outlined { font-size: 16px; }
+.cs-chip-live  { background: rgba(74,222,128,.18);  border-color: rgba(74,222,128,.32);  color: #d9ffe9; }
+.cs-chip-break { background: rgba(251,146,60,.20);  border-color: rgba(251,146,60,.35);  color: #ffe6cf; }
+.cs-chip-off   { color: rgba(255,255,255,.7); }
+
+/* ── Hero stats — teacher has 3 cols ─────────────────────── */
+.cs-hero-stats {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(140px, 1fr));
+  gap: 12px;
+  margin-top: 22px;
+}
+.cs-hero-stats-3 {
+  grid-template-columns: repeat(3, minmax(120px, 1fr));
+}
+.cs-stat {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255,255,255,.1);
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 16px;
+  padding: 12px 14px;
+}
+.cs-stat .material-symbols-outlined {
+  font-size: 22px;
+  background: rgba(255,255,255,.14);
+  border-radius: 10px;
+  padding: 6px;
+  flex-shrink: 0;
+}
+.cs-stat strong { display: block; font-size: 1.3rem; font-weight: 700; line-height: 1; }
+.cs-stat p { font-size: .72rem; color: rgba(255,255,255,.68); margin: 2px 0 0; }
+
+/* ── Error banner ────────────────────────────────────── */
+.cs-error-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  border-radius: 16px;
+  background: rgba(186,26,26,.06);
+  border: 1px solid rgba(186,26,26,.18);
+  color: var(--color-error);
+}
+.cs-retry-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
   font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  background: rgba(186,26,26,.1);
+  color: var(--color-error);
+  font-family: inherit;
+  transition: background .15s;
+  flex-shrink: 0;
+}
+.cs-retry-btn:hover { background: rgba(186,26,26,.18); }
+
+/* ── Generic card shell ──────────────────────────────── */
+.cs-card {
+  background: #fff;
+  border-radius: 24px;
+  border: 1px solid rgba(0,35,111,.07);
+  box-shadow: 0 14px 32px rgba(15,23,42,.05);
 }
 
-.teacher-stat-value {
-  font-size: 1.8rem;
-  line-height: 1;
-  color: #0f172a;
-  font-weight: 800;
+/* ── Day rail (mobile switcher) ─────────────────────────── */
+.cs-day-rail {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 6px;
+  background: rgba(0,35,111,.05);
+  border-radius: 18px;
+  scrollbar-width: none;
+}
+.cs-day-rail::-webkit-scrollbar { display: none; }
+.cs-day-pill {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 18px;
+  border-radius: 14px;
+  font-size: .85rem;
+  font-weight: 600;
+  color: #444651;
+  background: transparent;
+  border: none;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background .2s, color .2s, transform .15s;
+}
+.cs-day-pill:active { transform: scale(.96); }
+.cs-day-pill.active {
+  background: #00236f;
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(0,35,111,.28);
+}
+.cs-pill-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #4ade80;
+  flex-shrink: 0;
 }
 
-.teacher-stat-hint {
-  font-size: 0.76rem;
+/* ── Mobile timeline agenda ───────────────────────────── */
+.cs-agenda { padding: 18px 16px 8px; }
+.cs-timeline { display: flex; flex-direction: column; }
+.cs-tl-row {
+  display: flex;
+  gap: 12px;
+  animation: cs-fade-up .4s ease both;
+  animation-delay: calc(var(--d, 0) * 60ms);
+}
+@keyframes cs-fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.cs-tl-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 18px;
+  flex-shrink: 0;
+}
+.cs-tl-dot {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid #c5c5d3;
+  flex-shrink: 0;
+  margin-top: 4px;
+  transition: all .2s;
+}
+.cs-tl-dot.current {
+  border-color: #00236f;
+  background: #00236f;
+  box-shadow: 0 0 0 4px rgba(0,35,111,.15);
+  animation: cs-pulse-scale 2s ease-in-out infinite;
+}
+@keyframes cs-pulse-scale {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.25); }
+}
+.cs-tl-line {
+  width: 2px;
+  flex: 1;
+  background: #e3e1e9;
+  margin-top: 2px;
+}
+.cs-tl-row:last-child .cs-tl-line { display: none; }
+.cs-tl-content { flex: 1; padding-bottom: 18px; min-width: 0; }
+.cs-tl-time {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: .72rem;
+  color: #757682;
+  margin-bottom: 6px;
+}
+.cs-tl-period-label { font-weight: 700; color: #1a1b21; }
+.cs-now-tag {
+  background: rgba(0,35,111,.1);
+  color: #00236f;
+  font-weight: 700;
+  font-size: .65rem;
+  padding: 1px 8px;
+  border-radius: 999px;
+}
+.cs-empty-slot {
+  border: 1px dashed rgba(117,118,130,.3);
+  border-radius: 14px;
+  padding: 12px;
+  font-size: .78rem;
   color: #94a3b8;
-  line-height: 1.6;
+  text-align: center;
 }
 
-.teacher-table-shell {
-  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.05);
+/* ── Desktop table ───────────────────────────────────── */
+.cs-table-card {
+  overflow: hidden;
+  position: relative;
+  min-height: 420px;
+  display: flex;
+  flex-direction: column;
+}
+.cs-loading-overlay {
+  position: absolute; inset: 0; z-index: 10;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: rgba(255,255,255,.88);
+  backdrop-filter: blur(4px);
+}
+.cs-loading-spin { font-size: 44px; color: #00236f; animation: spin 1s linear infinite; margin-bottom: 10px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.cs-loading-text { color: #757682; font-weight: 600; }
+
+.cs-table { width: 100%; border-collapse: collapse; min-width: 800px; text-align: center; font-size: .85rem; }
+
+.cs-corner-cell {
+  padding: 16px 12px;
+  width: 110px;
+  font-weight: 700;
+  color: #1a1b21;
+  background: #f8f9ff;
+  border-bottom: 2px solid rgba(0,35,111,.07);
+  border-inline-start: 1px solid rgba(0,35,111,.06);
+}
+.cs-corner-cell .material-symbols-outlined { color: #00236f; font-size: 18px; display: block; margin: 0 auto 2px; }
+.cs-corner-cell span:last-child { font-size: .68rem; color: #757682; font-weight: 700; text-transform: uppercase; }
+
+.cs-period-header {
+  position: relative;
+  padding: 14px 8px;
+  font-weight: 700;
+  color: #1a1b21;
+  background: #f8f9ff;
+  border-bottom: 2px solid rgba(0,35,111,.07);
+  border-inline-start: 1px solid rgba(0,35,111,.05);
+  transition: background .2s;
+}
+.cs-period-header.current { background: rgba(0,35,111,.07); }
+.cs-period-header.current .cs-period-num { color: #00236f; }
+.cs-period-num { font-size: .78rem; margin-bottom: 4px; }
+.cs-period-time { font-size: .68rem; color: #757682; line-height: 1.4; }
+.cs-now-dot {
+  position: absolute;
+  top: 6px; inset-inline-start: 50%;
+  transform: translateX(50%);
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #00236f;
+  animation: cs-pulse-scale 2s ease-in-out infinite;
 }
 
-.teacher-table thead tr {
-  background: linear-gradient(180deg, #f8fafc, #f1f5f9);
+.cs-row { transition: background .15s; animation: cs-fade-up .35s ease both; animation-delay: calc(var(--d, 0) * 50ms); }
+.cs-row:hover td:not(.cs-day-cell) { background: rgba(0,35,111,.02); }
+.cs-row.today td { background: rgba(0,35,111,.035); }
+
+.cs-day-cell {
+  position: relative;
+  padding: 14px 8px;
+  font-weight: 700;
+  vertical-align: middle;
+  background: #fafbff;
+  color: #1a1b21;
+  border-bottom: 1px solid rgba(0,35,111,.05);
+  border-inline-start: 1px solid rgba(0,35,111,.06);
+}
+.cs-day-cell.today {
+  background: rgba(0,35,111,.08);
+  color: #00236f;
+}
+.cs-day-cell.today::before {
+  content: '';
+  position: absolute;
+  inset-inline-end: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: #00236f;
+}
+.cs-day-text { display: block; margin-bottom: 4px; }
+.cs-today-badge {
+  display: inline-block;
+  font-size: .6rem;
+  font-weight: 700;
+  letter-spacing: .03em;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: #00236f;
+  color: #fff;
 }
 
-.teacher-table tbody tr {
-  transition: background 0.18s ease;
+.cs-slot-cell {
+  padding: 7px;
+  height: 110px;
+  vertical-align: middle;
+  border-bottom: 1px solid rgba(0,35,111,.04);
+  border-inline-start: 1px solid rgba(0,35,111,.05);
+  position: relative;
+  transition: box-shadow .2s;
+}
+.cs-slot-cell.current {
+  box-shadow: inset 0 0 0 2px #00236f;
+  border-radius: 4px;
+  animation: cs-ring-pulse 2.4s ease-in-out infinite;
+}
+@keyframes cs-ring-pulse {
+  0%, 100% { box-shadow: inset 0 0 0 2px rgba(0,35,111,.9); }
+  50%      { box-shadow: inset 0 0 0 2px rgba(0,35,111,.45); }
+}
+.cs-empty-cell {
+  display: flex; align-items: center; justify-content: center;
+  height: 100%;
+  color: #cbd5e1;
+  font-size: .8rem;
 }
 
-.teacher-table tbody tr:hover {
-  background: rgba(248, 250, 252, 0.96);
+/* ── Lesson card (shared: table + agenda) ─────────────── */
+.cs-lesson-card {
+  width: 100%; height: 100%; min-height: 92px;
+  border-radius: 16px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 1px solid transparent;
+  transition: transform .18s, box-shadow .18s;
+  cursor: default;
+}
+.cs-lesson-card:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 8px 18px rgba(15,23,42,.12);
+  z-index: 2;
+}
+.cs-lesson-icon {
+  width: 26px; height: 26px;
+  border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 2px;
+}
+.cs-lesson-icon .material-symbols-outlined { font-size: 15px; }
+.cs-lesson-name {
+  font-size: .8rem;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.cs-lesson-meta { display: flex; flex-direction: column; align-items: center; gap: 3px; width: 100%; margin-top: 2px; }
+.cs-meta-row {
+  display: flex; align-items: center; justify-content: center; gap: 3px;
+  font-size: .65rem;
+  color: #444651;
+  background: rgba(255,255,255,.7);
+  border: 1px solid rgba(0,0,0,.05);
+  border-radius: 7px;
+  padding: 1px 6px;
+  max-width: 100%;
+}
+.cs-meta-row .material-symbols-outlined { font-size: 11px; flex-shrink: 0; }
+.cs-meta-room { color: #6d28d9; background: transparent; border: none; }
+.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+
+/* ── Break card ──────────────────────────────────────── */
+.cs-break-card {
+  width: 100%; height: 100%; min-height: 86px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px;
+  border-radius: 16px;
+  border: 1px dashed rgba(234,88,12,.35);
+  background:
+    repeating-linear-gradient(135deg, rgba(234,88,12,.06) 0 8px, rgba(234,88,12,.02) 8px 16px);
+  color: #c2410c;
+}
+.cs-break-card .material-symbols-outlined { font-size: 22px; margin-bottom: 2px; }
+.cs-break-label { font-weight: 700; font-size: .78rem; }
+.cs-break-time {
+  font-size: .65rem;
+  background: rgba(255,255,255,.8);
+  border: 1px solid rgba(234,88,12,.15);
+  border-radius: 6px;
+  padding: 1px 6px;
+  margin-top: 2px;
 }
 
-@media (max-width: 1024px) {
-  .teacher-hero {
-    flex-direction: column;
-  }
+/* ── Empty state ─────────────────────────────────────── */
+.cs-empty-state {
+  flex: 1;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center;
+  padding: 56px 24px;
+  color: #757682;
+}
+.cs-empty-icon-wrap {
+  width: 64px; height: 64px;
+  border-radius: 20px;
+  background: rgba(0,35,111,.06);
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 14px;
+}
+.cs-empty-icon-wrap .material-symbols-outlined { font-size: 30px; color: #00236f; }
+.cs-empty-state h3 { font-size: 1.05rem; font-weight: 700; color: #1a1b21; margin-bottom: 6px; }
+.cs-empty-state p { font-size: .85rem; max-width: 320px; }
 
-  .teacher-hero-stats {
-    grid-template-columns: 1fr;
-  }
+/* ── Legend ──────────────────────────────────────────── */
+.cs-legend { padding: 16px 18px; }
+.cs-legend-title {
+  display: flex; align-items: center; gap: 6px;
+  font-size: .72rem; font-weight: 700; color: #444651;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.cs-legend-title .material-symbols-outlined { font-size: 16px; color: #94a3b8; }
+.cs-legend-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.cs-legend-item {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: .72rem; font-weight: 600;
+  border: 1px solid transparent;
+  transition: transform .15s;
+}
+.cs-legend-item:hover { transform: translateY(-1px); }
+.cs-legend-item .material-symbols-outlined { font-size: 14px; }
+
+/* ── Subject colour themes ──────────────────────────── */
+.cs-subj-blue   { background: rgba(0,35,111,.07); }
+.cs-subj-blue   .cs-lesson-icon,
+.cs-subj-blue.cs-legend-item .material-symbols-outlined { background: rgba(0,35,111,.15); color: #00236f; }
+.cs-subj-blue   .cs-lesson-name, .cs-subj-blue.cs-legend-item { color: #00236f; }
+.cs-subj-blue.cs-legend-item { background: rgba(0,35,111,.08); border-color: rgba(0,35,111,.15); }
+
+.cs-subj-cyan   { background: rgba(0,184,217,.08); }
+.cs-subj-cyan   .cs-lesson-icon,
+.cs-subj-cyan.cs-legend-item .material-symbols-outlined { background: rgba(0,184,217,.18); color: #007a8a; }
+.cs-subj-cyan   .cs-lesson-name, .cs-subj-cyan.cs-legend-item { color: #007a8a; }
+.cs-subj-cyan.cs-legend-item { background: rgba(0,184,217,.08); border-color: rgba(0,184,217,.18); }
+
+.cs-subj-green  { background: rgba(22,163,74,.08); }
+.cs-subj-green  .cs-lesson-icon,
+.cs-subj-green.cs-legend-item .material-symbols-outlined { background: rgba(22,163,74,.18); color: #15803d; }
+.cs-subj-green  .cs-lesson-name, .cs-subj-green.cs-legend-item { color: #15803d; }
+.cs-subj-green.cs-legend-item { background: rgba(22,163,74,.08); border-color: rgba(22,163,74,.18); }
+
+.cs-subj-orange { background: rgba(234,88,12,.08); }
+.cs-subj-orange .cs-lesson-icon,
+.cs-subj-orange.cs-legend-item .material-symbols-outlined { background: rgba(234,88,12,.18); color: #c2410c; }
+.cs-subj-orange .cs-lesson-name, .cs-subj-orange.cs-legend-item { color: #c2410c; }
+.cs-subj-orange.cs-legend-item { background: rgba(234,88,12,.08); border-color: rgba(234,88,12,.18); }
+
+.cs-subj-purple { background: rgba(124,58,237,.08); }
+.cs-subj-purple .cs-lesson-icon,
+.cs-subj-purple.cs-legend-item .material-symbols-outlined { background: rgba(124,58,237,.18); color: #6d28d9; }
+.cs-subj-purple .cs-lesson-name, .cs-subj-purple.cs-legend-item { color: #6d28d9; }
+.cs-subj-purple.cs-legend-item { background: rgba(124,58,237,.08); border-color: rgba(124,58,237,.18); }
+
+.cs-subj-gray   { background: rgba(107,114,128,.08); }
+.cs-subj-gray   .cs-lesson-icon,
+.cs-subj-gray.cs-legend-item .material-symbols-outlined { background: rgba(107,114,128,.18); color: #444651; }
+.cs-subj-gray   .cs-lesson-name, .cs-subj-gray.cs-legend-item { color: #444651; }
+.cs-subj-gray.cs-legend-item { background: rgba(107,114,128,.08); border-color: rgba(107,114,128,.18); }
+
+/* ── Responsive ─────────────────────────────────────── */
+@media (max-width: 1023px) {
+  .cs-hero-top { flex-direction: column; }
+  .cs-today-panel { align-items: flex-start; width: 100%; }
+  .cs-hero-stats-3 { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 480px) {
+  .cs-hero { padding: 20px 16px; border-radius: 20px; }
+  .cs-hero-title { font-size: 1.2rem; }
+  .cs-hero-stats-3 { grid-template-columns: repeat(2, 1fr); }
+  .cs-hero-stats-3 .cs-stat:last-child { grid-column: 1 / -1; }
 }

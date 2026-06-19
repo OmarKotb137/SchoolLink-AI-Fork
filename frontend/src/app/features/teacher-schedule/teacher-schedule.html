@@ -1,105 +1,172 @@
 <app-sidebar [(isOpen)]="sidebarOpen" />
+
 <div class="main-content">
-  <main class="pt-16 min-h-screen bg-gray-50 flex flex-col">
+  <main class="pt-16 min-h-screen bg-[var(--color-background)] flex flex-col">
     <div class="flex-1 p-4 md:p-6 lg:p-8">
       <div class="max-w-7xl mx-auto space-y-6 pb-10">
 
-        <!-- Header -->
-        <section class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50">
-          <div>
-            <span class="text-sm font-medium text-blue-600 mb-1 block">Teacher Timetable</span>
-            <h2 class="text-2xl font-bold text-gray-900 mb-2 flex items-center gap-2">
-              <span class="material-symbols-outlined text-3xl text-blue-600">calendar_today</span> جدولي الشخصي
-            </h2>
-            <p class="text-sm text-gray-500 max-w-2xl">يعرض هذا الجدول جميع الحصص المكلف بها عبر مختلف الفصول.</p>
-          </div>
+        <!-- ═══════════════════ HERO HEADER ═══════════════════ -->
+        <div class="cs-hero">
+          <span class="cs-hero-blob cs-hero-blob-a" aria-hidden="true"></span>
+          <span class="cs-hero-blob cs-hero-blob-b" aria-hidden="true"></span>
 
-          <div class="flex items-center gap-4 w-full md:w-auto">
-            <div class="bg-gray-50 border border-gray-100 p-4 rounded-2xl flex-1 md:w-40 text-center">
-              <span class="block text-xs text-gray-500 font-medium mb-1">إجمالي الحصص</span>
-              <strong class="block text-2xl font-bold text-gray-900">{{ slots().length }}</strong>
-              <span class="block text-[10px] text-gray-400 mt-1">الحصص المسندة لك هذا العام</span>
+          <div class="cs-hero-top">
+            <div class="flex items-start gap-4">
+              <div class="cs-hero-icon">
+                <span class="material-symbols-outlined">calendar_today</span>
+              </div>
+              <div>
+                <h1 class="cs-hero-title">جدولي الشخصي</h1>
+                <p class="cs-hero-sub">يعرض هذا الجدول جميع الحصص المكلف بها عبر مختلف الفصول</p>
+              </div>
             </div>
 
-            <div class="bg-blue-50 border border-blue-100 p-4 rounded-2xl flex-1 md:w-40 text-center">
-              <span class="block text-xs text-blue-600 font-medium mb-1">عدد الفترات اليومية</span>
-              <strong class="block text-2xl font-bold text-blue-900">{{ periods().length }}</strong>
-              <span class="block text-[10px] text-blue-500 mt-1">مستخرجة من الجدول</span>
+            <!-- Today / live now panel -->
+            <div class="cs-today-panel">
+              <div class="cs-today-row">
+                <span class="cs-live-dot"></span>
+                <span class="cs-today-label">النهارده</span>
+                <span class="cs-today-value">{{ getTodayLabel() }}</span>
+              </div>
+
+              <ng-container *ngIf="!isTodaySchoolDay">
+                <div class="cs-current-chip cs-chip-off">
+                  <span class="material-symbols-outlined">weekend</span>
+                  <span>عطلة، مفيش حصص النهارده</span>
+                </div>
+              </ng-container>
+
+              <ng-container *ngIf="isTodaySchoolDay">
+                <ng-container *ngIf="getCurrentLessonSlot() as cur; else noCurrentLesson">
+                  <div class="cs-current-chip" [ngClass]="cur.isBreak ? 'cs-chip-break' : 'cs-chip-live'">
+                    <span class="material-symbols-outlined">{{ cur.isBreak ? 'local_cafe' : getSubjectIcon(cur.subjectName) }}</span>
+                    <span>{{ cur.isBreak ? 'وقت الاستراحة دلوقتي' : 'دلوقتي: ' + cur.subjectName + ' · ' + cur.className }}</span>
+                  </div>
+                </ng-container>
+                <ng-template #noCurrentLesson>
+                  <div class="cs-current-chip cs-chip-off">
+                    <span class="material-symbols-outlined">schedule</span>
+                    <span>خارج وقت الحصص دلوقتي</span>
+                  </div>
+                </ng-template>
+              </ng-container>
             </div>
           </div>
-        </section>
 
-        <!-- Error banner: بيظهر لما يحصل خطأ في الـ API -->
-        <div *ngIf="errorMessage()" class="flex items-center justify-between gap-3 p-4 rounded-2xl bg-red-50 text-sm text-red-800 border border-red-200 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50">
+          <!-- stats -->
+          <div class="cs-hero-stats cs-hero-stats-3">
+            <div class="cs-stat">
+              <span class="material-symbols-outlined">school</span>
+              <div>
+                <strong>{{ lessonCount }}</strong>
+                <p>حصة أسبوعياً</p>
+              </div>
+            </div>
+            <div class="cs-stat">
+              <span class="material-symbols-outlined">menu_book</span>
+              <div>
+                <strong>{{ uniqueSubjects.length }}</strong>
+                <p>مادة دراسية</p>
+              </div>
+            </div>
+            <div class="cs-stat">
+              <span class="material-symbols-outlined">groups</span>
+              <div>
+                <strong>{{ uniqueClassesCount }}</strong>
+                <p>فصل دراسي</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══════════════════ ERROR BANNER ═══════════════════ -->
+        <div *ngIf="errorMessage()" class="cs-error-banner">
           <div class="flex items-center gap-3">
             <span class="material-symbols-outlined text-lg">error</span>
             <span class="font-medium">{{ errorMessage() }}</span>
           </div>
-          <button (click)="loadSchedule()" class="text-xs font-bold underline hover:no-underline px-3 py-1.5 rounded-xl hover:bg-red-100 transition-colors">
+          <button (click)="loadSchedule()" class="cs-retry-btn">
+            <span class="material-symbols-outlined text-sm">refresh</span>
             إعادة المحاولة
           </button>
         </div>
 
-        <!-- Schedule grid card -->
-        <div class="bg-white rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50 overflow-hidden flex flex-col relative min-h-[500px]">
+        <!-- ═══════════════════ MOBILE: DAY SWITCHER ═══════════════════ -->
+        <div *ngIf="!isLoading() && slots().length > 0" class="cs-day-rail md:hidden">
+          <button *ngFor="let day of days" type="button"
+                  class="cs-day-pill" [class.active]="selectedDay() === day.value"
+                  (click)="selectDay(day.value)">
+            <span>{{ day.label }}</span>
+            <span *ngIf="isToday(day.value)" class="cs-pill-dot"></span>
+          </button>
+        </div>
 
-          <!-- Loading spinner -->
-          <div *ngIf="isLoading()" class="absolute inset-0 bg-white/80 z-10 flex flex-col items-center justify-center">
-            <span class="material-symbols-outlined animate-spin text-5xl text-blue-600 mb-3">progress_activity</span>
-            <span class="text-gray-500 font-medium">جاري تحميل الجدول...</span>
+        <!-- ═══════════════════ MOBILE: TIMELINE AGENDA ═══════════════════ -->
+        <div *ngIf="!isLoading() && slots().length > 0" class="cs-card cs-agenda md:hidden">
+          <div class="cs-timeline">
+            <div *ngFor="let p of periods(); let i = index" class="cs-tl-row" [style.--d]="i">
+              <div class="cs-tl-rail">
+                <span class="cs-tl-dot" [class.current]="isCurrentCell(selectedDay(), p.num)"></span>
+                <span class="cs-tl-line"></span>
+              </div>
+              <div class="cs-tl-content">
+                <div class="cs-tl-time">
+                  <span class="cs-tl-period-label">{{ p.label }}</span>
+                  <span>{{ p.start }} – {{ p.end }}</span>
+                  <span *ngIf="isCurrentCell(selectedDay(), p.num)" class="cs-now-tag">الآن</span>
+                </div>
+
+                <ng-container *ngIf="getSlot(selectedDay(), p.num) as slot; else tlEmpty">
+                  <ng-container *ngTemplateOutlet="slot.isBreak ? breakCardTpl : lessonCardTpl; context: { slot: slot }"></ng-container>
+                </ng-container>
+                <ng-template #tlEmpty>
+                  <div class="cs-empty-slot">لا توجد حصة</div>
+                </ng-template>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══════════════════ DESKTOP: GRID TABLE ═══════════════════ -->
+        <div class="cs-card cs-table-card hidden md:block">
+
+          <div *ngIf="isLoading()" class="cs-loading-overlay">
+            <span class="material-symbols-outlined cs-loading-spin">progress_activity</span>
+            <span class="cs-loading-text">جاري تحميل الجدول...</span>
           </div>
 
-          <!--
-            FIX: كان الشرط "scheduleData()" — بس scheduleData كانت بتتحط فيها الـ OperationResult
-                 كاملاً (object) فكانت دايماً truthy حتى لو مفيش slots.
-                 دلوقتي slots() هي الـ array نفسها — فالشرط واضح ومباشر.
-          -->
           <div class="overflow-x-auto w-full h-full">
-            <table *ngIf="!isLoading() && slots().length > 0" class="w-full border-collapse min-w-[800px] text-center text-sm">
+            <table *ngIf="!isLoading() && slots().length > 0" class="cs-table">
+
               <thead>
-                <tr class="bg-gray-50 border-b border-gray-100">
-                  <th class="p-4 border-l border-gray-100 w-32 font-bold text-gray-900 uppercase">اليوم / الحصة</th>
-                  <th *ngFor="let p of periods()" class="p-4 border-l border-gray-100 font-bold text-gray-900">
-                    <div class="text-sm mb-1">{{ p.label }}</div>
-                    <div class="text-xs text-gray-500 font-medium bg-white border border-gray-100 rounded px-2 py-0.5 inline-block">{{ p.start }} - {{ p.end }}</div>
+                <tr>
+                  <th class="cs-corner-cell">
+                    <span class="material-symbols-outlined">date_range</span>
+                    <span>اليوم</span>
+                  </th>
+                  <th *ngFor="let p of periods()" class="cs-period-header" [class.current]="getCurrentPeriodNum() === p.num">
+                    <span *ngIf="getCurrentPeriodNum() === p.num" class="cs-now-dot"></span>
+                    <div class="cs-period-num">{{ p.label }}</div>
+                    <div class="cs-period-time">{{ p.start }}<br/>{{ p.end }}</div>
                   </th>
                 </tr>
               </thead>
-              <tbody>
-                <tr *ngFor="let day of days" class="border-b border-gray-100 hover:bg-gray-50/50 transition-colors">
 
-                  <td class="p-4 border-l border-gray-100 font-bold text-gray-900 bg-gray-50/50 shadow-[inset_-4px_0_0_0_#3b82f6]">
-                    {{ day.label }}
+              <tbody>
+                <tr *ngFor="let day of days; let r = index" class="cs-row" [class.today]="isToday(day.value)" [style.--d]="r">
+
+                  <td class="cs-day-cell" [class.today]="isToday(day.value)">
+                    <span class="cs-day-text">{{ day.label }}</span>
+                    <span *ngIf="isToday(day.value)" class="cs-today-badge">اليوم</span>
                   </td>
 
-                  <td *ngFor="let p of periods()" class="border-l border-gray-100 h-28 p-2 relative align-middle">
-                    <!--
-                      getSlot() بتتنادى مرة واحدة بس للخلية بفضل "as slot"
-                      بدل ما كانت بتتنادى 4-5 مرات لكل خلية (مرة للـ ngIf + مرة لكل property)
-                    -->
-                    <ng-container *ngIf="getSlot(day.value, p.num) as slot">
-                      <div class="w-full h-full min-h-[90px] flex flex-col justify-center items-center p-2 rounded-2xl transition-transform hover:scale-[1.02] cursor-default"
-                           [ngClass]="slot.isBreak ? 'bg-orange-50 border border-orange-100' : 'bg-blue-50 border border-blue-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50'">
-
-                        <!-- Break -->
-                        <ng-container *ngIf="slot.isBreak; else lessonTpl">
-                          <span class="material-symbols-outlined text-orange-500 mb-1 text-2xl">local_cafe</span>
-                          <span class="font-bold text-orange-700 text-sm">راحة</span>
-                        </ng-container>
-
-                        <!-- Lesson -->
-                        <ng-template #lessonTpl>
-                          <span class="font-bold text-blue-900 mb-1.5 text-sm">{{ slot.subjectName }}</span>
-                          <div class="flex flex-col items-center gap-1 w-full px-2">
-                            <span class="bg-white text-gray-700 text-xs px-2 py-0.5 rounded border border-gray-100 w-full truncate" [title]="slot.className">{{ slot.className }}</span>
-                            <span *ngIf="slot.roomName" class="text-purple-700 font-medium text-[11px] truncate w-full" [title]="slot.roomName">
-                              📍 {{ slot.roomName }}
-                            </span>
-                          </div>
-                        </ng-template>
-
-                      </div>
+                  <td *ngFor="let p of periods()" class="cs-slot-cell" [class.current]="isCurrentCell(day.value, p.num)">
+                    <ng-container *ngIf="getSlot(day.value, p.num) as slot; else noSlot">
+                      <ng-container *ngTemplateOutlet="slot.isBreak ? breakCardTpl : lessonCardTpl; context: { slot: slot }"></ng-container>
                     </ng-container>
+                    <ng-template #noSlot>
+                      <div class="cs-empty-cell">—</div>
+                    </ng-template>
                   </td>
 
                 </tr>
@@ -107,16 +174,58 @@
             </table>
           </div>
 
-          <!-- Empty state: الـ API رجع بنجاح بس مفيش حصص للمعلم ده -->
-          <div *ngIf="!isLoading() && hasLoaded() && !errorMessage() && slots().length === 0"
-               class="flex-1 flex flex-col items-center justify-center text-gray-500 p-16">
-            <span class="material-symbols-outlined text-6xl mb-4 text-gray-300">event_busy</span>
-            <h3 class="text-lg font-bold text-gray-900 mb-2">لا توجد حصص مجدولة</h3>
-            <p class="text-sm">لم يتم تسجيل أي حصص لك في العام الدراسي الحالي بعد.</p>
+          <div *ngIf="!isLoading() && hasLoaded() && !errorMessage() && slots().length === 0" class="cs-empty-state">
+            <div class="cs-empty-icon-wrap">
+              <span class="material-symbols-outlined">event_busy</span>
+            </div>
+            <h3>لا توجد حصص مجدولة</h3>
+            <p>لم يتم تسجيل أي حصص لك في العام الدراسي الحالي بعد.</p>
           </div>
-
         </div>
+
+        <!-- ═══════════════════ LEGEND ═══════════════════ -->
+        <div *ngIf="!isLoading() && uniqueSubjects.length > 0" class="cs-card cs-legend">
+          <div class="cs-legend-title">
+            <span class="material-symbols-outlined">palette</span>
+            <span>المواد الدراسية</span>
+          </div>
+          <div class="cs-legend-list">
+            <div *ngFor="let s of uniqueSubjects" class="cs-legend-item" [ngClass]="s.color">
+              <span class="material-symbols-outlined">{{ s.icon }}</span>
+              <span>{{ s.name }}</span>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   </main>
 </div>
+
+<!-- ═══════════════════ shared card templates ═══════════════════ -->
+<ng-template #lessonCardTpl let-slot="slot">
+  <div class="cs-lesson-card" [ngClass]="getSubjectColor(slot.subjectName)">
+    <div class="cs-lesson-icon">
+      <span class="material-symbols-outlined">{{ getSubjectIcon(slot.subjectName) }}</span>
+    </div>
+    <div class="cs-lesson-name">{{ slot.subjectName }}</div>
+    <div class="cs-lesson-meta">
+      <span class="cs-meta-row" [title]="slot.className">
+        <span class="material-symbols-outlined">groups</span>
+        <span class="truncate">{{ slot.className }}</span>
+      </span>
+      <span *ngIf="slot.roomName" class="cs-meta-row cs-meta-room">
+        <span class="material-symbols-outlined">location_on</span>
+        <span class="truncate">{{ slot.roomName }}</span>
+      </span>
+    </div>
+  </div>
+</ng-template>
+
+<ng-template #breakCardTpl let-slot="slot">
+  <div class="cs-break-card">
+    <span class="material-symbols-outlined">local_cafe</span>
+    <span class="cs-break-label">استراحة</span>
+    <span class="cs-break-time">{{ slot.startTime | slice:0:5 }} – {{ slot.endTime | slice:0:5 }}</span>
+  </div>
+</ng-template>
