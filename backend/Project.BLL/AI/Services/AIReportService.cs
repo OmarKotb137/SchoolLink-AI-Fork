@@ -173,7 +173,7 @@ public class AIReportService : IAIReportService
             .FindAsync(e => e.StudentId == studentId && e.LeftAt == null))
             .FirstOrDefault();
 
-        // Overall score from FinalGrade
+        // Overall score from FinalGrade (fallback to evaluation-based calculation)
         double overallScore = 0;
         double overallMax = 100;
         decimal periodAvg = 0;
@@ -260,6 +260,22 @@ public class AIReportService : IAIReportService
                     MaxScore = sg.Value.Max
                 }).ToList();
             }
+        }
+
+        // If overallScore is still 0 but we have subject grades, calculate from them
+        if (overallScore == 0 && subjectGrades.Count > 0)
+        {
+            overallScore = (double)subjectGrades.Sum(sg => sg.Score);
+            overallMax = (double)subjectGrades.Sum(sg => sg.MaxScore);
+        }
+
+        // If periodAvg is still 0 but we have subject grades, calculate average percentage
+        if (periodAvg == 0 && subjectGrades.Count > 0)
+        {
+            var totalPct = subjectGrades
+                .Where(sg => sg.MaxScore > 0)
+                .Sum(sg => (double)(sg.Score / sg.MaxScore * 100));
+            periodAvg = Math.Round((decimal)(totalPct / subjectGrades.Count(sg => sg.MaxScore > 0)), 1);
         }
 
         // Trend detection
