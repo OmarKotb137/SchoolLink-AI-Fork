@@ -296,44 +296,74 @@ public static class SeedData
         var codes7 = new[] { "ARB", "ENG", "MTH", "SCI", "SOC", "ISL", "CMP" };
 
         var classArray = new[] { class1, class2, class3, class4, class5, class6 };
-        for (int ci = 0; ci < classArray.Length; ci++)
+
+        // ── helper: خلط Fisher-Yates لمصفوفة المواد (نتيجة قابلة للتوقع بفضل seed ثابت) ──
+        string[] ShuffleCodes(string[] src)
         {
-            var cls = classArray[ci];
+            var copy = (string[])src.Clone();
+            for (int i = copy.Length - 1; i > 0; i--)
+            {
+                int j = rng.Next(i + 1);
+                (copy[i], copy[j]) = (copy[j], copy[i]);
+            }
+            return copy;
+        }
 
-            // subjectId → cstId for this class
-            var cstMap = cstList
-                .Where(c => c.ClassId == cls.Id)
-                .ToDictionary(c => c.SubjectId, c => c.Id);
+        // ClassId → (subjectId → cstId)  (يُحسب مرة واحدة لتفادي تكرار استعلامات LINQ)
+        var cstMaps = classArray.ToDictionary(
+            cls => cls.Id,
+            cls => cstList.Where(c => c.ClassId == cls.Id)
+                          .ToDictionary(c => c.SubjectId, c => c.Id));
 
+        // ── أنشئ Timetable واحد لكل فصل ──────────────────────────────────
+        var timetableByClass = new Dictionary<int, Timetable>();
+        foreach (var cls in classArray)
+        {
             var tt = new Timetable
             {
                 ClassId = cls.Id, AcademicYearId = year.Id,
                 IsActive = true, CreatedAt = now, UpdatedAt = now
             };
             ctx.Timetables.Add(tt);
-            await ctx.SaveChangesAsync();
+            timetableByClass[cls.Id] = tt;
+        }
+        await ctx.SaveChangesAsync();
 
-            var slots = new List<TimetableSlot>();
-            for (int d = 0; d < schoolDays.Length; d++)
+        // ── صمّم الحصص فترة-بفترة لضمان عدم تعارض المعلم ─────────────────
+        // في كل (يوم، فترة) نخلط المواد ونوزّع 6 مواد مختلفة على الـ 6 فصول،
+        // فينتج عن كل فترة ترتيب مختلف عما سبق → يشعر المعلم بتغيّر جدوله يومياً.
+        var slotsByClass = Enumerable.Range(0, classArray.Length)
+                                     .Select(_ => new List<TimetableSlot>())
+                                     .ToArray();
+
+        for (int d = 0; d < schoolDays.Length; d++)
+        {
+            for (int p = 0; p < slotTimes.Length; p++)
             {
-                for (int p = 0; p < slotTimes.Length; p++)
+                // 7 مواد مربوبة عشوائياً، نستخدم أول 6 منها (واحدة تبقى فارغة كل فترة)
+                var order = ShuffleCodes(codes7);
+
+                for (int ci = 0; ci < classArray.Length; ci++)
                 {
-                    var code = codes7[(d * slotTimes.Length + p + ci) % 7];
-                    slots.Add(new TimetableSlot
+                    var cls  = classArray[ci];
+                    var code = order[ci]; // كل فصل مادة مختلفة → مفيش تعارض معلم في نفس التوقيت
+                    slotsByClass[ci].Add(new TimetableSlot
                     {
-                        TimetableId           = tt.Id,
+                        TimetableId           = timetableByClass[cls.Id].Id,
                         DayOfWeek             = schoolDays[d],
                         PeriodNumber          = p + 1,
                         StartTime             = slotTimes[p].start,
                         EndTime               = slotTimes[p].end,
-                        ClassSubjectTeacherId = cstMap[S[code].Id],
-                        RoomId                = rooms[ci].Id,  // كل فصل في أوضته الخاصة
+                        ClassSubjectTeacherId = cstMaps[cls.Id][S[code].Id],
+                        RoomId                = rooms[ci].Id,  // كل فصل في أووضته الخاصة
                         CreatedAt = now, UpdatedAt = now
                     });
                 }
             }
-            ctx.TimetableSlots.AddRange(slots);
         }
+
+        foreach (var list in slotsByClass)
+            ctx.TimetableSlots.AddRange(list);
         await ctx.SaveChangesAsync();
 
         // =================================================================
