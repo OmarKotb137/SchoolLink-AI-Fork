@@ -1,8 +1,18 @@
 <app-sidebar [(isOpen)]="sidebarOpen" />
+
 <div class="main-content">
   <main class="profile-page">
+
+    <!-- ─── Decorative Background ──────────────────────────────── -->
+    <div class="pg-bg" aria-hidden="true">
+      <div class="pg-orb pg-orb-1"></div>
+      <div class="pg-orb pg-orb-2"></div>
+      <div class="pg-orb pg-orb-3"></div>
+    </div>
+
     <section class="profile-shell">
 
+      <!-- ─── Loading Skeleton ──────────────────────────────────── -->
       @if (isLoading() && !profile()) {
         <header class="profile-header">
           <div class="skeleton skeleton-avatar"></div>
@@ -25,87 +35,128 @@
             </section>
           }
         </div>
-      } @else {
-        <!-- ─── Header ──────────────────────────────────────────────── -->
-        <header class="profile-header">
 
-          <div class="profile-avatar-wrap">
-            <div
-              class="profile-avatar"
-              [class.is-loading]="isPhotoLoading()"
-              (click)="!isPhotoLoading() && triggerPhotoUpload()"
-              title="تغيير الصورة الشخصية"
-            >
-              @if (isPhotoLoading()) {
-                <span class="avatar-spinner material-symbols-outlined">progress_activity</span>
-              } @else if (profile()?.profilePictureUrl) {
-                <img [src]="profile()!.profilePictureUrl" alt="صورة الملف الشخصي" class="avatar-img" />
-              } @else {
-                <span>{{ (profile()?.fullName || '؟').slice(0, 1) }}</span>
-              }
-              <div class="avatar-overlay">
-                <span class="material-symbols-outlined">photo_camera</span>
+      } @else {
+
+        <!-- ─── Header ─────────────────────────────────────────── -->
+        <header class="profile-header">
+          <!-- Animated banner background -->
+          <div class="header-banner" aria-hidden="true">
+            <div class="banner-orb banner-orb-1"></div>
+            <div class="banner-orb banner-orb-2"></div>
+            <div class="banner-wave"></div>
+          </div>
+
+          <div class="header-content">
+            <!-- Avatar -->
+            <div class="profile-avatar-wrap">
+              <div class="avatar-ring-outer" aria-hidden="true"></div>
+              <div class="avatar-ring-inner" aria-hidden="true"></div>
+              <div
+                class="profile-avatar"
+                [class.is-loading]="isPhotoLoading()"
+                (click)="!isPhotoLoading() && triggerPhotoUpload()"
+                title="تغيير الصورة الشخصية"
+              >
+                @if (isPhotoLoading()) {
+                  <span class="avatar-spinner material-symbols-outlined">progress_activity</span>
+                } @else if (profile()?.profilePictureUrl) {
+                  <img [src]="profile()!.profilePictureUrl" alt="صورة الملف الشخصي" class="avatar-img" />
+                } @else {
+                  <span class="avatar-letter">{{ (profile()?.fullName || '؟').slice(0, 1) }}</span>
+                }
+                <div class="avatar-overlay">
+                  <span class="material-symbols-outlined">photo_camera</span>
+                  <span class="avatar-overlay-text">تغيير</span>
+                </div>
               </div>
+
+              @if (profile()?.profilePictureUrl && !isPhotoLoading()) {
+                <button class="avatar-delete-btn" type="button" (click)="deletePhoto()" title="حذف الصورة">
+                  <span class="material-symbols-outlined">close</span>
+                </button>
+              }
+
+              <input
+                #photoInput
+                type="file"
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                style="display:none"
+                (change)="onPhotoSelected($event)"
+              />
             </div>
 
-            @if (profile()?.profilePictureUrl && !isPhotoLoading()) {
-              <button class="avatar-delete-btn" type="button" (click)="deletePhoto()" title="حذف الصورة">
-                <span class="material-symbols-outlined">close</span>
-              </button>
-            }
-
-            <input
-              #photoInput
-              type="file"
-              accept="image/jpeg,image/png,image/gif,image/webp"
-              style="display:none"
-              (change)="onPhotoSelected($event)"
-            />
+            <!-- Info -->
+            <div class="header-info">
+              <p class="profile-eyebrow">
+                <span class="eyebrow-pulse"></span>
+                الحساب الشخصي
+              </p>
+              <h1>{{ profile()?.fullName || 'حسابي' }}</h1>
+              <div class="profile-meta-row">
+                <span class="meta-chip">
+                  <span class="material-symbols-outlined">alternate_email</span>
+                  {{ profile()?.username }}
+                </span>
+                <span class="meta-role-badge">{{ roleLabel(profile()?.role) }}</span>
+              </div>
+              <p class="avatar-hint">
+                <span class="material-symbols-outlined">photo_camera</span>
+                اضغط على الصورة لتغييرها
+              </p>
+            </div>
           </div>
-
-          <div>
-            <p class="profile-eyebrow">الحساب الشخصي</p>
-            <h1>{{ profile()?.fullName || 'حسابي' }}</h1>
-            <p class="profile-meta">{{ profile()?.username }} · {{ roleLabel(profile()?.role) }}</p>
-            <p class="avatar-hint">اضغط على الصورة لتغييرها · JPG, PNG, WebP · حتى 5 ميجا</p>
-          </div>
-
         </header>
 
-        <!-- ─── Alerts ───────────────────────────────────────────────── -->
+        <!-- ─── Alerts ─────────────────────────────────────────── -->
         @if (errorMessage()) {
           <div class="profile-alert profile-alert-error">
-            <span class="material-symbols-outlined">error</span>
+            <div class="alert-icon"><span class="material-symbols-outlined">error</span></div>
             <span>{{ errorMessage() }}</span>
           </div>
         }
 
         @if (successMessage()) {
           <div class="profile-alert profile-alert-success">
-            <span class="material-symbols-outlined">check_circle</span>
+            <div class="alert-icon"><span class="material-symbols-outlined">check_circle</span></div>
             <span>{{ successMessage() }}</span>
           </div>
         }
 
-        <!-- ─── Grid: بيانات + بريد ──────────────────────────────────── -->
+        <!-- ─── Grid ───────────────────────────────────────────── -->
         <div class="profile-grid">
 
           <!-- Panel: بيانات الحساب -->
-          <section class="profile-panel">
+          <section class="profile-panel anim-card" style="--card-delay:0.05s">
             <div class="panel-title">
-              <span class="material-symbols-outlined">badge</span>
-              <h2>بيانات الحساب</h2>
+              <div class="panel-icon-wrap">
+                <span class="material-symbols-outlined">badge</span>
+              </div>
+              <div>
+                <p class="panel-eyebrow">معلومات أساسية</p>
+                <h2>بيانات الحساب</h2>
+              </div>
             </div>
 
-            <label>
-              <span>الاسم الكامل</span>
-              <input type="text" [ngModel]="fullName()" (ngModelChange)="fullName.set($event)" />
-            </label>
+            <div class="form-field">
+              <label>
+                <span class="field-label">الاسم الكامل</span>
+                <div class="input-wrap">
+                  <span class="input-icon material-symbols-outlined">person</span>
+                  <input type="text" [ngModel]="fullName()" (ngModelChange)="fullName.set($event)" placeholder="أدخل اسمك الكامل" />
+                </div>
+              </label>
+            </div>
 
-            <label>
-              <span>رقم الهاتف</span>
-              <input type="tel" [ngModel]="phone()" (ngModelChange)="phone.set($event)" placeholder="05xxxxxxxx" />
-            </label>
+            <div class="form-field">
+              <label>
+                <span class="field-label">رقم الهاتف</span>
+                <div class="input-wrap">
+                  <span class="input-icon material-symbols-outlined">phone</span>
+                  <input type="tel" [ngModel]="phone()" (ngModelChange)="phone.set($event)" placeholder="05xxxxxxxx" />
+                </div>
+              </label>
+            </div>
 
             <button
               type="button"
@@ -113,6 +164,7 @@
               (click)="saveProfile()"
               [disabled]="isLoading() || !fullName()"
             >
+              <span class="btn-shimmer"></span>
               @if (isLoading()) {
                 <span class="material-symbols-outlined spinning">progress_activity</span>
                 جارٍ الحفظ...
@@ -124,13 +176,19 @@
           </section>
 
           <!-- Panel: البريد الإلكتروني -->
-          <section class="profile-panel">
+          <section class="profile-panel anim-card" style="--card-delay:0.15s">
             <div class="panel-title">
-              <span class="material-symbols-outlined">alternate_email</span>
-              <h2>البريد الإلكتروني</h2>
+              <div class="panel-icon-wrap panel-icon-teal">
+                <span class="material-symbols-outlined">alternate_email</span>
+              </div>
+              <div>
+                <p class="panel-eyebrow">الإشعارات والتقارير</p>
+                <h2>البريد الإلكتروني</h2>
+              </div>
             </div>
 
             <div class="email-status" [class.verified]="profile()?.isContactEmailVerified">
+              <span class="status-dot-pulse"></span>
               <span class="material-symbols-outlined">
                 {{ profile()?.isContactEmailVerified ? 'verified' : 'mark_email_unread' }}
               </span>
@@ -141,10 +199,15 @@
               </span>
             </div>
 
-            <label>
-              <span>البريد الحقيقي</span>
-              <input type="email" placeholder="name@example.com" [ngModel]="email()" (ngModelChange)="email.set($event)" />
-            </label>
+            <div class="form-field">
+              <label>
+                <span class="field-label">البريد الإلكتروني</span>
+                <div class="input-wrap">
+                  <span class="input-icon material-symbols-outlined">mail</span>
+                  <input type="email" placeholder="name@example.com" [ngModel]="email()" (ngModelChange)="email.set($event)" />
+                </div>
+              </label>
+            </div>
 
             <div class="profile-actions">
               <button
@@ -163,18 +226,24 @@
               </button>
             </div>
 
-            <label>
-              <span>كود التفعيل</span>
-              <input
-                type="text"
-                maxlength="6"
-                placeholder="000000"
-                [ngModel]="otpCode()"
-                (ngModelChange)="otpCode.set($event)"
-                inputmode="numeric"
-                pattern="[0-9]*"
-              />
-            </label>
+            <div class="form-field">
+              <label>
+                <span class="field-label">كود التفعيل</span>
+                <div class="input-wrap">
+                  <span class="input-icon material-symbols-outlined">pin</span>
+                  <input
+                    type="text"
+                    maxlength="6"
+                    placeholder="— — — — — —"
+                    [ngModel]="otpCode()"
+                    (ngModelChange)="otpCode.set($event)"
+                    inputmode="numeric"
+                    pattern="[0-9]*"
+                    class="otp-input"
+                  />
+                </div>
+              </label>
+            </div>
 
             <button
               type="button"
@@ -182,6 +251,7 @@
               (click)="verifyOtp()"
               [disabled]="isEmailLoading() || !email() || otpCode().length !== 6"
             >
+              <span class="btn-shimmer"></span>
               @if (isEmailLoading()) {
                 <span class="material-symbols-outlined spinning">progress_activity</span>
                 جارٍ التفعيل...
@@ -194,22 +264,28 @@
 
         </div>
 
-        <!-- ─── Panel: تغيير كلمة المرور (معلم / ولي أمر فقط) ─────── -->
+        <!-- ─── Password Panel ──────────────────────────────────── -->
         @if (canChangePassword()) {
-          <section class="profile-panel pwd-panel">
+          <section class="profile-panel pwd-panel anim-card" style="--card-delay:0.25s">
 
             <div class="panel-title">
-              <span class="material-symbols-outlined">lock_reset</span>
-              <h2>تغيير كلمة المرور</h2>
+              <div class="panel-icon-wrap panel-icon-orange">
+                <span class="material-symbols-outlined">lock_reset</span>
+              </div>
+              <div>
+                <p class="panel-eyebrow">الأمان والخصوصية</p>
+                <h2>تغيير كلمة المرور</h2>
+              </div>
             </div>
 
             <div class="pwd-grid">
 
-              <!-- كلمة المرور الحالية (full span) -->
+              <!-- كلمة المرور الحالية -->
               <div class="pwd-field-wrap span-full">
                 <label>
-                  <span>كلمة المرور الحالية</span>
-                  <div class="pwd-field">
+                  <span class="field-label">كلمة المرور الحالية</span>
+                  <div class="pwd-field input-wrap">
+                    <span class="input-icon material-symbols-outlined">lock</span>
                     <input
                       [type]="showCurrentPwd() ? 'text' : 'password'"
                       placeholder="أدخل كلمة مرورك الحالية"
@@ -240,8 +316,9 @@
               <!-- كلمة المرور الجديدة -->
               <div class="pwd-field-wrap">
                 <label>
-                  <span>كلمة المرور الجديدة</span>
-                  <div class="pwd-field">
+                  <span class="field-label">كلمة المرور الجديدة</span>
+                  <div class="pwd-field input-wrap">
+                    <span class="input-icon material-symbols-outlined">lock_open</span>
                     <input
                       [type]="showNewPwd() ? 'text' : 'password'"
                       placeholder="6 أحرف على الأقل"
@@ -308,8 +385,9 @@
               <!-- تأكيد كلمة المرور -->
               <div class="pwd-field-wrap">
                 <label>
-                  <span>تأكيد كلمة المرور الجديدة</span>
-                  <div class="pwd-field">
+                  <span class="field-label">تأكيد كلمة المرور الجديدة</span>
+                  <div class="pwd-field input-wrap">
+                    <span class="input-icon material-symbols-outlined">done_all</span>
                     <input
                       [type]="showConfirmPwd() ? 'text' : 'password'"
                       placeholder="أعد كتابة كلمة المرور الجديدة"
@@ -352,6 +430,7 @@
               (click)="changePassword()"
               [disabled]="isPasswordLoading()"
             >
+              <span class="btn-shimmer"></span>
               @if (isPasswordLoading()) {
                 <span class="material-symbols-outlined spinning">progress_activity</span>
                 جارٍ التغيير...
