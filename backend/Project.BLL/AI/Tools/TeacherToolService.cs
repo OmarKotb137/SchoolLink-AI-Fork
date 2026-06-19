@@ -405,12 +405,14 @@ public class TeacherToolService : ITeacherToolService
                             return JsonSerializer.Serialize(new { error = $"لم يتم العثور على المادة المحددة ضمن موادك. استخدم get_subjects أولاً لمعرفة المواد المتاحة." });
                         }
 
-                        var classes = await Task.WhenAll(cstsForSubject
-                            .Select(cst => cst.ClassId)
-                            .Distinct()
-                            .Select(classId => _unitOfWork.Classes.GetByIdAsync(classId)));
+                        var validClasses = new List<Project.Domain.Entities.SchoolClass>();
+                        foreach (var classId in cstsForSubject.Select(cst => cst.ClassId).Distinct())
+                        {
+                            var cls = await _unitOfWork.Classes.GetByIdAsync(classId);
+                            if (cls is not null)
+                                validClasses.Add(cls);
+                        }
 
-                        var validClasses = classes.Where(c => c is not null).ToList();
                         if (validClasses.Count == 1)
                         {
                             gradeLevelId = validClasses[0]!.GradeLevelId;

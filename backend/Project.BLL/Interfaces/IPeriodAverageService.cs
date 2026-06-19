@@ -12,4 +12,5 @@ public interface IPeriodAverageService
     Task<OperationResult> DeletePeriodAverageAsync(int id);
     Task<OperationResult<PeriodAverageDto>> GetPeriodAverageByIdAsync(int id);
     Task<OperationResult<int>> CalculateAllForClassAsync(int classId, int periodId);
+    Task<OperationResult<IEnumerable<SubjectPerformanceGroupDto>>> GetByEnrollmentGroupedBySubjectAsync(int enrollmentId, AcademicTerm? term = null);
 }

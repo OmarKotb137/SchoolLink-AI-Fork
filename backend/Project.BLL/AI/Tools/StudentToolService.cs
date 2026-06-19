@@ -302,7 +302,8 @@ public class StudentToolService : IStudentToolService
                 {
                     query = new { type = "string", description = "نص السؤال أو الموضوع المراد البحث عنه" },
                     subjectId = new { type = "integer", description = "معرف المادة (اختياري)" },
-                    limit = new { type = "integer", description = "عدد النتائج (اختياري، افتراضي 10)" }
+                    limit = new { type = "integer", description = "عدد النتائج (اختياري، افتراضي 10)" },
+                    excludeIds = new { type = "string", description = "قائمة IDs الأسئلة المستبعدة (مفصولة بفواصل) — استخدمها لتجنب تكرار الأسئلة اللي اتجاوب عليها الطالب قبل كده" }
                 },
                 required = new[] { "query" }
             }),
@@ -313,20 +314,41 @@ public class StudentToolService : IStudentToolService
                 var subjectId = doc.RootElement.TryGetProperty("subjectId", out var si) ? si.GetInt32() : (int?)null;
                 var limit = doc.RootElement.TryGetProperty("limit", out var li) ? li.GetInt32() : 10;
 
+                // استبعاد IDs الأسئلة اللي اتجاوب عليها الطالب قبل كده
+                HashSet<int> excludeSet = new();
+                if (doc.RootElement.TryGetProperty("excludeIds", out var ei) && ei.ValueKind == JsonValueKind.String)
+                {
+                    var parts = ei.GetString()?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                    if (parts is not null)
+                    {
+                        foreach (var p in parts)
+                        {
+                            if (int.TryParse(p, out var id))
+                                excludeSet.Add(id);
+                        }
+                    }
+                }
+
                 var request = new SemanticSearchRequest
                 {
                     Query = query,
                     // Auto-filter by student's grade level from context
                     GradeLevelId = context.GradeLevelId,
                     SubjectId = subjectId,
-                    Limit = limit,
+                    Limit = Math.Max(limit, excludeSet.Count + limit), // جيب عدد كافي عشان نقدر نستبعد
                     MinScore = 0.4
                 };
 
                 var result = await _questionEmbeddingService.SemanticSearchAsync(request);
                 if (!result.IsSuccess || result.Data is null || result.Data.Count == 0)
                     return JsonSerializer.Serialize(new { success = false, message = result.Message ?? "لا توجد نتائج" });
-                return JsonSerializer.Serialize(new { success = true, results = result.Data, message = result.Message });
+
+                // استبعد الأسئلة اللي اتعرضت قبل كده
+                var filtered = result.Data.Where(r => !excludeSet.Contains(r.QuestionBankId)).Take(limit).ToList();
+                if (filtered.Count == 0)
+                    return JsonSerializer.Serialize(new { success = false, message = "تمت الإجابة على جميع الأسئلة المتاحة 🎉" });
+
+                return JsonSerializer.Serialize(new { success = true, results = filtered, message = result.Message });
             }
         });
 

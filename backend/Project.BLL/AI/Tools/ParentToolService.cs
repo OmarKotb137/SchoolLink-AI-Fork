@@ -142,6 +142,34 @@ public class ParentToolService : IParentToolService
             });
         }
 
+        // ─────────────────────────────────────────
+        // TOOL: get_child_subject_performance
+        // ─────────────────────────────────────────
+        list.Add(new AiTool
+        {
+            Name = "get_child_subject_performance",
+            Description = "جلب أداء الابن الدراسي مفصلاً حسب كل مادة على حدة (وليس إجمالي جميع المواد). كل مادة بدرجاتها ومعدلاتها في فتراتها المختلفة.",
+            Parameters = JsonSerializer.SerializeToElement(new
+            {
+                type = "object",
+                properties = new
+                {
+                    enrollmentId = new { type = "integer", description = "معرف تسجيل الطالب" }
+                },
+                required = new[] { "enrollmentId" }
+            }),
+            ExecuteAsync = async (args) =>
+            {
+                using var doc = JsonDocument.Parse(args);
+                var eId = doc.RootElement.GetProperty("enrollmentId").GetInt32();
+
+                var result = await _periodAverageService.GetByEnrollmentGroupedBySubjectAsync(eId, context.CurrentTerm);
+                if (!result.IsSuccess || result.Data is null)
+                    return JsonSerializer.Serialize(new { success = false, message = result.Message ?? "لا توجد بيانات" });
+                return JsonSerializer.Serialize(new { success = true, data = result.Data }, new JsonSerializerOptions { WriteIndented = true });
+            }
+        });
+
         return list.ToDictionary(t => t.Name);
     }
 }
