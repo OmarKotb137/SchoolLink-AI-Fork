@@ -58,4 +58,11 @@ public class QuestionBankController : ControllerBase
         var result = await _questionBankService.DeleteAsync(id);
         return result.IsSuccess ? Ok(result) : NotFound(result);
     }
+
+    [HttpPut("{id}")]
+    public async Task<IActionResult> Update(int id, [FromBody] AddToQuestionBankDto dto)
+    {
+        var result = await _questionBankService.UpdateAsync(id, dto);
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
+    }
 }

@@ -1,0 +1,389 @@
+<app-sidebar [(isOpen)]="sidebarOpen" />
+<div class="qb-main">
+  <main class="qb-content">
+
+    <!-- Error Banner -->
+    @if (errorMsg()) {
+      <div class="qb-error">
+        <span class="material-symbols-outlined">info</span>
+        <span>{{ errorMsg() }}</span>
+        <button (click)="dismissError()"><span class="material-symbols-outlined">close</span></button>
+      </div>
+    }
+
+    <!-- Success Banner -->
+    @if (successMsg()) {
+      <div class="qb-info">
+        <span class="material-symbols-outlined">check_circle</span>
+        <span>{{ successMsg() }}</span>
+      </div>
+    }
+
+    <!-- Header -->
+    <div class="qb-header">
+      <div class="qb-header-title">
+        <span class="header-icon">📚</span>
+        <div>
+          <h1>بنك الأسئلة</h1>
+          <p>تصفح وإدارة الأسئلة المخزنة في النظام</p>
+        </div>
+      </div>
+      <div class="qb-controls">
+        <button class="qb-btn" (click)="openAddModal()">
+          <span class="material-symbols-outlined">add</span> إضافة سؤال
+        </button>
+        <button class="qb-btn qb-btn-outline" (click)="search()" [disabled]="loading()">
+          <span class="material-symbols-outlined">refresh</span> تحديث
+        </button>
+      </div>
+    </div>
+
+    <!-- Filters Card -->
+    <div class="qb-card" style="margin-bottom:20px">
+      <div class="card-hd">
+        <span class="material-symbols-outlined">filter_alt</span>
+        <span>بحث وتصفية</span>
+      </div>
+      <div class="card-body">
+        <div class="filter-section">
+          <!-- Search Text -->
+          <div class="pf">
+            <label>بحث في نص السؤال</label>
+            <input class="k-input" type="text" placeholder="اكتب كلمة للبحث..."
+              [ngModel]="searchText()"
+              (ngModelChange)="searchText.set($event); onSearchInput()" />
+          </div>
+
+          <div class="filter-row">
+            <!-- Grade Level -->
+            <div class="pf">
+              <label>الصف الدراسي</label>
+              <select class="k-select" [ngModel]="selectedGradeLevelId()" (ngModelChange)="selectedGradeLevelId.set($event); onGradeLevelChange()">
+                <option [ngValue]="null">جميع الصفوف</option>
+                @for (gl of gradeLevels(); track gl.id) {
+                  <option [ngValue]="gl.id">{{ gl.name }}</option>
+                }
+              </select>
+            </div>
+
+            <!-- Subject -->
+            <div class="pf">
+              <label>المادة</label>
+              <select class="k-select" [ngModel]="selectedSubjectId()" (ngModelChange)="selectedSubjectId.set($event); onSubjectChange()">
+                <option [ngValue]="null">جميع المواد</option>
+                @for (s of filteredSubjects(); track s.id) {
+                  <option [ngValue]="s.id">{{ s.name }}</option>
+                }
+              </select>
+            </div>
+
+            <!-- Question Type -->
+            <div class="pf">
+              <label>نوع السؤال</label>
+              <select class="k-select" [ngModel]="selectedQuestionType()" (ngModelChange)="selectedQuestionType.set($event); onQuestionTypeChange()">
+                <option [ngValue]="null">جميع الأنواع</option>
+                @for (qt of QUESTION_TYPE_LABELS; track qt.value) {
+                  <option [ngValue]="qt.value">{{ qt.label }}</option>
+                }
+              </select>
+            </div>
+          </div>
+
+          <button class="qb-btn" (click)="search()" [disabled]="loading()" style="align-self:flex-start">
+            @if (loading()) {
+              <span class="spinner"></span>
+            } @else {
+              <span class="material-symbols-outlined">search</span>
+            }
+            بحث
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading -->
+    @if (loading()) {
+      <div class="qb-loading">
+        <span class="spin-icon">🔍</span>
+        <p>جاري البحث في بنك الأسئلة...</p>
+      </div>
+    } @else {
+      <!-- Stats -->
+      <div class="qb-stats">
+        <span class="stat-badge">
+          <span class="material-symbols-outlined">database</span>
+          إجمالي: {{ totalCount() }} سؤال
+        </span>
+        @if (selectedQuestionType(); as qt) {
+          <span class="stat-badge">
+            <span class="material-symbols-outlined">{{ qTypeIcon(qt) }}</span>
+            {{ qTypeName(qt) }}
+          </span>
+        }
+      </div>
+
+      <!-- Results -->
+      <div class="qb-card">
+        <div class="card-hd">
+          <span class="material-symbols-outlined">quiz</span>
+          <span>نتائج البحث ({{ totalCount() }})</span>
+        </div>
+        <div class="card-body">
+          @if (questions().length === 0) {
+            <div class="qb-empty">
+              <span class="material-symbols-outlined">search_off</span>
+              <h3>لا توجد أسئلة</h3>
+              <p>لم يتم العثور على أسئلة تطابق معايير البحث. جرب تغيير الفلاتر أو أضف سؤال جديد.</p>
+            </div>
+          } @else {
+            <div class="qb-results">
+              @for (q of questions(); track q.id) {
+                <div class="q-item">
+                  <div class="q-item-hdr">
+                    <span class="material-symbols-outlined">{{ qTypeIcon(q.questionType) }}</span>
+                    <span class="q-type-badge" [class]="qTypeClass(q.questionType)">{{ qTypeName(q.questionType) }}</span>
+                    <span class="q-meta">
+                      <span><span class="material-symbols-outlined">book</span> {{ q.subjectName }}</span>
+                      @if (q.gradeLevelName) {
+                        <span><span class="material-symbols-outlined">school</span> {{ q.gradeLevelName }}</span>
+                      }
+                      <span><span class="material-symbols-outlined">repeat</span> {{ q.usageCount }} استخدام</span>
+                    </span>
+                  </div>
+
+                  <div class="q-text">{{ q.questionText }}</div>
+
+                  <!-- MCQ Options -->
+                  @if (q.options && q.options.length > 0 && q.questionType === 1) {
+                    <div class="q-options">
+                      @for (opt of q.options; track opt.displayOrder; let oi = $index) {
+                        <div class="q-opt-row" [class.opt-correct]="opt.isCorrect">
+                          <span class="q-opt-marker">{{ getOptionLabel(oi) }}</span>
+                          <span>{{ opt.optionText }}</span>
+                          @if (opt.isCorrect) {
+                            <span class="material-symbols-outlined" style="color:#22c55e;font-size:16px;margin-right:auto">check</span>
+                          }
+                        </div>
+                      }
+                    </div>
+                  }
+
+                  <!-- True/False -->
+                  @if (q.questionType === 2) {
+                    <div class="q-options">
+                      <div class="q-opt-row" [class.opt-correct]="q.correctAnswer === 'True' || q.correctAnswer === 'true'">
+                        <span class="q-opt-marker">✓</span>
+                        <span>صح</span>
+                        @if (q.correctAnswer === 'True' || q.correctAnswer === 'true') {
+                          <span class="material-symbols-outlined" style="color:#22c55e;font-size:16px;margin-right:auto">check</span>
+                        }
+                      </div>
+                      <div class="q-opt-row" [class.opt-correct]="q.correctAnswer === 'False' || q.correctAnswer === 'false'">
+                        <span class="q-opt-marker">✗</span>
+                        <span>خطأ</span>
+                        @if (q.correctAnswer === 'False' || q.correctAnswer === 'false') {
+                          <span class="material-symbols-outlined" style="color:#22c55e;font-size:16px;margin-right:auto">check</span>
+                        }
+                      </div>
+                    </div>
+                  }
+
+                  <!-- FillBlank / Essay -->
+                  @if (q.questionType === 3 || q.questionType === 4) {
+                    @if (q.correctAnswer) {
+                      <div class="q-correct-answer">
+                        <span class="material-symbols-outlined">check</span>
+                        <span>الإجابة: {{ q.correctAnswer }}</span>
+                      </div>
+                    }
+                  }
+
+                  <!-- Actions -->
+                  <div class="q-actions">
+                    <button class="qb-btn qb-btn-sm qb-btn-outline" (click)="openEditModal(q)">
+                      <span class="material-symbols-outlined" style="font-size:16px">edit</span> تعديل
+                    </button>
+                    <button class="qb-btn qb-btn-sm qb-btn-danger" (click)="confirmDelete(q)">
+                      <span class="material-symbols-outlined" style="font-size:16px">delete</span> حذف
+                    </button>
+                  </div>
+                </div>
+              }
+            </div>
+
+            <!-- Pagination -->
+            @if (totalPages() > 1) {
+              <div class="qb-pagination">
+                <button (click)="goToPage(page() - 1)" [disabled]="page() <= 1">السابق</button>
+                @if (page() > 3) {
+                  <button (click)="goToPage(1)">1</button>
+                  <span class="page-info">...</span>
+                }
+                @for (p of pageNumbers(); track p) {
+                  <button (click)="goToPage(p)" [class.active]="p === page()">{{ p }}</button>
+                }
+                @if (page() < totalPages() - 2) {
+                  <span class="page-info">...</span>
+                  <button (click)="goToPage(totalPages())">{{ totalPages() }}</button>
+                }
+                <button (click)="goToPage(page() + 1)" [disabled]="page() >= totalPages()">التالي</button>
+              </div>
+            }
+          }
+        </div>
+      </div>
+    }
+  </main>
+</div>
+
+<!-- Add / Edit Modal -->
+@if (showModal()) {
+  <div class="confirm-overlay" (click)="closeModal()">
+    <div class="modal-dialog" (click)="$event.stopPropagation()">
+      <div class="modal-hd">
+        <span class="material-symbols-outlined">{{ editMode() ? 'edit' : 'add_circle' }}</span>
+        <span>{{ editMode() ? 'تعديل السؤال' : 'إضافة سؤال جديد' }}</span>
+        <button class="modal-close-btn" (click)="closeModal()">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <!-- Subject -->
+        <div class="pf">
+          <label>المادة <span class="required-mark">*</span></label>
+          <select class="k-select" [ngModel]="formSubjectId()" (ngModelChange)="formSubjectId.set($event)">
+            <option [ngValue]="null">اختر المادة...</option>
+            @for (s of subjects(); track s.id) {
+              <option [ngValue]="s.id">{{ s.name }}</option>
+            }
+          </select>
+        </div>
+
+        <!-- Grade Level -->
+        <div class="pf">
+          <label>الصف الدراسي <span class="required-mark">*</span></label>
+          <select class="k-select" [ngModel]="formGradeLevelId()" (ngModelChange)="formGradeLevelId.set($event)">
+            <option [ngValue]="null">اختر الصف...</option>
+            @for (gl of gradeLevels(); track gl.id) {
+              <option [ngValue]="gl.id">{{ gl.name }}</option>
+            }
+          </select>
+        </div>
+
+        <!-- Question Type -->
+        <div class="pf">
+          <label>نوع السؤال</label>
+          <select class="k-select" [ngModel]="formQuestionType()" (ngModelChange)="formQuestionType.set($event)">
+            @for (qt of QUESTION_TYPE_LABELS; track qt.value) {
+              <option [ngValue]="qt.value">{{ qt.label }}</option>
+            }
+          </select>
+        </div>
+
+        <!-- Question Text -->
+        <div class="pf">
+          <label>نص السؤال <span class="required-mark">*</span></label>
+          <textarea class="k-textarea" rows="3" placeholder="اكتب نص السؤال..."
+            [ngModel]="formQuestionText()"
+            (ngModelChange)="formQuestionText.set($event)"></textarea>
+        </div>
+
+        <!-- Options (MCQ) -->
+        @if (formQuestionType() === 1) {
+          <div class="pf">
+            <label>الخيارات</label>
+            <div class="modal-options-list">
+              @for (opt of formOptions(); track $index; let idx = $index) {
+                <div class="modal-opt-row">
+                  <span class="modal-opt-label">{{ getOptionLabel(idx) }}</span>
+                  <input class="k-input modal-opt-input" type="text" placeholder="اختيار {{ getOptionLabel(idx) }}"
+                    [ngModel]="opt.text"
+                    (ngModelChange)="formOptions.update(opts => opts.map((o, i) => i === idx ? { ...o, text: $event } : o))" />
+                  <label class="modal-correct-label" [class.correct-on]="opt.isCorrect">
+                    <input type="radio" name="correctOption"
+                      [checked]="opt.isCorrect"
+                      (change)="setCorrectOption(idx)" />
+                    <span>صح</span>
+                  </label>
+                  @if (formOptions().length > 2) {
+                    <button class="modal-remove-opt" (click)="removeOption(idx)">
+                      <span class="material-symbols-outlined">remove_circle</span>
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+            <button class="qb-btn qb-btn-sm qb-btn-outline" (click)="addOption()" style="align-self:flex-start;margin-top:4px">
+              <span class="material-symbols-outlined" style="font-size:16px">add</span> إضافة خيار
+            </button>
+          </div>
+        }
+
+        <!-- Correct Answer (True/False) -->
+        @if (formQuestionType() === 2) {
+          <div class="pf">
+            <label>الإجابة الصحيحة</label>
+            <div class="tf-options-row">
+              <label class="tf-option" [class.tf-on]="formCorrectAnswer() === 'True'">
+                <input type="radio" name="tfCorrect" value="True"
+                  [checked]="formCorrectAnswer() === 'True'"
+                  (change)="formCorrectAnswer.set('True')" />
+                <span>صح</span>
+              </label>
+              <label class="tf-option" [class.tf-on]="formCorrectAnswer() === 'False'">
+                <input type="radio" name="tfCorrect" value="False"
+                  [checked]="formCorrectAnswer() === 'False'"
+                  (change)="formCorrectAnswer.set('False')" />
+                <span>خطأ</span>
+              </label>
+            </div>
+          </div>
+        }
+
+        <!-- Correct Answer (FillBlank / Essay) -->
+        @if (formQuestionType() === 3 || formQuestionType() === 4) {
+          <div class="pf">
+            <label>الإجابة الصحيحة</label>
+            <input class="k-input" type="text" placeholder="الإجابة النموذجية"
+              [ngModel]="formCorrectAnswer()"
+              (ngModelChange)="formCorrectAnswer.set($event)" />
+          </div>
+        }
+
+        <!-- Submit -->
+        <div class="modal-actions">
+          <button class="qb-btn qb-btn-outline" (click)="closeModal()" style="flex:1">إلغاء</button>
+          <button class="qb-btn" (click)="saveQuestion()" [disabled]="saving() || !isFormValid()" style="flex:1">
+            @if (saving()) {
+              <span class="spinner"></span> جاري الحفظ...
+            } @else {
+              <span class="material-symbols-outlined">{{ editMode() ? 'save' : 'add_circle' }}</span>
+              {{ editMode() ? 'حفظ التعديلات' : 'إضافة السؤال' }}
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Delete Confirmation -->
+@if (showDeleteConfirm() && deleteTarget) {
+  <div class="confirm-overlay" (click)="cancelDelete()">
+    <div class="confirm-dialog" (click)="$event.stopPropagation()">
+      <div class="confirm-icon">⚠️</div>
+      <h3>هل أنت متأكد من حذف هذا السؤال؟</h3>
+      <p>سيتم حذف السؤال من بنك الأسئلة والبحث الذكي بشكل نهائي</p>
+      <div class="confirm-actions">
+        <button class="qb-btn qb-btn-outline" (click)="cancelDelete()">إلغاء</button>
+        <button class="qb-btn qb-btn-danger" (click)="doDelete()" [disabled]="deleting()">
+          @if (deleting()) {
+            <span class="spinner"></span> جاري الحذف...
+          } @else {
+            <span class="material-symbols-outlined">delete</span> حذف
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+}

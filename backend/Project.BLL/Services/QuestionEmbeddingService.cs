@@ -17,6 +17,12 @@ public interface IQuestionEmbeddingService
 
     /// <summary>إضافة كل أسئلة بنك الأسئلة غير المضمنة</summary>
     Task<OperationResult<int>> EmbedAllUnembeddedAsync(CancellationToken ct = default);
+
+    /// <summary>حذف embedding من MongoDB عند حذف سؤال من بنك الأسئلة</summary>
+    Task<OperationResult> DeleteByQuestionBankIdAsync(int questionBankId, CancellationToken ct = default);
+
+    /// <summary>إعادة إنشاء embedding بعد تعديل سؤال في بنك الأسئلة</summary>
+    Task<OperationResult> ReEmbedQuestionAsync(int questionBankId, CancellationToken ct = default);
 }
 
 public class SemanticSearchRequest
@@ -240,6 +246,33 @@ public class QuestionEmbeddingService : IQuestionEmbeddingService
             return OperationResult<int>.Success(0, "كل الأسئلة مضمنة بالفعل");
 
         return await EmbedQuestionBankItemsAsync(unembedded, ct);
+    }
+
+    public async Task<OperationResult> DeleteByQuestionBankIdAsync(int questionBankId, CancellationToken ct = default)
+    {
+        var result = await Collection.DeleteOneAsync(
+            Builders<QuestionEmbeddingDocument>.Filter.Eq(x => x.QuestionBankId, questionBankId),
+            ct);
+
+        if (result.DeletedCount > 0)
+            _logger.LogInformation("تم حذف embedding من MongoDB لسؤال بنك الأسئلة {QuestionBankId}", questionBankId);
+        else
+            _logger.LogWarning("لم يتم العثور على embedding في MongoDB لسؤال بنك الأسئلة {QuestionBankId}", questionBankId);
+
+        return OperationResult.Success("تم حذف الـ embedding من MongoDB بنجاح");
+    }
+
+    public async Task<OperationResult> ReEmbedQuestionAsync(int questionBankId, CancellationToken ct = default)
+    {
+        // 1. احذف القديم من MongoDB
+        await DeleteByQuestionBankIdAsync(questionBankId, ct);
+
+        // 2. أضف الجديد
+        var embedResult = await EmbedQuestionBankItemsAsync([questionBankId], ct);
+        if (!embedResult.IsSuccess)
+            return OperationResult.Failure(embedResult.Message);
+
+        return OperationResult.Success("تم تحديث الـ embedding بنجاح");
     }
 
     #region Helpers

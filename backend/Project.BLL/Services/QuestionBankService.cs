@@ -12,6 +12,7 @@ namespace Project.BLL.Services;
 public class QuestionBankService : IQuestionBankService
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IQuestionEmbeddingService _embeddingService;
     private readonly ILogger<QuestionBankService> _logger;
     private static readonly JsonSerializerOptions JsonOpts = new()
     {
@@ -19,9 +20,10 @@ public class QuestionBankService : IQuestionBankService
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
 
-    public QuestionBankService(IUnitOfWork unitOfWork, ILogger<QuestionBankService> logger)
+    public QuestionBankService(IUnitOfWork unitOfWork, IQuestionEmbeddingService embeddingService, ILogger<QuestionBankService> logger)
     {
         _unitOfWork = unitOfWork;
+        _embeddingService = embeddingService;
         _logger = logger;
     }
 
@@ -47,7 +49,7 @@ public class QuestionBankService : IQuestionBankService
         return OperationResult<QuestionBankItemDto>.Success(MapToDto(item));
     }
 
-    public async Task<OperationResult<List<QuestionBankItemDto>>> SearchAsync(SearchQuestionBankDto dto)
+    public async Task<OperationResult<PagedResultDto<QuestionBankItemDto>>> SearchAsync(SearchQuestionBankDto dto)
     {
         var allItems = await _unitOfWork.QuestionBank.FindAsync(q => !q.IsDeleted);
 
@@ -77,8 +79,13 @@ public class QuestionBankService : IQuestionBankService
             .ToList();
 
         var dtos = items.Select(MapToDto).ToList();
-        return OperationResult<List<QuestionBankItemDto>>.Success(dtos,
-            $"تم العثور على {total} سؤال");
+        return OperationResult<PagedResultDto<QuestionBankItemDto>>.Success(new PagedResultDto<QuestionBankItemDto>
+        {
+            Items = dtos,
+            TotalCount = total,
+            Page = dto.Page,
+            PageSize = dto.PageSize
+        }, $"تم العثور على {total} سؤال");
     }
 
     public async Task<OperationResult<QuestionBankItemDto>> AddQuestionAsync(AddToQuestionBankDto dto)
@@ -128,6 +135,9 @@ public class QuestionBankService : IQuestionBankService
 
         await _unitOfWork.QuestionBank.AddAsync(bankItem);
         await _unitOfWork.SaveChangesAsync();
+
+        // إضافة الـ embedding في MongoDB
+        await _embeddingService.EmbedQuestionBankItemsAsync([bankItem.Id]);
 
         _logger.LogInformation("Added question to bank: {QuestionText} (Subject: {SubjectId})",
             dto.QuestionText[..Math.Min(dto.QuestionText.Length, 50)], dto.SubjectId);
@@ -230,7 +240,44 @@ public class QuestionBankService : IQuestionBankService
         _unitOfWork.QuestionBank.SoftDelete(item);
         await _unitOfWork.SaveChangesAsync();
 
-        return OperationResult.Success("تم حذف السؤال من بنك الأسئلة");
+        // حذف الـ embedding من MongoDB
+        await _embeddingService.DeleteByQuestionBankIdAsync(id);
+
+        return OperationResult.Success("تم حذف السؤال من بنك الأسئلة والبحث الذكي");
+    }
+
+    public async Task<OperationResult<QuestionBankItemDto>> UpdateAsync(int id, AddToQuestionBankDto dto)
+    {
+        var item = await _unitOfWork.QuestionBank.GetByIdAsync(id);
+        if (item is null || item.IsDeleted)
+            return OperationResult<QuestionBankItemDto>.Failure("السؤال غير موجود", 404);
+
+        // تحديث البيانات
+        item.QuestionText = dto.QuestionText;
+        item.QuestionType = (QuestionType)dto.QuestionType;
+        item.CorrectAnswer = dto.CorrectAnswer;
+        item.OptionsJson = dto.Options?.Count > 0
+            ? JsonSerializer.Serialize(dto.Options.Select(o => new
+            {
+                text = o.Text,
+                isCorrect = o.IsCorrect,
+                displayOrder = o.DisplayOrder
+            }), JsonOpts)
+            : null;
+        item.SubjectId = dto.SubjectId;
+        item.GradeLevelId = dto.GradeLevelId;
+
+        _unitOfWork.QuestionBank.Update(item);
+        await _unitOfWork.SaveChangesAsync();
+
+        // تحديث الـ embedding في MongoDB
+        await _embeddingService.ReEmbedQuestionAsync(id);
+
+        _logger.LogInformation("Updated question in bank: {QuestionText} (ID: {Id})",
+            dto.QuestionText[..Math.Min(dto.QuestionText.Length, 50)], id);
+
+        return OperationResult<QuestionBankItemDto>.Success(MapToDto(item),
+            "تم تحديث السؤال في بنك الأسئلة والبحث الذكي");
     }
 
     private static QuestionBankItemDto MapToDto(QuestionBank item)
