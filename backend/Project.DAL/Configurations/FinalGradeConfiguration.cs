@@ -34,12 +34,17 @@ namespace Project.DAL.Configurations
             builder.Property(x => x.MaxTotal)
                 .HasColumnType("decimal(5,2)");
 
-            builder.HasIndex(x => new { x.EnrollmentId, x.Term })
+            builder.HasIndex(x => new { x.EnrollmentId, x.SubjectId, x.Term })
                 .IsUnique();
 
             builder.HasOne(x => x.Enrollment)
                 .WithMany()
                 .HasForeignKey(x => x.EnrollmentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne(x => x.Subject)
+                .WithMany()
+                .HasForeignKey(x => x.SubjectId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             builder.HasQueryFilter(x => !x.IsDeleted);

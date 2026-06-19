@@ -12,6 +12,47 @@ export interface ParentDashboardChild {
   relationship: string;
 }
 
+export interface ChildSubject {
+  subjectName: string;
+  score: number;
+  maxScore: number;
+}
+
+export interface UpcomingExam {
+  title: string;
+  subjectName: string;
+  startTime: string | null;
+  totalScore: number;
+}
+
+export interface WeeklyPerformance {
+  periodName: string;
+  weekNumber: number;
+  avgScore: number;
+  maxScore: number;
+  totalScore: number;
+  totalMaxScore: number;
+}
+
+export interface MonthlyExamResult {
+  subjectName: string;
+  title: string;
+  score: number;
+  maxScore: number;
+}
+
+export interface FinalExamResult {
+  subjectName: string;
+  title: string;
+  score: number;
+  maxScore: number;
+}
+
+export interface RecSection {
+  title: string;
+  items: string[];
+}
+
 export interface ParentChildStats {
   name: string;
   grade: string;
@@ -19,6 +60,17 @@ export interface ParentChildStats {
   performance: number;
   grades: { last: string; total: string };
   absences: number;
+  attendanceRate: number;
+  excusedAbsences: number;
+  unexcusedAbsences: number;
+  subjectPerformances: ChildSubject[];
+  recommendationsText?: string | null;
+  recommendationSections: RecSection[];
+  upcomingExams: UpcomingExam[];
+  weeklyPerformances: WeeklyPerformance[];
+  monthlyExams: MonthlyExamResult[];
+  finalExams: FinalExamResult[];
+  currentTermName?: string;
 }
 
 export interface ParentDashboardData {
@@ -35,7 +87,8 @@ export class ParentDashboardService {
     return this.http.get<any>(`${this.apiUrl}/my-children`);
   }
 
-  getDashboard(): Observable<any> {
-    return this.http.get<any>(`${this.apiUrl}`);
+  getDashboard(term?: number): Observable<any> {
+    const params = term ? `?term=${term}` : '';
+    return this.http.get<any>(`${this.apiUrl}${params}`);
   }
 }

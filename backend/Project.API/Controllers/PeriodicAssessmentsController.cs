@@ -28,9 +28,9 @@ public class PeriodicAssessmentsController : ControllerBase
     }
 
     [HttpGet("by-class/{classId:int}")]
-    public async Task<IActionResult> GetByClass(int classId)
+    public async Task<IActionResult> GetByClass(int classId, [FromQuery] int? term = null, [FromQuery] int? subjectId = null)
     {
-        var result = await _service.GetByClassAsync(classId);
+        var result = await _service.GetByClassAsync(classId, term.HasValue ? (AcademicTerm)term.Value : null, subjectId);
         return Ok(result);
     }
 

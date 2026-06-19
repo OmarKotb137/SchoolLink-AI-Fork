@@ -40,7 +40,7 @@ public class PeriodicAssessmentService : IPeriodicAssessmentService
             return OperationResult<PeriodicAssessmentDto>.Failure("القيد غير موجود أو غير نشط");
 
         var existing = await _unitOfWork.PeriodicAssessments.GetByEnrollmentAndTypeAsync(
-            request.EnrollmentId, request.AssessmentType, request.Term);
+            request.EnrollmentId, request.AssessmentType, request.Term, request.SubjectId);
         if (existing is not null && !existing.IsDeleted)
             return OperationResult<PeriodicAssessmentDto>.Failure("هذا التقييم مسجل مسبقاً لهذا الطالب");
 
@@ -127,7 +127,7 @@ public class PeriodicAssessmentService : IPeriodicAssessmentService
             "تم جلب التقييم الدوري بنجاح");
     }
 
-    public async Task<OperationResult<IEnumerable<PeriodicAssessmentDto>>> GetByClassAsync(int classId, AcademicTerm? term = null)
+    public async Task<OperationResult<IEnumerable<PeriodicAssessmentDto>>> GetByClassAsync(int classId, AcademicTerm? term = null, int? subjectId = null)
     {
         var classEntity = await _unitOfWork.Classes.GetByIdAsync(classId);
         if (classEntity is null || classEntity.IsDeleted)
@@ -148,6 +148,8 @@ public class PeriodicAssessmentService : IPeriodicAssessmentService
             var assessments = await _unitOfWork.PeriodicAssessments.GetByEnrollmentIdAsync(eid);
             if (term.HasValue)
                 assessments = assessments.Where(a => a.Term == term.Value).ToList();
+            if (subjectId.HasValue)
+                assessments = assessments.Where(a => a.SubjectId == subjectId.Value).ToList();
             allAssessments.AddRange(assessments);
         }
 

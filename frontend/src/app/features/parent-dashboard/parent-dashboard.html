@@ -81,10 +81,24 @@
           </div>
         </div>
 
-        <!-- Children Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          @for (child of children(); track child.studentId) {
-            @let stats = dashboardData()?.children?.find(c => c.name === child.studentName);
+        <!-- Children Tabs (if multiple) -->
+        @if (dashboardData()?.children?.length! > 1) {
+          <div class="flex gap-2 flex-wrap">
+            @for (child of dashboardData()?.children; track child.name) {
+              <button class="child-tab-btn"
+                      [class.active]="selectedChild()?.name === child.name"
+                      (click)="selectChild(child)">
+                <span class="material-symbols-outlined text-sm">school</span>
+                {{ child.name }}
+              </button>
+            }
+          </div>
+        }
+
+        <!-- Detailed Cards per Child -->
+        @for (child of dashboardData()?.children; track child.name) {
+          @if (!selectedChild() || selectedChild()?.name === child.name) {
+            <!-- Child Overview Card -->
             <div class="dash-card">
               <div class="flex items-start justify-between gap-4 mb-4">
                 <div class="flex items-center gap-4">
@@ -92,51 +106,299 @@
                     <span class="material-symbols-outlined text-primary text-2xl">school</span>
                   </div>
                   <div>
-                    <h3 class="font-headline-md font-bold">{{ child.studentName }}</h3>
-                    <p class="text-label-sm text-outline">{{ child.gradeLevelName }}{{ child.className ? ' - ' + child.className : '' }}</p>
+                    <h3 class="font-headline-md font-bold">{{ child.name }}</h3>
+                    <p class="text-label-sm text-outline">{{ child.grade }}{{ child.class ? ' - ' + child.class : '' }}</p>
                   </div>
                 </div>
-                <span class="status-pill" [class.active]="child.isActive" [class.inactive]="!child.isActive">
-                  {{ child.isActive ? 'نشط' : 'غير نشط' }}
-                </span>
+                <!-- Term Switcher -->
+                <div class="flex items-center gap-1" dir="ltr">
+                  @for (t of terms; track t.value) {
+                    <button class="term-pill"
+                            [class.active]="selectedTerm() === t.value"
+                            (click)="switchTerm(t.value)">
+                      {{ t.label }}
+                    </button>
+                  }
+                </div>
+                <div class="flex items-center gap-3">
+                  <span class="text-label-sm font-bold">{{ child.performance }}%</span>
+                  <div class="w-20 h-2 rounded-full bg-gray-100 overflow-hidden">
+                    <div class="h-full rounded-full transition-all duration-500"
+                         [style.width.%]="child.performance"
+                         [style.background]="getPerformanceColor(child.performance)"></div>
+                  </div>
+                </div>
               </div>
 
-              <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <!-- Quick Stats -->
+              <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
                 <div class="child-stat">
-                  <p class="text-[11px] text-outline mb-1">صلة القرابة</p>
-                  <p class="font-bold text-primary">{{ child.relationship === 'Father' ? 'الأب' : child.relationship === 'Mother' ? 'الأم' : 'ولي الأمر' }}</p>
-                </div>
-                <div class="child-stat">
-                  <p class="text-[11px] text-outline mb-1">الأداء</p>
-                  <p class="font-bold">{{ stats?.performance ?? '—' }}{{ stats?.performance ? '%' : '' }}</p>
-                </div>
-                <div class="child-stat">
-                  <p class="text-[11px] text-outline mb-1">الغيابات</p>
-                  <p class="font-bold text-amber-600">{{ stats?.absences ?? '—' }}</p>
+                  <p class="text-[11px] text-outline mb-1">الأداء العام</p>
+                  <p class="font-bold">{{ child.grades.total }}</p>
                 </div>
                 <div class="child-stat">
                   <p class="text-[11px] text-outline mb-1">آخر تقييم</p>
-                  <p class="font-bold">{{ stats?.grades?.last ?? '—' }}</p>
+                  <p class="font-bold">{{ child.grades.last }}</p>
+                </div>
+                <div class="child-stat">
+                  <p class="text-[11px] text-outline mb-1">نسبة الحضور</p>
+                  <p class="font-bold" [class.text-green-600]="child.attendanceRate >= 90"
+                     [class.text-amber-600]="child.attendanceRate >= 70 && child.attendanceRate < 90"
+                     [class.text-red-600]="child.attendanceRate < 70">
+                    {{ child.attendanceRate }}%
+                  </p>
+                </div>
+                <div class="child-stat">
+                  <p class="text-[11px] text-outline mb-1">الغيابات</p>
+                  <p class="font-bold text-amber-600">
+                    {{ child.absences }}
+                    <span class="text-[10px] text-outline font-normal">
+                      (بعذر {{ child.excusedAbsences }} - بدون {{ child.unexcusedAbsences }})
+                    </span>
+                  </p>
                 </div>
               </div>
 
-              @if (stats?.performance) {
-                <div class="mt-4">
-                  <div class="flex justify-between text-label-sm mb-1">
-                    <span class="text-outline">نسبة الأداء</span>
-                    <span class="font-bold">{{ stats!.performance }}%</span>
+              <!-- Subject Performances -->
+              @if (child.subjectPerformances.length) {
+                <div class="mt-4 mb-4">
+                  <h4 class="font-headline-sm font-bold mb-3 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary">book_5</span>
+                    أداء المواد الدراسية
+                  </h4>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    @for (subj of child.subjectPerformances; track subj.subjectName) {
+                      <div class="subject-card">
+                        <div class="flex items-center justify-between mb-2">
+                          <span class="font-bold text-label-md">{{ subj.subjectName }}</span>
+                          <span class="text-label-sm font-bold"
+                                [class]="getGradeClass(subj.score, subj.maxScore)">
+                            {{ subj.score }}/{{ subj.maxScore }}
+                          </span>
+                        </div>
+                        <div class="subject-progress">
+                          @let pct = subj.maxScore > 0 ? (subj.score / subj.maxScore) * 100 : 0;
+                          <div class="subject-progress-fill"
+                               [style.width.%]="pct"
+                               [style.background]="getPerformanceColor(pct)"></div>
+                        </div>
+                        <div class="flex justify-between mt-1">
+                          <span class="text-[10px] text-outline">النسبة: {{ pct.toFixed(1) }}%</span>
+                          @if (pct >= 85) {
+                            <span class="text-[10px] text-green-600 font-bold">ممتاز</span>
+                          } @else if (pct >= 70) {
+                            <span class="text-[10px] text-amber-600 font-bold">جيد جداً</span>
+                          } @else if (pct >= 50) {
+                            <span class="text-[10px] text-orange-600 font-bold">مقبول</span>
+                          } @else {
+                            <span class="text-[10px] text-red-600 font-bold">تحتاج تحسين</span>
+                          }
+                        </div>
+                      </div>
+                    }
                   </div>
-                  <div class="progress-bar">
-                    <div class="progress-fill" [style.width.%]="stats!.performance"
-                         [class.bg-green-500]="stats!.performance >= 75"
-                         [class.bg-amber-500]="stats!.performance >= 50 && stats!.performance < 75"
-                         [class.bg-red-500]="stats!.performance < 50"></div>
+                </div>
+              }
+
+              <!-- Monthly Exam Results -->
+              @if (child.monthlyExams.length) {
+                <div class="mt-4 mb-4">
+                  <h4 class="font-headline-sm font-bold mb-3 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sky-600">assignment</span>
+                    نتائج الامتحانات الشهرية
+                  </h4>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    @for (exam of child.monthlyExams; track exam.title + exam.subjectName) {
+                      <div class="subject-card">
+                        <div class="flex items-center justify-between mb-1">
+                          <span class="text-label-sm text-outline">{{ exam.subjectName }}</span>
+                          <span class="text-label-sm font-bold"
+                                [class]="getGradeClass(exam.score, exam.maxScore)">
+                            {{ exam.score }}/{{ exam.maxScore }}
+                          </span>
+                        </div>
+                        <div class="font-bold text-label-md mb-2">{{ exam.title }}</div>
+                        <div class="subject-progress">
+                          @let pct = exam.maxScore > 0 ? (exam.score / exam.maxScore) * 100 : 0;
+                          <div class="subject-progress-fill"
+                               [style.width.%]="pct"
+                               [style.background]="getPerformanceColor(pct)"></div>
+                        </div>
+                        <div class="flex justify-between mt-1">
+                          <span class="text-[10px] text-outline">النسبة: {{ pct.toFixed(1) }}%</span>
+                          @if (pct >= 85) {
+                            <span class="text-[10px] text-green-600 font-bold">ممتاز</span>
+                          } @else if (pct >= 70) {
+                            <span class="text-[10px] text-amber-600 font-bold">جيد جداً</span>
+                          } @else if (pct >= 50) {
+                            <span class="text-[10px] text-orange-600 font-bold">مقبول</span>
+                          } @else {
+                            <span class="text-[10px] text-red-600 font-bold">تحتاج تحسين</span>
+                          }
+                        </div>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+
+              <!-- Final Exam Results -->
+              @if (child.finalExams.length) {
+                <div class="mt-4 mb-4">
+                  <h4 class="font-headline-sm font-bold mb-3 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-purple-600">checklist</span>
+                    نتائج امتحانات نهاية الترم
+                  </h4>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    @for (exam of child.finalExams; track exam.subjectName) {
+                      <div class="subject-card">
+                        <div class="flex items-center justify-between mb-1">
+                          <span class="text-label-sm text-outline">{{ exam.subjectName }}</span>
+                          <span class="text-label-sm font-bold"
+                                [class]="getGradeClass(exam.score, exam.maxScore)">
+                            {{ exam.score }}/{{ exam.maxScore }}
+                          </span>
+                        </div>
+                        <div class="font-bold text-label-md mb-2">{{ exam.title }}</div>
+                        <div class="subject-progress">
+                          @let fPct = exam.maxScore > 0 ? (exam.score / exam.maxScore) * 100 : 0;
+                          <div class="subject-progress-fill"
+                               [style.width.%]="fPct"
+                               [style.background]="getPerformanceColor(fPct)"></div>
+                        </div>
+                        <div class="flex justify-between mt-1">
+                          <span class="text-[10px] text-outline">النسبة: {{ fPct.toFixed(1) }}%</span>
+                          @if (fPct >= 85) {
+                            <span class="text-[10px] text-green-600 font-bold">ممتاز</span>
+                          } @else if (fPct >= 70) {
+                            <span class="text-[10px] text-amber-600 font-bold">جيد جداً</span>
+                          } @else if (fPct >= 50) {
+                            <span class="text-[10px] text-orange-600 font-bold">مقبول</span>
+                          } @else {
+                            <span class="text-[10px] text-red-600 font-bold">تحتاج تحسين</span>
+                          }
+                        </div>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+
+              <!-- Weekly Performance Chart -->
+              @if (child.weeklyPerformances.length) {
+                <div class="mt-4 mb-4">
+                  <h4 class="font-headline-sm font-bold mb-3 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary">show_chart</span>
+                    تطور الأداء الأسبوعي
+                  </h4>
+                  <div class="weekly-chart-container">
+                    <canvas #weeklyChart></canvas>
+                  </div>
+
+                  <!-- Week Detail Modal -->
+                  @if (selectedWeekDetail(); as week) {
+                    <div class="week-detail-overlay" (click)="closeWeekDetail()">
+                      <div class="week-detail-card" (click)="$event.stopPropagation()">
+                        <div class="week-detail-header">
+                          <h5 class="font-bold text-label-md">{{ week.periodName }}</h5>
+                          <button class="week-detail-close" (click)="closeWeekDetail()">
+                            <span class="material-symbols-outlined">close</span>
+                          </button>
+                        </div>
+                        <div class="week-detail-body">
+                          <div class="week-detail-row">
+                            <span class="text-outline text-label-sm">المجموع الكلي</span>
+                            <span class="font-bold">{{ week.totalScore }}/{{ week.totalMaxScore }}</span>
+                          </div>
+                          <div class="week-detail-divider"></div>
+                          <div class="week-detail-row">
+                            <span class="text-outline text-label-sm">النسبة المئوية</span>
+                            <span class="font-bold" [class]="getGradeClass(week.totalScore, week.totalMaxScore)">
+                              @let p = week.totalMaxScore > 0 ? (week.totalScore / week.totalMaxScore * 100) : 0;
+                              {{ p.toFixed(1) }}%
+                            </span>
+                          </div>
+                          <div class="subject-progress mt-2" style="height: 10px;">
+                            @let barPct = week.totalMaxScore > 0 ? (week.totalScore / week.totalMaxScore * 100) : 0;
+                            <div class="subject-progress-fill"
+                                 [style.width.%]="barPct"
+                                 [style.background]="getPerformanceColor(barPct)"></div>
+                          </div>
+                          <div class="week-detail-footer">
+                            <span class="text-[11px] text-outline">يشمل جميع المواد وجميع بنود التقييم</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+
+              <!-- Upcoming Exams -->
+              @if (child.upcomingExams.length) {
+                <div class="mt-4 mb-4">
+                  <h4 class="font-headline-sm font-bold mb-3 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-amber-600">calendar_month</span>
+                    الامتحانات القادمة
+                  </h4>
+                  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    @for (exam of child.upcomingExams; track exam.title) {
+                      <div class="exam-card">
+                        <div class="flex items-center gap-3">
+                          <div class="exam-icon">
+                            <span class="material-symbols-outlined">quiz</span>
+                          </div>
+                          <div>
+                            <p class="font-bold text-label-sm">{{ exam.title }}</p>
+                            <p class="text-[11px] text-outline">{{ exam.subjectName }}</p>
+                          </div>
+                        </div>
+                        @if (exam.startTime) {
+                          <div class="exam-date">
+                            <span class="material-symbols-outlined text-[14px]">schedule</span>
+                            <span class="text-[11px]">{{ exam.startTime | date:'d MMM' }}</span>
+                          </div>
+                        }
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+
+              <!-- Recommendations -->
+              @if (child.recommendationSections.length) {
+                <div class="mt-4">
+                  <h4 class="font-headline-sm font-bold mb-3 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-emerald-600">psychology</span>
+                    توصيات ذكية
+                  </h4>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    @for (section of child.recommendationSections; track section.title) {
+                      <div class="rec-card">
+                        <h5 class="font-bold text-label-md text-primary mb-2">{{ section.title }}</h5>
+                        <ul class="rec-list">
+                          @for (item of section.items; track $index) {
+                            <li>{{ item }}</li>
+                          }
+                        </ul>
+                      </div>
+                    }
+                  </div>
+                </div>
+              } @else if (child.recommendationsText) {
+                <div class="mt-4">
+                  <h4 class="font-headline-sm font-bold mb-3 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-emerald-600">psychology</span>
+                    توصيات ذكية
+                  </h4>
+                  <div class="rec-card">
+                    <p class="text-label-sm leading-relaxed">{{ child.recommendationsText }}</p>
                   </div>
                 </div>
               }
             </div>
           }
-        </div>
+        }
 
         <!-- Recent Activities -->
         @if (dashboardData()?.recentActivities?.length) {

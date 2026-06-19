@@ -14,12 +14,16 @@ public class FinalGradeRepository : Repository<FinalGrade>, IFinalGradeRepositor
     public async Task<FinalGrade?> GetByEnrollmentIdAsync(
         int enrollmentId,
         AcademicTerm? term = null,
+        int? subjectId = null,
         CancellationToken ct = default)
     {
         var query = _context.FinalGrades.Where(fg => fg.EnrollmentId == enrollmentId);
 
         if (term.HasValue)
             query = query.Where(fg => fg.Term == term.Value);
+
+        if (subjectId.HasValue)
+            query = query.Where(fg => fg.SubjectId == subjectId.Value);
 
         return await query.FirstOrDefaultAsync(ct);
     }
@@ -28,6 +32,7 @@ public class FinalGradeRepository : Repository<FinalGrade>, IFinalGradeRepositor
     public async Task<IReadOnlyList<FinalGrade>> GetByClassIdAsync(
         int classId,
         AcademicTerm? term = null,
+        int? subjectId = null,
         CancellationToken ct = default)
     {
         var query = _context.FinalGrades
@@ -37,6 +42,9 @@ public class FinalGradeRepository : Repository<FinalGrade>, IFinalGradeRepositor
 
         if (term.HasValue)
             query = query.Where(fg => fg.Term == term.Value);
+
+        if (subjectId.HasValue)
+            query = query.Where(fg => fg.SubjectId == subjectId.Value);
 
         return await query
             .Include(fg => fg.Enrollment)
@@ -160,7 +168,8 @@ public class FinalGradeRepository : Repository<FinalGrade>, IFinalGradeRepositor
         var existing = await _context.FinalGrades
             .FirstOrDefaultAsync(fg =>
                 fg.EnrollmentId == finalGrade.EnrollmentId &&
-                fg.Term == finalGrade.Term, ct);
+                fg.Term == finalGrade.Term &&
+                fg.SubjectId == finalGrade.SubjectId, ct);
 
         if (existing is null)
             await _context.FinalGrades.AddAsync(finalGrade, ct);
@@ -183,7 +192,7 @@ public class FinalGradeRepository : Repository<FinalGrade>, IFinalGradeRepositor
         var list = finalGrades.ToList();
         if (!list.Any()) return;
 
-        var keys = list.Select(fg => new { fg.EnrollmentId, fg.Term }).Distinct().ToList();
+        var keys = list.Select(fg => new { fg.EnrollmentId, fg.Term, fg.SubjectId }).Distinct().ToList();
         var enrollmentIds = keys.Select(k => k.EnrollmentId).Distinct().ToList();
 
         var existing = await _context.FinalGrades
@@ -194,7 +203,8 @@ public class FinalGradeRepository : Repository<FinalGrade>, IFinalGradeRepositor
         {
             var ex = existing.FirstOrDefault(fg =>
                 fg.EnrollmentId == grade.EnrollmentId &&
-                fg.Term == grade.Term);
+                fg.Term == grade.Term &&
+                fg.SubjectId == grade.SubjectId);
 
             if (ex is null)
                 await _context.FinalGrades.AddAsync(grade, ct);

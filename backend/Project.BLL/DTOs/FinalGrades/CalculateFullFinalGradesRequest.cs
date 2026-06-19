@@ -6,6 +6,7 @@ public class CalculateFullFinalGradesRequest
 {
     public int ClassId { get; set; }
     public AcademicTerm? Term { get; set; }
+    public int? SubjectId { get; set; }
     public List<StudentFinalGradeInput> Students { get; set; } = new();
 }
 

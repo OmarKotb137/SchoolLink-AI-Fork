@@ -33,10 +33,10 @@ public class ParentDashboardController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetDashboard()
+    public async Task<IActionResult> GetDashboard([FromQuery] int? term = null)
     {
         var parentId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-        var result = await _parentDashboardService.GetParentDashboardAsync(parentId);
+        var result = await _parentDashboardService.GetParentDashboardAsync(parentId, term);
         if (!result.IsSuccess)
             return BadRequest(result);
 

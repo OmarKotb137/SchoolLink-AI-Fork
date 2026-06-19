@@ -5,5 +5,5 @@ namespace Project.BLL.Interfaces;
 
 public interface IParentDashboardService
 {
-    Task<OperationResult<ParentDashboardDto>> GetParentDashboardAsync(int parentId);
+    Task<OperationResult<ParentDashboardDto>> GetParentDashboardAsync(int parentId, int? term = null);
 }

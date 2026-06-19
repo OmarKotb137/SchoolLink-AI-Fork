@@ -5,6 +5,7 @@ namespace Project.Domain.Entities
     public class PeriodicAssessment : BaseEntity
     {
         public int EnrollmentId { get; set; }
+        public int? SubjectId { get; set; }
         public PeriodicAssessmentType AssessmentType { get; set; }
         public decimal Score { get; set; }
         public decimal MaxScore { get; set; }
@@ -13,5 +14,6 @@ namespace Project.Domain.Entities
 
         // Navigation Properties
         public StudentEnrollment Enrollment { get; set; } = null!;
+        public Subject? Subject { get; set; }
     }
 }

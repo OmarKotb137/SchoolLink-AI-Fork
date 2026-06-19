@@ -38,9 +38,9 @@ public class FinalGradesController : ControllerBase
     }
 
     [HttpPost("recalculate/{classId:int}")]
-    public async Task<IActionResult> RecalculateForClass(int classId)
+    public async Task<IActionResult> RecalculateForClass(int classId, [FromQuery] AcademicTerm? term = null, [FromQuery] int? subjectId = null)
     {
-        var result = await _service.RecalculateForClassAsync(classId);
+        var result = await _service.RecalculateForClassAsync(classId, term, subjectId);
         if (!result.IsSuccess)
             return BadRequest(result);
         return Ok(result);
@@ -82,9 +82,9 @@ public class FinalGradesController : ControllerBase
     }
 
     [HttpGet("by-class/{classId:int}")]
-    public async Task<IActionResult> GetByClass(int classId, [FromQuery] AcademicTerm? term = null)
+    public async Task<IActionResult> GetByClass(int classId, [FromQuery] AcademicTerm? term = null, [FromQuery] int? subjectId = null)
     {
-        var result = await _service.GetFinalGradesByClassAsync(classId, term);
+        var result = await _service.GetFinalGradesByClassAsync(classId, term, subjectId);
         return Ok(result);
     }
 

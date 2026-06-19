@@ -29,6 +29,7 @@ public class ClassTemplateLinksController : ControllerBase
 
             // Find the CST that matches the linked template's subject
             string subject = "", teacher = "";
+            int? subjectId = null;
             if (cls != null && template != null)
             {
                 var csts = await _uow.ClassSubjectTeachers.GetByClassWithAllDetailsAsync(cls.Id, link.AcademicYearId);
@@ -36,6 +37,7 @@ public class ClassTemplateLinksController : ControllerBase
                 if (matched != null)
                 {
                     subject = matched.Subject?.Name ?? "";
+                    subjectId = matched.SubjectId;
                     teacher = matched.Teacher?.FullName ?? "";
                 }
             }
@@ -48,6 +50,7 @@ public class ClassTemplateLinksController : ControllerBase
                 academicYearId = link.AcademicYearId,
                 className = cls?.Name ?? "",
                 subject,
+                subjectId,
                 teacher,
                 templateName = template?.Name ?? "",
                 students = enrollments.Select(e => new { id = e.Student.Id, name = e.Student.FullName, enrollmentId = e.Id }).ToList()

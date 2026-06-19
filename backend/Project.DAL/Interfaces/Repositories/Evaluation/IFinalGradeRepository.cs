@@ -6,9 +6,9 @@ namespace Project.DAL.Interfaces.Repositories.Evaluation;
 
 public interface IFinalGradeRepository : IRepository<FinalGrade>
 {
-    Task<FinalGrade?> GetByEnrollmentIdAsync(int enrollmentId, AcademicTerm? term = null, CancellationToken ct = default);
+    Task<FinalGrade?> GetByEnrollmentIdAsync(int enrollmentId, AcademicTerm? term = null, int? subjectId = null, CancellationToken ct = default);
 
-    Task<IReadOnlyList<FinalGrade>> GetByClassIdAsync(int classId, AcademicTerm? term = null, CancellationToken ct = default);
+    Task<IReadOnlyList<FinalGrade>> GetByClassIdAsync(int classId, AcademicTerm? term = null, int? subjectId = null, CancellationToken ct = default);
     Task<IReadOnlyList<FinalGrade>> GetPublishedByClassIdAsync(int classId, AcademicTerm? term = null, CancellationToken ct = default);
 
     Task<IReadOnlyList<FinalGrade>> GetTopStudentsByClassAsync(int classId, int count, AcademicTerm? term = null, CancellationToken ct = default);

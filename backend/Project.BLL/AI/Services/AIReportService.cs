@@ -181,7 +181,7 @@ public class AIReportService : IAIReportService
         if (enrollment != null && term.HasValue)
         {
             var finalGrade = await _unitOfWork.FinalGrades
-                .GetByEnrollmentIdAsync(enrollment.Id, term, ct);
+                .GetByEnrollmentIdAsync(enrollment.Id, term, subjectId: null, ct);
             if (finalGrade != null)
             {
                 overallScore = (double)(finalGrade.Total > 0 ? finalGrade.Total : finalGrade.PeriodAvgScore);
