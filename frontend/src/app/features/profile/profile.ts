@@ -125,6 +125,7 @@ export class Profile implements OnInit {
       phone: this.phone() || undefined
     }).subscribe({
       next: () => {
+        this.authService.updateUserInfo(this.fullName());
         this.showSuccess('تم تحديث بيانات الحساب بنجاح');
         this.loadProfile();
       },
@@ -152,6 +153,7 @@ export class Profile implements OnInit {
     this.userService.uploadProfilePhoto(userId, file).subscribe({
       next: res => {
         this.profile.update(p => p ? { ...p, profilePictureUrl: res.photoUrl } : p);
+        this.authService.updateUserInfo(this.fullName(), res.photoUrl);
         this.isPhotoLoading.set(false);
         this.showSuccess('تم تحديث الصورة الشخصية بنجاح');
         input.value = '';
@@ -171,6 +173,7 @@ export class Profile implements OnInit {
     this.userService.deleteProfilePhoto().subscribe({
       next: () => {
         this.profile.update(p => p ? { ...p, profilePictureUrl: undefined } : p);
+        this.authService.updateUserInfo(this.fullName(), null);
         this.isPhotoLoading.set(false);
         this.showSuccess('تم حذف الصورة الشخصية');
       },

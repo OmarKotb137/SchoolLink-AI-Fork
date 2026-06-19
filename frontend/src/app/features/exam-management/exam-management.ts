@@ -1,11 +1,13 @@
-import { Component, signal, computed, inject, OnInit } from '@angular/core';
+import { Component, signal, computed, inject, OnInit, OnDestroy } from '@angular/core';
 import { NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
 import {
   ExamManagerService,
-  ExamItem, ExamDetail, ExamStats,
+  ExamItem, ExamDetail, ExamStats, ExamFilter,
   ExamDraftQuestion, CreateExamQuestionPayload,
   ExamAttemptSummary, ExamAttemptGradingDetail
 } from './exam-manager.service';
@@ -17,10 +19,11 @@ import { AcademicYearService } from '../../core/services/academic-year.service';
   templateUrl: './exam-management.html',
   styleUrl: './exam-management.css'
 })
-export class ExamManagement implements OnInit {
+export class ExamManagement implements OnInit, OnDestroy {
   private router = inject(Router);
   private api = inject(ExamManagerService);
   private academicYearSvc = inject(AcademicYearService);
+  private destroy$ = new Subject<void>();
 
   // ── Academic Year ─────────────────────────────────────────────
   private currentAcademicYearId = signal<number | undefined>(undefined);
@@ -28,6 +31,17 @@ export class ExamManagement implements OnInit {
   // ── Layout ────────────────────────────────────────────────────
   sidebarOpen = signal(false);
   activeTab = signal<string>('all');
+
+  // ── Filters & Pagination ──────────────────────────────────────
+  searchTerm = signal('');
+  subjectFilter = signal<number | undefined>(undefined);
+  sortBy = signal('newest');
+  page = signal(1);
+  pageSize = signal(20);
+  totalCount = signal(0);
+  totalPages = computed(() => Math.max(1, Math.ceil(this.totalCount() / this.pageSize())));
+
+  private searchSubject = new Subject<string>();
 
   // ── Modals ────────────────────────────────────────────────────
   showAddModal    = signal(false);
@@ -57,6 +71,8 @@ export class ExamManagement implements OnInit {
   newDate      = signal('');
   newStart     = signal('');
   newEnd       = signal('');
+  newTotalScore = signal<number>(100);
+  draftTotal    = computed(() => this.draftQuestions().reduce((sum, q) => sum + (q.points || 0), 0));
 
   // ── Draft questions (for create / edit modal) ─────────────────
   draftQuestions = signal<ExamDraftQuestion[]>([]);
@@ -68,7 +84,7 @@ export class ExamManagement implements OnInit {
   subjects = signal<{ id: number; name: string }[]>([]);
   classes  = signal<{ id: number; name: string }[]>([]);
 
-  // ── Static tabs (avoid re-creating array on every CD cycle) ───
+  // ── Static tabs ───────────────────────────────────────────────
   readonly examTabs = [
     { key: 'all',      label: 'الكل'       },
     { key: 'upcoming', label: 'قادمة'      },
@@ -77,34 +93,115 @@ export class ExamManagement implements OnInit {
     { key: 'draft',    label: 'مسودة'      },
   ];
 
-  filteredExams = computed(() => {
-    const tab = this.activeTab();
-    if (tab === 'all') return this.exams();
-    return this.exams().filter(e => e.status === tab);
-  });
+  readonly sortOptions = [
+    { value: 'newest',    label: 'الأحدث'   },
+    { value: 'oldest',    label: 'الأقدم'   },
+    { value: 'name-asc',  label: 'أ - ي'    },
+    { value: 'name-desc', label: 'ي - أ'    },
+    { value: 'date-asc',  label: 'التاريخ (تصاعدي)' },
+    { value: 'date-desc', label: 'التاريخ (تنازلي)' },
+  ];
 
   calculatedDuration = computed(() => this.calculateDurationMinutes(this.newStart(), this.newEnd()));
 
   ngOnInit() {
-    // جلب السنة الدراسية الحالية أولاً ثم تحميل البيانات
     this.academicYearSvc.getCurrent().subscribe({
       next: r => {
         const year = r?.data ?? r;
         if (year?.id) this.currentAcademicYearId.set(year.id);
       },
-      error: () => { /* non-critical, proceed without year filter */ }
+      error: () => {}
     });
+
+    // Debounced search
+    this.searchSubject.pipe(
+      debounceTime(300),
+      distinctUntilChanged(),
+      takeUntil(this.destroy$)
+    ).subscribe(() => {
+      this.page.set(1);
+      this.loadExams();
+    });
+
     this.loadAll();
   }
 
-  loadAll() {
+  ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  onSearchInput(value: string) {
+    this.searchTerm.set(value);
+    this.searchSubject.next(value);
+  }
+
+  onSubjectChange(subjectId: number | string) {
+    this.subjectFilter.set(subjectId ? Number(subjectId) : undefined);
+    this.page.set(1);
+    this.loadExams();
+  }
+
+  onSortChange(sort: string) {
+    this.sortBy.set(sort);
+    this.page.set(1);
+    this.loadExams();
+  }
+
+  setActiveTab(tab: string) {
+    this.activeTab.set(tab);
+    this.page.set(1);
+    this.loadExams();
+  }
+
+  goToPage(p: number) {
+    if (p < 1 || p > this.totalPages()) return;
+    this.page.set(p);
+    this.loadExams();
+  }
+
+  pageNumbers(): number[] {
+    const total = this.totalPages();
+    const current = this.page();
+    if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+    const pages: number[] = [];
+    if (current > 2) pages.push(1);
+    if (current > 3) pages.push(-1);
+    if (current > 1) pages.push(current - 1);
+    pages.push(current);
+    if (current < total) pages.push(current + 1);
+    if (current < total - 2) pages.push(-2);
+    if (current < total - 1) pages.push(total);
+    return pages;
+  }
+
+  setPageSize(size: number) {
+    this.pageSize.set(size);
+    this.page.set(1);
+    this.loadExams();
+  }
+
+  private buildFilter(): ExamFilter {
+    return {
+      search: this.searchTerm() || undefined,
+      subjectId: this.subjectFilter(),
+      status: this.activeTab() === 'all' ? undefined : this.activeTab(),
+      sortBy: this.sortBy(),
+      page: this.page(),
+      pageSize: this.pageSize(),
+      academicYearId: this.currentAcademicYearId(),
+    };
+  }
+
+  loadExams() {
     this.loading.set(true);
     this.loadError.set('');
-    const yearId = this.currentAcademicYearId();
-
-    this.api.getAll(undefined, yearId).subscribe({
+    this.api.getAll(this.buildFilter()).subscribe({
       next: r => {
-        if (r.isSuccess) this.exams.set(r.data);
+        if (r.isSuccess) {
+          this.exams.set(r.data.items);
+          this.totalCount.set(r.data.totalCount);
+        }
         this.loading.set(false);
       },
       error: () => {
@@ -112,10 +209,15 @@ export class ExamManagement implements OnInit {
         this.loading.set(false);
       }
     });
+  }
 
+  loadAll() {
+    this.loadExams();
+
+    const yearId = this.currentAcademicYearId();
     this.api.getStats(undefined, yearId).subscribe({
       next:  r => { if (r.isSuccess) this.stats.set(r.data); },
-      error: () => { /* stats non-critical, silent */ }
+      error: () => {}
     });
 
     this.api.getSubjects().subscribe({
@@ -129,8 +231,6 @@ export class ExamManagement implements OnInit {
     });
   }
 
-  setActiveTab(tab: string) { this.activeTab.set(tab); }
-
   goToGenerator() {
     this.router.navigate(['/exam-generator']);
   }
@@ -143,6 +243,7 @@ export class ExamManagement implements OnInit {
     this.newDate.set('');
     this.newStart.set('');
     this.newEnd.set('');
+    this.newTotalScore.set(100);
     this.formError.set('');
     this.draftQuestions.set([]);
     this.showAddModal.set(true);
@@ -164,6 +265,7 @@ export class ExamManagement implements OnInit {
     // جلب الأسئلة الحالية للامتحان وتعبئة draftQuestions
     this.api.getById(e.id).subscribe({
       next: detail => {
+        this.newTotalScore.set(detail.totalScore ?? 100);
         const drafts: ExamDraftQuestion[] = detail.questions.map(q => ({
           _localId: ++this._draftCounter,
           id: q.id,
@@ -250,7 +352,7 @@ export class ExamManagement implements OnInit {
       type: q.type,
       text: q.text.trim(),
       options: q.type !== 'essay' ? q.options.filter(o => o.trim()) : undefined,
-      correctAnswer: q.type !== 'essay' ? q.correctAnswer : undefined,
+      correctAnswer: q.correctAnswer || undefined,
       points: q.points,
     }));
 
@@ -262,6 +364,7 @@ export class ExamManagement implements OnInit {
       startTime: this.newStart(),
       endTime: this.newEnd(),
       durationMinutes,
+      totalScore: this.newTotalScore(),
       questions,
     };
 
@@ -482,6 +585,24 @@ export class ExamManagement implements OnInit {
   getStatusClass(status: string): string {
     const map: Record<string, string> = { upcoming: 'bg-secondary/10 text-secondary', active: 'bg-green-50 text-green-700', ended: 'bg-surface-container-high text-outline', draft: 'bg-tertiary-fixed/20 text-tertiary' };
     return map[status] || '';
+  }
+
+  hasSchedule(e: ExamItem): boolean {
+    return !!(e.date && e.date !== '' && e.startTime && e.startTime !== '' && e.endTime && e.endTime !== '');
+  }
+
+  isExamIncomplete(e: ExamItem): boolean {
+    return e.isAIGenerated && !this.hasSchedule(e);
+  }
+
+  getNeedsAttentionMessage(e: ExamItem): string {
+    if (!e.isAIGenerated) return '';
+    const missing: string[] = [];
+    if (!e.date || e.date === '') missing.push('التاريخ');
+    if (!e.startTime || e.startTime === '') missing.push('وقت البداية');
+    if (!e.endTime || e.endTime === '') missing.push('وقت النهاية');
+    if (missing.length > 0) return `أضف ${missing.join('، ')}`;
+    return '';
   }
 
   formatSubmittedAt(iso: string): string {

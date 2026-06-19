@@ -33,6 +33,7 @@ namespace Project.BLL.DTOs.Assignment
         public string? ImageUrl { get; set; }
         public decimal Points { get; set; }
         public int DisplayOrder { get; set; }
+        public string? CorrectAnswer { get; set; }
         public List<GetAssignmentQuestionOptionDto> Options { get; set; } = new();
     }
 

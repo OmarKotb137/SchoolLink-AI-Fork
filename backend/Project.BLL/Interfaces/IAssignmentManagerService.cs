@@ -1,5 +1,6 @@
 using Common.Results;
 using Project.BLL.DTOs.Assignment;
+using Project.BLL.DTOs.Common;
 
 namespace Project.BLL.Interfaces;
 
@@ -10,8 +11,13 @@ public class AssignmentManagerItemDto
     public string Subject { get; set; } = string.Empty;
     public string Class { get; set; } = string.Empty;
     public string Deadline { get; set; } = string.Empty;
+    public decimal MaxScore { get; set; }
+    public bool IsPublished { get; set; }
+    public bool IsAIGenerated { get; set; }
+    public int QuestionsCount { get; set; }
     public int Submitted { get; set; }
     public int Total { get; set; }
+    public double? AvgScore { get; set; }
     public string Status { get; set; } = "draft";
 }
 
@@ -32,6 +38,10 @@ public class AssignmentManagerDetailDto
     public string Subject { get; set; } = string.Empty;
     public string Class { get; set; } = string.Empty;
     public string Deadline { get; set; } = string.Empty;
+    public decimal MaxScore { get; set; }
+    public bool IsPublished { get; set; }
+    public bool IsAIGenerated { get; set; }
+    public int QuestionsCount { get; set; }
     public int Submitted { get; set; }
     public int Total { get; set; }
     public string Status { get; set; } = "draft";
@@ -111,6 +121,7 @@ public class GradeAssignmentSubmissionDto
 public interface IAssignmentManagerService
 {
     Task<OperationResult<List<AssignmentManagerItemDto>>> GetAllAsync(int? classSubjectTeacherId = null);
+    Task<OperationResult<PagedResult<AssignmentManagerItemDto>>> GetFilteredAsync(AssignmentFilterDto filter);
     Task<OperationResult<AssignmentManagerDetailDto>> GetByIdAsync(int id);
     Task<OperationResult<AssignmentManagerItemDto>> CreateAsync(CreateAssignmentManagerDto dto, int teacherId);
     Task<OperationResult> UpdateAsync(int id, UpdateAssignmentManagerDto dto);

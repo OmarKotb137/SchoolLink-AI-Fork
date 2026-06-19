@@ -231,10 +231,25 @@ public class UserService : IUserService
         if (user == null || user.IsDeleted)
             return OperationResult.Failure("المستخدم غير موجود");
 
+        var oldPhotoUrl = user.ProfilePictureUrl;
         user.ProfilePictureUrl = null;
         user.UpdatedAt = DateTime.UtcNow;
         _unitOfWork.Users.Update(user);
         await _unitOfWork.SaveChangesAsync();
+
+        if (!string.IsNullOrEmpty(oldPhotoUrl))
+        {
+            try
+            {
+                var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", oldPhotoUrl.TrimStart('/'));
+                if (File.Exists(filePath))
+                    File.Delete(filePath);
+            }
+            catch
+            {
+                // Log error but don't fail the operation
+            }
+        }
 
         return OperationResult.Success("تم إزالة الصورة الشخصية بنجاح");
     }

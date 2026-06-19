@@ -43,8 +43,24 @@ namespace Project.BLL.Mapping
                         src.Question.QuestionType == QuestionType.TrueFalse ? "true-false" : "essay"))
                 .ForMember(dest => dest.QuestionPoints,
                     opt => opt.MapFrom(src => src.Question.Points))
+                .ForMember(dest => dest.AnswerText,
+                    opt => opt.MapFrom(src => ResolveAnswerText(src)))
                 .ForMember(dest => dest.Feedback,
-                    opt => opt.MapFrom(src => src.AIFeedback));
+                    opt => opt.MapFrom(src => src.AIFeedback))
+                .ForMember(dest => dest.CorrectAnswerText,
+                    opt => opt.MapFrom(src => src.Question.CorrectAnswer));
         }
+
+    private static string? ResolveAnswerText(StudentExamAnswer src)
+    {
+        if (src.SelectedOptionId.HasValue && src.Question?.Options != null)
+        {
+            var selected = src.Question.Options.FirstOrDefault(o => o.Id == src.SelectedOptionId.Value);
+            if (selected != null) return selected.OptionText;
+        }
+        if (src.BooleanAnswer.HasValue)
+            return src.BooleanAnswer.Value ? "صح" : "خطأ";
+        return src.AnswerText;
+    }
     }
 }

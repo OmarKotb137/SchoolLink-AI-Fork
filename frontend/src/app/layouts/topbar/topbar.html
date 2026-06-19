@@ -67,12 +67,17 @@
     @if (showAvatar()) {
       <button type="button" class="avatar-btn" (click)="navigate('/profile')">
         <div class="avatar-ring">
-          <img alt="صورة المستخدم" class="avatar-img" width="36" height="36"
-               src="https://lh3.googleusercontent.com/aida-public/AB6AXuAN4unMckodCs5g4LHVoMsjVqqcibeKvRpkgZbmfv5E6sc7o8g7HGyxYuhVzjbsHn60lTec0kpRzhBwirCwV1jMt0tlapmILzS-9_t1P_hCGSAm6B5sq-hwySr89MJvuiAnrZSbcACVF-UWBM79eHa2iMjRAlHOy5bBejGokUCJqU50MpIgSu_GBmC89XlEZNDJmNwcTawOOrFTRqtWXxuyiL9Z8-6Cdpy9qTlzGT6BfGxDtZ0F8hiWuje7715i-BGs_3mx2_ajPTw"/>
-          <span class="avatar-status"></span>
+          @if (isLoadingAvatar()) {
+            <span class="avatar-spinner material-symbols-outlined">progress_activity</span>
+          } @else if (displayAvatar()) {
+            <img [src]="displayAvatar()" alt="صورة المستخدم" class="avatar-img" width="36" height="36" />
+            <span class="avatar-status"></span>
+          } @else {
+            <span class="avatar-placeholder">{{ (displayName() || '؟').slice(0, 1) }}</span>
+          }
         </div>
         <div class="avatar-info">
-          <p class="avatar-name">{{ userName() }}</p>
+          <p class="avatar-name">{{ displayName() }}</p>
           @if (userRole()) {
             <p class="avatar-role">{{ userRole() }}</p>
           }

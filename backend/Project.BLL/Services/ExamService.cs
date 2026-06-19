@@ -477,24 +477,19 @@ namespace Project.BLL.Services
                     };
                 }
 
-                // Determine question type from options
+                // Use QuestionType from DTO (preserves Essay, FillBlank, etc.)
+                question.QuestionType = qDto.QuestionType;
+
+                // Set CorrectAnswer from options (MCQ/TF) or from DTO (FillBlank/Essay)
                 if (qDto.Options.Count > 0)
                 {
-                    question.QuestionType = qDto.Options.Any(o => o.IsCorrect)
-                        ? QuestionType.MultipleChoice
-                        : QuestionType.TrueFalse;
-
-                    // Set CorrectAnswer from the correct option text
                     var correctOpt = qDto.Options.FirstOrDefault(o => o.IsCorrect);
                     if (correctOpt != null)
                         question.CorrectAnswer = correctOpt.OptionText;
                 }
-                else
+                else if (qDto.CorrectAnswer != null)
                 {
-                    question.QuestionType = QuestionType.FillBlank;
-                    // For fill-blank/essay, update CorrectAnswer if provided
-                    if (qDto.CorrectAnswer != null)
-                        question.CorrectAnswer = qDto.CorrectAnswer;
+                    question.CorrectAnswer = qDto.CorrectAnswer;
                 }
 
                 question.QuestionText = qDto.QuestionText;

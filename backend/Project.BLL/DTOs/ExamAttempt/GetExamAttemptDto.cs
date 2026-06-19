@@ -29,5 +29,6 @@ namespace Project.BLL.DTOs.ExamAttempt
         public bool? IsCorrect { get; set; }
         public decimal PointsEarned { get; set; }
         public string? Feedback { get; set; }
+        public string? CorrectAnswerText { get; set; }
     }
 }

@@ -3,326 +3,366 @@
   <main class="profile-page">
     <section class="profile-shell">
 
-      <!-- ─── Header ──────────────────────────────────────────────── -->
-      <header class="profile-header">
-
-        <div class="profile-avatar-wrap">
-          <div
-            class="profile-avatar"
-            [class.is-loading]="isPhotoLoading()"
-            (click)="!isPhotoLoading() && triggerPhotoUpload()"
-            title="تغيير الصورة الشخصية"
-          >
-            @if (isPhotoLoading()) {
-              <span class="avatar-spinner material-symbols-outlined">progress_activity</span>
-            } @else if (profile()?.profilePictureUrl) {
-              <img [src]="profile()!.profilePictureUrl" alt="صورة الملف الشخصي" class="avatar-img" />
-            } @else {
-              {{ (profile()?.fullName || '؟').slice(0, 1) }}
-            }
-            <div class="avatar-overlay">
-              <span class="material-symbols-outlined">photo_camera</span>
-            </div>
+      @if (isLoading() && !profile()) {
+        <header class="profile-header">
+          <div class="skeleton skeleton-avatar"></div>
+          <div style="flex:1">
+            <div class="skeleton skeleton-text" style="width:30%"></div>
+            <div class="skeleton skeleton-title" style="width:50%"></div>
+            <div class="skeleton skeleton-text" style="width:40%"></div>
           </div>
-
-          @if (profile()?.profilePictureUrl && !isPhotoLoading()) {
-            <button class="avatar-delete-btn" type="button" (click)="deletePhoto()" title="حذف الصورة">
-              <span class="material-symbols-outlined">close</span>
-            </button>
+        </header>
+        <div class="profile-grid">
+          @for (i of [1,2]; track i) {
+            <section class="profile-panel">
+              <div style="margin-bottom:16px">
+                <div class="skeleton skeleton-title" style="width:35%"></div>
+              </div>
+              <div class="skeleton skeleton-text"></div>
+              <div class="skeleton skeleton-input"></div>
+              <div class="skeleton skeleton-text" style="width:45%"></div>
+              <div class="skeleton skeleton-input"></div>
+            </section>
           }
-
-          <input
-            #photoInput
-            type="file"
-            accept="image/jpeg,image/png,image/gif,image/webp"
-            style="display:none"
-            (change)="onPhotoSelected($event)"
-          />
         </div>
+      } @else {
+        <!-- ─── Header ──────────────────────────────────────────────── -->
+        <header class="profile-header">
 
-        <div>
-          <p class="profile-eyebrow">الحساب الشخصي</p>
-          <h1>{{ profile()?.fullName || 'حسابي' }}</h1>
-          <p class="profile-meta">{{ profile()?.username }} · {{ roleLabel(profile()?.role) }}</p>
-          <p class="avatar-hint">اضغط على الصورة لتغييرها · JPG, PNG, WebP · حتى 5 ميجا</p>
-        </div>
+          <div class="profile-avatar-wrap">
+            <div
+              class="profile-avatar"
+              [class.is-loading]="isPhotoLoading()"
+              (click)="!isPhotoLoading() && triggerPhotoUpload()"
+              title="تغيير الصورة الشخصية"
+            >
+              @if (isPhotoLoading()) {
+                <span class="avatar-spinner material-symbols-outlined">progress_activity</span>
+              } @else if (profile()?.profilePictureUrl) {
+                <img [src]="profile()!.profilePictureUrl" alt="صورة الملف الشخصي" class="avatar-img" />
+              } @else {
+                <span>{{ (profile()?.fullName || '؟').slice(0, 1) }}</span>
+              }
+              <div class="avatar-overlay">
+                <span class="material-symbols-outlined">photo_camera</span>
+              </div>
+            </div>
 
-      </header>
+            @if (profile()?.profilePictureUrl && !isPhotoLoading()) {
+              <button class="avatar-delete-btn" type="button" (click)="deletePhoto()" title="حذف الصورة">
+                <span class="material-symbols-outlined">close</span>
+              </button>
+            }
 
-      <!-- ─── Alerts ───────────────────────────────────────────────── -->
-      @if (errorMessage()) {
-        <div class="profile-alert profile-alert-error">
-          <span class="material-symbols-outlined">error</span>
-          <span>{{ errorMessage() }}</span>
-        </div>
-      }
-
-      @if (successMessage()) {
-        <div class="profile-alert profile-alert-success">
-          <span class="material-symbols-outlined">check_circle</span>
-          <span>{{ successMessage() }}</span>
-        </div>
-      }
-
-      <!-- ─── Grid: بيانات + بريد ──────────────────────────────────── -->
-      <div class="profile-grid">
-
-        <!-- Panel: بيانات الحساب -->
-        <section class="profile-panel">
-          <div class="panel-title">
-            <span class="material-symbols-outlined">badge</span>
-            <h2>بيانات الحساب</h2>
+            <input
+              #photoInput
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              style="display:none"
+              (change)="onPhotoSelected($event)"
+            />
           </div>
 
-          <label>
-            <span>الاسم الكامل</span>
-            <input type="text" [ngModel]="fullName()" (ngModelChange)="fullName.set($event)" />
-          </label>
-
-          <label>
-            <span>رقم الهاتف</span>
-            <input type="tel" [ngModel]="phone()" (ngModelChange)="phone.set($event)" />
-          </label>
-
-          <button
-            type="button"
-            class="profile-primary"
-            (click)="saveProfile()"
-            [disabled]="isLoading() || !fullName()"
-          >
-            <span class="material-symbols-outlined">save</span>
-            حفظ البيانات
-          </button>
-        </section>
-
-        <!-- Panel: البريد الإلكتروني -->
-        <section class="profile-panel">
-          <div class="panel-title">
-            <span class="material-symbols-outlined">alternate_email</span>
-            <h2>البريد الإلكتروني</h2>
+          <div>
+            <p class="profile-eyebrow">الحساب الشخصي</p>
+            <h1>{{ profile()?.fullName || 'حسابي' }}</h1>
+            <p class="profile-meta">{{ profile()?.username }} · {{ roleLabel(profile()?.role) }}</p>
+            <p class="avatar-hint">اضغط على الصورة لتغييرها · JPG, PNG, WebP · حتى 5 ميجا</p>
           </div>
 
-          <div class="email-status" [class.verified]="profile()?.isContactEmailVerified">
-            <span class="material-symbols-outlined">
-              {{ profile()?.isContactEmailVerified ? 'verified' : 'mark_email_unread' }}
-            </span>
-            <span>
-              {{ profile()?.isContactEmailVerified
-                ? 'البريد مفعل وجاهز للتقارير'
-                : 'أضف بريدًا حقيقيًا وفعّله بالكود' }}
-            </span>
+        </header>
+
+        <!-- ─── Alerts ───────────────────────────────────────────────── -->
+        @if (errorMessage()) {
+          <div class="profile-alert profile-alert-error">
+            <span class="material-symbols-outlined">error</span>
+            <span>{{ errorMessage() }}</span>
           </div>
+        }
 
-          <label>
-            <span>البريد الحقيقي</span>
-            <input type="email" placeholder="name@example.com" [ngModel]="email()" (ngModelChange)="email.set($event)" />
-          </label>
+        @if (successMessage()) {
+          <div class="profile-alert profile-alert-success">
+            <span class="material-symbols-outlined">check_circle</span>
+            <span>{{ successMessage() }}</span>
+          </div>
+        }
 
-          <div class="profile-actions">
+        <!-- ─── Grid: بيانات + بريد ──────────────────────────────────── -->
+        <div class="profile-grid">
+
+          <!-- Panel: بيانات الحساب -->
+          <section class="profile-panel">
+            <div class="panel-title">
+              <span class="material-symbols-outlined">badge</span>
+              <h2>بيانات الحساب</h2>
+            </div>
+
+            <label>
+              <span>الاسم الكامل</span>
+              <input type="text" [ngModel]="fullName()" (ngModelChange)="fullName.set($event)" />
+            </label>
+
+            <label>
+              <span>رقم الهاتف</span>
+              <input type="tel" [ngModel]="phone()" (ngModelChange)="phone.set($event)" placeholder="05xxxxxxxx" />
+            </label>
+
             <button
               type="button"
-              class="profile-secondary"
-              (click)="sendOtp()"
-              [disabled]="isEmailLoading() || !email()"
+              class="profile-primary"
+              (click)="saveProfile()"
+              [disabled]="isLoading() || !fullName()"
             >
-              <span class="material-symbols-outlined">send</span>
-              إرسال الكود
+              @if (isLoading()) {
+                <span class="material-symbols-outlined spinning">progress_activity</span>
+                جارٍ الحفظ...
+              } @else {
+                <span class="material-symbols-outlined">save</span>
+                حفظ البيانات
+              }
             </button>
-          </div>
+          </section>
 
-          <label>
-            <span>كود التفعيل</span>
-            <input
-              type="text"
-              maxlength="6"
-              placeholder="000000"
-              [ngModel]="otpCode()"
-              (ngModelChange)="otpCode.set($event)"
-            />
-          </label>
-
-          <button
-            type="button"
-            class="profile-primary"
-            (click)="verifyOtp()"
-            [disabled]="isEmailLoading() || !email() || otpCode().length !== 6"
-          >
-            <span class="material-symbols-outlined">verified_user</span>
-            تفعيل البريد
-          </button>
-        </section>
-
-      </div>
-
-      <!-- ─── Panel: تغيير كلمة المرور (معلم / ولي أمر فقط) ─────── -->
-      @if (canChangePassword()) {
-        <section class="profile-panel pwd-panel">
-
-          <div class="panel-title">
-            <span class="material-symbols-outlined">lock_reset</span>
-            <h2>تغيير كلمة المرور</h2>
-          </div>
-
-          <div class="pwd-grid">
-
-            <!-- كلمة المرور الحالية (full span) -->
-            <div class="pwd-field-wrap span-full">
-              <label>
-                <span>كلمة المرور الحالية</span>
-                <div class="pwd-field">
-                  <input
-                    [type]="showCurrentPwd() ? 'text' : 'password'"
-                    placeholder="أدخل كلمة مرورك الحالية"
-                    autocomplete="current-password"
-                    [ngModel]="currentPassword()"
-                    (ngModelChange)="currentPassword.set($event)"
-                  />
-                  <button
-                    type="button"
-                    class="pwd-toggle"
-                    (click)="showCurrentPwd.set(!showCurrentPwd())"
-                    tabindex="-1"
-                  >
-                    <span class="material-symbols-outlined">
-                      {{ showCurrentPwd() ? 'visibility_off' : 'visibility' }}
-                    </span>
-                  </button>
-                </div>
-              </label>
-              @if (pwdSubmitAttempted() && !currentPassword()) {
-                <p class="field-error">
-                  <span class="material-symbols-outlined">error</span>
-                  كلمة المرور الحالية مطلوبة
-                </p>
-              }
+          <!-- Panel: البريد الإلكتروني -->
+          <section class="profile-panel">
+            <div class="panel-title">
+              <span class="material-symbols-outlined">alternate_email</span>
+              <h2>البريد الإلكتروني</h2>
             </div>
 
-            <!-- كلمة المرور الجديدة -->
-            <div class="pwd-field-wrap">
-              <label>
-                <span>كلمة المرور الجديدة</span>
-                <div class="pwd-field">
-                  <input
-                    [type]="showNewPwd() ? 'text' : 'password'"
-                    placeholder="6 أحرف على الأقل"
-                    autocomplete="new-password"
-                    [ngModel]="newPassword()"
-                    (ngModelChange)="newPassword.set($event)"
-                  />
-                  <button
-                    type="button"
-                    class="pwd-toggle"
-                    (click)="showNewPwd.set(!showNewPwd())"
-                    tabindex="-1"
-                  >
-                    <span class="material-symbols-outlined">
-                      {{ showNewPwd() ? 'visibility_off' : 'visibility' }}
-                    </span>
-                  </button>
-                </div>
-              </label>
+            <div class="email-status" [class.verified]="profile()?.isContactEmailVerified">
+              <span class="material-symbols-outlined">
+                {{ profile()?.isContactEmailVerified ? 'verified' : 'mark_email_unread' }}
+              </span>
+              <span>
+                {{ profile()?.isContactEmailVerified
+                  ? 'البريد مفعل وجاهز للتقارير'
+                  : 'أضف بريدًا حقيقيًا وفعّله بالكود' }}
+              </span>
+            </div>
 
-              <!-- Strength bar (تظهر فور الكتابة) -->
-              @if (newPassword().length > 0) {
-                <div class="pwd-strength-wrap">
-                  <div class="pwd-strength-bars">
-                    <div
-                      class="pwd-bar"
-                      [ngClass]="{
-                        'bar-weak':   true,
-                        'bar-medium': newPasswordStrength() === 'medium' || newPasswordStrength() === 'strong',
-                        'bar-strong': newPasswordStrength() === 'strong'
-                      }"
-                    ></div>
-                    <div
-                      class="pwd-bar"
-                      [ngClass]="{
-                        'bar-medium': newPasswordStrength() === 'medium',
-                        'bar-strong': newPasswordStrength() === 'strong'
-                      }"
-                    ></div>
-                    <div
-                      class="pwd-bar"
-                      [ngClass]="{ 'bar-strong': newPasswordStrength() === 'strong' }"
-                    ></div>
+            <label>
+              <span>البريد الحقيقي</span>
+              <input type="email" placeholder="name@example.com" [ngModel]="email()" (ngModelChange)="email.set($event)" />
+            </label>
+
+            <div class="profile-actions">
+              <button
+                type="button"
+                class="profile-secondary"
+                (click)="sendOtp()"
+                [disabled]="isEmailLoading() || !email()"
+              >
+                @if (isEmailLoading()) {
+                  <span class="material-symbols-outlined spinning">progress_activity</span>
+                  جارٍ الإرسال...
+                } @else {
+                  <span class="material-symbols-outlined">send</span>
+                  إرسال الكود
+                }
+              </button>
+            </div>
+
+            <label>
+              <span>كود التفعيل</span>
+              <input
+                type="text"
+                maxlength="6"
+                placeholder="000000"
+                [ngModel]="otpCode()"
+                (ngModelChange)="otpCode.set($event)"
+                inputmode="numeric"
+                pattern="[0-9]*"
+              />
+            </label>
+
+            <button
+              type="button"
+              class="profile-primary"
+              (click)="verifyOtp()"
+              [disabled]="isEmailLoading() || !email() || otpCode().length !== 6"
+            >
+              @if (isEmailLoading()) {
+                <span class="material-symbols-outlined spinning">progress_activity</span>
+                جارٍ التفعيل...
+              } @else {
+                <span class="material-symbols-outlined">verified_user</span>
+                تفعيل البريد
+              }
+            </button>
+          </section>
+
+        </div>
+
+        <!-- ─── Panel: تغيير كلمة المرور (معلم / ولي أمر فقط) ─────── -->
+        @if (canChangePassword()) {
+          <section class="profile-panel pwd-panel">
+
+            <div class="panel-title">
+              <span class="material-symbols-outlined">lock_reset</span>
+              <h2>تغيير كلمة المرور</h2>
+            </div>
+
+            <div class="pwd-grid">
+
+              <!-- كلمة المرور الحالية (full span) -->
+              <div class="pwd-field-wrap span-full">
+                <label>
+                  <span>كلمة المرور الحالية</span>
+                  <div class="pwd-field">
+                    <input
+                      [type]="showCurrentPwd() ? 'text' : 'password'"
+                      placeholder="أدخل كلمة مرورك الحالية"
+                      autocomplete="current-password"
+                      [ngModel]="currentPassword()"
+                      (ngModelChange)="currentPassword.set($event)"
+                    />
+                    <button
+                      type="button"
+                      class="pwd-toggle"
+                      (click)="showCurrentPwd.set(!showCurrentPwd())"
+                      tabindex="-1"
+                    >
+                      <span class="material-symbols-outlined">
+                        {{ showCurrentPwd() ? 'visibility_off' : 'visibility' }}
+                      </span>
+                    </button>
                   </div>
-                  <span class="pwd-strength-label" [ngClass]="newPasswordStrength()">
-                    {{ strengthLabel(newPasswordStrength()) }}
-                  </span>
-                </div>
-              }
+                </label>
+                @if (pwdSubmitAttempted() && !currentPassword()) {
+                  <p class="field-error">
+                    <span class="material-symbols-outlined">error</span>
+                    كلمة المرور الحالية مطلوبة
+                  </p>
+                }
+              </div>
 
-              @if (pwdSubmitAttempted() && newPassword().length < 6) {
-                <p class="field-error">
-                  <span class="material-symbols-outlined">error</span>
-                  6 أحرف على الأقل
-                </p>
-              }
-              @if (pwdSubmitAttempted() && newPassword() && currentPassword() && newPassword() === currentPassword()) {
-                <p class="field-error">
-                  <span class="material-symbols-outlined">error</span>
-                  يجب أن تختلف عن كلمة المرور الحالية
-                </p>
-              }
-            </div>
+              <!-- كلمة المرور الجديدة -->
+              <div class="pwd-field-wrap">
+                <label>
+                  <span>كلمة المرور الجديدة</span>
+                  <div class="pwd-field">
+                    <input
+                      [type]="showNewPwd() ? 'text' : 'password'"
+                      placeholder="6 أحرف على الأقل"
+                      autocomplete="new-password"
+                      [ngModel]="newPassword()"
+                      (ngModelChange)="newPassword.set($event)"
+                    />
+                    <button
+                      type="button"
+                      class="pwd-toggle"
+                      (click)="showNewPwd.set(!showNewPwd())"
+                      tabindex="-1"
+                    >
+                      <span class="material-symbols-outlined">
+                        {{ showNewPwd() ? 'visibility_off' : 'visibility' }}
+                      </span>
+                    </button>
+                  </div>
+                </label>
 
-            <!-- تأكيد كلمة المرور -->
-            <div class="pwd-field-wrap">
-              <label>
-                <span>تأكيد كلمة المرور الجديدة</span>
-                <div class="pwd-field">
-                  <input
-                    [type]="showConfirmPwd() ? 'text' : 'password'"
-                    placeholder="أعد كتابة كلمة المرور الجديدة"
-                    autocomplete="new-password"
-                    [ngModel]="confirmPassword()"
-                    (ngModelChange)="confirmPassword.set($event)"
-                  />
-                  <button
-                    type="button"
-                    class="pwd-toggle"
-                    (click)="showConfirmPwd.set(!showConfirmPwd())"
-                    tabindex="-1"
-                  >
-                    <span class="material-symbols-outlined">
-                      {{ showConfirmPwd() ? 'visibility_off' : 'visibility' }}
+                @if (newPassword().length > 0) {
+                  <div class="pwd-strength-wrap">
+                    <div class="pwd-strength-bars">
+                      <div
+                        class="pwd-bar"
+                        [ngClass]="{
+                          'bar-weak':   true,
+                          'bar-medium': newPasswordStrength() === 'medium' || newPasswordStrength() === 'strong',
+                          'bar-strong': newPasswordStrength() === 'strong'
+                        }"
+                      ></div>
+                      <div
+                        class="pwd-bar"
+                        [ngClass]="{
+                          'bar-medium': newPasswordStrength() === 'medium',
+                          'bar-strong': newPasswordStrength() === 'strong'
+                        }"
+                      ></div>
+                      <div
+                        class="pwd-bar"
+                        [ngClass]="{ 'bar-strong': newPasswordStrength() === 'strong' }"
+                      ></div>
+                    </div>
+                    <span class="pwd-strength-label" [ngClass]="newPasswordStrength()">
+                      {{ strengthLabel(newPasswordStrength()) }}
                     </span>
-                  </button>
-                </div>
-              </label>
+                  </div>
+                }
 
-              @if (confirmPassword() && newPassword() !== confirmPassword()) {
-                <p class="field-error">
-                  <span class="material-symbols-outlined">error</span>
-                  كلمة المرور وتأكيدها غير متطابقتان
-                </p>
-              }
-              @if (confirmPassword() && newPassword() === confirmPassword() && newPassword().length >= 6) {
-                <p class="field-match">
-                  <span class="material-symbols-outlined">check_circle</span>
-                  كلمتا المرور متطابقتان
-                </p>
-              }
+                @if (pwdSubmitAttempted() && newPassword().length < 6) {
+                  <p class="field-error">
+                    <span class="material-symbols-outlined">error</span>
+                    6 أحرف على الأقل
+                  </p>
+                }
+                @if (pwdSubmitAttempted() && newPassword() && currentPassword() && newPassword() === currentPassword()) {
+                  <p class="field-error">
+                    <span class="material-symbols-outlined">error</span>
+                    يجب أن تختلف عن كلمة المرور الحالية
+                  </p>
+                }
+              </div>
+
+              <!-- تأكيد كلمة المرور -->
+              <div class="pwd-field-wrap">
+                <label>
+                  <span>تأكيد كلمة المرور الجديدة</span>
+                  <div class="pwd-field">
+                    <input
+                      [type]="showConfirmPwd() ? 'text' : 'password'"
+                      placeholder="أعد كتابة كلمة المرور الجديدة"
+                      autocomplete="new-password"
+                      [ngModel]="confirmPassword()"
+                      (ngModelChange)="confirmPassword.set($event)"
+                    />
+                    <button
+                      type="button"
+                      class="pwd-toggle"
+                      (click)="showConfirmPwd.set(!showConfirmPwd())"
+                      tabindex="-1"
+                    >
+                      <span class="material-symbols-outlined">
+                        {{ showConfirmPwd() ? 'visibility_off' : 'visibility' }}
+                      </span>
+                    </button>
+                  </div>
+                </label>
+
+                @if (confirmPassword() && newPassword() !== confirmPassword()) {
+                  <p class="field-error">
+                    <span class="material-symbols-outlined">error</span>
+                    كلمة المرور وتأكيدها غير متطابقتان
+                  </p>
+                }
+                @if (confirmPassword() && newPassword() === confirmPassword() && newPassword().length >= 6) {
+                  <p class="field-match">
+                    <span class="material-symbols-outlined">check_circle</span>
+                    كلمتا المرور متطابقتان
+                  </p>
+                }
+              </div>
+
             </div>
 
-          </div>
+            <button
+              type="button"
+              class="profile-primary pwd-submit-btn"
+              (click)="changePassword()"
+              [disabled]="isPasswordLoading()"
+            >
+              @if (isPasswordLoading()) {
+                <span class="material-symbols-outlined spinning">progress_activity</span>
+                جارٍ التغيير...
+              } @else {
+                <span class="material-symbols-outlined">key</span>
+                تغيير كلمة المرور
+              }
+            </button>
 
-          <button
-            type="button"
-            class="profile-primary pwd-submit-btn"
-            (click)="changePassword()"
-            [disabled]="isPasswordLoading()"
-          >
-            @if (isPasswordLoading()) {
-              <span class="material-symbols-outlined spinning">progress_activity</span>
-              جارٍ التغيير...
-            } @else {
-              <span class="material-symbols-outlined">key</span>
-              تغيير كلمة المرور
-            }
-          </button>
-
-        </section>
+          </section>
+        }
       }
 
     </section>

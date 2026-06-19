@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Project.BLL.DTOs.Assignment;
 using Project.BLL.Interfaces;
 using Project.DAL.Context;
 using Project.DAL.Interfaces;
@@ -30,23 +31,49 @@ public class AssignmentManagerController : ControllerBase
     private int GetUserId() =>
         int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
+    private string GetUserRole() =>
+        User.FindFirstValue(ClaimTypes.Role) ?? "";
+
     [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] int? academicYearId)
+    public async Task<IActionResult> GetAll([FromQuery] string? search, int? subjectId, string? status, string? sortBy, int page = 1, int pageSize = 20, int? academicYearId = null)
     {
-        int? cstId = null;
         var userId = GetUserId();
+        var role = GetUserRole();
+
+        int yearId;
         if (academicYearId.HasValue)
         {
-            var csts = await _context.ClassSubjectTeachers
-                .Where(c => c.TeacherId == userId && c.AcademicYearId == academicYearId.Value && !c.IsDeleted)
-                .Select(c => c.Id)
-                .ToListAsync();
-            if (csts.Count == 1)
-                cstId = csts[0];
+            yearId = academicYearId.Value;
+        }
+        else
+        {
+            var currentYear = await _context.AcademicYears
+                .Where(y => y.IsCurrent && !y.IsDeleted)
+                .FirstOrDefaultAsync();
+            yearId = currentYear?.Id ?? 0;
         }
 
-        var result = await _service.GetAllAsync(cstId);
-        return Ok(result);
+        if (role == "Teacher" || role == "Admin")
+        {
+            var filter = new AssignmentFilterDto
+            {
+                Search = search,
+                SubjectId = subjectId,
+                Status = status,
+                SortBy = sortBy,
+                Page = page,
+                PageSize = pageSize,
+                TeacherId = role == "Teacher" ? userId : 0,
+                AcademicYearId = yearId,
+            };
+
+            var result = await _service.GetFilteredAsync(filter);
+            return Ok(result);
+        }
+
+        // Fallback for other roles — basic unfiltered
+        var result2 = await _service.GetAllAsync();
+        return Ok(result2);
     }
 
     [HttpGet("{id:int}")]
@@ -92,12 +119,27 @@ public class AssignmentManagerController : ControllerBase
     [HttpGet("stats")]
     public async Task<IActionResult> GetStats([FromQuery] int? academicYearId)
     {
-        int? cstId = null;
         var userId = GetUserId();
+        var role = GetUserRole();
+
+        int yearId;
         if (academicYearId.HasValue)
         {
+            yearId = academicYearId.Value;
+        }
+        else
+        {
+            var currentYear = await _context.AcademicYears
+                .Where(y => y.IsCurrent && !y.IsDeleted)
+                .FirstOrDefaultAsync();
+            yearId = currentYear?.Id ?? 0;
+        }
+
+        int? cstId = null;
+        if (role == "Teacher")
+        {
             var csts = await _context.ClassSubjectTeachers
-                .Where(c => c.TeacherId == userId && c.AcademicYearId == academicYearId.Value && !c.IsDeleted)
+                .Where(c => c.TeacherId == userId && c.AcademicYearId == yearId && !c.IsDeleted)
                 .Select(c => c.Id)
                 .ToListAsync();
             if (csts.Count == 1)

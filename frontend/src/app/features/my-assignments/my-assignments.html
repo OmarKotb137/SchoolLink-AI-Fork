@@ -1,136 +1,182 @@
 <app-sidebar [(isOpen)]="sidebarOpen" />
 <div class="main-content">
-  <main class="pt-16 min-h-screen bg-gray-50 flex flex-col" dir="rtl">
-    <div class="flex-1 p-4 md:p-6 lg:p-8">
-      <div class="max-w-7xl mx-auto space-y-6 pb-10">
-        <section class="bg-white p-6 rounded-2xl border border-gray-100 shadow-lg">
-          <span class="text-sm font-medium text-blue-600 mb-1 block">واجباتي</span>
-          <h1 class="text-2xl font-bold text-gray-900 mb-2">واجبات الفصل الحالية</h1>
-          <p class="text-sm text-gray-500 max-w-2xl">
-            تابع الواجبات المنشورة من معلميك، حل المتاح منها قبل موعد التسليم، وراجع حالة التصحيح والدرجات من نفس المكان.
-          </p>
-        </section>
+  <app-topbar />
+  <main class="page-wrap" dir="rtl">
+    <div class="page-container">
 
-        <section class="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <div class="bg-white border border-gray-100 p-4 rounded-2xl text-center">
-            <span class="block text-xs text-gray-500 font-medium mb-1">كل الواجبات</span>
-            <strong class="block text-2xl font-bold text-gray-900">{{ totalCount() }}</strong>
-          </div>
-          <div class="bg-amber-50 border border-amber-100 p-4 rounded-2xl text-center">
-            <span class="block text-xs text-amber-600 font-medium mb-1">لم يسلم</span>
-            <strong class="block text-2xl font-bold text-amber-900">{{ pendingCount() }}</strong>
-          </div>
-          <div class="bg-indigo-50 border border-indigo-100 p-4 rounded-2xl text-center">
-            <span class="block text-xs text-indigo-600 font-medium mb-1">بانتظار التصحيح</span>
-            <strong class="block text-2xl font-bold text-indigo-900">{{ submittedCount() }}</strong>
-          </div>
-          <div class="bg-green-50 border border-green-100 p-4 rounded-2xl text-center">
-            <span class="block text-xs text-green-600 font-medium mb-1">تم التصحيح</span>
-            <strong class="block text-2xl font-bold text-green-900">{{ gradedCount() }}</strong>
-          </div>
-          <div class="bg-red-50 border border-red-100 p-4 rounded-2xl text-center">
-            <span class="block text-xs text-red-600 font-medium mb-1">انتهى الموعد</span>
-            <strong class="block text-2xl font-bold text-red-900">{{ lateCount() }}</strong>
-          </div>
-        </section>
+      <!-- Header -->
+      <section class="hero-section">
+        <span class="hero-badge">واجباتي</span>
+        <h1 class="hero-title">واجبات الفصل الحالية</h1>
+        <p class="hero-desc">تابع الواجبات المنشورة من معلميك، حل المتاح منها قبل موعد التسليم، وراجع حالة التصحيح والدرجات</p>
+      </section>
 
-        @if (errorMessage()) {
-          <div class="flex items-center gap-3 p-4 text-sm text-red-800 rounded-2xl bg-red-50 border border-red-200">
-            <span class="material-symbols-outlined text-lg">error</span>
-            <span class="font-medium">{{ errorMessage() }}</span>
+      <!-- Stats Cards -->
+      <section class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon stat-icon-total"><span class="material-symbols-outlined">assignment</span></div>
+          <div class="stat-body">
+            <span class="stat-label">كل الواجبات</span>
+            <strong class="stat-value">{{ totalCount() }}</strong>
           </div>
-        }
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon stat-icon-pending"><span class="material-symbols-outlined">hourglass_empty</span></div>
+          <div class="stat-body">
+            <span class="stat-label">لم يسلم</span>
+            <strong class="stat-value">{{ pendingCount() }}</strong>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon stat-icon-waiting"><span class="material-symbols-outlined">pending</span></div>
+          <div class="stat-body">
+            <span class="stat-label">بانتظار التصحيح</span>
+            <strong class="stat-value">{{ submittedCount() }}</strong>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon stat-icon-graded"><span class="material-symbols-outlined">checklist</span></div>
+          <div class="stat-body">
+            <span class="stat-label">تم التصحيح</span>
+            <strong class="stat-value">{{ gradedCount() }}</strong>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon stat-icon-late"><span class="material-symbols-outlined">warning</span></div>
+          <div class="stat-body">
+            <span class="stat-label">انتهى الموعد</span>
+            <strong class="stat-value">{{ lateCount() }}</strong>
+          </div>
+        </div>
+      </section>
 
-        <section class="bg-white rounded-2xl border border-gray-100 shadow-lg overflow-hidden">
-          <div class="p-5 border-b border-gray-100 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 bg-gray-50">
-            <div>
-              <h2 class="text-lg font-bold text-gray-900">قائمة الواجبات</h2>
-              <p class="text-sm text-gray-500 mt-1">تظهر هنا الواجبات المنشورة المرتبطة بفصلك وسنتك الدراسية الحالية.</p>
+      @if (errorMessage()) {
+        <div class="error-banner">
+          <span class="material-symbols-outlined">error</span>
+          <span class="font-medium">{{ errorMessage() }}</span>
+        </div>
+      }
+
+      <!-- Filter + Tabs -->
+      <section class="filter-section">
+        <div class="filter-header">
+          <div>
+            <h2 class="filter-title">قائمة الواجبات</h2>
+            <p class="filter-desc">الواجبات المنشورة المرتبطة بفصلك وسنتك الدراسية الحالية</p>
+          </div>
+          <div class="filter-actions">
+            <div class="select-wrapper">
+              <select class="filter-select" [ngModel]="sortBy()" (ngModelChange)="sortBy.set($event)">
+                @for (opt of sortOptions; track opt.value) {
+                  <option [value]="opt.value">{{ opt.label }}</option>
+                }
+              </select>
+              <span class="material-symbols-outlined select-arrow">expand_more</span>
             </div>
-            <div class="flex flex-wrap items-center bg-gray-200/50 p-1 rounded-2xl">
-              <button class="assignment-tab" [class.active]="activeTab() === 'all'" (click)="activeTab.set('all')">الكل</button>
-              <button class="assignment-tab" [class.active]="activeTab() === 'pending'" (click)="activeTab.set('pending')">لم يسلم</button>
-              <button class="assignment-tab" [class.active]="activeTab() === 'submitted'" (click)="activeTab.set('submitted')">بانتظار التصحيح</button>
-              <button class="assignment-tab" [class.active]="activeTab() === 'graded'" (click)="activeTab.set('graded')">تم التصحيح</button>
-              <button class="assignment-tab" [class.active]="activeTab() === 'late'" (click)="activeTab.set('late')">انتهى الموعد</button>
+            <div class="select-wrapper">
+              <select class="filter-select" [ngModel]="subjectFilter()" (ngModelChange)="onSubjectFilterChange($event)">
+                <option [ngValue]="undefined">كل المواد</option>
+                @for (s of subjectList(); track s.id) {
+                  <option [ngValue]="s.id">{{ s.name }}</option>
+                }
+              </select>
+              <span class="material-symbols-outlined select-arrow">expand_more</span>
             </div>
           </div>
+        </div>
 
-          @if (isLoading()) {
-            <div class="py-16 flex flex-col items-center gap-3 text-gray-500">
-              <span class="material-symbols-outlined animate-spin text-4xl text-blue-600">progress_activity</span>
-              <span class="font-medium">جاري تحميل الواجبات...</span>
-            </div>
-          } @else if (filteredAssignments().length === 0) {
-            <div class="py-16 flex flex-col items-center gap-3 text-gray-500">
-              <span class="material-symbols-outlined text-5xl text-gray-300">assignment</span>
-              <strong class="text-gray-900">لا توجد واجبات في هذا القسم</strong>
-              <span class="text-sm">عند نشر واجب جديد سيظهر هنا تلقائيا.</span>
-            </div>
-          } @else {
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 p-5">
-              @for (assignment of filteredAssignments(); track assignment.assignmentId) {
-                <article class="assignment-card">
-                  <div class="flex items-start justify-between gap-4">
-                    <div class="min-w-0">
-                      <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-100 mb-3">
-                        {{ assignment.subjectName || 'بدون مادة' }}
-                      </span>
-                      <h3 class="text-lg font-bold text-gray-900 leading-7">{{ assignment.title }}</h3>
-                      <p class="text-sm text-gray-500 mt-1">{{ assignment.className || 'بدون فصل' }}</p>
-                    </div>
-                    <span class="status-chip border {{ getStatusClass(assignment.status) }}">{{ getStatusText(assignment.status) }}</span>
-                  </div>
+        <div class="glass-tabs">
+          @for (tab of assignmentTabs; track tab.key) {
+            <button class="glass-tab" [class.active]="activeTab() === tab.key" (click)="activeTab.set(tab.key)">{{ tab.label }}</button>
+          }
+        </div>
+      </section>
 
-                  <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-5">
-                    <div class="meta-box">
-                      <span class="material-symbols-outlined">event</span>
-                      <small>{{ assignment.dueDate ? (assignment.dueDate | date: 'yyyy/MM/dd') : 'بدون موعد' }}</small>
-                    </div>
-                    <div class="meta-box">
-                      <span class="material-symbols-outlined">schedule</span>
-                      <small>{{ assignment.dueDate ? (assignment.dueDate | date: 'HH:mm') : '--:--' }}</small>
-                    </div>
-                    <div class="meta-box">
-                      <span class="material-symbols-outlined">help</span>
-                      <small>{{ assignment.questionsCount }} سؤال</small>
-                    </div>
-                    <div class="meta-box">
-                      <span class="material-symbols-outlined">stars</span>
-                      <small>
-                        @if (assignment.isGraded) {
-                          {{ assignment.score }}/{{ assignment.maxScore }}
-                        } @else {
-                          {{ assignment.maxScore }} درجة
-                        }
-                      </small>
-                    </div>
-                  </div>
-
-                  <div class="mt-5 flex flex-col sm:flex-row gap-3">
-                    @if (assignment.status === 'pending') {
-                      <button class="primary-action" type="button" (click)="openAssignment(assignment)">
-                        <span class="material-symbols-outlined">edit_square</span>
-                        {{ getActionLabel(assignment) }}
-                      </button>
-                    } @else if (assignment.submissionId) {
-                      <button class="primary-action" type="button" (click)="openSubmission(assignment)">
-                        <span class="material-symbols-outlined">receipt_long</span>
-                        {{ getActionLabel(assignment) }}
-                      </button>
-                    } @else {
-                      <button class="disabled-action" type="button" disabled>
-                        <span class="material-symbols-outlined">lock_clock</span>
-                        {{ getActionLabel(assignment) }}
-                      </button>
-                    }
-                  </div>
-                </article>
-              }
+      <!-- Loading -->
+      @if (isLoading()) {
+        <div class="skeleton-grid">
+          @for (_ of [1,2,3,4]; track $index) {
+            <div class="skeleton-card">
+              <div class="skeleton-line skeleton-line-sm"></div>
+              <div class="skeleton-line skeleton-line-md"></div>
+              <div class="skeleton-line skeleton-line-lg"></div>
             </div>
           }
-        </section>
-      </div>
+        </div>
+      }
+
+      <!-- Empty -->
+      @if (!isLoading() && filteredAssignments().length === 0) {
+        <div class="empty-state">
+          <span class="material-symbols-outlined empty-icon">assignment</span>
+          <strong class="empty-title">لا توجد واجبات في هذا القسم</strong>
+          <span class="empty-desc">عند نشر واجب جديد سيظهر هنا تلقائياً</span>
+        </div>
+      }
+
+      <!-- Cards -->
+      @if (!isLoading() && filteredAssignments().length > 0) {
+        <div class="card-grid">
+          @for (assignment of filteredAssignments(); track assignment.assignmentId) {
+            <article class="assignment-card" [class]="'border-status-' + assignment.status">
+              <!-- Badge + Status -->
+              <div class="card-head">
+                <span class="subject-badge">{{ assignment.subjectName || 'بدون مادة' }}</span>
+                <span class="status-badge" [class]="'badge-' + assignment.status">{{ getStatusText(assignment.status) }}</span>
+              </div>
+
+              <h3 class="card-title">{{ assignment.title }}</h3>
+              <p class="card-class">{{ assignment.className || 'بدون فصل' }}</p>
+
+              <!-- Meta grid -->
+              <div class="meta-grid">
+                <div class="meta-chip">
+                  <span class="material-symbols-outlined chip-icon">event</span>
+                  <span>{{ assignment.dueDate ? (assignment.dueDate | date: 'yyyy/MM/dd') : 'بدون موعد' }}</span>
+                </div>
+                <div class="meta-chip">
+                  <span class="material-symbols-outlined chip-icon">schedule</span>
+                  <span>{{ assignment.dueDate ? (assignment.dueDate | date: 'HH:mm') : '--:--' }}</span>
+                </div>
+                <div class="meta-chip">
+                  <span class="material-symbols-outlined chip-icon">quiz</span>
+                  <span>{{ assignment.questionsCount }} سؤال</span>
+                </div>
+                <div class="meta-chip">
+                  <span class="material-symbols-outlined chip-icon">stars</span>
+                  <span>
+                    @if (assignment.isGraded) {
+                      {{ assignment.score }}/{{ assignment.maxScore }}
+                    } @else {
+                      {{ assignment.maxScore }} درجة
+                    }
+                  </span>
+                </div>
+              </div>
+
+              <!-- Action -->
+              <div class="card-footer">
+                @if (assignment.status === 'pending') {
+                  <button class="action-btn action-primary" (click)="openAssignment(assignment)">
+                    <span class="material-symbols-outlined">edit_square</span>
+                    {{ getActionLabel(assignment) }}
+                  </button>
+                } @else if (assignment.submissionId) {
+                  <button class="action-btn action-secondary" (click)="openSubmission(assignment)">
+                    <span class="material-symbols-outlined">receipt_long</span>
+                    {{ getActionLabel(assignment) }}
+                  </button>
+                } @else {
+                  <button class="action-btn action-disabled" disabled>
+                    <span class="material-symbols-outlined">lock_clock</span>
+                    {{ getActionLabel(assignment) }}
+                  </button>
+                }
+              </div>
+            </article>
+          }
+        </div>
+      }
     </div>
   </main>
 </div>

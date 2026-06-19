@@ -1,9 +1,19 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { buildApiUrl } from '../../core/utils/api-url';
-import { OperationResult } from '../../core/models/api.model';
+import { OperationResult, PagedResult } from '../../core/models/api.model';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
+
+export interface ExamFilter {
+  search?: string;
+  subjectId?: number;
+  status?: string;
+  sortBy?: string;
+  page?: number;
+  pageSize?: number;
+  academicYearId?: number;
+}
 
 export interface ExamItem {
   id: number;
@@ -21,6 +31,7 @@ export interface ExamItem {
   total?: number;
   isResultPublished: boolean;
   pendingGradingCount?: number;
+  isAIGenerated: boolean;
 }
 
 export interface ExamQuestion {
@@ -29,7 +40,7 @@ export interface ExamQuestion {
   text: string;
   options?: string[];
   correctAnswer: string;
-  points?: number;
+  points: number;
 }
 
 /** سؤال مؤقت داخل مودال الإنشاء/التعديل (لم يُحفظ بعد) */
@@ -72,6 +83,7 @@ export interface ExamAttemptAnswerDetail {
   isCorrect: boolean | null;
   pointsEarned: number;
   feedback?: string;
+  correctAnswerText?: string;
 }
 
 /** تفاصيل محاولة كاملة (لمودال التصحيح) */
@@ -106,6 +118,7 @@ export interface ExamDetail {
   questionCount: number;
   status: string;
   isResultPublished: boolean;
+  totalScore: number;
   questions: ExamQuestion[];
 }
 
@@ -124,6 +137,7 @@ export interface CreateExamPayload {
   startTime: string;
   endTime: string;
   durationMinutes: number;
+  totalScore: number;
   questions: CreateExamQuestionPayload[];
 }
 
@@ -133,12 +147,16 @@ export class ExamManagerService {
   private base = buildApiUrl('exam-manager');
   private attemptsBase = buildApiUrl('exam-attempts');
 
-  getAll(teacherId?: number, academicYearId?: number): Observable<OperationResult<ExamItem[]>> {
-    let params = '';
-    if (teacherId && academicYearId) {
-      params = `?teacherId=${teacherId}&academicYearId=${academicYearId}`;
-    }
-    return this.http.get<OperationResult<ExamItem[]>>(`${this.base}${params}`);
+  getAll(filter: ExamFilter = {}): Observable<OperationResult<PagedResult<ExamItem>>> {
+    let params = new HttpParams();
+    if (filter.search) params = params.set('search', filter.search);
+    if (filter.subjectId) params = params.set('subjectId', filter.subjectId);
+    if (filter.status && filter.status !== 'all') params = params.set('status', filter.status);
+    if (filter.sortBy) params = params.set('sortBy', filter.sortBy);
+    if (filter.page) params = params.set('page', filter.page);
+    if (filter.pageSize) params = params.set('pageSize', filter.pageSize);
+    if (filter.academicYearId) params = params.set('academicYearId', filter.academicYearId);
+    return this.http.get<OperationResult<PagedResult<ExamItem>>>(this.base, { params });
   }
 
   getById(id: number): Observable<ExamDetail> {

@@ -1,7 +1,9 @@
 import { CommonModule, DatePipe } from '@angular/common';
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
+import { Topbar } from '../../layouts/topbar/topbar';
 import { StudentExamListItem, StudentExamStatus } from '../../core/models/student-exam.models';
 import { StudentExamsService } from '../../core/services/student-exams.service';
 
@@ -10,7 +12,7 @@ type ExamTab = 'all' | 'available' | 'upcoming' | 'submitted' | 'results';
 @Component({
   selector: 'app-my-exams',
   standalone: true,
-  imports: [CommonModule, Sidebar, DatePipe],
+  imports: [CommonModule, Sidebar, Topbar, DatePipe, FormsModule],
   templateUrl: './my-exams.html',
   styleUrl: './my-exams.css'
 })
@@ -19,7 +21,10 @@ export class MyExams implements OnInit {
   private router = inject(Router);
 
   sidebarOpen = signal(false);
-  activeTab = signal<ExamTab>('all');
+  activeTab = signal<string>('all');
+  subjectFilter = signal<number | undefined>(undefined);
+  sortBy = signal<string>('newest');
+  subjectList = signal<{ id: number; name: string }[]>([]);
   exams = signal<StudentExamListItem[]>([]);
   isLoading = signal(false);
   errorMessage = signal<string | null>(null);
@@ -32,17 +37,68 @@ export class MyExams implements OnInit {
 
   filteredExams = computed(() => {
     const tab = this.activeTab();
-    const items = this.exams();
+    const subj = this.subjectFilter();
+    const sort = this.sortBy();
+    let items = this.exams();
 
-    if (tab === 'all') return items;
-    if (tab === 'available') return items.filter(e => e.status === 'available' || e.status === 'inProgress');
-    if (tab === 'upcoming') return items.filter(e => e.status === 'upcoming');
-    if (tab === 'submitted') return items.filter(e => e.status === 'submittedWaitingGrade' || e.status === 'gradedHidden');
-    return items.filter(e => e.status === 'resultVisible');
+    if (tab === 'available') items = items.filter(e => e.status === 'available' || e.status === 'inProgress');
+    else if (tab === 'upcoming') items = items.filter(e => e.status === 'upcoming');
+    else if (tab === 'submitted') items = items.filter(e => e.status === 'submittedWaitingGrade' || e.status === 'gradedHidden');
+    else if (tab === 'results') items = items.filter(e => e.status === 'resultVisible');
+
+    if (subj) {
+      const name = this.subjectList().find(s => s.id === subj)?.name;
+      if (name) items = items.filter(e => e.subjectName === name);
+    }
+
+    return [...items].sort((a, b) => {
+      if (sort === 'oldest') return compDate(a.startTime, b.startTime);
+      if (sort === 'duration-asc') return (a.durationMinutes ?? 0) - (b.durationMinutes ?? 0);
+      if (sort === 'duration-desc') return (b.durationMinutes ?? 0) - (a.durationMinutes ?? 0);
+      return compDate(b.startTime, a.startTime); // newest = default
+    });
+
+    function compDate(da: string | null | undefined, db: string | null | undefined): number {
+      if (!da && !db) return 0;
+      if (!da) return 1;
+      if (!db) return -1;
+      return new Date(da).getTime() - new Date(db).getTime();
+    }
   });
+
+  readonly examTabs = [
+    { key: 'all', label: 'الكل' },
+    { key: 'available', label: 'المتاح' },
+    { key: 'upcoming', label: 'القادم' },
+    { key: 'submitted', label: 'المسلّم' },
+    { key: 'results', label: 'النتائج' },
+  ];
+
+  readonly sortOptions = [
+    { value: 'newest',      label: 'الأحدث'               },
+    { value: 'oldest',      label: 'الأقدم'               },
+    { value: 'duration-asc', label: 'المدة (تصاعدي)'      },
+    { value: 'duration-desc', label: 'المدة (تنازلي)'     },
+  ];
 
   ngOnInit() {
     this.loadExams();
+  }
+
+  onSubjectFilterChange(value: number | undefined) {
+    this.subjectFilter.set(value);
+  }
+
+  private loadSubjects() {
+    const seen = new Set<string>();
+    const list: { id: number; name: string }[] = [];
+    for (const e of this.exams()) {
+      if (e.subjectName && !seen.has(e.subjectName)) {
+        seen.add(e.subjectName);
+        list.push({ id: list.length + 1, name: e.subjectName });
+      }
+    }
+    this.subjectList.set(list);
   }
 
   loadExams() {
@@ -51,6 +107,7 @@ export class MyExams implements OnInit {
       next: result => {
         const exams = result.data ?? [];
         this.exams.set(exams);
+        this.loadSubjects();
         this.isLoading.set(false);
         this.autoProcessExpiredExams(exams);
       },

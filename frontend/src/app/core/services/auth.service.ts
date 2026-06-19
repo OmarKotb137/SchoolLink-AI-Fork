@@ -8,6 +8,7 @@ export interface UserInfo {
   userId: number;
   fullName: string;
   role: AppRole;
+  profilePictureUrl?: string | null;
 }
 
 export interface AuthSession {
@@ -68,6 +69,18 @@ export class AuthService {
     this.token.set(session.accessToken);
     this.user.set(user);
     this.roleService.setRole(user.role);
+  }
+
+  updateUserInfo(fullName: string, profilePictureUrl?: string | null) {
+    const current = this.user();
+    if (!current) return;
+    const updated: UserInfo = {
+      ...current,
+      fullName,
+      profilePictureUrl: profilePictureUrl ?? current.profilePictureUrl,
+    };
+    localStorage.setItem(this.USER_KEY, JSON.stringify(updated));
+    this.user.set(updated);
   }
 
   private normalizeRole(role: string): AppRole {

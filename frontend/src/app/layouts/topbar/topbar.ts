@@ -6,6 +6,7 @@ import { NotificationService } from '../../core/services/notification.service';
 import { AuthService } from '../../core/services/auth.service';
 import { SearchService } from '../../core/services/search.service';
 import { NotificationSignalRService } from '../../core/services/notification-signalr.service';
+import { UserService } from '../../core/services/user.service';
 
 @Component({
   selector: 'app-topbar',
@@ -19,6 +20,7 @@ export class Topbar implements OnInit {
   private authService = inject(AuthService);
   private searchService = inject(SearchService);
   private notifSignalR = inject(NotificationSignalRService);
+  private userService = inject(UserService);
   router = inject(Router);
   userName = computed(() => this.authService.user()?.fullName || 'أحمد');
   searchQuery = this.searchService.query;
@@ -29,6 +31,12 @@ export class Topbar implements OnInit {
   showAvatar = input(true);
   notificationCount = input(0);
   searchOpen = signal(false);
+
+  profilePictureUrl = signal<string | null>(null);
+  isLoadingAvatar = signal(false);
+
+  displayName = computed(() => this.authService.user()?.fullName || this.userName());
+  displayAvatar = computed(() => this.authService.user()?.profilePictureUrl || this.profilePictureUrl());
 
   userRole = computed(() => {
     const roleLabels: Record<string, string> = {
@@ -103,10 +111,35 @@ export class Topbar implements OnInit {
     const user = this.authService.user();
     if (user) {
       this.notifService.getUnreadCount(user.userId).subscribe();
+      this.loadProfilePicture();
     }
 
     // Start SignalR connection for real-time notifications
     this.notifSignalR.startConnection();
+  }
+
+  private loadProfilePicture() {
+    const user = this.authService.user();
+    if (!user) return;
+
+    this.isLoadingAvatar.set(true);
+    this.userService.getMyProfile().subscribe({
+      next: res => {
+        const data = res.data;
+        this.profilePictureUrl.set(data?.profilePictureUrl ?? null);
+        if (data?.profilePictureUrl || data?.fullName) {
+          this.authService.updateUserInfo(
+            data.fullName || user.fullName,
+            data.profilePictureUrl
+          );
+        }
+        this.isLoadingAvatar.set(false);
+      },
+      error: () => {
+        this.profilePictureUrl.set(null);
+        this.isLoadingAvatar.set(false);
+      }
+    });
   }
 
   constructor() {

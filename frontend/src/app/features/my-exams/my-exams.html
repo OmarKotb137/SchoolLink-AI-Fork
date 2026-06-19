@@ -1,132 +1,172 @@
 <app-sidebar [(isOpen)]="sidebarOpen" />
 <div class="main-content">
-  <main class="pt-16 min-h-screen bg-gray-50 flex flex-col" dir="rtl">
-    <div class="flex-1 p-4 md:p-6 lg:p-8">
-      <div class="max-w-7xl mx-auto space-y-6 pb-10">
-        <section class="bg-white p-6 rounded-2xl border border-gray-100 shadow-lg">
-          <span class="text-sm font-medium text-blue-600 mb-1 block">امتحاناتي</span>
-          <h1 class="text-2xl font-bold text-gray-900 mb-2">امتحانات الفصل والاختبارات التدريبية</h1>
-          <p class="text-sm text-gray-500 max-w-2xl">
-            تابع الامتحانات المنشورة من معلميك، ابدأ المتاح منها، واستكمل محاولتك من نفس المكان. النتائج لا تظهر إلا بعد مراجعة المعلم ونشرها.
-          </p>
-        </section>
+  <app-topbar />
+  <main class="page-wrap" dir="rtl">
+    <div class="page-container">
 
-        <section class="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div class="bg-white border border-gray-100 p-4 rounded-2xl text-center">
-            <span class="block text-xs text-gray-500 font-medium mb-1">كل الامتحانات</span>
-            <strong class="block text-2xl font-bold text-gray-900">{{ totalCount() }}</strong>
-          </div>
-          <div class="bg-emerald-50 border border-emerald-100 p-4 rounded-2xl text-center">
-            <span class="block text-xs text-emerald-600 font-medium mb-1">متاح وقيد الحل</span>
-            <strong class="block text-2xl font-bold text-emerald-900">{{ availableCount() }}</strong>
-          </div>
-          <div class="bg-indigo-50 border border-indigo-100 p-4 rounded-2xl text-center">
-            <span class="block text-xs text-indigo-600 font-medium mb-1">تم التسليم</span>
-            <strong class="block text-2xl font-bold text-indigo-900">{{ submittedCount() }}</strong>
-          </div>
-          <div class="bg-blue-50 border border-blue-100 p-4 rounded-2xl text-center">
-            <span class="block text-xs text-blue-600 font-medium mb-1">نتائج متاحة</span>
-            <strong class="block text-2xl font-bold text-blue-900">{{ resultCount() }}</strong>
-          </div>
-        </section>
+      <!-- Header -->
+      <section class="hero-section">
+        <span class="hero-badge">امتحاناتي</span>
+        <h1 class="hero-title">امتحانات الفصل والاختبارات التدريبية</h1>
+        <p class="hero-desc">تابع الامتحانات المنشورة من معلميك، ابدأ المتاح منها، واستكمل محاولتك من نفس المكان</p>
+      </section>
 
-        @if (errorMessage()) {
-          <div class="flex items-center gap-3 p-4 text-sm text-red-800 rounded-2xl bg-red-50 border border-red-200">
-            <span class="material-symbols-outlined text-lg">error</span>
-            <span class="font-medium">{{ errorMessage() }}</span>
+      <!-- Stats Cards -->
+      <section class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon stat-icon-total"><span class="material-symbols-outlined">quiz</span></div>
+          <div class="stat-body">
+            <span class="stat-label">كل الامتحانات</span>
+            <strong class="stat-value">{{ totalCount() }}</strong>
           </div>
-        }
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon stat-icon-available"><span class="material-symbols-outlined">play_circle</span></div>
+          <div class="stat-body">
+            <span class="stat-label">متاح وقيد الحل</span>
+            <strong class="stat-value">{{ availableCount() }}</strong>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon stat-icon-submitted"><span class="material-symbols-outlined">pending</span></div>
+          <div class="stat-body">
+            <span class="stat-label">تم التسليم</span>
+            <strong class="stat-value">{{ submittedCount() }}</strong>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon stat-icon-results"><span class="material-symbols-outlined">checklist</span></div>
+          <div class="stat-body">
+            <span class="stat-label">نتائج متاحة</span>
+            <strong class="stat-value">{{ resultCount() }}</strong>
+          </div>
+        </div>
+      </section>
 
-        <section class="bg-white rounded-2xl border border-gray-100 shadow-lg overflow-hidden">
-          <div class="p-5 border-b border-gray-100 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 bg-gray-50">
-            <div>
-              <h2 class="text-lg font-bold text-gray-900">قائمة الامتحانات</h2>
-              <p class="text-sm text-gray-500 mt-1">الامتحانات مرتبطة بفصلك وسنتك الدراسية الحالية.</p>
+      @if (errorMessage()) {
+        <div class="error-banner">
+          <span class="material-symbols-outlined">error</span>
+          <span class="font-medium">{{ errorMessage() }}</span>
+        </div>
+      }
+
+      <!-- Filter + Tabs -->
+      <section class="filter-section">
+        <div class="filter-header">
+          <div>
+            <h2 class="filter-title">قائمة الامتحانات</h2>
+            <p class="filter-desc">الامتحانات مرتبطة بفصلك وسنتك الدراسية الحالية</p>
+          </div>
+          <div class="filter-actions">
+            <div class="select-wrapper">
+              <select class="filter-select" [ngModel]="sortBy()" (ngModelChange)="sortBy.set($event)">
+                @for (opt of sortOptions; track opt.value) {
+                  <option [value]="opt.value">{{ opt.label }}</option>
+                }
+              </select>
+              <span class="material-symbols-outlined select-arrow">expand_more</span>
             </div>
-            <div class="flex flex-wrap items-center bg-gray-200/50 p-1 rounded-2xl">
-              <button class="exam-tab" [class.active]="activeTab() === 'all'" (click)="activeTab.set('all')">الكل</button>
-              <button class="exam-tab" [class.active]="activeTab() === 'available'" (click)="activeTab.set('available')">المتاح</button>
-              <button class="exam-tab" [class.active]="activeTab() === 'upcoming'" (click)="activeTab.set('upcoming')">القادم</button>
-              <button class="exam-tab" [class.active]="activeTab() === 'submitted'" (click)="activeTab.set('submitted')">المسلّم</button>
-              <button class="exam-tab" [class.active]="activeTab() === 'results'" (click)="activeTab.set('results')">النتائج</button>
+            <div class="select-wrapper">
+              <select class="filter-select" [ngModel]="subjectFilter()" (ngModelChange)="onSubjectFilterChange($event)">
+                <option [ngValue]="undefined">كل المواد</option>
+                @for (s of subjectList(); track s.id) {
+                  <option [ngValue]="s.id">{{ s.name }}</option>
+                }
+              </select>
+              <span class="material-symbols-outlined select-arrow">expand_more</span>
             </div>
           </div>
+        </div>
 
-          @if (isLoading()) {
-            <div class="py-16 flex flex-col items-center gap-3 text-gray-500">
-              <span class="material-symbols-outlined animate-spin text-4xl text-blue-600">progress_activity</span>
-              <span class="font-medium">جاري تحميل الامتحانات...</span>
-            </div>
-          } @else if (filteredExams().length === 0) {
-            <div class="py-16 flex flex-col items-center gap-3 text-gray-500">
-              <span class="material-symbols-outlined text-5xl text-gray-300">quiz</span>
-              <strong class="text-gray-900">لا توجد امتحانات في هذا القسم</strong>
-              <span class="text-sm">عند نشر المعلم لامتحان جديد سيظهر هنا تلقائيًا.</span>
-            </div>
-          } @else {
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 p-5">
-              @for (exam of filteredExams(); track exam.examId) {
-                <article class="exam-card">
-                  <div class="flex items-start justify-between gap-4">
-                    <div class="min-w-0">
-                      <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-100 mb-3">
-                        {{ exam.subjectName || 'بدون مادة' }}
-                      </span>
-                      <h3 class="text-lg font-bold text-gray-900 leading-7">{{ exam.title }}</h3>
-                    </div>
-                    <span class="status-chip border {{ getStatusClass(exam.status) }}">{{ getStatusText(exam.status) }}</span>
-                  </div>
+        <div class="glass-tabs">
+          @for (tab of examTabs; track tab.key) {
+            <button class="glass-tab" [class.active]="activeTab() === tab.key" (click)="activeTab.set(tab.key)">{{ tab.label }}</button>
+          }
+        </div>
+      </section>
 
-                  <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-5">
-                    <div class="meta-box">
-                      <span class="material-symbols-outlined">calendar_today</span>
-                      <small>{{ exam.startTime ? (exam.startTime | date: 'yyyy/MM/dd') : 'غير محدد' }}</small>
-                    </div>
-                    <div class="meta-box">
-                      <span class="material-symbols-outlined">schedule</span>
-                      <small>{{ exam.startTime ? (exam.startTime | date: 'HH:mm') : '--:--' }}</small>
-                    </div>
-                    <div class="meta-box">
-                      <span class="material-symbols-outlined">timer</span>
-                      <small>{{ exam.durationMinutes || 0 }} دقيقة</small>
-                    </div>
-                    <div class="meta-box">
-                      <span class="material-symbols-outlined">help</span>
-                      <small>{{ exam.questionsCount }} سؤال</small>
-                    </div>
-                  </div>
-
-                  <div class="mt-5 flex flex-col sm:flex-row gap-3">
-                    @if (canStart(exam)) {
-                      <button class="primary-action" type="button" (click)="startExam(exam)" [disabled]="isLoading()">
-                        <span class="material-symbols-outlined">{{ exam.status === 'inProgress' ? 'play_circle' : 'play_arrow' }}</span>
-                        {{ exam.status === 'inProgress' ? 'استكمل الامتحان' : 'ابدأ الامتحان' }}
-                      </button>
-                    } @else if (exam.status === 'resultVisible') {
-                      <button class="primary-action" type="button" (click)="openResult(exam)">
-                        <span class="material-symbols-outlined">query_stats</span>
-                        عرض النتيجة
-                      </button>
-                    } @else {
-                      <button class="disabled-action" type="button" disabled>
-                        <span class="material-symbols-outlined">lock</span>
-                        {{ getStatusText(exam.status) }}
-                      </button>
-                    }
-
-                    @if (exam.submittedAt && exam.status !== 'resultVisible') {
-                      <button class="secondary-action" type="button" (click)="openResult(exam)">
-                        <span class="material-symbols-outlined">receipt_long</span>
-                        حالة التسليم
-                      </button>
-                    }
-                  </div>
-                </article>
-              }
+      <!-- Loading -->
+      @if (isLoading()) {
+        <div class="skeleton-grid">
+          @for (_ of [1,2,3,4]; track $index) {
+            <div class="skeleton-card">
+              <div class="skeleton-line skeleton-line-sm"></div>
+              <div class="skeleton-line skeleton-line-md"></div>
+              <div class="skeleton-line skeleton-line-lg"></div>
             </div>
           }
-        </section>
-      </div>
+        </div>
+      }
+
+      <!-- Empty -->
+      @if (!isLoading() && filteredExams().length === 0) {
+        <div class="empty-state">
+          <span class="material-symbols-outlined empty-icon">quiz</span>
+          <strong class="empty-title">لا توجد امتحانات في هذا القسم</strong>
+          <span class="empty-desc">عند نشر المعلم لامتحان جديد سيظهر هنا تلقائياً</span>
+        </div>
+      }
+
+      <!-- Cards -->
+      @if (!isLoading() && filteredExams().length > 0) {
+        <div class="card-grid">
+          @for (exam of filteredExams(); track exam.examId) {
+            <article class="exam-card" [class]="'border-status-' + exam.status">
+              <div class="card-head">
+                <span class="subject-badge">{{ exam.subjectName || 'بدون مادة' }}</span>
+                <span class="status-badge" [class]="'badge-' + exam.status">{{ getStatusText(exam.status) }}</span>
+              </div>
+
+              <h3 class="card-title">{{ exam.title }}</h3>
+
+              <div class="meta-grid">
+                <div class="meta-chip">
+                  <span class="material-symbols-outlined chip-icon">calendar_today</span>
+                  <span>{{ exam.startTime ? (exam.startTime | date: 'yyyy/MM/dd') : 'غير محدد' }}</span>
+                </div>
+                <div class="meta-chip">
+                  <span class="material-symbols-outlined chip-icon">schedule</span>
+                  <span>{{ exam.startTime ? (exam.startTime | date: 'HH:mm') : '--:--' }}</span>
+                </div>
+                <div class="meta-chip">
+                  <span class="material-symbols-outlined chip-icon">timer</span>
+                  <span>{{ exam.durationMinutes || 0 }} دقيقة</span>
+                </div>
+                <div class="meta-chip">
+                  <span class="material-symbols-outlined chip-icon">help</span>
+                  <span>{{ exam.questionsCount }} سؤال</span>
+                </div>
+              </div>
+
+              <div class="card-footer">
+                @if (canStart(exam)) {
+                  <button class="action-btn action-primary" (click)="startExam(exam)" [disabled]="isLoading()">
+                    <span class="material-symbols-outlined">{{ exam.status === 'inProgress' ? 'play_circle' : 'play_arrow' }}</span>
+                    {{ exam.status === 'inProgress' ? 'استكمل الامتحان' : 'ابدأ الامتحان' }}
+                  </button>
+                } @else if (exam.status === 'resultVisible') {
+                  <button class="action-btn action-primary" (click)="openResult(exam)">
+                    <span class="material-symbols-outlined">query_stats</span>
+                    عرض النتيجة
+                  </button>
+                } @else {
+                  <button class="action-btn action-disabled" disabled>
+                    <span class="material-symbols-outlined">lock</span>
+                    {{ getStatusText(exam.status) }}
+                  </button>
+                }
+
+                @if (exam.submittedAt && exam.status !== 'resultVisible') {
+                  <button class="action-btn action-secondary" (click)="openResult(exam)">
+                    <span class="material-symbols-outlined">receipt_long</span>
+                    حالة التسليم
+                  </button>
+                }
+              </div>
+            </article>
+          }
+        </div>
+      }
     </div>
   </main>
 </div>

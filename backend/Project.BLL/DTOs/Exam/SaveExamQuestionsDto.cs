@@ -17,6 +17,7 @@ public class SaveQuestionDto
 {
     public int Id { get; set; }
     public string QuestionText { get; set; } = string.Empty;
+    public QuestionType QuestionType { get; set; }
     public string? CorrectAnswer { get; set; }
     public decimal Points { get; set; }
     public int DisplayOrder { get; set; }

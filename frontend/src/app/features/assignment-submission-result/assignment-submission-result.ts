@@ -46,6 +46,11 @@ export class AssignmentSubmissionResult implements OnInit {
     });
   }
 
+  getScorePercent(r: StudentAssignmentSubmissionResult): number {
+    if (!r.maxScore || r.score == null) return 0;
+    return Math.round((r.score / r.maxScore) * 100);
+  }
+
   backToAssignments() {
     this.router.navigate(['/my-assignments']);
   }

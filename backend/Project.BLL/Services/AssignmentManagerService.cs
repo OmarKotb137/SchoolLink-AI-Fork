@@ -1,5 +1,7 @@
 using Common.Results;
 using Microsoft.EntityFrameworkCore;
+using Project.BLL.DTOs.Assignment;
+using Project.BLL.DTOs.Common;
 using Project.BLL.Interfaces;
 using Project.DAL.Context;
 using Project.DAL.Interfaces;
@@ -58,6 +60,106 @@ public class AssignmentManagerService : IAssignmentManagerService
         return OperationResult<List<AssignmentManagerItemDto>>.Success(items);
     }
 
+    public async Task<OperationResult<PagedResult<AssignmentManagerItemDto>>> GetFilteredAsync(AssignmentFilterDto filter)
+    {
+        var query = _context.Assignments
+            .Include(a => a.ClassSubjectTeacher)
+                .ThenInclude(c => c.Subject)
+            .Include(a => a.ClassSubjectTeacher)
+                .ThenInclude(c => c.Class)
+                    .ThenInclude(cl => cl.Enrollments)
+            .Include(a => a.Submissions)
+            .Include(a => a.Questions)
+            .Where(a => !a.IsDeleted)
+            .AsQueryable();
+
+        // Filter by teacher
+        var cstIds = await _context.ClassSubjectTeachers
+            .Where(c => c.TeacherId == filter.TeacherId && c.AcademicYearId == filter.AcademicYearId && !c.IsDeleted)
+            .Select(c => c.Id)
+            .ToListAsync();
+        query = query.Where(a => cstIds.Contains(a.ClassSubjectTeacherId));
+
+        // Filter by subject
+        if (filter.SubjectId.HasValue)
+            query = query.Where(a => a.ClassSubjectTeacher.SubjectId == filter.SubjectId.Value);
+
+        // Filter by search term
+        if (!string.IsNullOrWhiteSpace(filter.Search))
+        {
+            var term = filter.Search.Trim().ToLower();
+            query = query.Where(a => a.Title.ToLower().Contains(term));
+        }
+
+        // Apply sorting
+        query = (filter.SortBy?.ToLower()) switch
+        {
+            "oldest" => query.OrderBy(a => a.CreatedAt),
+            "name-asc" => query.OrderBy(a => a.Title),
+            "name-desc" => query.OrderByDescending(a => a.Title),
+            "date-asc" => query.OrderBy(a => a.DueDate ?? a.CreatedAt),
+            "date-desc" => query.OrderByDescending(a => a.DueDate ?? a.CreatedAt),
+            _ => query.OrderByDescending(a => a.CreatedAt),
+        };
+
+        // Fetch all for in-memory status filtering
+        var assignments = await query.ToListAsync();
+
+        // Status filter in memory (computed)
+        if (!string.IsNullOrWhiteSpace(filter.Status) && filter.Status != "all")
+        {
+            assignments = assignments.Where(a => GetStatus(a) == filter.Status).ToList();
+        }
+
+        var totalCount = assignments.Count;
+        var page = Math.Max(1, filter.Page);
+        var pageSize = Math.Max(1, Math.Min(100, filter.PageSize));
+        var paged = assignments
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+
+        var dtos = paged.Select(a =>
+        {
+            var totalStudents = a.ClassSubjectTeacher?.Class?.Enrollments
+                .Count(e => !e.IsDeleted && e.AcademicYearId == a.ClassSubjectTeacher.AcademicYearId) ?? 0;
+            var submitted = a.Submissions.Count(s => !s.IsDeleted);
+            var gradedSubmissions = a.Submissions.Where(s => !s.IsDeleted && s.IsGraded && s.Score.HasValue).ToList();
+            var avgScore = gradedSubmissions.Count > 0
+                ? Math.Round(gradedSubmissions.Average(s => (double)(s.Score!.Value / (a.MaxScore > 0 ? a.MaxScore : 1) * 100)), 1)
+                : (double?)null;
+
+            return new AssignmentManagerItemDto
+            {
+                Id = a.Id,
+                Title = a.Title,
+                Subject = a.ClassSubjectTeacher?.Subject?.Name ?? "",
+                Class = a.ClassSubjectTeacher?.Class != null
+                    ? $"{a.ClassSubjectTeacher.Class.GradeLevel?.Name} - {a.ClassSubjectTeacher.Class.Name}"
+                    : "",
+                Deadline = a.DueDate?.ToString("yyyy-MM-ddTHH:mm") ?? "",
+                MaxScore = a.MaxScore,
+                IsPublished = a.IsPublished,
+                IsAIGenerated = a.IsAIGenerated,
+                QuestionsCount = a.Questions.Count(q => !q.IsDeleted),
+                Submitted = submitted,
+                Total = totalStudents,
+                AvgScore = avgScore,
+                Status = GetStatus(a)
+            };
+        }).ToList();
+
+        var result = new PagedResult<AssignmentManagerItemDto>
+        {
+            Items = dtos,
+            TotalCount = totalCount,
+            Page = page,
+            PageSize = pageSize,
+        };
+
+        return OperationResult<PagedResult<AssignmentManagerItemDto>>.Success(result);
+    }
+
     public async Task<OperationResult<AssignmentManagerDetailDto>> GetByIdAsync(int id)
     {
         var assignment = await _context.Assignments
@@ -83,8 +185,14 @@ public class AssignmentManagerService : IAssignmentManagerService
             Id = assignment.Id,
             Title = assignment.Title,
             Subject = assignment.ClassSubjectTeacher?.Subject?.Name ?? "",
-            Class = assignment.ClassSubjectTeacher?.Class?.Name ?? "",
+            Class = assignment.ClassSubjectTeacher?.Class != null
+                ? $"{assignment.ClassSubjectTeacher.Class.GradeLevel?.Name} - {assignment.ClassSubjectTeacher.Class.Name}"
+                : "",
             Deadline = assignment.DueDate?.ToString("yyyy-MM-ddTHH:mm") ?? "",
+            MaxScore = assignment.MaxScore,
+            IsPublished = assignment.IsPublished,
+            IsAIGenerated = assignment.IsAIGenerated,
+            QuestionsCount = assignment.Questions.Count(q => !q.IsDeleted),
             Submitted = submitted,
             Total = totalStudents,
             Status = GetStatus(assignment),
@@ -135,7 +243,7 @@ public class AssignmentManagerService : IAssignmentManagerService
             DueDate = dueDate,
             MaxScore = dto.Questions.Sum(q => q.Points > 0 ? q.Points : (q.Type == "essay" ? 10 : 5)),
             IsAutoGraded = true,
-            IsPublished = true,
+            IsPublished = false,
             Category = EvaluationCategory.Academic,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -192,7 +300,7 @@ public class AssignmentManagerService : IAssignmentManagerService
             Submitted = 0,
             Total = cst.Class?.Enrollments
                 .Count(e => !e.IsDeleted && e.AcademicYearId == year.Id) ?? 0,
-            Status = "active"
+            Status = "draft"
         });
     }
 
@@ -295,11 +403,11 @@ public class AssignmentManagerService : IAssignmentManagerService
         return OperationResult<AssignmentManagerStatsDto>.Success(new AssignmentManagerStatsDto
         {
             Total = list.Count,
-            Active = list.Count(a => a.Status == "active"),
+            Active = list.Count(a => a.Status == "open"),
             AvgDelivery = list.Count > 0
                 ? Math.Round(list.Average(a => a.Total > 0 ? (double)a.Submitted / a.Total * 100 : 0), 1)
                 : 0,
-            Overdue = list.Count(a => a.Status == "active" && a.Submitted < a.Total)
+            Overdue = list.Count(a => a.Status == "open" && a.Submitted < a.Total)
         });
     }
 
@@ -401,7 +509,7 @@ public class AssignmentManagerService : IAssignmentManagerService
     {
         if (!a.IsPublished) return "draft";
         if (a.DueDate.HasValue && a.DueDate.Value < DateTime.UtcNow) return "closed";
-        return "active";
+        return "open";
     }
 
     private static string MapType(QuestionType type) => type switch

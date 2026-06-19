@@ -1,232 +1,468 @@
 <app-sidebar [(isOpen)]="sidebarOpen" />
 <div class="main-content">
   <main class="p-gutter-desktop">
-    <div class="max-w-6xl mx-auto flex flex-col gap-stack-lg">
+    <div class="max-w-7xl mx-auto flex flex-col gap-stack-lg">
 
+      <!-- Header -->
       <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 class="font-headline-lg text-headline-lg" style="font-weight:800;background:linear-gradient(135deg,#00236f,#3b82f6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">إدارة الواجبات</h1>
-          <p class="font-body-md text-body-md text-outline">إنشاء ومتابعة وتقييم واجبات الطلاب</p>
+          <h1 class="font-headline-lg text-headline-lg assignment-title">إدارة الواجبات</h1>
+          <p class="font-body-md text-body-md text-outline">إنشاء ومتابعة وتقييم الواجبات المنزلية</p>
         </div>
-        <button class="gradient-btn" (click)="openAddModal()">
-          <span class="material-symbols-outlined">add</span>
-          إضافة واجب جديد
-        </button>
+        <div class="flex gap-3">
+          <button class="gradient-btn" (click)="openAddModal()">
+            <span class="material-symbols-outlined">add</span>
+            واجب جديد
+          </button>
+        </div>
       </div>
 
       <!-- Stats Cards -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-gutter-desktop">
-        <div class="glass-stat-card">
-          <div class="flex items-center gap-3 mb-2">
-            <div class="gradient-icon-box gradient-primary"><span class="material-symbols-outlined">assignment</span></div>
-            <span class="font-label-md text-label-md text-outline">إجمالي الواجبات</span>
+      <div class="stats-grid">
+        <div class="glass-card stat-card">
+          <div class="stat-icon stat-icon-primary"><span class="material-symbols-outlined">assignment</span></div>
+          <div class="stat-body">
+            <span class="stat-label">إجمالي الواجبات</span>
+            <p class="stat-value">{{ stats().total }}</p>
           </div>
-          <p class="gradient-stat-number">{{ stats().total }}</p>
         </div>
-        <div class="glass-stat-card">
-          <div class="flex items-center gap-3 mb-2">
-            <div class="gradient-icon-box gradient-secondary"><span class="material-symbols-outlined">hourglass_top</span></div>
-            <span class="font-label-md text-label-md text-outline">قيد التسليم</span>
+        <div class="glass-card stat-card">
+          <div class="stat-icon stat-icon-secondary"><span class="material-symbols-outlined">play_circle</span></div>
+          <div class="stat-body">
+            <span class="stat-label">نشطة</span>
+            <p class="stat-value">{{ stats().active }}</p>
           </div>
-          <p class="gradient-stat-number">{{ stats().active }}</p>
         </div>
-        <div class="glass-stat-card">
-          <div class="flex items-center gap-3 mb-2">
-            <div class="gradient-icon-box gradient-tertiary"><span class="material-symbols-outlined">trending_up</span></div>
-            <span class="font-label-md text-label-md text-outline">متوسط التسليم</span>
+        <div class="glass-card stat-card">
+          <div class="stat-icon stat-icon-ended"><span class="material-symbols-outlined">warning</span></div>
+          <div class="stat-body">
+            <span class="stat-label">متأخرة</span>
+            <p class="stat-value">{{ stats().overdue }}</p>
           </div>
-          <p class="gradient-stat-number">{{ stats().avgDelivery }}%</p>
         </div>
-        <div class="glass-stat-card">
-          <div class="flex items-center gap-3 mb-2">
-            <div class="gradient-icon-box gradient-error"><span class="material-symbols-outlined">warning</span></div>
-            <span class="font-label-md text-label-md text-outline">تجاوزت الموعد</span>
+        <div class="glass-card stat-card">
+          <div class="stat-icon stat-icon-tertiary"><span class="material-symbols-outlined">trending_up</span></div>
+          <div class="stat-body">
+            <span class="stat-label">متوسط التسليم</span>
+            <p class="stat-value">{{ stats().avgDelivery > 0 ? stats().avgDelivery + '%' : '—' }}</p>
           </div>
-          <p class="gradient-stat-number">{{ stats().overdue }}</p>
         </div>
       </div>
 
-      <!-- Table -->
-      <div class="glass-table-container">
-        <div class="overflow-x-auto">
-          <table class="w-full">
-            <thead>
-              <tr>
-                <th class="text-right p-4 font-label-md text-label-md text-outline">الواجب</th>
-                <th class="text-right p-4 font-label-md text-label-md text-outline">المادة</th>
-                <th class="text-right p-4 font-label-md text-label-md text-outline">الفصل</th>
-                <th class="text-right p-4 font-label-md text-label-md text-outline">الموعد</th>
-                <th class="text-right p-4 font-label-md text-label-md text-outline">التسليم</th>
-                <th class="text-right p-4 font-label-md text-label-md text-outline">الحالة</th>
-                <th class="text-center p-4 font-label-md text-label-md text-outline"></th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (a of assignments(); track a.id) {
-                <tr>
-                  <td class="p-4 font-body-md text-body-md" style="font-weight:700;">{{ a.title }}</td>
-                  <td class="p-4 font-body-md text-body-md text-outline">{{ a.subject }}</td>
-                  <td class="p-4 font-body-md text-body-md text-outline">{{ a.class }}</td>
-                  <td class="p-4 font-body-md text-body-md text-outline">{{ a.deadline }}</td>
-                  <td class="p-4">
-                    <div class="flex items-center gap-2">
-                      <div class="flex-1 bg-surface-container-high rounded-full h-2 overflow-hidden w-24">
-                        <div class="bg-gradient-to-l from-primary to-blue-600 h-full rounded-full transition-all" [style.width.%]="a.total ? (a.submitted / a.total * 100) : 0"></div>
-                      </div>
-                      <span class="font-label-sm text-label-sm text-outline">{{ a.submitted }}/{{ a.total }}</span>
-                    </div>
-                  </td>
-                  <td class="p-4"><span class="px-3 py-1 rounded-full text-label-sm font-label-sm {{ getStatusClass(a.status) }}">{{ getStatusText(a.status) }}</span></td>
-                  <td class="p-4">
-                    <div class="flex items-center justify-center gap-1">
-                      <button class="p-2 rounded-lg hover:bg-white/50 text-outline hover:text-primary transition-all" title="عرض" (click)="openViewModal(a)"><span class="material-symbols-outlined">visibility</span></button>
-                      <button class="p-2 rounded-lg hover:bg-white/50 text-outline hover:text-tertiary transition-all" title="التسليمات" [routerLink]="['/assignment-submissions', a.id]">
-                        <span class="material-symbols-outlined">assignment_turned_in</span>
-                      </button>
-                      @if (a.submitted === 0) {
-                        <button class="p-2 rounded-lg hover:bg-white/50 text-outline hover:text-secondary transition-all" title="تعديل" (click)="openEditModal(a)"><span class="material-symbols-outlined">edit</span></button>
-                        <button class="p-2 rounded-lg hover:bg-white/50 text-outline hover:text-error transition-all" title="حذف" (click)="deleteAssignment(a.id)"><span class="material-symbols-outlined">delete</span></button>
-                      } @else {
-                        <button class="p-2 rounded-lg opacity-50 cursor-not-allowed text-outline" title="لا يمكن التعديل لوجود تسليمات"><span class="material-symbols-outlined">edit</span></button>
-                        <button class="p-2 rounded-lg opacity-50 cursor-not-allowed text-outline" title="لا يمكن الحذف لوجود تسليمات"><span class="material-symbols-outlined">delete</span></button>
-                      }
-                    </div>
-                  </td>
-                </tr>
+      <!-- Filter Bar -->
+      <div class="filter-bar">
+        <div class="search-wrapper">
+          <span class="material-symbols-outlined search-icon">search</span>
+          <input class="search-input" type="text" placeholder="ابحث عن واجب..."
+            [value]="searchTerm()" (input)="onSearchInput($any($event.target).value)" />
+          @if (searchTerm()) {
+            <button class="search-clear" (click)="onSearchInput('')">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          }
+        </div>
+        <div class="filter-selects">
+          <div class="select-wrapper">
+            <select class="filter-select" [ngModel]="subjectFilter()" (ngModelChange)="onSubjectChange($event)">
+              <option value="">كل المواد</option>
+              @for (s of subjects(); track s.id) {
+                <option [value]="s.id">{{ s.name }}</option>
               }
-            </tbody>
-          </table>
+            </select>
+            <span class="material-symbols-outlined select-arrow">expand_more</span>
+          </div>
+          <div class="select-wrapper">
+            <select class="filter-select" [ngModel]="sortBy()" (ngModelChange)="onSortChange($event)">
+              @for (opt of sortOptions; track opt.value) {
+                <option [value]="opt.value">{{ opt.label }}</option>
+              }
+            </select>
+            <span class="material-symbols-outlined select-arrow">expand_more</span>
+          </div>
         </div>
       </div>
+
+      <!-- Tabs -->
+      <div class="glass-tabs">
+        @for (tab of assignmentTabs; track tab.key) {
+          <button class="glass-tab" [class.active]="activeTab() === tab.key" (click)="setActiveTab(tab.key)">
+            {{ tab.label }}
+            @if (tabCounts()[tab.key] > 0) {
+              <span class="tab-count">{{ tabCounts()[tab.key] }}</span>
+            }
+          </button>
+        }
+      </div>
+
+      <!-- Loading State -->
+      @if (loading()) {
+        <div class="skeleton-grid">
+          @for (_ of [1,2,3,4,5,6]; track $index) {
+            <div class="skeleton-card">
+              <div class="skeleton-line skeleton-line-sm"></div>
+              <div class="skeleton-line skeleton-line-md"></div>
+              <div class="skeleton-line skeleton-line-lg"></div>
+              <div class="skeleton-row">
+                <div class="skeleton-line skeleton-line-xs"></div>
+                <div class="skeleton-line skeleton-line-xs"></div>
+                <div class="skeleton-line skeleton-line-xs"></div>
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- Error State -->
+      @if (!loading() && loadError()) {
+        <div class="empty-state">
+          <div class="empty-icon error-icon"><span class="material-symbols-outlined">error</span></div>
+          <p class="font-body-md text-body-md text-error">{{ loadError() }}</p>
+          <button class="gradient-btn" (click)="loadAssignments()">إعادة المحاولة</button>
+        </div>
+      }
+
+      <!-- Empty State -->
+      @if (!loading() && !loadError() && assignments().length === 0) {
+        <div class="empty-state">
+          <div class="empty-icon"><span class="material-symbols-outlined">assignment</span></div>
+          <p class="font-body-lg text-body-lg" style="font-weight:700;">لا توجد واجبات</p>
+          <p class="font-body-md text-body-md text-outline">لم يتم العثور على واجبات تطابق معايير البحث</p>
+          <button class="gradient-btn" (click)="openAddModal()">
+            <span class="material-symbols-outlined">add</span> إنشاء واجب جديد
+          </button>
+        </div>
+      }
+
+      <!-- Color Legend -->
+      <div class="color-legend" title="دليل ألوان الحالة — كل لون يدل على حالة الواجب">
+        <span class="legend-item"><span class="legend-dot legend-green"></span>نشط</span>
+        <span class="legend-item"><span class="legend-dot legend-tertiary"></span>مسودة</span>
+        <span class="legend-item"><span class="legend-dot legend-blue-light"></span>مغلق</span>
+      </div>
+
+      <!-- Assignment Cards -->
+      @if (!loading() && !loadError() && assignments().length > 0) {
+        <div class="assignment-list">
+          @for (a of assignments(); track a.id) {
+            <div [ngClass]="['assignment-card', 'assignment-border-' + a.status, !hasDeadline(a) ? 'no-deadline' : '', isOverdue(a.deadline) && a.status === 'open' ? 'is-overdue' : '']">
+              <!-- ═══ Badges + Title ═══ -->
+              <div class="card-head">
+                <div class="card-head-badges">
+                  <span class="status-badge" [class]="'badge-' + a.status">{{ getStatusText(a.status) }}</span>
+                  @if (!hasDeadline(a)) {
+                    <span class="indicator missing-deadline" title="هذا الواجب لم يُحدد له موعد تسليم بعد">⏰</span>
+                  }
+                  @if (a.isAIGenerated) {
+                    <span class="indicator ai-indicator" title="تم إنشاؤه بواسطة الذكاء الاصطناعي">🤖</span>
+                  }
+                  @if (a.status === 'open' && hasDeadline(a) && isOverdue(a.deadline)) {
+                    <span class="overdue-badge pulse-badge">متأخر</span>
+                  }
+                </div>
+              </div>
+
+              <h3 class="card-title">{{ a.title }}</h3>
+
+              <!-- ═══ Info ═══ -->
+              <div class="card-info">
+                <div class="info-line">
+                  <span class="info-chip">
+                    <span class="dot dot-subject"></span>{{ a.subject }}
+                  </span>
+                  <span class="info-chip">
+                    <span class="material-symbols-outlined chip-icon">groups</span>{{ a.class }}
+                  </span>
+                  <span class="info-chip" [class.info-warn]="!a.deadline || a.deadline === ''">
+                    <span class="material-symbols-outlined chip-icon">calendar_today</span>
+                    {{ a.deadline ? (formatDeadline(a.deadline)) : '—' }}
+                  </span>
+                </div>
+                <div class="info-line">
+                  <span class="info-chip">
+                    <span class="material-symbols-outlined chip-icon">quiz</span>
+                    {{ a.questionsCount }} سؤال
+                  </span>
+                  <span class="info-chip">
+                    <span class="material-symbols-outlined chip-icon">score</span>
+                    {{ a.maxScore }} درجة
+                  </span>
+                  @if (hasDeadline(a)) {
+                    <span class="info-chip" [class.info-warn]="isOverdue(a.deadline)">
+                      <span class="material-symbols-outlined chip-icon">schedule</span>
+                      {{ deadlineRemaining(a.deadline) }}
+                    </span>
+                  }
+                </div>
+              </div>
+
+              <!-- ═══ Submissions ═══ -->
+              <div class="card-submissions">
+                <span class="material-symbols-outlined subs-icon">assignment_turned_in</span>
+                <span><strong>{{ a.submitted }}</strong> من <strong>{{ a.total || '—' }}</strong> طالب سلّموا</span>
+                @if (a.total > 0) {
+                  <span class="submission-rate">{{ submissionRate(a) }}%</span>
+                }
+              </div>
+
+              <!-- ═══ Score ═══ -->
+              @if (a.avgScore != null) {
+                <div class="card-score">
+                  <span class="score-title">متوسط الدرجات</span>
+                  <div class="score-track-wrap">
+                    <div class="score-track">
+                      <div class="score-fill" [style.width.%]="a.avgScore"></div>
+                    </div>
+                  </div>
+                  <span class="score-value">{{ a.avgScore }}%</span>
+                </div>
+              } @else if (a.submitted > 0 && a.status === 'closed') {
+                <div class="card-score card-score-pending">
+                  <span class="material-symbols-outlined text-outline" style="font-size:16px;">hourglass_empty</span>
+                  <span class="font-body-sm text-body-sm text-outline">بانتظار التصحيح</span>
+                </div>
+              }
+
+              <!-- ═══ Attention Banner (AI assignments without deadline) ═══ -->
+              @if (needsAttention(a)) {
+                <div class="attention-banner">
+                  <span class="material-symbols-outlined attention-icon">warning</span>
+                  <span>أضف موعد تسليم لهذا الواجب</span>
+                  <button class="attention-btn" (click)="openEditModal(a)">تعديل</button>
+                </div>
+              }
+
+              <!-- ═══ Footer ═══ -->
+              <div class="card-footer">
+                <div class="footer-actions">
+                  <button class="act act-view" title="عرض تفاصيل الواجب" (click)="openViewModal(a)">
+                    <span class="material-symbols-outlined">visibility</span>
+                    <span>عرض</span>
+                  </button>
+
+                  @if (a.status === 'draft') {
+                    <button class="act act-publish" title="نشر الواجب للطلاب" (click)="publishAssignment(a)">
+                      <span class="material-symbols-outlined">publish</span>
+                      <span>نشر</span>
+                    </button>
+                  }
+
+                  @if (a.submitted > 0) {
+                    <button class="act act-results" title="عرض تسليم الطلاب" (click)="openResultsModal(a.id)">
+                      <span class="material-symbols-outlined">bar_chart</span>
+                      <span>النتائج</span>
+                    </button>
+                  }
+                </div>
+
+                <div class="footer-actions footer-actions-end">
+                  <button class="act act-edit" title="تعديل بيانات الواجب والأسئلة" (click)="openEditModal(a)">
+                    <span class="material-symbols-outlined">edit</span>
+                    <span>تعديل</span>
+                  </button>
+                  <button class="act act-delete" title="حذف الواجب" (click)="requestDeleteAssignment(a)">
+                    <span class="material-symbols-outlined">delete</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- Pagination -->
+      @if (!loading() && totalCount() > 0) {
+        <div class="pagination-bar">
+          <div class="pagination-info">
+            الصفحة {{ page() }} من {{ totalPages() }} — إجمالي {{ totalCount() }} واجب
+          </div>
+          <div class="pagination-controls">
+            <button class="page-btn" (click)="goToPage(page() - 1)" [disabled]="page() <= 1">
+              <span class="material-symbols-outlined">chevron_right</span>
+            </button>
+              @for (p of pageNumbers(); track $index) {
+              @if (p === -1 || p === -2) {
+                <span class="page-ellipsis">...</span>
+              } @else {
+                <button class="page-btn page-num" [class.active]="page() === p" (click)="goToPage(p)">{{ p }}</button>
+              }
+            }
+            <button class="page-btn" (click)="goToPage(page() + 1)" [disabled]="page() >= totalPages()">
+              <span class="material-symbols-outlined">chevron_left</span>
+            </button>
+          </div>
+          <div class="page-size-selector">
+            <select class="page-size-select" [ngModel]="pageSize()" (ngModelChange)="setPageSize($event)">
+              <option [value]="10">10 / صفحة</option>
+              <option [value]="20">20 / صفحة</option>
+              <option [value]="50">50 / صفحة</option>
+              <option [value]="100">100 / صفحة</option>
+            </select>
+          </div>
+        </div>
+      }
     </div>
   </main>
 </div>
 
 <!-- Add/Edit Modal -->
 @if (showAddModal()) {
-  <div class="fixed inset-0 z-[60] flex items-center justify-center glass-overlay p-margin-mobile" (click)="closeModals()">
-    <div class="glass-modal max-w-2xl w-full max-h-[90vh] overflow-y-auto" (click)="$event.stopPropagation()">
+  <div class="modal-overlay" (click)="closeModals()">
+    <div class="glass-modal max-w-xl w-full max-h-[90vh] overflow-y-auto" (click)="$event.stopPropagation()">
       <div class="glass-modal-header flex justify-between items-center">
-        <h2 class="font-headline-md text-headline-md" style="font-weight:700;">{{ editingAssignment() ? 'تعديل واجب' : 'إضافة واجب جديد' }}</h2>
+        <h2 class="font-headline-md text-headline-md" style="font-weight:700;">{{ editingAssignment() ? 'تعديل واجب' : 'واجب جديد' }}</h2>
         <button class="p-2 rounded-full hover:bg-black/5 transition-colors" (click)="closeModals()"><span class="material-symbols-outlined">close</span></button>
       </div>
       <div class="p-stack-lg flex flex-col gap-stack-md">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-stack-md">
           <div class="flex flex-col gap-1">
             <label class="font-label-md text-label-md" style="font-weight:600;">عنوان الواجب</label>
-            <input class="border border-outline-variant rounded-xl px-4 py-3 font-body-md text-body-md bg-white/60 focus:outline-none focus:ring-2 focus:ring-primary backdrop-blur-sm" placeholder="مثال: تمارين المعادلات" [value]="newTitle()" (input)="newTitle.set($any($event.target).value)" />
+            <input class="glass-input" placeholder="مثال: تمارين على المعادلات" [value]="newTitle()" (input)="newTitle.set($any($event.target).value)" />
           </div>
           <div class="flex flex-col gap-1">
             <label class="font-label-md text-label-md" style="font-weight:600;">المادة</label>
-            <select class="border border-outline-variant rounded-xl px-4 py-3 font-body-md text-body-md bg-white/60 focus:outline-none focus:ring-2 focus:ring-primary backdrop-blur-sm" [ngModel]="newSubjectId()" (ngModelChange)="newSubjectId.set($event)">
-              <option [ngValue]="null">اختر المادة...</option>
-              @for (s of subjects(); track s.id) { <option [ngValue]="s.id">{{ s.name }}</option> }
-            </select>
+            <select class="glass-select" [ngModel]="newSubjectId()" (ngModelChange)="newSubjectId.set($event)" [disabled]="editingAssignment() !== null"><option [ngValue]="null">اختر...</option>@for (s of subjects(); track s.id) {<option [ngValue]="s.id">{{ s.name }}</option>}</select>
           </div>
           <div class="flex flex-col gap-1">
             <label class="font-label-md text-label-md" style="font-weight:600;">الفصل</label>
-            <select class="border border-outline-variant rounded-xl px-4 py-3 font-body-md text-body-md bg-white/60 focus:outline-none focus:ring-2 focus:ring-primary backdrop-blur-sm" [ngModel]="newClassId()" (ngModelChange)="newClassId.set($event)">
-              <option [ngValue]="null">اختر الفصل...</option>
-              @for (c of classes(); track c.id) { <option [ngValue]="c.id">{{ c.name }}</option> }
-            </select>
+            <select class="glass-select" [ngModel]="newClassId()" (ngModelChange)="newClassId.set($event)" [disabled]="editingAssignment() !== null"><option [ngValue]="null">اختر...</option>@for (c of classes(); track c.id) {<option [ngValue]="c.id">{{ c.name }}</option>}</select>
           </div>
           <div class="flex flex-col gap-1">
-            <label class="font-label-md text-label-md" style="font-weight:600;">تاريخ التسليم</label>
-            <input class="border border-outline-variant rounded-xl px-4 py-3 font-body-md text-body-md bg-white/60 focus:outline-none focus:ring-2 focus:ring-primary backdrop-blur-sm" type="datetime-local" [value]="newDeadline()" (input)="newDeadline.set($any($event.target).value)" />
+            <label class="font-label-md text-label-md" style="font-weight:600;">موعد التسليم (اختياري)</label>
+            <input class="glass-input" type="datetime-local" [value]="newDeadline()" (input)="newDeadline.set($any($event.target).value)" />
           </div>
         </div>
+        @if (formError()) {
+          <div class="rounded-xl border border-error/20 bg-error/10 px-4 py-3 text-error font-label-sm text-label-sm">
+            {{ formError() }}
+          </div>
+        }
 
-        <div class="border-t border-outline-variant/50 pt-stack-md mt-2">
-          <div class="flex justify-between items-center mb-4">
-            <h3 class="font-headline-md text-headline-md" style="font-weight:700;">الأسئلة</h3>
-            <button class="bg-secondary/10 text-secondary px-4 py-2 rounded-xl font-label-md text-label-md hover:bg-secondary/20 transition-colors flex items-center gap-1" (click)="addQuestion()">
-              <span class="material-symbols-outlined">add</span>
-              إضافة سؤال
+        <!-- Questions Section -->
+        <div class="flex flex-col gap-3">
+          <div class="flex items-center justify-between">
+            <h3 class="font-headline-sm text-headline-sm" style="font-weight:700;">الأسئلة ({{ draftQuestions().length }})</h3>
+            <button type="button" class="gradient-btn text-sm px-3 py-1.5" (click)="addQuestion()">
+              <span class="material-symbols-outlined text-[16px]">add</span> سؤال جديد
             </button>
           </div>
-          <div class="flex flex-col gap-stack-md">
-            @for (q of questions(); track q.id) {
-              <div class="bg-white/40 backdrop-blur-sm rounded-xl border border-white/40 p-stack-md">
-                <div class="flex justify-between items-start mb-3">
-                  <div class="flex items-center gap-2">
-                    <span class="bg-gradient-to-l from-primary to-blue-600 text-on-primary w-7 h-7 rounded-lg flex items-center justify-center font-bold text-label-sm">{{ $index + 1 }}</span>
-                    <select class="border border-outline-variant rounded-lg px-3 py-1.5 text-label-sm font-label-sm bg-white/60" [value]="q.type" (change)="updateQuestionType(q.id, $any($event.target).value)">
-                      <option value="mcq">اختيار من متعدد</option>
-                      <option value="true-false">صح وخطأ</option>
-                      <option value="essay">مقالي</option>
-                    </select>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <div class="flex items-center gap-1 bg-white/60 border border-outline-variant rounded-lg px-2 py-1">
-                      <span class="text-label-sm font-label-sm text-outline">الدرجة:</span>
-                      <input type="number" class="w-16 bg-transparent border-none text-center font-body-sm text-body-sm focus:outline-none focus:ring-0" min="1" [value]="q.points ?? (q.type === 'essay' ? 10 : 5)" (input)="updateQuestionPoints(q.id, +$any($event.target).value)">
-                    </div>
-                    <button class="p-1 rounded-lg hover:bg-error/10 text-outline hover:text-error transition-colors" (click)="removeQuestion(q.id)"><span class="material-symbols-outlined">close</span></button>
-                  </div>
-                </div>
-                <textarea class="w-full border border-outline-variant rounded-xl px-4 py-3 font-body-md text-body-md bg-white/60 focus:outline-none focus:ring-2 focus:ring-primary mb-3 resize-none backdrop-blur-sm" rows="2" placeholder="نص السؤال..." [value]="q.text" (input)="updateQuestionText(q.id, $any($event.target).value)"></textarea>
-                @if (q.type === 'mcq' && q.options) {
-                  <div class="grid gap-2 mr-2">
-                    @for (opt of q.options; track $index) {
-                      <label class="flex items-center gap-3 p-2 rounded-lg border border-white/40 cursor-pointer hover:bg-white/40 transition-colors bg-white/20">
-                        <input type="radio" [name]="'q' + q.id" [value]="$index" [checked]="q.correctAnswer === str($index)" (change)="updateQuestionAnswer(q.id, str($index))" class="text-primary" />
-                        <input class="flex-1 bg-transparent border-none focus:outline-none font-body-md text-body-md" [placeholder]="'الخيار ' + ($index + 1)" [value]="opt" (input)="updateQuestionOption(q.id, $index, $any($event.target).value)" />
-                      </label>
-                    }
-                  </div>
-                }
-                @if (q.type === 'true-false') {
-                  <div class="flex gap-3 mr-2">
-                    @for (opt of ['صواب', 'خطأ']; track opt) {
-                      <label class="flex items-center gap-2 p-2 rounded-lg border border-white/40 cursor-pointer hover:bg-white/40 transition-colors bg-white/20">
-                        <input type="radio" [name]="'tf' + q.id" [value]="opt" [checked]="q.correctAnswer === opt" (change)="updateQuestionAnswer(q.id, opt)" class="text-primary" />
-                        <span class="font-body-md text-body-md">{{ opt }}</span>
-                      </label>
-                    }
-                  </div>
-                }
-                @if (q.type === 'essay') {
-                  <div class="mr-2 p-3 bg-white/40 backdrop-blur-sm rounded-xl">
-                    <span class="font-label-sm text-label-sm text-outline">إجابة مقالية — سيتم التصحيح يدوياً أو بواسطة AI</span>
-                  </div>
-                }
+          @for (q of draftQuestions(); track q._localId) {
+            <div class="border border-white/40 bg-white/30 backdrop-blur-sm rounded-2xl p-4 flex flex-col gap-3">
+              <div class="flex items-center gap-2">
+                <span class="bg-gradient-to-l from-primary to-blue-600 text-on-primary w-6 h-6 rounded-md flex items-center justify-center font-bold text-label-sm">{{ $index + 1 }}</span>
+                <select class="glass-select flex-1" [ngModel]="q.type" (ngModelChange)="updateQuestionType(q._localId, $event)">
+                  <option value="mcq">اختيار من متعدد</option>
+                  <option value="true-false">صح وخطأ</option>
+                  <option value="essay">مقالي</option>
+                </select>
+                <input type="number" class="glass-input w-20 text-center" min="1" max="100"
+                  placeholder="درجة" [ngModel]="q.points" (ngModelChange)="updateQuestionPoints(q._localId, +$event)" />
+                <button type="button" class="p-1.5 rounded-lg bg-error/10 text-error hover:bg-error/20 transition-colors" (click)="removeQuestion(q._localId)">
+                  <span class="material-symbols-outlined text-[18px]">delete</span>
+                </button>
               </div>
-            }
-          </div>
+              <textarea class="glass-input resize-none" rows="2" placeholder="نص السؤال..."
+                [value]="q.text" (input)="updateQuestionText(q._localId, $any($event.target).value)"></textarea>
+              @if (q.type === 'mcq') {
+                <div class="grid grid-cols-1 gap-2">
+                  @for (opt of q.options; track $index) {
+                    <div class="flex items-center gap-2">
+                      <input type="radio" [name]="'ans-' + q._localId" class="accent-primary"
+                        [checked]="q.correctAnswer === opt"
+                        (change)="updateQuestionAnswer(q._localId, opt)" />
+                      <input class="glass-input flex-1 text-sm py-1.5" [placeholder]="'خيار ' + ($index + 1)"
+                        [value]="opt" (input)="updateQuestionOption(q._localId, $index, $any($event.target).value)" />
+                    </div>
+                  }
+                </div>
+              }
+              @if (q.type === 'true-false') {
+                <div class="flex gap-3">
+                  @for (opt of ['صواب', 'خطأ']; track opt) {
+                    <label class="flex items-center gap-2 p-3 rounded-xl border cursor-pointer flex-1 justify-center"
+                      [class.border-primary]="q.correctAnswer === opt"
+                      [ngClass]="{'bg-primary/10': q.correctAnswer === opt, 'border-white/40': q.correctAnswer !== opt}">
+                      <input type="radio" [name]="'tf-' + q._localId" class="accent-primary"
+                        [checked]="q.correctAnswer === opt"
+                        (change)="updateQuestionAnswer(q._localId, opt)" />
+                      <span class="font-label-md text-label-md">{{ opt }}</span>
+                    </label>
+                  }
+                </div>
+              }
+              @if (q.type === 'essay') {
+                <div class="flex flex-col gap-1">
+                  <label class="font-label-sm text-label-sm text-outline">الإجابة النموذجية (اختياري — للتصحيح الآلي)</label>
+                  <textarea class="glass-input resize-none" rows="2" placeholder="اكتب الإجابة النموذجية هنا..."
+                    [value]="q.correctAnswer" (input)="updateQuestionAnswer(q._localId, $any($event.target).value)"></textarea>
+                </div>
+              }
+            </div>
+          }
         </div>
       </div>
       <div class="glass-modal-footer flex justify-end gap-3">
         <button class="secondary-btn-glass" (click)="closeModals()">إلغاء</button>
-        <button class="gradient-btn" (click)="saveAssignment()">حفظ الواجب</button>
+        <button class="gradient-btn" (click)="saveAssignment()">حفظ</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Publish Confirm Modal -->
+@if (showPublishConfirm()) {
+  @let a = publishingAssignment();
+  <div class="modal-overlay" (click)="closeModals()">
+    <div class="glass-modal max-w-md w-full" (click)="$event.stopPropagation()">
+      <div class="glass-modal-header flex items-center gap-3">
+        <div class="gradient-icon-box gradient-primary"><span class="material-symbols-outlined">publish</span></div>
+        <div>
+          <h2 class="font-headline-md text-headline-md" style="font-weight:700;">تأكيد النشر</h2>
+          <p class="font-body-md text-body-md text-outline">سيظهر الواجب للطلاب بعد النشر.</p>
+        </div>
+      </div>
+      <div class="p-stack-lg">
+        <p class="font-body-lg text-body-lg">{{ a?.title }}</p>
+        <div class="mt-3 grid grid-cols-2 gap-3">
+          <div class="bg-white/40 rounded-xl px-3 py-2 text-label-sm text-outline">{{ a?.subject }}</div>
+          <div class="bg-white/40 rounded-xl px-3 py-2 text-label-sm text-outline">{{ a?.class }}</div>
+          <div class="bg-white/40 rounded-xl px-3 py-2 text-label-sm text-outline">{{ a?.questionsCount }} سؤال</div>
+          <div class="bg-white/40 rounded-xl px-3 py-2 text-label-sm text-outline">{{ a?.maxScore }} درجة</div>
+        </div>
+      </div>
+      <div class="glass-modal-footer flex justify-end gap-3">
+        <button class="secondary-btn-glass" (click)="closeModals()">إلغاء</button>
+        <button class="gradient-btn" (click)="confirmPublish()">نشر للطلاب</button>
       </div>
     </div>
   </div>
 }
 
 <!-- View Modal -->
-@if (showViewModal(); as viewing) {
-  @let a = viewingAssignment();
-  @if (a) {
-    <div class="fixed inset-0 z-[60] flex items-center justify-center glass-overlay p-margin-mobile" (click)="closeModals()">
+@if (showViewModal()) {
+  @let e = viewingAssignment();
+  @if (e) {
+    <div class="modal-overlay" (click)="closeModals()">
       <div class="glass-modal max-w-3xl w-full max-h-[90vh] overflow-y-auto" (click)="$event.stopPropagation()">
         <div class="glass-modal-header flex justify-between items-center">
-          <h2 class="font-headline-md text-headline-md" style="font-weight:700;">{{ a.title }}</h2>
+          <h2 class="font-headline-md text-headline-md" style="font-weight:700;">{{ e.title }}</h2>
           <button class="p-2 rounded-full hover:bg-black/5 transition-colors" (click)="closeModals()"><span class="material-symbols-outlined">close</span></button>
         </div>
         <div class="p-stack-lg">
-          <div class="flex flex-wrap gap-4 mb-stack-lg">
-            <div class="flex items-center gap-2 bg-white/40 backdrop-blur-sm rounded-xl px-4 py-2"><span class="material-symbols-outlined text-outline">book</span><span class="font-body-md text-body-md">{{ a.subject }}</span></div>
-            <div class="flex items-center gap-2 bg-white/40 backdrop-blur-sm rounded-xl px-4 py-2"><span class="material-symbols-outlined text-outline">groups</span><span class="font-body-md text-body-md">{{ a.class }}</span></div>
-            <div class="flex items-center gap-2 bg-white/40 backdrop-blur-sm rounded-xl px-4 py-2"><span class="material-symbols-outlined text-outline">calendar_today</span><span class="font-body-md text-body-md">{{ a.deadline }}</span></div>
-            <div class="flex items-center gap-2 bg-white/40 backdrop-blur-sm rounded-xl px-4 py-2"><span class="material-symbols-outlined text-outline">assignment_turned_in</span><span class="font-body-md text-body-md">{{ a.submitted }}/{{ a.total }}</span></div>
+          <div class="flex flex-wrap gap-3 mb-stack-lg">
+            <div class="meta-chip"><span class="material-symbols-outlined text-outline">book</span><span>{{ e.subject }}</span></div>
+            <div class="meta-chip"><span class="material-symbols-outlined text-outline">groups</span><span>{{ e.class }}</span></div>
+            <div class="meta-chip"><span class="material-symbols-outlined text-outline">calendar_today</span><span>{{ e.deadline ? formatDeadline(e.deadline) : '—' }}</span></div>
+            <div class="meta-chip"><span class="material-symbols-outlined text-outline">score</span><span>{{ e.maxScore }} درجة</span></div>
           </div>
           <h3 class="font-headline-md text-headline-md mb-4" style="font-weight:700;">الأسئلة</h3>
           <div class="flex flex-col gap-stack-md">
-            @for (q of a.questions; track q.id) {
+            @for (q of e.questions; track q.id) {
               <div class="border border-white/40 bg-white/30 backdrop-blur-sm rounded-2xl p-stack-md">
                 <div class="flex items-center gap-3 mb-3">
                   <span class="bg-gradient-to-l from-primary to-blue-600 text-on-primary w-7 h-7 rounded-lg flex items-center justify-center font-bold text-label-sm">{{ $index + 1 }}</span>
-                  <span class="px-3 py-1 bg-secondary/10 text-secondary rounded-full text-label-sm font-label-sm">{{ getTypeLabel(q.type) }}</span>
+                  @if (q.type === 'mcq') { <span class="qtype-badge qtype-mcq">اختيار من متعدد</span> }
+                  @if (q.type === 'true-false') { <span class="qtype-badge qtype-tf">صح وخطأ</span> }
+                  @if (q.type === 'essay') { <span class="qtype-badge qtype-essay">مقالي</span> }
                 </div>
                 <p class="font-body-lg text-body-lg mb-3">{{ q.text }}</p>
                 @if (q.type === 'mcq' && q.options) {
@@ -234,13 +470,11 @@
                     @for (opt of q.options; track $index) {
                       <div class="flex items-center gap-3 p-3 rounded-xl border bg-white/20"
                         [class.border-green-500]="opt === q.correctAnswer"
-                        [class.border-white/40]="opt !== q.correctAnswer"
-                        [class.bg-green-50/50]="opt === q.correctAnswer">
+                        [class.bg-green-50/50]="opt === q.correctAnswer"
+                        [class.border-white/40]="opt !== q.correctAnswer">
                         <span class="w-2 h-2 rounded-full" [class.bg-green-500]="opt === q.correctAnswer" [class.bg-outline]="opt !== q.correctAnswer"></span>
-                        <span class="font-body-md text-body-md">{{ opt }}</span>
-                        @if (opt === q.correctAnswer) {
-                          <span class="material-symbols-outlined text-green-600 text-[18px] mr-auto" style="font-variation-settings:'FILL'1;">check_circle</span>
-                        }
+                        <span>{{ opt }}</span>
+                        @if (opt === q.correctAnswer) { <span class="material-symbols-outlined text-green-600 text-[18px] mr-auto" style="font-variation-settings:'FILL'1;">check_circle</span> }
                       </div>
                     }
                   </div>
@@ -250,8 +484,8 @@
                     @for (opt of ['صواب', 'خطأ']; track opt) {
                       <div class="flex items-center gap-2 p-3 rounded-xl border bg-white/20"
                         [class.border-green-500]="opt === q.correctAnswer"
-                        [class.border-white/40]="opt !== q.correctAnswer"
-                        [class.bg-green-50/50]="opt === q.correctAnswer">
+                        [class.bg-green-50/50]="opt === q.correctAnswer"
+                        [class.border-white/40]="opt !== q.correctAnswer">
                         <span class="w-2 h-2 rounded-full" [class.bg-green-500]="opt === q.correctAnswer" [class.bg-outline]="opt !== q.correctAnswer"></span>
                         <span>{{ opt }}</span>
                       </div>
@@ -260,7 +494,12 @@
                 }
                 @if (q.type === 'essay') {
                   <div class="p-4 bg-white/40 backdrop-blur-sm rounded-xl mr-2">
-                    <span class="text-outline font-body-md">إجابة مقالية — نموذج الإجابة: {{ q.correctAnswer || 'يتم التصحيح يدوياً' }}</span>
+                    @if (q.correctAnswer && q.correctAnswer !== '') {
+                      <div><span class="font-label-sm text-label-sm text-outline">الإجابة النموذجية:</span>
+                      <p class="font-body-md mt-1">{{ q.correctAnswer }}</p></div>
+                    } @else {
+                      <span class="text-outline font-body-md">إجابة مقالية — يتم التصحيح يدوياً أو بواسطة AI</span>
+                    }
                   </div>
                 }
               </div>
@@ -273,4 +512,173 @@
       </div>
     </div>
   }
+}
+
+<!-- Delete Confirm Modal -->
+@if (showDeleteConfirm()) {
+  @let d = deletingAssignment();
+  <div class="modal-overlay" (click)="closeModals()">
+    <div class="glass-modal max-w-md w-full" (click)="$event.stopPropagation()">
+      <div class="glass-modal-header flex items-center gap-3">
+        <div class="gradient-icon-box" style="background:linear-gradient(135deg,#ef4444,#dc2626);"><span class="material-symbols-outlined">delete_forever</span></div>
+        <div>
+          <h2 class="font-headline-md text-headline-md" style="font-weight:700;">تأكيد الحذف</h2>
+          <p class="font-body-md text-body-md text-outline">هذا الإجراء لا يمكن التراجع عنه</p>
+        </div>
+      </div>
+      <div class="p-stack-lg">
+        <p class="font-body-lg text-body-lg mb-2">هل أنت متأكد من حذف هذا الواجب؟</p>
+        <div class="bg-error/10 border border-error/20 rounded-xl px-4 py-3">
+          <p class="font-label-md text-label-md text-error" style="font-weight:700;">{{ d?.title }}</p>
+          <p class="font-body-sm text-body-sm text-outline mt-1">{{ d?.subject }} • {{ d?.class }}</p>
+        </div>
+      </div>
+      <div class="glass-modal-footer flex justify-end gap-3">
+        <button class="secondary-btn-glass" (click)="closeModals()">إلغاء</button>
+        <button class="px-5 py-2.5 rounded-xl bg-error text-on-error font-label-md text-label-md hover:bg-error/90 transition-colors" (click)="confirmDeleteAssignment()">حذف</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Results Modal -->
+@if (showResultsModal()) {
+  <div class="modal-overlay" (click)="closeModals()">
+    <div class="glass-modal max-w-3xl w-full max-h-[90vh] overflow-y-auto" (click)="$event.stopPropagation()">
+      <div class="glass-modal-header flex justify-between items-center">
+        <div class="flex items-center gap-3">
+          <div class="gradient-icon-box gradient-tertiary"><span class="material-symbols-outlined">bar_chart</span></div>
+          <h2 class="font-headline-md text-headline-md" style="font-weight:700;">تسليمات الطلاب</h2>
+        </div>
+        <button class="p-2 rounded-full hover:bg-black/5 transition-colors" (click)="closeModals()"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <div class="p-stack-lg">
+        @if (resultsSubmissions() === null) {
+          <div class="flex items-center justify-center py-12">
+            <div class="flex flex-col items-center gap-3 text-outline">
+              <span class="material-symbols-outlined text-[48px] animate-spin" style="animation-duration:1.5s;">progress_activity</span>
+              <p class="font-body-md text-body-md">جاري تحميل النتائج...</p>
+            </div>
+          </div>
+        } @else if (resultsSubmissions()!.length === 0) {
+          <div class="flex flex-col items-center justify-center py-12 text-outline gap-3">
+            <span class="material-symbols-outlined text-[48px]">person_off</span>
+            <p class="font-body-md text-body-md">لا يوجد طلاب سلّموا هذا الواجب بعد</p>
+          </div>
+        } @else {
+          <div class="flex flex-col gap-3">
+            @for (sub of resultsSubmissions()!; track sub.submissionId) {
+              <div class="attempt-row">
+                <div class="attempt-avatar">{{ sub.studentName.charAt(0) }}</div>
+                <div class="attempt-info">
+                  <p class="attempt-name">{{ sub.studentName }}</p>
+                  <p class="attempt-date">{{ sub.submittedAt ? ('سلّم ' + formatSubmittedAt(sub.submittedAt)) : 'لم يسلّم' }}</p>
+                </div>
+                @if (sub.isGraded) {
+                  <div class="attempt-score">
+                    <p class="attempt-score-value">{{ sub.score }}/{{ sub.maxScore }}</p>
+                    <p class="attempt-score-label">تم التصحيح</p>
+                  </div>
+                } @else {
+                  <span class="attempt-badge attempt-badge-warn">ينتظر التصحيح</span>
+                }
+                @if (!sub.isGraded) {
+                  <button class="action-btn action-tertiary" (click)="openGradingModal(resultsAssignment()!, sub.submissionId)">
+                    <span class="material-symbols-outlined text-[16px]">grading</span>تصحيح
+                  </button>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+      <div class="glass-modal-footer flex justify-end">
+        <button class="gradient-btn" (click)="closeModals()">إغلاق</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Grading Modal -->
+@if (showGradingModal()) {
+  @let gs = gradingSubmission();
+  <div class="modal-overlay" (click)="closeModals()">
+    <div class="glass-modal max-w-3xl w-full max-h-[90vh] overflow-y-auto" (click)="$event.stopPropagation()">
+      <div class="glass-modal-header flex justify-between items-center">
+        <div class="flex items-center gap-3">
+          <div class="gradient-icon-box gradient-primary"><span class="material-symbols-outlined">grading</span></div>
+          <div>
+            <h2 class="font-headline-md text-headline-md" style="font-weight:700;">تصحيح إجابات {{ gs?.studentName }}</h2>
+            @if (gs) {
+              <p class="font-body-md text-body-md text-outline">الدرجة الحالية: {{ gs.score }} / {{ gs.maxScore }}</p>
+            }
+          </div>
+        </div>
+        <button class="p-2 rounded-full hover:bg-black/5 transition-colors" (click)="closeModals()"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <div class="p-stack-lg flex flex-col gap-stack-md">
+        @if (!gs) {
+          <div class="flex items-center justify-center py-12">
+            <div class="flex flex-col items-center gap-3 text-outline">
+              <span class="material-symbols-outlined text-[48px] animate-spin" style="animation-duration:1.5s;">progress_activity</span>
+              <p>جاري تحميل بيانات التسليم...</p>
+            </div>
+          </div>
+        } @else {
+          @for (ans of gs.answers; track ans.questionId) {
+            <div class="border border-white/40 bg-white/30 backdrop-blur-sm rounded-2xl p-4 flex flex-col gap-3">
+              <div class="flex items-center gap-3">
+                <span class="bg-gradient-to-l from-primary to-blue-600 text-on-primary w-7 h-7 rounded-lg flex items-center justify-center font-bold text-label-sm">{{ $index + 1 }}</span>
+                @if (ans.type === 'mcq') { <span class="qtype-badge qtype-mcq">اختيار من متعدد</span> }
+                @if (ans.type === 'true-false') { <span class="qtype-badge qtype-tf">صح وخطأ</span> }
+                @if (ans.type === 'essay') { <span class="qtype-badge qtype-essay">مقالي</span> }
+                <span class="mr-auto text-outline font-label-sm">حد أقصى: {{ ans.maxPoints }}</span>
+              </div>
+              <p class="font-body-lg text-body-lg">{{ ans.questionText }}</p>
+              <div class="bg-white/40 backdrop-blur-sm rounded-xl px-4 py-3">
+                <p class="font-label-sm text-outline mb-1">إجابة الطالب:</p>
+                <p class="font-body-md text-body-md">{{ ans.studentAnswer || 'لم يجب' }}</p>
+              </div>
+              @if (ans.type !== 'essay') {
+                <div class="flex items-center gap-2">
+                  @if (ans.isCorrect === true) {
+                    <span class="material-symbols-outlined text-green-600" style="font-variation-settings:'FILL'1;">check_circle</span>
+                    <span class="text-green-700 font-label-md">صحيح — {{ ans.pointsEarned }} نقطة</span>
+                  } @else {
+                    <span class="material-symbols-outlined text-error" style="font-variation-settings:'FILL'1;">cancel</span>
+                    <span class="text-error font-label-md">خطأ — 0 نقطة</span>
+                  }
+                </div>
+                @if (ans.correctAnswer) {
+                  <div class="bg-primary/5 border border-primary/10 backdrop-blur-sm rounded-xl px-4 py-3">
+                    <p class="font-label-sm text-outline mb-1">الإجابة النموذجية:</p>
+                    <p class="font-body-md text-body-md">{{ ans.correctAnswer }}</p>
+                  </div>
+                }
+              } @else {
+                <div class="flex flex-col gap-2">
+                  @if (ans.correctAnswer) {
+                    <div class="bg-primary/5 border border-primary/10 backdrop-blur-sm rounded-xl px-4 py-3">
+                      <p class="font-label-sm text-outline mb-1">الإجابة النموذجية:</p>
+                      <p class="font-body-md text-body-md">{{ ans.correctAnswer }}</p>
+                    </div>
+                  }
+                  <label class="font-label-md text-label-md" style="font-weight:600;">الدرجة (0 – {{ ans.maxPoints }})</label>
+                  <input type="number" class="glass-input w-32" [min]="0" [max]="ans.maxPoints"
+                    [ngModel]="ans.pointsEarned" (ngModelChange)="setEssayGrade(ans.questionId, +$event)" />
+                </div>
+              }
+            </div>
+          }
+        }
+      </div>
+      <div class="glass-modal-footer flex justify-between items-center">
+        <p class="font-body-md text-outline">الدرجة الإجمالية: <strong>{{ gs?.score ?? 0 }} / {{ gs?.maxScore }}</strong></p>
+        <div class="flex gap-3">
+          <button class="secondary-btn-glass" (click)="closeModals()">إلغاء</button>
+          <button class="gradient-btn" (click)="saveGrading()">حفظ التصحيح</button>
+        </div>
+      </div>
+    </div>
+  </div>
 }
