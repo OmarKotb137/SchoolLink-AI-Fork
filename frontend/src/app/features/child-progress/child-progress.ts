@@ -35,8 +35,10 @@ export class ChildProgress implements OnInit {
   sidebarOpen = signal(false);
   activeTab = signal<'assignments' | 'exams'>('assignments');
 
-  student = signal<{ name: string; class: string; avgScore: number; attendance: number } | null>(null);
+  children = signal<ChildProgressItem[]>([]);
+  selectedChildIndex = signal<number>(0);
 
+  student = signal<{ name: string; class: string; avgScore: number; attendance: number } | null>(null);
   assignments = signal<AssignmentView[]>([]);
   exams = signal<ExamView[]>([]);
 
@@ -62,33 +64,46 @@ export class ChildProgress implements OnInit {
       next: (items: ChildProgressItem[]) => {
         this.loading.set(false);
         if (items.length === 0) return;
-        const first = items[0];
-        this.student.set({
-          name: first.studentName,
-          class: `${first.gradeLevelName} - ${first.className}`,
-          avgScore: first.avgScore,
-          attendance: first.attendancePercentage,
-        });
-        this.assignments.set(first.assignments.map(a => ({
-          id: a.id,
-          subject: a.subject,
-          title: a.title,
-          deadline: a.deadline ?? '',
-          status: a.status as AssignmentView['status'],
-          score: a.score,
-          maxScore: a.maxScore,
-        })));
-        this.exams.set(first.exams.map(e => ({
-          id: e.id,
-          subject: e.subject,
-          date: e.date ?? '',
-          status: e.status as ExamView['status'],
-          score: e.score,
-          maxScore: e.maxScore,
-        })));
+        this.children.set(items);
+        this.selectedChildIndex.set(0);
+        this.displayChild(0);
       },
       error: () => this.loading.set(false),
     });
+  }
+
+  private displayChild(index: number) {
+    const child = this.children()[index];
+    if (!child) return;
+    this.student.set({
+      name: child.studentName,
+      class: `${child.gradeLevelName} - ${child.className}`,
+      avgScore: child.avgScore,
+      attendance: child.attendancePercentage,
+    });
+    this.assignments.set(child.assignments.map(a => ({
+      id: a.id,
+      subject: a.subject,
+      title: a.title,
+      deadline: a.deadline ?? '',
+      status: a.status as AssignmentView['status'],
+      score: a.score,
+      maxScore: a.maxScore,
+    })));
+    this.exams.set(child.exams.map(e => ({
+      id: e.id,
+      subject: e.subject,
+      date: e.date ?? '',
+      status: e.status as ExamView['status'],
+      score: e.score,
+      maxScore: e.maxScore,
+    })));
+  }
+
+  onChildChange(event: Event) {
+    const idx = Number((event.target as HTMLSelectElement).value);
+    this.selectedChildIndex.set(idx);
+    this.displayChild(idx);
   }
 
   onTermChange(event: Event) {

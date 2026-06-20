@@ -1,142 +1,428 @@
-﻿    <app-sidebar [(isOpen)]="sidebarOpen" />
-    <div class="main-content">
-      <main class="flex-1">
-        <div class="pt-20 pb-10 px-8 max-w-full">
-          <div class="flex justify-between items-end mb-5">
-            <div>
-              <nav class="flex text-label-sm text-outline mb-2 gap-2"><span>التقارير</span><span>/</span><span class="text-primary">التقرير الدراسي</span></nav>
-              <h2 class="text-headline-lg font-headline-lg text-on-surface">التقرير الدراسي - سجل الرصد</h2>
-              <p class="text-body-md text-on-surface-variant mt-1">بيانات مبنية على درجات سجل الرصد للمعلم</p>
-            </div>
-            <button class="flex items-center gap-2 px-6 py-2.5 bg-surface-container-high border border-outline-variant rounded-lg text-label-md font-bold hover:bg-surface-variant transition-colors">
-              <span class="material-symbols-outlined">download</span> تحميل PDF
+<app-sidebar [(isOpen)]="sidebarOpen" />
+<div class="main-content">
+  <main class="flex-1">
+    <div class="page-wrapper">
+
+      <!-- Header -->
+      <div class="page-header">
+        <div>
+          <nav class="breadcrumb">
+            <span>التقارير</span><span>/</span>
+            <span class="breadcrumb-active">التقرير الدراسي</span>
+          </nav>
+          <h2 class="page-title">التقرير الدراسي – سجل الرصد</h2>
+          <p class="page-subtitle">بيانات مبنية على درجات سجل الرصد الحقيقية للفصل المختار</p>
+        </div>
+        <button class="btn-export">
+          <span class="material-symbols-outlined">download</span> تحميل PDF
+        </button>
+      </div>
+
+      <!-- Filters -->
+      <div class="filters-bar">
+        <div class="filter-group">
+          <label class="filter-label">الفصل الدراسي</label>
+          <div class="mode-toggle">
+            <button class="toggle-btn" [class.active]="!gradeLevelMode" (click)="gradeLevelMode = false; onClassChange()">
+              <span class="material-symbols-outlined">group</span> فصل واحد
+            </button>
+            <button class="toggle-btn" [class.active]="gradeLevelMode" (click)="gradeLevelMode = true; onClassChange()">
+              <span class="material-symbols-outlined">groups</span> المرحلة
             </button>
           </div>
-          <div class="flex gap-4 mb-6 flex-wrap">
-            <select class="bg-white border border-outline-variant rounded-lg px-4 py-2.5 text-label-md">
-              <option>الصف الأول الإعدادي</option>
-              <option>الصف الثاني الإعدادي</option>
-              <option>الصف الثالث الإعدادي</option>
+          @if (!gradeLevelMode) {
+            <select class="filter-select" [(ngModel)]="selectedClassId" (ngModelChange)="onClassChange()">
+              <option [value]="null" disabled>اختر الفصل</option>
+              @for (cls of classes; track cls.id) {
+                <option [value]="cls.id">
+                  {{ cls.gradeLevelName ? cls.gradeLevelName + ' - ' + cls.name : cls.name }}
+                </option>
+              }
             </select>
-            <select class="bg-white border border-outline-variant rounded-lg px-4 py-2.5 text-label-md">
-              <option>شهر فبراير</option>
-              <option>شهر مارس</option>
-              <option>شهر أبريل</option>
+          }
+          @if (gradeLevelMode) {
+            <select class="filter-select" [(ngModel)]="selectedGradeLevelId" (ngModelChange)="onGradeLevelChange()">
+              @for (gl of gradeLevels; track gl.id) {
+                <option [value]="gl.id">{{ gl.name }}</option>
+              }
             </select>
-            <button class="bg-primary text-on-primary px-6 py-2.5 rounded-lg text-label-md font-bold hover:opacity-90 transition-opacity">عرض التقرير</button>
+          }
+        </div>
+        <div class="filter-group">
+          <label class="filter-label">الترم</label>
+          <select class="filter-select" [(ngModel)]="selectedTerm" (ngModelChange)="onTermChange()">
+            <option [value]="1">الترم الأول</option>
+            <option [value]="2">الترم الثاني</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label class="filter-label">المادة</label>
+          <select class="filter-select" [(ngModel)]="selectedSubjectId" (ngModelChange)="onSubjectChange()">
+            @for (subj of subjects; track subj.id) {
+              <option [value]="subj.id">{{ subj.name }}</option>
+            }
+          </select>
+        </div>
+        <button class="btn-view" (click)="loadReport()">
+          <span class="material-symbols-outlined">refresh</span> تحديث التقرير
+        </button>
+      </div>
+
+      <!-- Loading State -->
+      @if (loading()) {
+        <div class="loading-state">
+          <div class="spinner"></div>
+          <p>جاري تحميل البيانات...</p>
+        </div>
+      }
+
+      @if (!loading()) {
+
+        <!-- No Data -->
+        @if (studentRows.length === 0) {
+          <div class="empty-state">
+            <span class="material-symbols-outlined">folder_open</span>
+            <p>لا توجد درجات مسجلة لهذا الفصل في {{ termLabel }}</p>
+            <span class="empty-hint">تأكد من احتساب الدرجات النهائية أولاً من شاشة سجل الرصد</span>
           </div>
-          <div class="grid grid-cols-12 gap-4 mb-4">
-            <div class="col-span-12 lg:col-span-3 bg-white rounded-xl border border-outline-variant p-4 shadow-sm">
-              <p class="text-label-sm text-outline">المعدل العام</p>
-              <p class="text-display-lg font-display-lg text-primary mt-1">76%</p>
-              <div class="w-full bg-surface-container-low h-2 rounded-full mt-2"><div class="bg-primary h-2 rounded-full" style="width:76%"></div></div>
+        }
+
+        @if (studentRows.length > 0) {
+
+          <!-- KPI Cards -->
+          <div class="kpi-grid">
+            <div class="kpi-card kpi-primary">
+              <span class="material-symbols-outlined kpi-icon">bar_chart</span>
+              <div>
+                <p class="kpi-label">المعدل العام</p>
+                <p class="kpi-value">{{ avgPercent }}%</p>
+              </div>
+              <div class="kpi-bar-wrap">
+                <div class="kpi-bar" [style.width.%]="avgPercent"></div>
+              </div>
             </div>
-            <div class="col-span-12 lg:col-span-3 bg-white rounded-xl border border-outline-variant p-widget-padding shadow-sm">
-              <p class="text-label-sm text-outline">متوسط الأداء المنزلي</p>
-              <p class="text-headline-md font-headline-md text-on-surface mt-1">8.5 / 10</p>
-              <div class="w-full bg-surface-container-low h-2 rounded-full mt-2"><div class="bg-secondary h-2 rounded-full" style="width:85%"></div></div>
+            <div class="kpi-card kpi-secondary">
+              <span class="material-symbols-outlined kpi-icon">quiz</span>
+              <div>
+                <p class="kpi-label">متوسط الاختبار الشهري 1</p>
+                <p class="kpi-value">{{ avgAssessment1 }}</p>
+              </div>
             </div>
-            <div class="col-span-12 lg:col-span-3 bg-white rounded-xl border border-outline-variant p-widget-padding shadow-sm">
-              <p class="text-label-sm text-outline">متوسط التقييم الأسبوعي</p>
-              <p class="text-headline-md font-headline-md text-on-surface mt-1">16 / 20</p>
-              <div class="w-full bg-surface-container-low h-2 rounded-full mt-2"><div class="bg-secondary h-2 rounded-full" style="width:80%"></div></div>
+            <div class="kpi-card kpi-tertiary">
+              <span class="material-symbols-outlined kpi-icon">assignment_turned_in</span>
+              <div>
+                <p class="kpi-label">متوسط الاختبار الشهري 2</p>
+                <p class="kpi-value">{{ avgAssessment2 }}</p>
+              </div>
             </div>
-            <div class="col-span-12 lg:col-span-3 bg-white rounded-xl border border-outline-variant p-widget-padding shadow-sm">
-              <p class="text-label-sm text-outline">السلوك والمواظبة</p>
-              <p class="text-headline-md font-headline-md text-on-surface mt-1">9 / 10</p>
-              <div class="w-full bg-surface-container-low h-2 rounded-full mt-2"><div class="bg-secondary h-2 rounded-full" style="width:90%"></div></div>
+            <div class="kpi-card kpi-info">
+              <span class="material-symbols-outlined kpi-icon">military_tech</span>
+              <div>
+                <p class="kpi-label">متوسط المجموع النهائي</p>
+                <p class="kpi-value">{{ avgFinal }}</p>
+              </div>
             </div>
           </div>
-          <div class="grid grid-cols-12 gap-4 mb-4">
-            <div class="col-span-12 lg:col-span-6 bg-white rounded-xl border border-outline-variant shadow-sm p-4">
-              <h3 class="text-headline-sm font-headline-sm text-on-surface mb-3">مقارنة الأداء الأسبوعي</h3>
-              <div class="h-64"><canvas #weeklyChart></canvas></div>
+
+          <!-- Charts Row -->
+          <div class="charts-grid">
+            <div class="chart-card">
+              <h3 class="card-title">
+                <span class="material-symbols-outlined">show_chart</span>
+                متوسط الأداء الشهري
+              </h3>
+              <div class="chart-wrap">
+                <canvas #weeklyChart></canvas>
+              </div>
             </div>
-            <div class="col-span-12 lg:col-span-6 bg-white rounded-xl border border-outline-variant shadow-sm p-4">
-              <h3 class="text-headline-sm font-headline-sm text-on-surface mb-3">متوسط الأداء الشهري</h3>
-              <div class="h-64"><canvas #monthlyChart></canvas></div>
+            <div class="chart-card">
+              <h3 class="card-title">
+                <span class="material-symbols-outlined">bar_chart_4_bars</span>
+                الدرجات الكلية للطلاب
+              </h3>
+              <div class="chart-wrap">
+                <canvas #monthlyChart></canvas>
+              </div>
             </div>
           </div>
-          <div class="bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden mb-4">
-            <div class="p-4 border-b border-outline-variant flex justify-between items-center">
-              <h3 class="text-headline-sm font-headline-sm text-on-surface">سجل الرصد الأسبوعي</h3>
-              <span class="text-label-sm text-outline">الفصل الدراسي الثاني - 14 أسبوع</span>
+
+          <!-- Main Table -->
+          <div class="table-card">
+            <div class="table-header">
+              <div>
+                <h3 class="card-title">
+                  <span class="material-symbols-outlined">table_view</span>
+                  سجل الرصد التفصيلي
+                </h3>
+                <p class="table-meta">{{ selectedClassName }} – {{ termLabel }} – {{ displayStudentCount }}</p>
+              </div>
+              @if (weeklyPeriods.length > 0) {
+                <span class="badge-info">{{ weeklyPeriods.length }} أسبوع</span>
+              }
             </div>
-            <div class="overflow-x-auto">
-              <table class="w-full text-label-md">
+            <div class="table-wrap">
+              <table class="ra-table">
                 <thead>
-                  <tr class="bg-surface-container-low border-b border-outline-variant">
-                    <th class="text-right p-3 text-outline font-bold">الطالب</th>
-                    <th class="text-center p-3 text-outline font-bold">الأسبوع 1</th>
-                    <th class="text-center p-3 text-outline font-bold">الأسبوع 2</th>
-                    <th class="text-center p-3 text-outline font-bold">الأسبوع 3</th>
-                    <th class="text-center p-3 text-outline font-bold">الأسبوع 4</th>
-                    <th class="text-center p-3 text-outline font-bold">متوسط فبراير</th>
-                    <th class="text-center p-3 text-outline font-bold">الاختبار الشهري</th>
-                    <th class="text-center p-3 text-outline font-bold">المجموع</th>
+                  <tr>
+                    <th class="col-expand"></th>
+                    <th class="col-student">الطالب</th>
+                    @if (monthGroups.length > 0) {
+                      @for (mg of monthGroups; track mg.monthName) {
+                        <th class="col-month">
+                          {{ mg.monthName }}
+                          <small class="col-month-sub">من {{ getMonthGlobalMax(mg.monthName) | number:'1.0-0' }}</small>
+                        </th>
+                      }
+                    } @else {
+                      <th class="col-week">متوسط الفترات</th>
+                    }
+                    <th class="col-assess">اختبار 1</th>
+                    <th class="col-assess">اختبار 2</th>
+                    <th class="col-total">أعمال السنة</th>
+                    <th class="col-final">المجموع النهائي</th>
+                    <th class="col-grade">التقدير</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr class="border-b border-outline-variant/30 hover:bg-surface-container-low/30">
-                    <td class="p-3 font-bold text-on-surface">أحمد علي</td>
-                    <td class="text-center p-3">28</td>
-                    <td class="text-center p-3">30</td>
-                    <td class="text-center p-3">29</td>
-                    <td class="text-center p-3">27</td>
-                    <td class="text-center p-3 font-bold text-primary">28.5</td>
-                    <td class="text-center p-3">13</td>
-                    <td class="text-center p-3 font-bold">41.5</td>
-                  </tr>
-                  <tr class="border-b border-outline-variant/30 hover:bg-surface-container-low/30">
-                    <td class="p-3 font-bold text-on-surface">سارة محمود</td>
-                    <td class="text-center p-3">32</td>
-                    <td class="text-center p-3">35</td>
-                    <td class="text-center p-3">33</td>
-                    <td class="text-center p-3">34</td>
-                    <td class="text-center p-3 font-bold text-primary">33.5</td>
-                    <td class="text-center p-3">14</td>
-                    <td class="text-center p-3 font-bold">47.5</td>
-                  </tr>
-                  <tr class="border-b border-outline-variant/30 hover:bg-surface-container-low/30">
-                    <td class="p-3 font-bold text-on-surface">يوسف حسن</td>
-                    <td class="text-center p-3">22</td>
-                    <td class="text-center p-3">24</td>
-                    <td class="text-center p-3">20</td>
-                    <td class="text-center p-3">25</td>
-                    <td class="text-center p-3 font-bold text-primary">22.75</td>
-                    <td class="text-center p-3">10</td>
-                    <td class="text-center p-3 font-bold">32.75</td>
-                  </tr>
+                  @for (row of paginatedRows; track row.enrollmentId; let idx = $index) {
+                    <!-- Main row -->
+                    <tr [class.row-even]="idx % 2 === 0" [class.row-expanded]="isExpanded(row.enrollmentId)">
+                      <td class="cell-expand">
+                        @if (row.weeklyScores.length > 0) {
+                          <button class="btn-expand" (click)="toggleRow(row.enrollmentId)"
+                                  [title]="isExpanded(row.enrollmentId) ? 'إخفاء الأسابيع' : 'عرض الأسابيع'">
+                            <span class="material-symbols-outlined expand-icon"
+                                  [class.rotated]="isExpanded(row.enrollmentId)">
+                              expand_more
+                            </span>
+                          </button>
+                        }
+                      </td>
+                      <td class="cell-student">
+                        <div class="student-cell">
+                          <div class="avatar-circle" [style.background]="'hsl('+(getRowIndex(idx)*47+200)+',70%,55%)'">
+                            {{ row.name.charAt(0) }}
+                          </div>
+                          <span>{{ row.name }}</span>
+                        </div>
+                      </td>
+                      @if (monthGroups.length > 0) {
+                        @for (mg of monthGroups; track mg.monthName) {
+                          <td class="cell-score"
+                              [class.score-low]="getMonthPct(row, mg.monthName) < 50">
+                            <span class="score-val">{{ getMonthRaw(row, mg.monthName) | number:'1.0-1' }}</span>
+                          </td>
+                        }
+                      } @else {
+                        <td class="cell-score">—</td>
+                      }
+                      <td class="cell-score">{{ row.assessment1 | number:'1.0-1' }}</td>
+                      <td class="cell-score">{{ row.assessment2 | number:'1.0-1' }}</td>
+                      <td class="cell-score font-bold text-primary">{{ row.totalMonthly | number:'1.0-1' }}</td>
+                      <td class="cell-final">
+                        <span class="final-badge">
+                          {{ row.finalTotal | number:'1.0-1' }}
+                          @if (row.maxTotal > 0) {
+                            <span class="max-score"> / {{ row.maxTotal }}</span>
+                          }
+                        </span>
+                      </td>
+                      <td class="cell-grade">
+                        <span class="grade-chip" [ngClass]="getGradeBadge(row.percentage).cls">
+                          {{ getGradeBadge(row.percentage).label }}
+                        </span>
+                        <span class="pct-text">{{ row.percentage }}%</span>
+                      </td>
+                    </tr>
+
+                    <!-- Expandable weekly detail row -->
+                    @if (isExpanded(row.enrollmentId) && row.weeklyScores.length > 0) {
+                      <tr class="row-detail">
+                        <td [attr.colspan]="totalColCount">
+                          <div class="weekly-detail">
+                            <p class="detail-label">
+                              <span class="material-symbols-outlined">view_week</span>
+                              تفاصيل الأسابيع – {{ row.name }}
+                            </p>
+                            <div class="weeks-chips">
+                              @for (mg of monthGroups; track mg.monthName) {
+                                <div class="month-block">
+                                  <span class="month-block-title">{{ mg.monthName }}</span>
+                                  <div class="week-chips-row">
+                                    @for (ws of getWeeksForMonth(row, mg.monthName); track ws.periodName) {
+                                      @let pct = ws.rawMax > 0 ? (ws.rawScore / ws.rawMax * 100) : 0;
+                                      <span class="week-chip" [class.week-low]="pct < 50">
+                                        {{ ws.periodName }}: <strong>{{ ws.rawScore | number:'1.0-1' }}</strong>
+                                        <span class="week-chip-max"> / {{ ws.rawMax }}</span>
+                                      </span>
+                                    }
+                                  </div>
+                                </div>
+                              }
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    }
+                  }
                 </tbody>
               </table>
             </div>
-          </div>
-          <div class="grid grid-cols-12 gap-4">
-            <div class="col-span-12 lg:col-span-6 bg-white rounded-xl border border-outline-variant shadow-sm p-4">
-              <h3 class="text-headline-sm font-headline-sm text-on-surface mb-4">الدرجات المجمعة</h3>
-              <div class="space-y-3">
-                <div><div class="flex justify-between text-label-sm mb-1"><span>متوسط شهر فبراير</span><span class="font-bold">28.5 / 40</span></div><div class="w-full bg-surface-container-low h-2 rounded-full"><div class="bg-primary h-2 rounded-full" style="width:71%"></div></div></div>
-                <div><div class="flex justify-between text-label-sm mb-1"><span>متوسط شهر مارس</span><span class="font-bold">31 / 40</span></div><div class="w-full bg-surface-container-low h-2 rounded-full"><div class="bg-primary h-2 rounded-full" style="width:77%"></div></div></div>
-                <div><div class="flex justify-between text-label-sm mb-1"><span>متوسط شهر أبريل</span><span class="font-bold">33 / 40</span></div><div class="w-full bg-surface-container-low h-2 rounded-full"><div class="bg-primary h-2 rounded-full" style="width:82%"></div></div></div>
-                <div><div class="flex justify-between text-label-sm mb-1"><span>الاختبار الشهري الأول</span><span class="font-bold">13 / 15</span></div><div class="w-full bg-surface-container-low h-2 rounded-full"><div class="bg-secondary h-2 rounded-full" style="width:86%"></div></div></div>
-                <div><div class="flex justify-between text-label-sm mb-1"><span>الاختبار الشهري الثاني</span><span class="font-bold">12 / 15</span></div><div class="w-full bg-surface-container-low h-2 rounded-full"><div class="bg-secondary h-2 rounded-full" style="width:80%"></div></div></div>
-                <div class="pt-2 border-t border-outline-variant"><div class="flex justify-between text-label-md font-bold"><span>مجموع الأعمال التحريرية</span><span>58 / 70</span></div></div>
+
+            
+            <!-- Pagination Controls -->
+            <div class="pagination-bar">
+              <span class="pagination-info">
+                {{ paginationInfo }}
+              </span>
+              <div class="pagination-buttons">
+                <button class="btn-page" [disabled]="currentPage === 1" (click)="prevPage()">
+                  <span class="material-symbols-outlined">chevron_right</span> السابق
+                </button>
+                @for (p of getPageNumbers(); track p) {
+                  <button class="btn-page" [class.active]="currentPage === p" (click)="goToPage(p)">
+                    {{ p }}
+                  </button>
+                }
+                <button class="btn-page" [disabled]="currentPage === totalPages" (click)="nextPage()">
+                  التالي <span class="material-symbols-outlined">chevron_left</span>
+                </button>
               </div>
             </div>
-            <div class="col-span-12 lg:col-span-6 bg-white rounded-xl border border-outline-variant shadow-sm p-6">
-              <h3 class="text-headline-sm font-headline-sm text-on-surface mb-4">الدرجة النهائية</h3>
-              <div class="flex items-center justify-center h-48">
-                <div class="text-center">
-                  <p class="text-label-md text-outline mb-2">درجة آخر العام</p>
-                  <p class="text-6xl font-black text-primary">88</p>
-                  <p class="text-label-md text-outline mt-2">من 100</p>
-                  <div class="mt-4 inline-flex items-center gap-2 bg-green-50 text-green-700 px-4 py-2 rounded-full text-label-sm font-bold">
-                    <span class="material-symbols-outlined" style="font-size:16px">check_circle</span> تقدير: ممتاز
-                  </div>
+          </div>
+
+          <!-- Monthly Exam Details -->
+          @if (monthlyExamData.length > 0) {
+            <div class="table-card">
+              <div class="table-header">
+                <div>
+                  <h3 class="card-title">
+                    <span class="material-symbols-outlined">assignment</span>
+                    تفاصيل الامتحانات الشهرية
+                  </h3>
+                  <p class="table-meta">{{ selectedClassName }} – {{ termLabel }} – {{ monthlyExamData.length }} طالب</p>
                 </div>
               </div>
+              <div class="table-wrap">
+                <table class="ra-table">
+                  <thead>
+                    <tr>
+                      <th class="col-student">الطالب</th>
+                      <th class="col-month">
+                        الامتحان الشهري الأول
+                        <small class="col-month-sub">
+                          @if (monthlyExamData[0]?.exam1Month) { ({{ monthlyExamData[0].exam1Month }}) }
+                        </small>
+                      </th>
+                      <th class="col-month">
+                        الامتحان الشهري الثاني
+                        <small class="col-month-sub">
+                          @if (monthlyExamData[0]?.exam2Month) { ({{ monthlyExamData[0].exam2Month }}) }
+                        </small>
+                      </th>
+                      <th class="col-final">امتحان نهاية الترم</th>
+                      <th class="col-grade">المجموع</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (entry of monthlyExamData; track entry.enrollmentId; let idx = $index) {
+                      <tr [class.row-even]="idx % 2 === 0">
+                        <td class="cell-student">
+                          <div class="student-cell">
+                            <div class="avatar-circle" [style.background]="'hsl('+(idx*47+200)+',70%,55%)'">{{ entry.studentName.charAt(0) }}</div>
+                            <span>{{ entry.studentName }}</span>
+                          </div>
+                        </td>
+                        <td class="cell-score">
+                          <span class="score-val">{{ entry.exam1Score | number:'1.0-1' }}</span>
+                          @if (entry.exam1Max > 0) { <span class="score-max"> / {{ entry.exam1Max }}</span> }
+                        </td>
+                        <td class="cell-score">
+                          <span class="score-val">{{ entry.exam2Score | number:'1.0-1' }}</span>
+                          @if (entry.exam2Max > 0) { <span class="score-max"> / {{ entry.exam2Max }}</span> }
+                        </td>
+                        <td class="cell-final">
+                          <span class="final-badge">
+                            {{ entry.semesterScore | number:'1.0-1' }}
+                            @if (entry.semesterMax > 0) { <span class="max-score"> / {{ entry.semesterMax }}</span> }
+                          </span>
+                        </td>
+                        <td class="cell-grade">
+                          @if (entry.exam1Max + entry.exam2Max + entry.semesterMax > 0) {
+                            @let totalPct = ((entry.exam1Score + entry.exam2Score + entry.semesterScore) / (entry.exam1Max + entry.exam2Max + entry.semesterMax) * 100);
+                            <span class="grade-chip" [ngClass]="getGradeBadge(totalPct).cls">{{ getGradeBadge(totalPct).label }}</span>
+                            <span class="pct-text">{{ totalPct | number:'1.0-1' }}%</span>
+                          }
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          }
+
+          <!-- Bottom Summary Cards -->
+          <div class="summary-grid">
+            <div class="summary-card">
+              <h3 class="card-title">
+                <span class="material-symbols-outlined">leaderboard</span>
+                أعلى الطلاب أداءً
+              </h3>
+              <div class="top-list">
+                @for (row of topStudents | slice:0:5; track row.enrollmentId; let i = $index) {
+                  <div class="top-item">
+                    <span class="rank-badge" [class.rank-gold]="i===0" [class.rank-silver]="i===1" [class.rank-bronze]="i===2">
+                      {{ i + 1 }}
+                    </span>
+                    <div class="top-info">
+                      <span class="top-name">{{ row.name }}</span>
+                      <div class="top-bar-wrap">
+                        <div class="top-bar" [style.width.%]="row.percentage"
+                             [style.background]="i===0 ? '#f59e0b' : i===1 ? '#94a3b8' : i===2 ? '#cd7f32' : '#4F46E5'">
+                        </div>
+                      </div>
+                    </div>
+                    <span class="top-score">{{ row.percentage }}%</span>
+                  </div>
+                }
+                @if (studentRows.length === 0) {
+                  <p class="no-data-text">لا توجد بيانات</p>
+                }
+              </div>
+            </div>
+            <div class="summary-card">
+              <h3 class="card-title">
+                <span class="material-symbols-outlined">warning</span>
+                يحتاجون دعماً (أقل من 50%)
+              </h3>
+              <div class="support-list">
+                @for (row of studentRows; track row.enrollmentId) {
+                  @if (row.percentage < 50) {
+                    <div class="support-item">
+                      <div class="support-info">
+                        <span class="support-name">{{ row.name }}</span>
+                        <div class="support-bar-wrap">
+                          <div class="support-bar" [style.width.%]="row.percentage"></div>
+                        </div>
+                      </div>
+                      <span class="support-score danger">{{ row.percentage }}%</span>
+                    </div>
+                  }
+                }
+                @if ((studentRows | slice:0:100).every(r => r.percentage >= 50)) {
+                  <div class="all-pass">
+                    <span class="material-symbols-outlined">check_circle</span>
+                    <p>جميع الطلاب اجتازوا الحد الأدنى 🎉</p>
+                  </div>
+                }
+              </div>
             </div>
           </div>
-        </div>
-      </main>
+
+        }
+      }
+
     </div>
+  </main>
+</div>

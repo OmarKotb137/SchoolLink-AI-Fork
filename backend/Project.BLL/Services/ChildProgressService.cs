@@ -138,11 +138,13 @@ public class ChildProgressService : IChildProgressService
                 .Select(a => (double)(a.Score!.Value / a.TotalScore) * 100));
             var avgScore = allPcts.Count > 0 ? Math.Round(allPcts.Average(), 1) : 0;
 
-            // — Attendance —
-            var absences = await _unitOfWork.DailyAbsences
-                .FindAsync(a => a.EnrollmentId == enrollment.Id && a.IsAbsent && !a.IsDeleted);
-            var absCount = absences.Count;
-            var attendancePct = Math.Round(Math.Max(0, 100 - absCount / 180.0 * 100), 1);
+            // — Attendance (based on actual recorded days, not hardcoded 180) —
+            var allDays = await _unitOfWork.DailyAbsences
+                .FindAsync(a => a.EnrollmentId == enrollment.Id && !a.IsDeleted);
+            var totalDays = allDays.Count;
+            var absCount = allDays.Count(a => a.IsAbsent);
+            var attendancePct = totalDays == 0 ? 100
+                : Math.Round((double)(totalDays - absCount) / totalDays * 100, 1);
 
             results.Add(new ChildProgressItemDto
             {

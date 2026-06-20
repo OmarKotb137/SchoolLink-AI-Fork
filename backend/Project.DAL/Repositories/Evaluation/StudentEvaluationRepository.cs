@@ -90,6 +90,8 @@ public class StudentEvaluationRepository : Repository<StudentEvaluation>, IStude
                 se.PeriodId == periodId &&
                 ids.Contains(se.EnrollmentId))
             .Include(se => se.EvaluationItem)
+                .ThenInclude(ei => ei.Template)
+                .ThenInclude(t => t.Subject)
             .Include(se => se.Period)
             .Include(se => se.Enrollment)
                 .ThenInclude(e => e.Student)

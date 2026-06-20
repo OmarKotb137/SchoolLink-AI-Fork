@@ -548,8 +548,8 @@ public static class SeedData
         var parentStudentLinks = new List<ParentStudent>();
         for (int i = 0; i < students.Count; i++)
         {
-            // Link both student 0 (Ahmed) and student 1 (Mohamed) to parent 0
-            int parentIdx = (i == 1) ? 0 : i;
+            // parent1 (index 0) gets 2 children (students[0] + students[1]), parent2 gets students[2], etc.
+            int parentIdx = i <= 1 ? 0 : i - 1;
             parentStudentLinks.Add(new ParentStudent
             {
                 ParentId     = parentUsers[parentIdx].Id,
@@ -2892,7 +2892,7 @@ public static class SeedData
             }
             await ctx.SaveChangesAsync();
 
-            // Update parent names (وليّ أمر {studentName})
+            // Update parent names (وليّ أمر {child1} و {child2} ...)
             var studentIdSet = allStudents.Select(s => s.Id).ToHashSet();
             var parentStudentLinks = await ctx.ParentStudents
                 .Where(ps => studentIdSet.Contains(ps.StudentId))
@@ -2901,13 +2901,25 @@ public static class SeedData
             var parentUsers = await ctx.Users
                 .Where(u => u.Role == UserRole.Parent && parentIds.Contains(u.Id))
                 .ToListAsync();
-            var parentStudentMap = parentStudentLinks.ToDictionary(ps => ps.ParentId, ps => ps.StudentId);
+            var parentStudentGroups = parentStudentLinks
+                .GroupBy(ps => ps.ParentId)
+                .ToDictionary(g => g.Key, g => g.Select(ps => ps.StudentId).ToList());
             var studentNameMap = allStudents.ToDictionary(s => s.Id, s => s.FullName);
             foreach (var user in parentUsers)
             {
-                if (parentStudentMap.TryGetValue(user.Id, out var studentId) && studentNameMap.TryGetValue(studentId, out var sName))
+                if (parentStudentGroups.TryGetValue(user.Id, out var studentIds) && studentIds.Count > 0)
                 {
-                    user.FullName = $"وليّ أمر {sName}";
+                    var names = studentIds
+                        .Select(id => studentNameMap.GetValueOrDefault(id, ""))
+                        .Where(n => !string.IsNullOrEmpty(n))
+                        .ToList();
+                    user.FullName = names.Count switch
+                    {
+                        0 => $"وليّ أمر",
+                        1 => $"وليّ أمر {names[0]}",
+                        2 => $"وليّ أمر {names[0]} و{names[1].Split(' ')[0]}",
+                        _ => $"وليّ أمر {names[0]} وآخرون"
+                    };
                     user.UpdatedAt = now;
                 }
             }
@@ -2939,6 +2951,44 @@ public static class SeedData
                             });
                             await ctx.SaveChangesAsync();
                         }
+                    }
+                }
+            }
+        }
+        catch { /* ignore */ }
+
+        // ── 6. Give parent2's child a different family name —─────────────
+        try
+        {
+            var p2 = await ctx.Users.FirstOrDefaultAsync(u => u.Username == "parent2" && !u.IsDeleted);
+            if (p2 != null)
+            {
+                var psLink = await ctx.ParentStudents
+                    .FirstOrDefaultAsync(ps => ps.ParentId == p2.Id && !ps.IsDeleted);
+                if (psLink != null)
+                {
+                    var s = await ctx.Students.FirstOrDefaultAsync(st => st.Id == psLink.StudentId && !st.IsDeleted);
+                    if (s != null)
+                    {
+                        s.FullName = "علي خالد السيد";
+                        s.UpdatedAt = now;
+
+                        // Also update the User account for this student
+                        if (s.UserId.HasValue)
+                        {
+                            var userAcc = await ctx.Users.FirstOrDefaultAsync(u => u.Id == s.UserId.Value && !u.IsDeleted);
+                            if (userAcc != null)
+                            {
+                                userAcc.FullName = s.FullName;
+                                userAcc.UpdatedAt = now;
+                            }
+                        }
+
+                        // Also update parent2's display name
+                        p2.FullName = $"وليّ أمر {s.FullName}";
+                        p2.UpdatedAt = now;
+
+                        await ctx.SaveChangesAsync();
                     }
                 }
             }

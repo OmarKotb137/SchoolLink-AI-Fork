@@ -73,12 +73,15 @@ public class AssignmentManagerService : IAssignmentManagerService
             .Where(a => !a.IsDeleted)
             .AsQueryable();
 
-        // Filter by teacher
-        var cstIds = await _context.ClassSubjectTeachers
-            .Where(c => c.TeacherId == filter.TeacherId && c.AcademicYearId == filter.AcademicYearId && !c.IsDeleted)
-            .Select(c => c.Id)
-            .ToListAsync();
-        query = query.Where(a => cstIds.Contains(a.ClassSubjectTeacherId));
+        // Filter by teacher (if specified)
+        if (filter.TeacherId.HasValue)
+        {
+            var cstIds = await _context.ClassSubjectTeachers
+                .Where(c => c.TeacherId == filter.TeacherId.Value && c.AcademicYearId == filter.AcademicYearId && !c.IsDeleted)
+                .Select(c => c.Id)
+                .ToListAsync();
+            query = query.Where(a => cstIds.Contains(a.ClassSubjectTeacherId));
+        }
 
         // Filter by subject
         if (filter.SubjectId.HasValue)
