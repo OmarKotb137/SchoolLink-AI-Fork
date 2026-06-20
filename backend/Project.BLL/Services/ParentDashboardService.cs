@@ -67,16 +67,30 @@ public class ParentDashboardService : IParentDashboardService
             }
 
             // ── Absences ──────────────────────────────────────────
-            var absences = await _unitOfWork.DailyAbsences
-                .FindAsync(a => a.EnrollmentId == enrollment.Id && a.IsAbsent && !a.IsDeleted);
+            // Get academic year dates for the current term
+            var year = await _context.AcademicYears
+                .FirstOrDefaultAsync(y => y.Id == enrollment.Class!.AcademicYearId && !y.IsDeleted);
+            DateOnly? termStart = null, termEnd = null;
+            if (year != null && term.HasValue)
+            {
+                termStart = term.Value == AcademicTerm.FirstSemester ? year.FirstSemesterStartDate : year.SecondSemesterStartDate;
+                termEnd = term.Value == AcademicTerm.FirstSemester ? year.FirstSemesterEndDate : year.SecondSemesterEndDate;
+            }
+
+            var allDays = await _unitOfWork.DailyAbsences
+                .FindAsync(a => a.EnrollmentId == enrollment.Id && !a.IsDeleted);
+            var termDays = allDays
+                .Where(a => !termStart.HasValue || (a.AbsenceDate >= termStart.Value && a.AbsenceDate <= termEnd!.Value))
+                .ToList();
+
+            var totalDays = termDays.Count;
+            var absences = termDays.Where(a => a.IsAbsent).ToList();
             var absCount = absences.Count;
             var excused = absences.Count(a => !string.IsNullOrWhiteSpace(a.Reason));
             var unexcused = absCount - excused;
 
-            // If no absences recorded at all, the student is 100% present by definition.
-            // Otherwise, calculate relative to standard school year days (180 days).
-            var attendanceRate = absCount == 0 ? 100
-                : Math.Round(Math.Max(0, 100 - absCount / 180.0 * 100), 1);
+            var attendanceRate = totalDays == 0 ? 100
+                : Math.Round((double)(totalDays - absCount) / totalDays * 100, 1);
 
             // ── Assessments (periodic) ─────────────────────────────
             var assessments = await _unitOfWork.PeriodicAssessments
@@ -462,16 +476,29 @@ public class ParentDashboardService : IParentDashboardService
             }
         }
 
-        var absences = await _unitOfWork.DailyAbsences
-            .FindAsync(a => a.EnrollmentId == enrollment.Id && a.IsAbsent && !a.IsDeleted);
+        var year = await _context.AcademicYears
+            .FirstOrDefaultAsync(y => y.Id == enrollment.Class!.AcademicYearId && !y.IsDeleted);
+        DateOnly? termStart = null, termEnd = null;
+        if (year != null && term.HasValue)
+        {
+            termStart = term.Value == AcademicTerm.FirstSemester ? year.FirstSemesterStartDate : year.SecondSemesterStartDate;
+            termEnd = term.Value == AcademicTerm.FirstSemester ? year.FirstSemesterEndDate : year.SecondSemesterEndDate;
+        }
+
+        var allDays = await _unitOfWork.DailyAbsences
+            .FindAsync(a => a.EnrollmentId == enrollment.Id && !a.IsDeleted);
+        var termDays = allDays
+            .Where(a => !termStart.HasValue || (a.AbsenceDate >= termStart.Value && a.AbsenceDate <= termEnd!.Value))
+            .ToList();
+
+        var totalDays = termDays.Count;
+        var absences = termDays.Where(a => a.IsAbsent).ToList();
         var absCount = absences.Count;
         var excused = absences.Count(a => !string.IsNullOrWhiteSpace(a.Reason));
         var unexcused = absCount - excused;
 
-        // If no absences recorded at all, the student is 100% present by definition.
-        // Otherwise, calculate relative to standard school year days (180 days).
-        var attendanceRate = absCount == 0 ? 100
-            : Math.Round(Math.Max(0, 100 - absCount / 180.0 * 100), 1);
+        var attendanceRate = totalDays == 0 ? 100
+            : Math.Round((double)(totalDays - absCount) / totalDays * 100, 1);
 
         var assessments = await _unitOfWork.PeriodicAssessments
             .FindAsync(pa => pa.EnrollmentId == enrollment.Id);

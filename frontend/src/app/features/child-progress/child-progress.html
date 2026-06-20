@@ -37,13 +37,28 @@
         </div>
       </div>
 
-      <!-- Term Selector -->
-      <div class="flex items-center gap-3">
-        <label class="font-label-sm text-label-sm text-outline">الفصل الدراسي:</label>
-        <select (change)="onTermChange($event)" class="glass-select" style="padding:8px 16px;border-radius:12px;border:1px solid var(--outline-variant, #e0e0e0);background:rgba(255,255,255,0.7);backdrop-filter:blur(8px);">
-<option value="1">الترم الأول</option>
-<option value="2">الترم الثاني</option>
-        </select>
+      <!-- Selectors -->
+      <div class="flex flex-wrap items-center gap-4">
+        <!-- Child Selector -->
+        @if (children().length > 1) {
+          <div class="flex items-center gap-3">
+            <label class="font-label-sm text-label-sm text-outline">الابن:</label>
+            <select (change)="onChildChange($event)" class="glass-select" style="padding:8px 16px;border-radius:12px;border:1px solid var(--outline-variant, #e0e0e0);background:rgba(255,255,255,0.7);backdrop-filter:blur(8px);">
+              @for (child of children(); track child.studentId; let i = $index) {
+                <option [value]="i" [selected]="i === selectedChildIndex()">{{ child.studentName }}</option>
+              }
+            </select>
+          </div>
+        }
+
+        <!-- Term Selector -->
+        <div class="flex items-center gap-3">
+          <label class="font-label-sm text-label-sm text-outline">الفصل الدراسي:</label>
+          <select (change)="onTermChange($event)" class="glass-select" style="padding:8px 16px;border-radius:12px;border:1px solid var(--outline-variant, #e0e0e0);background:rgba(255,255,255,0.7);backdrop-filter:blur(8px);">
+            <option value="1">الترم الأول</option>
+            <option value="2">الترم الثاني</option>
+          </select>
+        </div>
       </div>
 
       <!-- Tabs -->

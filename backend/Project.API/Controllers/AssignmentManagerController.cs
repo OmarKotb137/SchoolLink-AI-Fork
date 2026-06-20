@@ -63,7 +63,7 @@ public class AssignmentManagerController : ControllerBase
                 SortBy = sortBy,
                 Page = page,
                 PageSize = pageSize,
-                TeacherId = role == "Teacher" ? userId : 0,
+                TeacherId = role == "Teacher" ? userId : null,
                 AcademicYearId = yearId,
             };
 
