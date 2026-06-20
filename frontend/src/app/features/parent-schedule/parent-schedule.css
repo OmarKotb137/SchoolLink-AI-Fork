@@ -1,9 +1,15 @@
 /* ════════════════════════════════════════════════
    parent-schedule.css
+   تصميم جدول أبناء ولي الأمر — يدعم أكثر من ابن + Responsive كامل
    ════════════════════════════════════════════════ */
 
 /* ─── Page wrapper ─── */
 main.pt-16 { direction: rtl; }
+
+@keyframes ps-fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 
 /* ══════════════ HEADER ══════════════ */
 .ps-header {
@@ -22,6 +28,7 @@ main.pt-16 { direction: rtl; }
   border-radius: 20px;
   padding: 1.375rem 1.5rem;
   box-shadow: 0 18px 40px rgba(15, 23, 42, 0.05);
+  animation: ps-fade-up 0.45s ease both;
 }
 
 .ps-header-left {
@@ -42,6 +49,11 @@ main.pt-16 { direction: rtl; }
   color: #fff;
   box-shadow: 0 6px 18px rgba(0, 35, 111, 0.28);
   flex-shrink: 0;
+}
+
+.ps-header-icon .material-symbols-outlined {
+  font-size: 28px;
+  color: #fff;
 }
 
 .ps-title {
@@ -75,17 +87,18 @@ main.pt-16 { direction: rtl; }
   border: 1.5px solid #c5c5d3;
   background: #f4f3fa;
   cursor: pointer;
-  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s, transform 0.15s;
   font-family: inherit;
 }
 
 .ps-child-tab:hover:not(.ps-child-tab--active) {
   border-color: #00236f;
   background: #eef2ff;
+  transform: translateY(-1px);
 }
 
 .ps-child-tab--active {
-  background: #00236f;
+  background: linear-gradient(135deg, #00236f 0%, #1e3a8a 100%);
   border-color: #00236f;
   box-shadow: 0 4px 14px rgba(0, 35, 111, 0.3);
 }
@@ -108,7 +121,7 @@ main.pt-16 { direction: rtl; }
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  font-size: 0.85rem;
+  font-size: 0.78rem;
   flex-shrink: 0;
   transition: background 0.2s, color 0.2s;
 }
@@ -116,13 +129,14 @@ main.pt-16 { direction: rtl; }
 .ps-avatar--lg {
   width: 46px;
   height: 46px;
-  font-size: 1.05rem;
+  font-size: 0.95rem;
 }
 
 .ps-tab-info {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  min-width: 0;
 }
 
 .ps-tab-name {
@@ -131,6 +145,10 @@ main.pt-16 { direction: rtl; }
   color: #1a1b21;
   line-height: 1.25;
   transition: color 0.2s;
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ps-tab-class {
@@ -173,6 +191,7 @@ main.pt-16 { direction: rtl; }
   border: 1.5px solid rgba(186, 26, 26, 0.22);
   color: #ba1a1a;
   font-size: 0.875rem;
+  flex-wrap: wrap;
 }
 
 .ps-retry-btn {
@@ -194,7 +213,7 @@ main.pt-16 { direction: rtl; }
 
 .ps-retry-btn:hover { background: rgba(186,26,26,0.1); }
 
-/* ══════════════ GRID CARD ══════════════ */
+/* ══════════════ GRID CARD (Desktop / Tablet) ══════════════ */
 .ps-grid-card {
   background: #ffffff;
   border-radius: 20px;
@@ -203,6 +222,8 @@ main.pt-16 { direction: rtl; }
   overflow: auto;
   position: relative;
   min-height: 420px;
+  animation: ps-fade-up 0.5s ease both;
+  animation-delay: 0.05s;
 }
 
 /* Scrollbar styling */
@@ -210,7 +231,7 @@ main.pt-16 { direction: rtl; }
 .ps-grid-card::-webkit-scrollbar-track { background: transparent; }
 .ps-grid-card::-webkit-scrollbar-thumb { background: #c5c5d3; border-radius: 10px; }
 
-/* ══════════════ LOADING OVERLAY ══════════════ */
+/* ══════════════ LOADING OVERLAY / STATE ══════════════ */
 .ps-overlay {
   position: absolute;
   inset: 0;
@@ -222,6 +243,15 @@ main.pt-16 { direction: rtl; }
   align-items: center;
   justify-content: center;
   border-radius: 20px;
+}
+
+.ps-mobile-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  padding: 3.5rem 1rem;
 }
 
 .ps-spinner-wrap {
@@ -303,6 +333,11 @@ main.pt-16 { direction: rtl; }
   min-width: 130px;
   text-align: center;
   vertical-align: middle;
+  transition: background 0.2s;
+}
+
+.ps-period-th--now {
+  background: linear-gradient(180deg, rgba(59,130,246,0.14), rgba(59,130,246,0.045) 70%, #f8f9ff 100%);
 }
 
 .ps-period-name {
@@ -322,6 +357,30 @@ main.pt-16 { direction: rtl; }
   letter-spacing: 0.01em;
 }
 
+.ps-now-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: #fff;
+  background: #3b82f6;
+  padding: 1.5px 8px;
+  border-radius: 20px;
+  margin-top: 0.4rem;
+  box-shadow: 0 2px 6px rgba(59,130,246,0.35);
+}
+
+.ps-now-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #fff;
+  animation: ps-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes ps-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+
 /* ─── Day rows ─── */
 .ps-day-row {
   border-bottom: 1px solid rgba(197, 197, 211, 0.2);
@@ -331,22 +390,41 @@ main.pt-16 { direction: rtl; }
 .ps-day-row:hover { background: rgba(0, 35, 111, 0.013); }
 .ps-day-row:last-child { border-bottom: none; }
 
+.ps-day-row--today { background: rgba(0, 35, 111, 0.035); }
+.ps-day-row--today:hover { background: rgba(0, 35, 111, 0.06); }
+
 /* ─── Day label (sticky right) ─── */
 .ps-day-td {
   position: sticky;
   right: 0;
-  z-index: 1;
+  z-index: 3;
   width: 118px;
   min-width: 118px;
   padding: 1rem;
   font-weight: 700;
   font-size: 0.82rem;
   color: #00236f;
-  background: linear-gradient(to left, rgba(0,35,111,0.045), rgba(0,35,111,0.01));
+  /* لازم تكون الخلفية صلبة (opaque) بالكامل — عشان ما تبان الخلايا اللي بتتحرك تحت العمود المستقر وقت السكرول الأفقي */
+  background: linear-gradient(to left, #eef1fb, #f8f9ff);
   border-left: 1px solid rgba(197, 197, 211, 0.3);
   border-bottom: 1px solid rgba(197, 197, 211, 0.16);
   text-align: center;
   white-space: nowrap;
+}
+
+.ps-day-row--today .ps-day-td {
+  background: linear-gradient(to left, #d7defa, #eef1fb);
+}
+
+.ps-day-today-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #3b82f6;
+  margin-inline-start: 4px;
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.25);
+  vertical-align: middle;
 }
 
 /* ─── Data cells ─── */
@@ -360,6 +438,7 @@ main.pt-16 { direction: rtl; }
 
 /* ─── Lesson card ─── */
 .ps-lesson {
+  --accent: #00236f;
   width: 100%;
   height: 100%;
   display: flex;
@@ -371,11 +450,11 @@ main.pt-16 { direction: rtl; }
   border-radius: 11px;
   background: linear-gradient(
     148deg,
-    rgba(0, 35, 111, 0.082) 0%,
-    rgba(0, 35, 111, 0.038) 100%
+    color-mix(in srgb, var(--accent) 15%, #fff) 0%,
+    color-mix(in srgb, var(--accent) 6%, #fff) 100%
   );
-  border: 1px solid rgba(0, 35, 111, 0.13);
-  border-right: 3.5px solid #00236f;
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, #fff);
+  border-right: 3.5px solid var(--accent);
   transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
   cursor: default;
 }
@@ -383,17 +462,26 @@ main.pt-16 { direction: rtl; }
 .ps-lesson:hover {
   background: linear-gradient(
     148deg,
-    rgba(0, 35, 111, 0.13) 0%,
-    rgba(0, 35, 111, 0.065) 100%
+    color-mix(in srgb, var(--accent) 24%, #fff) 0%,
+    color-mix(in srgb, var(--accent) 11%, #fff) 100%
   );
-  box-shadow: 0 3px 14px rgba(0, 35, 111, 0.12);
+  box-shadow: 0 3px 14px color-mix(in srgb, var(--accent) 32%, transparent);
   transform: scale(1.018);
 }
+
+/* Subject color variants — index 0-6 من getSubjectColor() */
+.ps-c0 { --accent: #00236f; } /* كحلي أساسي */
+.ps-c1 { --accent: #7c3aed; } /* بنفسجي */
+.ps-c2 { --accent: #0d9488; } /* تركواز */
+.ps-c3 { --accent: #c2410c; } /* برتقالي محروق */
+.ps-c4 { --accent: #be185d; } /* وردي غامق */
+.ps-c5 { --accent: #059669; } /* أخضر زمردي */
+.ps-c6 { --accent: #1d4ed8; } /* أزرق */
 
 .ps-subject {
   font-size: 0.8rem;
   font-weight: 700;
-  color: #00236f;
+  color: var(--accent);
   text-align: center;
   line-height: 1.3;
   display: block;
@@ -414,9 +502,13 @@ main.pt-16 { direction: rtl; }
   font-size: 0.67rem;
   color: #444651;
   max-width: 100%;
+}
+
+.ps-meta-text {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  max-width: 100%;
 }
 
 .ps-ico {
@@ -453,6 +545,11 @@ main.pt-16 { direction: rtl; }
 }
 
 /* ══════════════ EMPTY STATE ══════════════ */
+@keyframes ps-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
 .ps-empty {
   display: flex;
   flex-direction: column;
@@ -477,8 +574,9 @@ main.pt-16 { direction: rtl; }
   align-items: center;
   justify-content: center;
   color: #00236f;
-  opacity: 0.6;
+  opacity: 0.7;
   margin-bottom: 0.5rem;
+  animation: ps-float 3s ease-in-out infinite;
 }
 
 .ps-empty-title {
@@ -495,4 +593,153 @@ main.pt-16 { direction: rtl; }
   max-width: 360px;
   line-height: 1.65;
   margin: 0;
+}
+
+/* ══════════════ MOBILE AGENDA VIEW ══════════════ */
+.ps-mobile-view {
+  display: none;
+  flex-direction: column;
+  gap: 1rem;
+  animation: ps-fade-up 0.5s ease both;
+  animation-delay: 0.05s;
+}
+
+/* Day pills — scrollable strip */
+.ps-day-pills {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding: 0.2rem 0.1rem 0.5rem;
+  scrollbar-width: none;
+}
+.ps-day-pills::-webkit-scrollbar { display: none; }
+
+.ps-day-pill {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.55rem 1.1rem;
+  border-radius: 14px;
+  border: 1.5px solid #c5c5d3;
+  background: #fff;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ps-day-pill-label { font-size: 0.8rem; font-weight: 700; color: #1a1b21; }
+.ps-day-pill-tag {
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: #3b82f6;
+}
+
+.ps-day-pill--today:not(.ps-day-pill--active) {
+  border-color: rgba(0, 35, 111, 0.35);
+  background: rgba(0, 35, 111, 0.05);
+}
+
+.ps-day-pill--active {
+  background: linear-gradient(135deg, #00236f, #3b82f6);
+  border-color: transparent;
+  box-shadow: 0 4px 14px rgba(0, 35, 111, 0.3);
+}
+
+.ps-day-pill--active .ps-day-pill-label,
+.ps-day-pill--active .ps-day-pill-tag { color: #fff; }
+
+/* Agenda rows — one row per period, for the selected day */
+.ps-agenda-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.ps-agenda-row {
+  display: flex;
+  align-items: stretch;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(197, 197, 211, 0.4);
+  background: #fff;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.ps-agenda-row--now {
+  border-color: rgba(59, 130, 246, 0.45);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.ps-agenda-time {
+  flex: 0 0 70px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  background: #f8f9ff;
+  padding: 0.6rem 0.25rem;
+  border-left: 1px solid rgba(197, 197, 211, 0.3);
+}
+
+.ps-agenda-period { font-size: 0.7rem; font-weight: 700; color: #00236f; }
+.ps-agenda-clock { font-size: 0.6rem; color: #444651; }
+
+.ps-agenda-body {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  display: flex;
+  align-items: center;
+  min-height: 64px;
+}
+
+.ps-agenda-empty {
+  font-size: 0.78rem;
+  color: #9ca3af;
+  font-weight: 500;
+  margin: 0 auto;
+}
+
+.ps-lesson--mobile,
+.ps-break--mobile {
+  height: auto;
+  width: 100%;
+  padding: 0.45rem 0.4rem;
+}
+
+/* ══════════════ RESPONSIVE BREAKPOINTS ══════════════ */
+@media (max-width: 767px) {
+  .ps-grid-card--desktop { display: none; }
+  .ps-mobile-view { display: flex; }
+
+  .ps-header {
+    padding: 1.1rem 1.15rem;
+    border-radius: 16px;
+    gap: 1rem;
+  }
+  .ps-header-icon { width: 46px; height: 46px; border-radius: 13px; }
+  .ps-header-icon .material-symbols-outlined { font-size: 24px; }
+  .ps-title { font-size: 1.1rem; }
+  .ps-subtitle { font-size: 0.74rem; }
+
+  .ps-child-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    width: 100%;
+    padding-bottom: 0.2rem;
+    scrollbar-width: none;
+  }
+  .ps-child-tabs::-webkit-scrollbar { display: none; }
+  .ps-child-tab { flex: 0 0 auto; }
+  .ps-tab-name { max-width: 96px; }
+
+  .ps-single-badge { width: 100%; justify-content: flex-start; }
+
+  .ps-empty { padding: 3rem 1.25rem; min-height: 320px; }
+}
+
+@media (min-width: 768px) {
+  .ps-mobile-view { display: none; }
 }

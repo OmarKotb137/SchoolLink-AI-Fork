@@ -182,7 +182,6 @@ export class AddTeacher implements OnInit {
     const payload: CreateTeacherRequest = {
       fullName: this.newName(),
       username: this.newUsername(),
-      contactEmail: this.newPhone() || undefined,
       password: this.newPassword(),
       phone: this.newPhone() || undefined,
       subjectIds: this.selectedSubjectIds()

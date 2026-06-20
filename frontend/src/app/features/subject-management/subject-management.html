@@ -1,175 +1,207 @@
 <app-sidebar [(isOpen)]="sidebarOpen" />
 <div class="main-content">
-  <main class="pt-16 min-h-screen bg-gray-50 flex flex-col">
+  <main class="pt-16 min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50 flex flex-col">
     <div class="flex-1 p-4 md:p-6 lg:p-8">
       <div class="max-w-7xl mx-auto space-y-6 pb-10">
 
-        <!-- Header / Hero Section -->
-        <section class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50">
-          <div>
-            <span class="text-sm font-medium text-blue-600 mb-1 block">Subject Management</span>
-            <h2 class="text-2xl font-bold text-gray-900 mb-2">إدارة المواد الدراسية</h2>
-            <p class="text-sm text-gray-500 max-w-2xl">
-              شاشة أوضح لإضافة المواد وتعديلها والبحث فيها بسرعة، مع فصل واضح بين منطقة الإدخال ومنطقة البيانات.
-            </p>
+        <!-- ══ Hero ════════════════════════════════════════════════════ -->
+        <section class="sm-hero animate-fade-up">
+          <div class="sm-hero-glow"></div>
+          <div class="sm-hero-body">
+            <div class="sm-hero-icon">
+              <span class="material-symbols-outlined" style="font-size:28px">auto_stories</span>
+            </div>
+            <div>
+              <span class="sm-hero-eyebrow">
+                <span class="material-symbols-outlined" style="font-size:13px;vertical-align:middle">menu_book</span>
+                Subject Management
+              </span>
+              <h2 class="sm-hero-title">إدارة المواد الدراسية</h2>
+              <p class="sm-hero-desc">
+                شاشة أوضح لإضافة المواد وتعديلها والبحث فيها بسرعة، مع فصل واضح بين منطقة الإدخال ومنطقة البيانات.
+              </p>
+            </div>
           </div>
 
-          <div class="flex items-center gap-4 w-full md:w-auto">
-            <div class="bg-blue-50 border border-blue-100 p-4 rounded-2xl flex-1 md:w-40 text-center">
-              <span class="block text-xs text-blue-600 font-medium mb-1">المواد المعروضة</span>
-              <strong class="block text-2xl font-bold text-blue-900">{{ subjects().length }}</strong>
+          <div class="sm-hero-stats">
+            <div class="sm-stat-pill sm-stat-pill-accent">
+              <span class="sm-stat-pill-label">المواد المعروضة</span>
+              <strong class="sm-stat-pill-value">{{ subjects().length }}</strong>
             </div>
-            <div class="bg-gray-50 border border-gray-100 p-4 rounded-2xl flex-1 md:w-48 text-center">
-              <span class="block text-xs text-gray-500 font-medium mb-1">وضع الشاشة</span>
-              <strong class="block text-lg font-bold text-gray-900">{{ editingSubjectId() ? 'تعديل مادة' : 'إضافة جديدة' }}</strong>
+            <div class="sm-stat-pill">
+              <span class="sm-stat-pill-label">وضع الشاشة</span>
+              <strong class="sm-stat-pill-value sm-stat-pill-value-sm">{{ editingSubjectId() ? 'تعديل مادة' : 'إضافة جديدة' }}</strong>
+            </div>
+            <div class="sm-stat-pill">
+              <span class="sm-stat-pill-label">عدد صفحات القائمة</span>
+              <strong class="sm-stat-pill-value sm-stat-pill-value-sm">{{ totalPages() }}</strong>
             </div>
           </div>
         </section>
 
-        <!-- Feedback Messages -->
+        <!-- ══ Feedback Messages ══════════════════════════════════════ -->
         <div class="flex flex-col gap-3">
-          <div *ngIf="errorMessage()" class="flex items-center gap-3 p-4 text-sm text-red-800 rounded-2xl bg-red-50 border border-red-200">
-            <span class="material-symbols-outlined text-lg">error</span>
-            <span class="font-medium">{{ errorMessage() }}</span>
+          <div *ngIf="errorMessage()" class="sm-banner sm-banner-error">
+            <span class="material-symbols-outlined sm-banner-icon">error</span>
+            <span>{{ errorMessage() }}</span>
           </div>
-          <div *ngIf="successMessage()" class="flex items-center gap-3 p-4 text-sm text-green-800 rounded-2xl bg-emerald-50 border border-green-200">
-            <span class="material-symbols-outlined text-lg">check_circle</span>
-            <span class="font-medium">{{ successMessage() }}</span>
+          <div *ngIf="successMessage()" class="sm-banner sm-banner-success">
+            <span class="material-symbols-outlined sm-banner-icon">check_circle</span>
+            <span>{{ successMessage() }}</span>
           </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <!-- Editor Form -->
-          <section class="lg:col-span-4 bg-white rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50 h-fit">
-            <div class="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-lg">
-              <div>
-                <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
-                  <span class="material-symbols-outlined text-blue-600">{{ editingSubjectId() ? 'edit' : 'add_circle' }}</span>
-                  {{ editingSubjectId() ? 'تعديل المادة' : 'إضافة مادة جديدة' }}
-                </h3>
-              </div>
-              <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-1 rounded border border-blue-200">
+        <!-- ══ VERTICAL LAYOUT: horizontal form bar on top, table below ══ -->
+        <div class="flex flex-col gap-6">
+
+          <!-- Editor Form — horizontal bar -->
+          <section class="sm-card sm-editor-card animate-fade-up">
+            <div class="sm-card-header">
+              <h3 class="sm-card-title">
+                <span class="material-symbols-outlined">{{ editingSubjectId() ? 'edit' : 'add_circle' }}</span>
+                {{ editingSubjectId() ? 'تعديل المادة' : 'إضافة مادة جديدة' }}
+              </h3>
+              <span class="sm-chip" [class.sm-chip-new]="!editingSubjectId()" [class.sm-chip-edit]="editingSubjectId()">
                 {{ editingSubjectId() ? 'تعديل' : 'جديد' }}
               </span>
             </div>
 
-            <div class="p-5 space-y-5">
-              <div>
-                <label class="block mb-2 text-sm font-medium text-gray-900">اسم المادة</label>
+            <div class="sm-form-h">
+              <!-- Field: اسم المادة -->
+              <div class="sm-field">
+                <label class="sm-label">
+                  <span class="material-symbols-outlined">menu_book</span>
+                  اسم المادة
+                </label>
                 <input
                   type="text"
                   [(ngModel)]="newSubject.name"
-                  class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5"
+                  class="sm-input"
                   placeholder="مثال: الرياضيات">
               </div>
 
-              <div>
-                <label class="block mb-2 text-sm font-medium text-gray-900">كود المادة</label>
+              <!-- Field: كود المادة -->
+              <div class="sm-field">
+                <label class="sm-label">
+                  <span class="material-symbols-outlined">tag</span>
+                  كود المادة
+                </label>
                 <input
                   type="text"
                   [(ngModel)]="newSubject.code"
-                  class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5"
+                  class="sm-input"
                   placeholder="مثال: MATH101">
               </div>
 
-              <div class="flex items-center gap-3 pt-2">
+              <!-- Actions -->
+              <div class="sm-form-h-actions">
                 <button
                   *ngIf="editingSubjectId()"
                   (click)="cancelEdit()"
-                  class="flex-1 text-gray-900 bg-white border border-gray-200 focus:outline-none hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 focus:ring-4 focus:ring-gray-100 font-medium rounded-2xl text-sm px-5 py-2.5 transition-colors">
+                  class="sm-btn sm-btn-ghost">
                   إلغاء
                 </button>
 
                 <button
                   (click)="saveSubject()"
-                  class="flex-1 text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-lg transform transition-all hover:-translate-y-0.5 focus:ring-4 focus:ring-indigo-300 font-medium rounded-2xl text-sm px-5 py-2.5 transition-colors flex items-center justify-center gap-2">
-                  <span class="material-symbols-outlined text-lg">save</span>
+                  class="sm-btn sm-btn-primary">
+                  <span class="material-symbols-outlined">save</span>
                   {{ editingSubjectId() ? 'حفظ' : 'إضافة' }}
                 </button>
               </div>
             </div>
           </section>
 
-          <!-- Data Table -->
-          <section class="lg:col-span-8 bg-white rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50 overflow-hidden flex flex-col">
-            <div class="p-5 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gray-50/50">
-              <div>
-                <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
-                  <span class="material-symbols-outlined text-blue-600">library_books</span>
-                  قائمة المواد
-                </h3>
-              </div>
+          <!-- Data Table — full width -->
+          <section class="sm-card flex flex-col animate-fade-up" style="animation-delay:.08s">
+            <div class="sm-card-header">
+              <h3 class="sm-card-title">
+                <span class="material-symbols-outlined">library_books</span>
+                قائمة المواد
+              </h3>
+              <span class="sm-badge sm-badge-blue">
+                <span class="material-symbols-outlined" style="font-size:14px">menu_book</span>
+                {{ subjects().length }} مادة
+              </span>
+            </div>
 
-              <!-- Search Toolbar -->
-              <div class="flex items-center w-full sm:w-auto gap-2">
-                <div class="relative w-full sm:w-64">
-                  <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                    <span class="material-symbols-outlined text-gray-400 text-lg">search</span>
-                  </div>
-                  <input
-                    type="text"
-                    [(ngModel)]="searchTerm"
-                    (keyup.enter)="onSearch()"
-                    (ngModelChange)="!$event && clearSearch()"
-                    class="bg-white border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full pr-10 p-2.5"
-                    placeholder="ابحث باسم أو كود المادة...">
-                  <button
-                    *ngIf="searchTerm"
-                    (click)="clearSearch()"
-                    class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500 hover:text-gray-700">
-                    <span class="material-symbols-outlined text-lg">close</span>
-                  </button>
-                </div>
+            <!-- Search Toolbar -->
+            <div class="sm-toolbar">
+              <div class="sm-search-box">
+                <span class="material-symbols-outlined sm-search-icon">search</span>
+                <input
+                  type="text"
+                  [(ngModel)]="searchTerm"
+                  (keyup.enter)="onSearch()"
+                  (ngModelChange)="!$event && clearSearch()"
+                  class="sm-input sm-search-input"
+                  placeholder="ابحث باسم أو كود المادة...">
                 <button
-                  (click)="onSearch()"
-                  class="text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-lg transform transition-all hover:-translate-y-0.5 focus:ring-4 focus:ring-indigo-300 font-medium rounded-2xl text-sm px-4 py-2.5 transition-colors flex items-center gap-2 flex-shrink-0">
-                  بحث
+                  *ngIf="searchTerm"
+                  (click)="clearSearch()"
+                  type="button"
+                  class="sm-search-clear">
+                  <span class="material-symbols-outlined">close</span>
                 </button>
               </div>
+              <button
+                (click)="onSearch()"
+                type="button"
+                class="sm-btn sm-btn-soft sm-btn-search">
+                <span class="material-symbols-outlined" style="font-size:18px">search</span>
+                بحث
+              </button>
             </div>
 
             <!-- Table -->
-            <div class="relative overflow-x-auto flex-1">
-              <table class="w-full text-sm text-right text-gray-500">
-                <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-100">
+            <div class="sm-table-wrap flex-1">
+              <table class="sm-table">
+                <thead>
                   <tr>
-                    <th scope="col" class="px-6 py-4">كود المادة</th>
-                    <th scope="col" class="px-6 py-4">اسم المادة</th>
-                    <th scope="col" class="px-6 py-4 text-center">إجراءات</th>
+                    <th scope="col">كود المادة</th>
+                    <th scope="col">اسم المادة</th>
+                    <th scope="col" class="text-center">إجراءات</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr *ngFor="let subject of paginatedSubjects()" class="bg-white border-b hover:bg-gray-50 transition-colors">
-                    <td class="px-6 py-4 font-mono font-medium text-gray-900">
-                      <span class="bg-gray-100 text-gray-800 text-xs font-semibold px-2.5 py-0.5 rounded border border-gray-100">{{ subject.code }}</span>
+                  <tr *ngFor="let subject of paginatedSubjects(); let i = index"
+                      class="sm-row-enter"
+                      [style.animation-delay]="(i * 45) + 'ms'">
+                    <td data-label="كود المادة">
+                      <span class="sm-code-badge">{{ subject.code }}</span>
                     </td>
-                    <td class="px-6 py-4 font-medium text-gray-900">
-                      {{ subject.name }}
+                    <td data-label="اسم المادة">
+                      <div class="sm-name-cell">
+                        <span class="sm-name-avatar">{{ subject.name.charAt(0) }}</span>
+                        {{ subject.name }}
+                      </div>
                     </td>
-                    <td class="px-6 py-4 text-center">
-                      <div class="flex items-center justify-center gap-2">
+                    <td data-label="إجراءات" class="text-center">
+                      <div class="sm-row-actions">
                         <button
                           (click)="editSubject(subject)"
-                          class="p-2 text-blue-600 hover:bg-blue-50 rounded-2xl transition-colors"
+                          class="sm-icon-btn sm-icon-btn-edit"
                           title="تعديل">
-                          <span class="material-symbols-outlined text-sm">edit</span>
+                          <span class="material-symbols-outlined">edit</span>
                         </button>
                         <button
                           (click)="deleteSubject(subject.id)"
-                          class="p-2 text-red-600 hover:bg-red-50 rounded-2xl transition-colors"
+                          class="sm-icon-btn sm-icon-btn-delete"
                           title="حذف">
-                          <span class="material-symbols-outlined text-sm">delete</span>
+                          <span class="material-symbols-outlined">delete</span>
                         </button>
                       </div>
                     </td>
                   </tr>
 
                   <tr *ngIf="subjects().length === 0">
-                    <td colspan="3" class="px-6 py-12 text-center">
-                      <div class="flex flex-col items-center justify-center text-gray-500">
-                        <span class="material-symbols-outlined text-4xl mb-3 text-gray-400">book</span>
-                        <p class="text-base font-medium text-gray-900 mb-1">لا توجد مواد دراسية حالياً</p>
-                        <p class="text-sm">قم بإضافة مادة جديدة باستخدام النموذج</p>
+                    <td colspan="3" class="sm-empty-cell">
+                      <div class="sm-empty">
+                        <div class="sm-empty-icon-wrap">
+                          <span class="material-symbols-outlined">book</span>
+                        </div>
+                        <p class="sm-empty-title">لا توجد مواد دراسية حالياً</p>
+                        <p class="sm-empty-sub">قم بإضافة مادة جديدة باستخدام النموذج أعلاه</p>
                       </div>
                     </td>
                   </tr>
@@ -179,62 +211,54 @@
 
             <!-- Pagination -->
             @if (totalPages() > 1) {
-              <div class="flex flex-col sm:flex-row items-center justify-between p-4 bg-gray-50 border-t border-gray-100 gap-4">
-                <span class="text-sm text-gray-700">
-                  إظهار <span class="font-semibold text-gray-900">{{ rangeStart() }}</span> إلى <span class="font-semibold text-gray-900">{{ rangeEnd() }}</span> من أصل <span class="font-semibold text-gray-900">{{ subjects().length }}</span> مادة
+              <div class="sm-pagination">
+                <span class="sm-pagination-info">
+                  إظهار <strong>{{ rangeStart() }}</strong> إلى <strong>{{ rangeEnd() }}</strong> من أصل <strong>{{ subjects().length }}</strong> مادة
                 </span>
 
-                <div class="flex items-center gap-2">
-                  <button class="flex items-center justify-center px-3 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed" [disabled]="currentPage() === 1" (click)="prevPage()">
-                    <span class="material-symbols-outlined text-sm mr-1">chevron_right</span>
+                <div class="sm-pagination-controls">
+                  <button class="sm-page-nav-btn" [disabled]="currentPage() === 1" (click)="prevPage()">
+                    <span class="material-symbols-outlined" style="font-size:16px">chevron_right</span>
                     السابق
                   </button>
 
                   <div class="hidden sm:flex items-center gap-1">
                     @for (p of pages(); track trackByPageIndex($index, p)) {
                       @if (p === '...') {
-                        <span class="flex items-center justify-center w-8 h-8 text-sm font-medium text-gray-400">…</span>
+                        <span class="sm-page-dots">…</span>
                       } @else {
-                        <button class="flex items-center justify-center w-8 h-8 text-sm font-medium rounded-2xl transition-colors border"
-                                [class.bg-blue-600]="p === currentPage()"
-                                [class.text-white]="p === currentPage()"
-                                [class.border-blue-600]="p === currentPage()"
-                                [class.bg-white]="p !== currentPage()"
-                                [class.text-gray-900]="p !== currentPage()"
-                                [class.border-gray-200]="p !== currentPage()"
-                                [class.hover:bg-gray-50]="p !== currentPage()"
-                                (click)="goToPage(+p)">
+                        <button class="sm-page-btn" [class.active]="p === currentPage()" (click)="goToPage(+p)">
                           {{ p }}
                         </button>
                       }
                     }
                   </div>
 
-                  <button class="flex items-center justify-center px-3 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed" [disabled]="currentPage() === totalPages()" (click)="nextPage()">
+                  <button class="sm-page-nav-btn" [disabled]="currentPage() === totalPages()" (click)="nextPage()">
                     التالي
-                    <span class="material-symbols-outlined text-sm ml-1">chevron_left</span>
+                    <span class="material-symbols-outlined" style="font-size:16px">chevron_left</span>
                   </button>
                 </div>
               </div>
             }
           </section>
         </div>
+        <!-- ══ END LAYOUT ════════════════════════════════════════════════ -->
 
       </div>
     </div>
   </main>
 </div>
 
-<!-- ══ Floating inline confirm bars (fixed bottom) ════════════════════════ -->
-
+<!-- ══ Floating inline confirm bar (fixed bottom) ════════════════════════ -->
 @if (deleteSubjectConfirmId()) {
   <div class="fixed bottom-6 inset-x-0 z-[300] flex justify-center px-4 pointer-events-none">
-    <div class="bg-white border border-red-200 rounded-2xl shadow-xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3 max-w-xl w-full pointer-events-auto">
-      <span class="material-symbols-outlined text-red-600 text-xl shrink-0">warning</span>
-      <span class="text-sm font-medium text-gray-900">هل أنت متأكد من حذف هذه المادة الدراسية؟ سيتم حذف جميع البيانات المرتبطة بها نهائيًا.</span>
-      <div class="flex gap-2 sm:mr-auto shrink-0">
-        <button class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 transition-colors" type="button" (click)="cancelDeleteSubject()">إلغاء</button>
-        <button class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-2xl transition-colors" type="button" (click)="confirmDeleteSubject()">تأكيد الحذف</button>
+    <div class="sm-confirm-bar pointer-events-auto">
+      <span class="material-symbols-outlined sm-confirm-icon">warning</span>
+      <span class="sm-confirm-text">هل أنت متأكد من حذف هذه المادة الدراسية؟ سيتم حذف جميع البيانات المرتبطة بها نهائيًا.</span>
+      <div class="sm-confirm-actions">
+        <button class="sm-btn sm-btn-ghost sm-btn-sm" type="button" (click)="cancelDeleteSubject()">إلغاء</button>
+        <button class="sm-btn sm-btn-danger sm-btn-sm" type="button" (click)="confirmDeleteSubject()">تأكيد الحذف</button>
       </div>
     </div>
   </div>

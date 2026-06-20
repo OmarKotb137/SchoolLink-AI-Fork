@@ -3,7 +3,6 @@ import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
-import { Topbar } from '../../layouts/topbar/topbar';
 import { StudentAssignmentListItem, StudentAssignmentStatus } from '../../core/models/student-assignment.models';
 import { StudentAssignmentsService } from '../../core/services/student-assignments.service';
 
@@ -12,7 +11,7 @@ type AssignmentTab = 'all' | 'pending' | 'submitted' | 'graded' | 'late';
 @Component({
   selector: 'app-my-assignments',
   standalone: true,
-  imports: [CommonModule, Sidebar, Topbar, DatePipe, FormsModule],
+  imports: [CommonModule, Sidebar, DatePipe, FormsModule],
   templateUrl: './my-assignments.html',
   styleUrl: './my-assignments.css'
 })

@@ -1,179 +1,231 @@
 <app-sidebar [(isOpen)]="sidebarOpen" />
 <div class="main-content">
-  <main class="pt-16 min-h-screen bg-gray-50 flex flex-col">
+  <main class="pt-16 min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50 flex flex-col">
     <div class="flex-1 p-4 md:p-6 lg:p-8">
       <div class="max-w-7xl mx-auto space-y-6 pb-10">
 
-        <!-- Header / Hero Section -->
-        <section class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50">
-          <div>
-            <span class="text-sm font-medium text-blue-600 mb-1 block">Room Management</span>
-            <h2 class="text-2xl font-bold text-gray-900 mb-2">إدارة القاعات والمرافق</h2>
-            <p class="text-sm text-gray-500 max-w-2xl">
-              تنظيم أوضح لإدارة القاعات وأنواعها وسعتها، مع عرض أنظف يسهل مراجعته قبل استخدامه داخل الجداول.
-            </p>
+        <!-- ══ Hero ══════════════════════════════════════════════════════ -->
+        <section class="rm-hero animate-fade-up">
+          <div class="rm-hero-glow"></div>
+          <div class="rm-hero-body">
+            <div class="rm-hero-icon">
+              <span class="material-symbols-outlined" style="font-size:28px">meeting_room</span>
+            </div>
+            <div>
+              <span class="rm-hero-eyebrow">
+                <span class="material-symbols-outlined" style="font-size:13px;vertical-align:middle">domain</span>
+                Room Management
+              </span>
+              <h2 class="rm-hero-title">إدارة القاعات والمرافق</h2>
+              <p class="rm-hero-desc">
+                تنظيم أوضح لإدارة القاعات وأنواعها وسعتها، مع عرض أنظف يسهل مراجعته قبل استخدامه داخل الجداول.
+              </p>
+            </div>
           </div>
 
-          <div class="flex items-center gap-4 w-full md:w-auto">
-            <div class="bg-blue-50 border border-blue-100 p-4 rounded-2xl flex-1 md:w-40 text-center">
-              <span class="block text-xs text-blue-600 font-medium mb-1">القاعات المعروضة</span>
-              <strong class="block text-2xl font-bold text-blue-900">{{ rooms().length }}</strong>
+          <div class="rm-hero-stats">
+            <div class="rm-stat-pill rm-stat-pill-accent">
+              <span class="rm-stat-pill-label">القاعات المعروضة</span>
+              <strong class="rm-stat-pill-value">{{ rooms().length }}</strong>
             </div>
-            <div class="bg-gray-50 border border-gray-100 p-4 rounded-2xl flex-1 md:w-40 text-center">
-              <span class="block text-xs text-gray-500 font-medium mb-1">أنواع القاعات</span>
-              <strong class="block text-2xl font-bold text-gray-900">{{ availableRoomTypes().length }}</strong>
+            <div class="rm-stat-pill">
+              <span class="rm-stat-pill-label">أنواع القاعات</span>
+              <strong class="rm-stat-pill-value">{{ availableRoomTypes().length }}</strong>
+            </div>
+            <div class="rm-stat-pill">
+              <span class="rm-stat-pill-label">عدد صفحات القائمة</span>
+              <strong class="rm-stat-pill-value rm-stat-pill-value-sm">{{ totalPages() }}</strong>
             </div>
           </div>
         </section>
 
-        <!-- Feedback Messages -->
+        <!-- ══ Feedback Messages ═══════════════════════════════════════ -->
         <div class="flex flex-col gap-3">
-          <div *ngIf="errorMessage()" class="flex items-center gap-3 p-4 text-sm text-red-800 rounded-2xl bg-red-50 border border-red-200">
-            <span class="material-symbols-outlined text-lg">error</span>
-            <span class="font-medium">{{ errorMessage() }}</span>
+          <div *ngIf="errorMessage()" class="rm-banner rm-banner-error">
+            <span class="material-symbols-outlined rm-banner-icon">error</span>
+            <span>{{ errorMessage() }}</span>
           </div>
-          <div *ngIf="successMessage()" class="flex items-center gap-3 p-4 text-sm text-green-800 rounded-2xl bg-emerald-50 border border-green-200">
-            <span class="material-symbols-outlined text-lg">check_circle</span>
-            <span class="font-medium">{{ successMessage() }}</span>
+          <div *ngIf="successMessage()" class="rm-banner rm-banner-success">
+            <span class="material-symbols-outlined rm-banner-icon">check_circle</span>
+            <span>{{ successMessage() }}</span>
           </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <!-- Editor Form -->
-          <section class="lg:col-span-4 bg-white rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50 h-fit">
-            <div class="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-lg">
-              <div>
-                <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
-                  <span class="material-symbols-outlined text-blue-600">{{ editingRoomId() ? 'edit' : 'domain_add' }}</span>
-                  {{ editingRoomId() ? 'تعديل بيانات القاعة' : 'إضافة قاعة جديدة' }}
-                </h3>
-              </div>
-              <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-1 rounded border border-blue-200">
+        <!-- ══ VERTICAL LAYOUT: horizontal form bar → full-width table ══ -->
+        <div class="flex flex-col gap-6">
+
+          <!-- Editor Form — horizontal bar -->
+          <section class="rm-card rm-editor-card animate-fade-up">
+            <div class="rm-card-header">
+              <h3 class="rm-card-title">
+                <span class="material-symbols-outlined">{{ editingRoomId() ? 'edit' : 'domain_add' }}</span>
+                {{ editingRoomId() ? 'تعديل بيانات القاعة' : 'إضافة قاعة جديدة' }}
+              </h3>
+              <span class="rm-chip" [class.rm-chip-new]="!editingRoomId()" [class.rm-chip-edit]="editingRoomId()">
                 {{ editingRoomId() ? 'تعديل' : 'جديد' }}
               </span>
             </div>
 
-            <div class="p-5 space-y-5">
-              <div>
-                <label class="block mb-2 text-sm font-medium text-gray-900">اسم/رقم القاعة</label>
+            <div class="rm-form-h">
+              <!-- اسم القاعة -->
+              <div class="rm-field">
+                <label class="rm-label">
+                  <span class="material-symbols-outlined">meeting_room</span>
+                  اسم / رقم القاعة
+                </label>
                 <input
                   type="text"
                   [(ngModel)]="newRoom.name"
-                  placeholder="مثال: معمل الحاسب أو غرفة 12"
-                  class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5">
+                  class="rm-input"
+                  placeholder="مثال: غرفة 12 أو معمل الحاسب">
               </div>
 
-              <div>
-                <label class="block mb-2 text-sm font-medium text-gray-900">السعة الاستيعابية</label>
+              <!-- السعة -->
+              <div class="rm-field rm-field-sm">
+                <label class="rm-label">
+                  <span class="material-symbols-outlined">people</span>
+                  السعة
+                </label>
                 <input
                   type="number"
                   [(ngModel)]="newRoom.capacity"
                   min="1"
-                  class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5">
+                  class="rm-input"
+                  placeholder="30">
               </div>
 
-              <div>
-                <label class="block mb-2 text-sm font-medium text-gray-900">نوع القاعة</label>
-                <select [(ngModel)]="selectedRoomType" (ngModelChange)="onRoomTypeChange()" class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5">
+              <!-- نوع القاعة -->
+              <div class="rm-field">
+                <label class="rm-label">
+                  <span class="material-symbols-outlined">category</span>
+                  نوع القاعة
+                </label>
+                <select
+                  [(ngModel)]="selectedRoomType"
+                  (ngModelChange)="onRoomTypeChange()"
+                  class="rm-input rm-select">
                   <option *ngFor="let t of roomTypeOptions()" [value]="t.value">{{ t.label }}</option>
                 </select>
               </div>
 
-              <div *ngIf="selectedRoomType === otherRoomTypeValue">
-                <label class="block mb-2 text-sm font-medium text-gray-900">اكتب نوع القاعة الجديد</label>
+              <!-- custom type — ظاهر فقط لو اختار أخرى -->
+              <div class="rm-field" *ngIf="selectedRoomType === otherRoomTypeValue">
+                <label class="rm-label">
+                  <span class="material-symbols-outlined">edit_note</span>
+                  نوع مخصص
+                </label>
                 <input
                   type="text"
                   [(ngModel)]="customRoomType"
-                  placeholder="مثال: معمل روبوتات"
-                  class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5">
+                  class="rm-input"
+                  placeholder="مثال: معمل روبوتات">
               </div>
 
-              <div class="flex items-center gap-3 pt-2">
+              <!-- Actions -->
+              <div class="rm-form-h-actions">
                 <button
                   *ngIf="editingRoomId()"
                   (click)="cancelEdit()"
-                  class="flex-1 text-gray-900 bg-white border border-gray-200 focus:outline-none hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 focus:ring-4 focus:ring-gray-100 font-medium rounded-2xl text-sm px-5 py-2.5 transition-colors">
+                  class="rm-btn rm-btn-ghost">
                   إلغاء
                 </button>
-
                 <button
                   (click)="saveRoom()"
-                  class="flex-1 text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-lg transform transition-all hover:-translate-y-0.5 focus:ring-4 focus:ring-indigo-300 font-medium rounded-2xl text-sm px-5 py-2.5 transition-colors flex items-center justify-center gap-2">
-                  <span class="material-symbols-outlined text-lg">save</span>
-                  {{ editingRoomId() ? 'حفظ التحديث' : 'إضافة القاعة' }}
+                  class="rm-btn rm-btn-primary">
+                  <span class="material-symbols-outlined">save</span>
+                  {{ editingRoomId() ? 'حفظ' : 'إضافة' }}
                 </button>
               </div>
             </div>
           </section>
 
-          <!-- Data Table -->
-          <section class="lg:col-span-8 bg-white rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50 overflow-hidden flex flex-col">
-            <div class="p-5 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gray-50/50">
-              <div>
-                <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
-                  <span class="material-symbols-outlined text-blue-600">meeting_room</span>
-                  قائمة القاعات
-                </h3>
+          <!-- Data Table — full width -->
+          <section class="rm-card flex flex-col animate-fade-up" style="animation-delay:.08s">
+            <div class="rm-card-header">
+              <h3 class="rm-card-title">
+                <span class="material-symbols-outlined">meeting_room</span>
+                قائمة القاعات
+              </h3>
+              <span class="rm-badge rm-badge-blue">
+                <span class="material-symbols-outlined" style="font-size:14px">domain</span>
+                {{ rooms().length }} قاعة
+              </span>
+            </div>
+
+            <!-- Filter Toolbar -->
+            <div class="rm-toolbar">
+              <div class="rm-filter-wrap">
+                <span class="material-symbols-outlined rm-filter-icon">filter_list</span>
+                <select
+                  [(ngModel)]="selectedTypeFilter"
+                  (change)="onFilterChange()"
+                  class="rm-input rm-select rm-filter-select">
+                  <option value="">كل الأنواع</option>
+                  <option *ngFor="let t of availableRoomTypes()" [value]="t.value">{{ t.label }}</option>
+                </select>
               </div>
             </div>
 
-            <!-- Filters Panel -->
-            <div class="p-5 border-b border-gray-100 bg-white w-full sm:w-1/2">
-              <label class="block mb-2 text-sm font-medium text-gray-900">فلترة حسب النوع</label>
-              <select [(ngModel)]="selectedTypeFilter" (change)="onFilterChange()" class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5">
-                <option value="">كل الأنواع</option>
-                <option *ngFor="let t of availableRoomTypes()" [value]="t.value">{{ t.label }}</option>
-              </select>
-            </div>
-
             <!-- Table -->
-            <div class="relative overflow-x-auto flex-1">
-              <table class="w-full text-sm text-right text-gray-500">
-                <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-100">
+            <div class="rm-table-wrap flex-1">
+              <table class="rm-table">
+                <thead>
                   <tr>
-                    <th scope="col" class="px-6 py-4">اسم/رقم القاعة</th>
-                    <th scope="col" class="px-6 py-4">النوع</th>
-                    <th scope="col" class="px-6 py-4 text-center">السعة</th>
-                    <th scope="col" class="px-6 py-4 text-center">إجراءات</th>
+                    <th scope="col">اسم / رقم القاعة</th>
+                    <th scope="col">النوع</th>
+                    <th scope="col" class="text-center">السعة</th>
+                    <th scope="col" class="text-center">إجراءات</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr *ngFor="let room of paginatedRooms()" class="bg-white border-b hover:bg-gray-50 transition-colors">
-                    <td class="px-6 py-4 font-bold text-gray-900">
-                      {{ room.name }}
+                  <tr *ngFor="let room of paginatedRooms(); let i = index"
+                      class="rm-row-enter"
+                      [style.animation-delay]="(i * 45) + 'ms'">
+
+                    <td data-label="اسم القاعة">
+                      <div class="rm-name-cell">
+                        <span class="rm-name-avatar">{{ room.name.charAt(0) }}</span>
+                        {{ room.name }}
+                      </div>
                     </td>
-                    <td class="px-6 py-4">
-                      <span class="bg-purple-100 text-purple-800 text-xs font-medium px-2.5 py-0.5 rounded border border-purple-200">
-                        {{ getRoomTypeLabel(room.type) }}
+
+                    <td data-label="النوع">
+                      <span class="rm-type-badge">{{ getRoomTypeLabel(room.type) }}</span>
+                    </td>
+
+                    <td data-label="السعة" class="text-center">
+                      <span class="rm-capacity-pill">
+                        <span class="material-symbols-outlined" style="font-size:14px">people</span>
+                        {{ room.capacity ?? '—' }}
                       </span>
                     </td>
-                    <td class="px-6 py-4 text-center">
-                      <span class="bg-gray-100 text-gray-800 text-xs font-semibold px-3 py-1 rounded-full border border-gray-100">{{ room.capacity ?? '—' }}</span>
-                    </td>
-                    <td class="px-6 py-4 text-center">
-                      <div class="flex items-center justify-center gap-2">
+
+                    <td data-label="إجراءات" class="text-center">
+                      <div class="rm-row-actions">
                         <button
                           (click)="editRoom(room)"
-                          class="p-2 text-blue-600 hover:bg-blue-50 rounded-2xl transition-colors"
+                          class="rm-icon-btn rm-icon-btn-edit"
                           title="تعديل">
-                          <span class="material-symbols-outlined text-sm">edit</span>
+                          <span class="material-symbols-outlined">edit</span>
                         </button>
                         <button
                           (click)="deleteRoom(room.id)"
-                          class="p-2 text-red-600 hover:bg-red-50 rounded-2xl transition-colors"
+                          class="rm-icon-btn rm-icon-btn-delete"
                           title="حذف">
-                          <span class="material-symbols-outlined text-sm">delete</span>
+                          <span class="material-symbols-outlined">delete</span>
                         </button>
                       </div>
                     </td>
                   </tr>
 
                   <tr *ngIf="rooms().length === 0">
-                    <td colspan="4" class="px-6 py-12 text-center">
-                      <div class="flex flex-col items-center justify-center text-gray-500">
-                        <span class="material-symbols-outlined text-4xl mb-3 text-gray-400">meeting_room</span>
-                        <p class="text-base font-medium text-gray-900 mb-1">لا توجد قاعات مطابقة</p>
-                        <p class="text-sm">قم بإضافة قاعات جديدة أو غير الفلتر</p>
+                    <td colspan="4" class="rm-empty-cell">
+                      <div class="rm-empty">
+                        <div class="rm-empty-icon-wrap">
+                          <span class="material-symbols-outlined">meeting_room</span>
+                        </div>
+                        <p class="rm-empty-title">لا توجد قاعات مطابقة</p>
+                        <p class="rm-empty-sub">أضف قاعات جديدة أو غيّر الفلتر</p>
                       </div>
                     </td>
                   </tr>
@@ -183,62 +235,55 @@
 
             <!-- Pagination -->
             @if (totalPages() > 1) {
-              <div class="flex flex-col sm:flex-row items-center justify-between p-4 bg-gray-50 border-t border-gray-100 gap-4">
-                <span class="text-sm text-gray-700">
-                  إظهار <span class="font-semibold text-gray-900">{{ rangeStart() }}</span> إلى <span class="font-semibold text-gray-900">{{ rangeEnd() }}</span> من أصل <span class="font-semibold text-gray-900">{{ rooms().length }}</span> قاعة
+              <div class="rm-pagination">
+                <span class="rm-pagination-info">
+                  إظهار <strong>{{ rangeStart() }}</strong> إلى <strong>{{ rangeEnd() }}</strong> من أصل <strong>{{ rooms().length }}</strong> قاعة
                 </span>
 
-                <div class="flex items-center gap-2">
-                  <button class="flex items-center justify-center px-3 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed" [disabled]="currentPage() === 1" (click)="prevPage()">
-                    <span class="material-symbols-outlined text-sm mr-1">chevron_right</span>
+                <div class="rm-pagination-controls">
+                  <button class="rm-page-nav-btn" [disabled]="currentPage() === 1" (click)="prevPage()">
+                    <span class="material-symbols-outlined" style="font-size:16px">chevron_right</span>
                     السابق
                   </button>
 
                   <div class="hidden sm:flex items-center gap-1">
                     @for (p of pages(); track trackByPageIndex($index, p)) {
                       @if (p === '...') {
-                        <span class="flex items-center justify-center w-8 h-8 text-sm font-medium text-gray-400">…</span>
+                        <span class="rm-page-dots">…</span>
                       } @else {
-                        <button class="flex items-center justify-center w-8 h-8 text-sm font-medium rounded-2xl transition-colors border"
-                                [class.bg-blue-600]="p === currentPage()"
-                                [class.text-white]="p === currentPage()"
-                                [class.border-blue-600]="p === currentPage()"
-                                [class.bg-white]="p !== currentPage()"
-                                [class.text-gray-900]="p !== currentPage()"
-                                [class.border-gray-200]="p !== currentPage()"
-                                [class.hover:bg-gray-50]="p !== currentPage()"
-                                (click)="goToPage(+p)">
+                        <button class="rm-page-btn" [class.active]="p === currentPage()" (click)="goToPage(+p)">
                           {{ p }}
                         </button>
                       }
                     }
                   </div>
 
-                  <button class="flex items-center justify-center px-3 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed" [disabled]="currentPage() === totalPages()" (click)="nextPage()">
+                  <button class="rm-page-nav-btn" [disabled]="currentPage() === totalPages()" (click)="nextPage()">
                     التالي
-                    <span class="material-symbols-outlined text-sm ml-1">chevron_left</span>
+                    <span class="material-symbols-outlined" style="font-size:16px">chevron_left</span>
                   </button>
                 </div>
               </div>
             }
           </section>
+
         </div>
+        <!-- ══ END LAYOUT ═══════════════════════════════════════════════ -->
 
       </div>
     </div>
   </main>
 </div>
 
-<!-- ══ Floating inline confirm bars (fixed bottom) ════════════════════════ -->
-
+<!-- ══ Floating delete confirm bar ══════════════════════════════════════ -->
 @if (deleteRoomConfirmId()) {
   <div class="fixed bottom-6 inset-x-0 z-[300] flex justify-center px-4 pointer-events-none">
-    <div class="bg-white border border-red-200 rounded-2xl shadow-xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3 max-w-xl w-full pointer-events-auto">
-      <span class="material-symbols-outlined text-red-600 text-xl shrink-0">warning</span>
-      <span class="text-sm font-medium text-gray-900">هل أنت متأكد من حذف هذه القاعة؟ سيتم حذف جميع البيانات المرتبطة بها نهائيًا.</span>
-      <div class="flex gap-2 sm:mr-auto shrink-0">
-        <button class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 transition-colors" type="button" (click)="cancelDeleteRoom()">إلغاء</button>
-        <button class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-2xl transition-colors" type="button" (click)="confirmDeleteRoom()">تأكيد الحذف</button>
+    <div class="rm-confirm-bar pointer-events-auto">
+      <span class="material-symbols-outlined rm-confirm-icon">warning</span>
+      <span class="rm-confirm-text">هل أنت متأكد من حذف هذه القاعة؟ سيتم حذف جميع البيانات المرتبطة بها نهائيًا.</span>
+      <div class="rm-confirm-actions">
+        <button class="rm-btn rm-btn-ghost rm-btn-sm" type="button" (click)="cancelDeleteRoom()">إلغاء</button>
+        <button class="rm-btn rm-btn-danger rm-btn-sm" type="button" (click)="confirmDeleteRoom()">تأكيد الحذف</button>
       </div>
     </div>
   </div>
