@@ -21,7 +21,6 @@ export class ParentDashboard implements OnInit, AfterViewInit {
   private parentDashboardService = inject(ParentDashboardService);
   private authService = inject(AuthService);
 
-  @ViewChild('performanceChart') performanceChartCanvas!: ElementRef<HTMLCanvasElement>;
   @ViewChild('absencesChart') absencesChartCanvas!: ElementRef<HTMLCanvasElement>;
   @ViewChild('weeklyChart') weeklyChartCanvas!: ElementRef<HTMLCanvasElement>;
 
@@ -39,6 +38,7 @@ export class ParentDashboard implements OnInit, AfterViewInit {
 
   selectedChild = signal<ParentChildStats | null>(null);
   selectedWeekDetail = signal<WeeklyPerformance | null>(null);
+  selectedWeek = signal<WeeklyPerformance | null>(null);
   selectedTerm = signal<number | null>(null);
   readonly terms = [
     { value: null, label: 'الترم الحالي' },
@@ -46,7 +46,7 @@ export class ParentDashboard implements OnInit, AfterViewInit {
     { value: 2, label: 'الترم الثاني' },
   ];
 
-  private performanceChart: Chart | null = null;
+  private performanceCharts: Chart[] = [];
   private absencesChart: Chart | null = null;
   private weeklyChart: Chart | null = null;
 
@@ -76,6 +76,7 @@ export class ParentDashboard implements OnInit, AfterViewInit {
             this.dashboardData.set(dashData);
             if (dashData?.children?.length) {
               this.selectedChild.set(dashData.children[0]);
+              this.selectedWeek.set(null);
             }
             this.isLoading.set(false);
             setTimeout(() => this.buildCharts(), 200);
@@ -95,6 +96,7 @@ export class ParentDashboard implements OnInit, AfterViewInit {
 
   selectChild(child: ParentChildStats): void {
     this.selectedChild.set(child);
+    this.selectedWeek.set(null);
     setTimeout(() => this.buildCharts(), 100);
   }
 
@@ -116,72 +118,69 @@ export class ParentDashboard implements OnInit, AfterViewInit {
   private buildCharts() {
     const d = this.dashboardData();
     if (!d || !d.children.length) return;
-    this.buildPerformanceChart(d.children);
+    this.buildPerformanceCharts(d.children);
     this.buildAbsencesChart(d.children);
     this.buildWeeklyChart();
   }
 
-  private buildPerformanceChart(children: { name: string; performance: number }[]) {
-    if (!this.performanceChartCanvas) return;
-    const ctx = this.performanceChartCanvas.nativeElement.getContext('2d');
-    if (!ctx) return;
-    if (this.performanceChart) this.performanceChart.destroy();
+  private buildPerformanceCharts(children: { name: string; performance: number }[]) {
+    // Destroy old charts
+    this.performanceCharts.forEach(c => c.destroy());
+    this.performanceCharts = [];
 
-    // Build segments: each child gets two slices (score + remainder)
-    const labels: string[] = [];
-    const data: number[] = [];
-    const colors: string[] = [];
     const mainColors = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#06b6d4'];
 
     children.forEach((child, i) => {
+      const canvas = document.getElementById('perfChart_' + i) as HTMLCanvasElement | null;
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
       const perf = child.performance || 0;
       const rem = Math.max(100 - perf, 0);
-      labels.push(child.name, '');
-      data.push(perf, rem);
       const color = mainColors[i % mainColors.length];
-      colors.push(color, '#ef4444'); // remainder in medium red
-    });
 
-    this.performanceChart = new Chart(ctx, {
-      type: 'doughnut',
-      data: {
-        labels,
-        datasets: [{
-          data,
-          backgroundColor: colors,
-          borderWidth: 0,
-          hoverOffset: 8,
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        cutout: '65%',
-        plugins: {
-          legend: {
-            position: 'bottom',
-            rtl: true,
-            labels: {
-              usePointStyle: true,
-              padding: 14,
-              font: { size: 12 },
-              filter: (item: any) => item.text !== ''
-            }
-          },
-          tooltip: {
-            rtl: true,
-            backgroundColor: '#1e1b4b',
-            padding: 10,
-            cornerRadius: 8,
-            callbacks: {
-              label: (ctx: any) => {
-                if (ctx.label === '') return;
-                return `${ctx.label}: ${ctx.parsed}%`;
+      const chart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['الأداء', 'المتبقي'],
+          datasets: [{
+            data: [perf, rem],
+            backgroundColor: [color, '#e2e8f0'],
+            borderWidth: 0,
+            hoverOffset: 4,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '72%',
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              rtl: true,
+              callbacks: {
+                label: (c: any) => `${c.label}: ${c.raw}%`
               }
             }
           }
-        }
-      }
+        },
+        plugins: [{
+          id: 'centerText_' + i,
+          afterDraw(chart: any) {
+            const { ctx: c2, chartArea: { top, left, width, height } } = chart;
+            c2.save();
+            c2.font = 'bold 18px Inter, sans-serif';
+            c2.fillStyle = color;
+            c2.textAlign = 'center';
+            c2.textBaseline = 'middle';
+            c2.fillText(perf + '%', left + width / 2, top + height / 2);
+            c2.restore();
+          }
+        }]
+      });
+
+      this.performanceCharts.push(chart);
     });
   }
 
@@ -272,7 +271,9 @@ export class ParentDashboard implements OnInit, AfterViewInit {
         onClick: (_: any, elements: any[]) => {
           if (elements.length > 0) {
             const idx = elements[0].index;
-            this.selectedWeekDetail.set(child.weeklyPerformances[idx]);
+            const week = child.weeklyPerformances[idx];
+            this.selectedWeekDetail.set(week);
+            this.selectedWeek.set(week);
           }
         },
         plugins: {
@@ -330,10 +331,23 @@ export class ParentDashboard implements OnInit, AfterViewInit {
 
   switchTerm(termValue: number | null): void {
     this.selectedTerm.set(termValue);
+    this.selectedWeek.set(null);
     this.loadData();
   }
 
   closeWeekDetail() {
     this.selectedWeekDetail.set(null);
+  }
+
+  onWeekChange(event: Event): void {
+    const val = (event.target as HTMLSelectElement).value;
+    if (val === 'latest') {
+      this.selectedWeek.set(null);
+    } else {
+      const weekNum = parseInt(val, 10);
+      const child = this.selectedChild();
+      const foundWeek = child?.weeklyPerformances?.find(w => w.weekNumber === weekNum) || null;
+      this.selectedWeek.set(foundWeek);
+    }
   }
 }

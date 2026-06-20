@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Project.DAL.Interfaces.Repositories.Core;
 using Project.Domain.Entities;
 using Project.DAL.Context;
@@ -55,7 +55,7 @@ public class ParentStudentRepository : Repository<ParentStudent>, IParentStudent
             .Where(ps => ps.ParentId == parentId)
             .Include(ps => ps.Student)
                 .ThenInclude(s => s.Enrollments
-                    .Where(e => e.LeftAt == null))
+                    .Where(e => e.LeftAt == null && !e.IsDeleted))
                     .ThenInclude(e => e.Class)
                         .ThenInclude(c => c.GradeLevel)
             .OrderBy(ps => ps.Student.FullName)

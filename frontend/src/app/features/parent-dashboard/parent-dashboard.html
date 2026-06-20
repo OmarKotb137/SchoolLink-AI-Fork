@@ -55,16 +55,24 @@
       @if (!isLoading() && !errorMessage() && children().length > 0) {
         <!-- Charts Row -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <!-- Performance Doughnuts: one per child -->
           <div class="chart-card">
-            <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center justify-between mb-4">
               <h3 class="font-headline-md">أداء الأبناء</h3>
               <span class="text-label-sm text-outline flex items-center gap-1">
                 <span class="material-symbols-outlined text-sm">pie_chart</span>
-                نسب مئوية
+                نسبة الأداء
               </span>
             </div>
-            <div class="chart-container">
-              <canvas #performanceChart></canvas>
+            <div class="perf-doughnuts-row">
+              @for (child of dashboardData()?.children; track child.name; let i = $index) {
+                <div class="perf-donut-wrap">
+                  <div class="perf-donut-canvas-box">
+                    <canvas [id]="'perfChart_' + i"></canvas>
+                  </div>
+                  <p class="perf-donut-name">{{ child.name }}</p>
+                </div>
+              }
             </div>
           </div>
           <div class="chart-card">
@@ -162,12 +170,34 @@
               <!-- Subject Performances -->
               @if (child.subjectPerformances.length) {
                 <div class="mt-4 mb-4">
-                  <h4 class="font-headline-sm font-bold mb-3 flex items-center gap-2">
-                    <span class="material-symbols-outlined text-primary">book_5</span>
-                    أداء المواد الدراسية
-                  </h4>
+                  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+                    <h4 class="font-headline-sm font-bold flex items-center gap-2 mb-0">
+                      <span class="material-symbols-outlined text-primary">book_5</span>
+                      أداء المواد الدراسية
+                    </h4>
+                    <!-- Week Selector Dropdown -->
+                    @if (child.weeklyPerformances.length) {
+                      <div class="flex items-center gap-2">
+                        <span class="text-label-sm text-outline">عرض تقييم:</span>
+                        <select class="week-select-dropdown" 
+                                (change)="onWeekChange($event)"
+                                [value]="(selectedChild()?.name === child.name && selectedWeek()) ? selectedWeek()!.weekNumber : 'latest'">
+                          <option value="latest">آخر تقييم أسبوعي</option>
+                          @for (wp of child.weeklyPerformances; track wp.weekNumber) {
+                            <option [value]="wp.weekNumber">
+                              {{ wp.periodName }}
+                              @if (wp.startDate && wp.endDate) { ({{ wp.startDate | date:'d MMM' }} - {{ wp.endDate | date:'d MMM' }}) }
+                            </option>
+                          }
+                        </select>
+                      </div>
+                    }
+                  </div>
+
+                  @let displayedSubjects = (selectedChild()?.name === child.name && selectedWeek()?.subjectPerformances) ? selectedWeek()!.subjectPerformances! : child.subjectPerformances;
+
                   <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    @for (subj of child.subjectPerformances; track subj.subjectName) {
+                    @for (subj of displayedSubjects; track subj.subjectName) {
                       <div class="subject-card">
                         <div class="flex items-center justify-between mb-2">
                           <span class="font-bold text-label-md">{{ subj.subjectName }}</span>

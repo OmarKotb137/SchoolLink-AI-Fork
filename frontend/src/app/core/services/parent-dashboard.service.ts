@@ -28,10 +28,13 @@ export interface UpcomingExam {
 export interface WeeklyPerformance {
   periodName: string;
   weekNumber: number;
+  startDate?: string;
+  endDate?: string;
   avgScore: number;
   maxScore: number;
   totalScore: number;
   totalMaxScore: number;
+  subjectPerformances?: ChildSubject[];
 }
 
 export interface MonthlyExamResult {
