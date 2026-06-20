@@ -186,6 +186,12 @@ export class StudentManagement implements OnInit {
     this.loadParentLinks(student.id);
   }
 
+  /** Closes the details slide-over drawer (UI-only helper). */
+  closeStudentDrawer() {
+    this.selectedStudentId.set(null);
+    this.parentLinks.set([]);
+  }
+
   loadParentLinks(studentId: number) {
     this.parentStudentService.getParentsByStudent(studentId).subscribe({
       next: links => this.parentLinks.set(links.data ?? links),

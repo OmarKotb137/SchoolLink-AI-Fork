@@ -340,14 +340,14 @@
                 <input type="text" class="field-input"
                        placeholder="اسم الطالب أو الفصل"
                        [ngModel]="searchQuery()"
-                       (ngModelChange)="searchQuery.set($event)" />
+                       (ngModelChange)="searchQuery.set($event); currentPage.set(1)" />
               </div>
 
               <div>
                 <label class="field-label">الحالة الأكاديمية</label>
                 <select class="field-select"
                         [ngModel]="statusFilter()"
-                        (ngModelChange)="statusFilter.set($event)">
+                        (ngModelChange)="statusFilter.set($event); currentPage.set(1)">
                   <option value="all">الكل</option>
                   <option value="passed">ناجح</option>
                   <option value="failed">راسب</option>
@@ -360,7 +360,7 @@
                 <label class="field-label">حالة الحساب</label>
                 <select class="field-select"
                         [ngModel]="accountFilter()"
-                        (ngModelChange)="accountFilter.set($event)">
+                        (ngModelChange)="accountFilter.set($event); currentPage.set(1)">
                   <option value="all">الكل</option>
                   <option value="with-account">له حساب طالب</option>
                   <option value="without-account">بدون حساب</option>
@@ -371,7 +371,7 @@
                 <label class="field-label">الترتيب</label>
                 <select class="field-select"
                         [ngModel]="sortMode()"
-                        (ngModelChange)="sortMode.set($event)">
+                        (ngModelChange)="sortMode.set($event); currentPage.set(1)">
                   <option value="name">بالاسم</option>
                   <option value="high">الأعلى درجة</option>
                   <option value="low">الأقل درجة</option>
@@ -453,7 +453,7 @@
                 </thead>
 
                 <tbody>
-                  <ng-container *ngFor="let candidate of filteredCandidates(); trackBy: trackByEnrollmentId">
+                  <ng-container *ngFor="let candidate of paginatedCandidates(); trackBy: trackByEnrollmentId">
                     <tr>
                       <td class="text-center">
                         <input type="checkbox"
@@ -531,6 +531,35 @@
                   </tr>
                 </tbody>
               </table>
+            </div>
+
+            <!-- Pagination -->
+            <div class="prg-pagination" *ngIf="totalPages() > 1">
+              <span class="prg-pagination-info">
+                إظهار <strong>{{ rangeStart() }}</strong> إلى <strong>{{ rangeEnd() }}</strong> من أصل <strong>{{ filteredCandidates().length }}</strong> طالب
+              </span>
+
+              <div class="prg-pagination-controls">
+                <button type="button" class="prg-page-btn" [disabled]="currentPage() === 1" (click)="prevPage()">
+                  <span class="material-symbols-outlined">chevron_right</span>
+                  السابق
+                </button>
+
+                <div class="prg-page-numbers">
+                  <ng-container *ngFor="let p of pages(); trackBy: trackByPageIndex">
+                    <span class="prg-page-dots" *ngIf="p === '...'">…</span>
+                    <button type="button" *ngIf="p !== '...'"
+                            class="prg-page-num"
+                            [class.is-active]="p === currentPage()"
+                            (click)="goToPage(+p)">{{ p }}</button>
+                  </ng-container>
+                </div>
+
+                <button type="button" class="prg-page-btn" [disabled]="currentPage() === totalPages()" (click)="nextPage()">
+                  التالي
+                  <span class="material-symbols-outlined">chevron_left</span>
+                </button>
+              </div>
             </div>
           </div>
 

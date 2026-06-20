@@ -904,6 +904,98 @@
   margin: 20px 0;
 }
 
+/* ─── Pagination ─────────────────────────────────────────────── */
+
+.prg-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 24px;
+  background: rgba(241, 245, 255, 0.6);
+  border-top: 1px solid rgba(0, 35, 111, 0.08);
+  flex-wrap: wrap;
+}
+
+.prg-pagination-info { font-size: 13px; color: #64748b; }
+.prg-pagination-info strong { color: #0f172a; font-weight: 700; }
+
+.prg-pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.prg-page-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 14px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.prg-page-btn .material-symbols-outlined { font-size: 18px; }
+
+.prg-page-btn:hover:not(:disabled) {
+  border-color: #00236f;
+  color: #00236f;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(0, 35, 111, 0.1);
+}
+
+.prg-page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.prg-page-numbers {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.prg-page-num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 8px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 11px;
+  background: #fff;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.prg-page-num:hover { border-color: #00236f; color: #00236f; }
+
+.prg-page-num.is-active {
+  background: linear-gradient(135deg, #00236f, #2d5be3);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(0, 35, 111, 0.3);
+}
+
+.prg-page-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
 /* ─── Spinner ────────────────────────────────────────────────── */
 
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -956,6 +1048,9 @@
 
   .candidates-table thead th,
   .candidates-table tbody td { padding: 10px 10px; font-size: 13px; }
+
+  .prg-pagination { padding: 14px; flex-direction: column; align-items: stretch; text-align: center; }
+  .prg-pagination-controls { justify-content: center; }
 }
 
 /* ─── Reduced Motion ─────────────────────────────────────────── */

@@ -665,14 +665,6 @@ public static class SeedData
             foreach (var term in new[] { AcademicTerm.FirstSemester, AcademicTerm.SecondSemester })
             {
                 var isFirst = term == AcademicTerm.FirstSemester;
-                foreach (var (subjectKey, monthlyRange, semesterRange) in new[] {
-                    ("ARB", (lo: 8,  hi: 15), (lo: 20, hi: 31)),
-                    ("ENG", (lo: 9,  hi: 15), (lo: 21, hi: 30)),
-                    ("MTH", (lo: 11, hi: 16), (lo: 20, hi: 31)),
-                    ("SCI", (lo: 10, hi: 15), (lo: 22, hi: 30)),
-                    ("SOC", (lo: 9,  hi: 14), (lo: 20, hi: 29)),
-                    ("ISL", (lo: 10, hi: 15), (lo: 21, hi: 30)),
-                    ("CMP", (lo: 11, hi: 15), (lo: 22, hi: 30)) })
                 foreach (var (subjectKey, e1Lo, e1Hi, e2Lo, e2Hi, semLo, semHi) in assessmentRanges)
                 {
                     var subjectId = S[subjectKey].Id;
@@ -696,7 +688,6 @@ public static class SeedData
                         SubjectId      = subjectId,
                         AssessmentType = PeriodicAssessmentType.MonthlyExam1,
                         Term           = term,
-                        Score          = rng.Next(monthlyRange.lo, monthlyRange.hi),
                         Score          = rng.Next(e1Lo, e1Hi),
                         MaxScore       = 15,
                         AssessmentDate = m1Date,
@@ -709,7 +700,6 @@ public static class SeedData
                         SubjectId      = subjectId,
                         AssessmentType = PeriodicAssessmentType.MonthlyExam2,
                         Term           = term,
-                        Score          = rng.Next(monthlyRange.lo, monthlyRange.hi),
                         Score          = rng.Next(e2Lo, e2Hi),
                         MaxScore       = 15,
                         AssessmentDate = m2Date,
@@ -722,7 +712,6 @@ public static class SeedData
                         SubjectId      = subjectId,
                         AssessmentType = PeriodicAssessmentType.SemesterExam,
                         Term           = term,
-                        Score          = rng.Next(semesterRange.lo, semesterRange.hi),
                         Score          = rng.Next(semLo, semHi),
                         MaxScore       = 30,
                         AssessmentDate = semDate,
@@ -764,7 +753,6 @@ public static class SeedData
         {
             foreach (var term in new[] { AcademicTerm.FirstSemester, AcademicTerm.SecondSemester })
             {
-                foreach (var subjectId in new[] { S["ARB"].Id, S["ENG"].Id, S["MTH"].Id, S["SCI"].Id, S["SOC"].Id, S["ISL"].Id, S["CMP"].Id })
                 var semesterNum = term == AcademicTerm.FirstSemester ? 1 : 2;
                 foreach (var subject in subjectEntities)
                 {
@@ -774,15 +762,6 @@ public static class SeedData
                     var e2      = asms.FirstOrDefault(a => a.AssessmentType == PeriodicAssessmentType.MonthlyExam2)?.Score ?? 0;
                     var semExam = asms.FirstOrDefault(a => a.AssessmentType == PeriodicAssessmentType.SemesterExam)?.Score
                                   ?? rng.Next(20, 31);
-                    var periodAvg = (int)Math.Round(
-                        subjectId == S["MTH"].Id ? rng.Next(28, 39) + rng.NextDouble() :
-                        subjectId == S["ARB"].Id ? rng.Next(25, 36) + rng.NextDouble() :
-                        subjectId == S["ENG"].Id ? rng.Next(26, 37) + rng.NextDouble() :
-                        subjectId == S["SCI"].Id ? rng.Next(27, 38) + rng.NextDouble() :
-                        subjectId == S["SOC"].Id ? rng.Next(24, 35) + rng.NextDouble() :
-                        subjectId == S["ISL"].Id ? rng.Next(28, 38) + rng.NextDouble() :
-                        /* CMP */                   rng.Next(26, 36) + rng.NextDouble());
-                                      ?? rng.Next(20, 31);
 
                     // PeriodAvgScore مأخوذ من PeriodAverages الحقيقية المجمّعة
                     // تحويل النسبة من مقياس الفترات إلى مقياس periodMaxScore (40).

@@ -1,413 +1,476 @@
 <app-sidebar [(isOpen)]="sidebarOpen" />
+
 <div class="main-content">
+  <main class="sm-page">
 
-  <main class="pt-16 min-h-screen bg-gray-50 flex flex-col">
-    <div class="flex-1 p-4 md:p-6 lg:p-8">
-      <div class="max-w-7xl mx-auto space-y-6 pb-10">
+    <!-- ─── Decorative Background ──────────────────────────────── -->
+    <div class="pg-bg" aria-hidden="true">
+      <div class="pg-orb pg-orb-1"></div>
+      <div class="pg-orb pg-orb-2"></div>
+      <div class="pg-orb pg-orb-3"></div>
+    </div>
 
-        <!-- Page Header -->
-        <section class="bg-white p-6 rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <span class="text-sm font-medium text-blue-600 mb-1 block">إدارة الطلاب</span>
-            <h1 class="text-2xl font-bold text-gray-900 mb-2">ملفات الطلاب وربط الحسابات وأولياء الأمور</h1>
-            <p class="text-sm text-gray-500 max-w-2xl">
-              هذه الصفحة هي المركز الأساسي لملف الطالب الأكاديمي. منها تنشئ الطالب، تعدل بياناته،
-              وتربطه بحساب دخول أو بولي أمر، بينما يظل الاستيراد والنقل أدوات مساندة.
-            </p>
+    <section class="sm-shell">
+
+      <!-- ─── Header Banner ─────────────────────────────────────── -->
+      <header class="sm-header">
+        <div class="header-banner" aria-hidden="true">
+          <div class="banner-orb banner-orb-1"></div>
+          <div class="banner-orb banner-orb-2"></div>
+          <div class="banner-wave"></div>
+        </div>
+
+        <div class="header-content">
+          <!-- Icon Badge (static, no rotating ring) -->
+          <div class="sm-badge-icon">
+            <span class="material-symbols-outlined">groups</span>
           </div>
 
-          <div class="flex flex-wrap items-center gap-2">
-            <button class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 transition-colors flex items-center gap-2" type="button" (click)="navigateTo('/import-students')">
-              <span class="material-symbols-outlined text-sm">file_upload</span>
+          <!-- Info -->
+          <div class="header-info">
+            <p class="sm-eyebrow">
+              <span class="eyebrow-pulse"></span>
+              إدارة الطلاب
+            </p>
+            <h1>ملفات الطلاب وربط الحسابات وأولياء الأمور</h1>
+            <div class="sm-meta-row">
+              <span class="meta-chip">
+                <span class="material-symbols-outlined">person</span>
+                {{ students().length }} طالب
+              </span>
+              <span class="meta-chip">
+                <span class="material-symbols-outlined">link</span>
+                {{ linkedStudentUserIds().size }} حساب مرتبط
+              </span>
+              <span class="meta-role-badge">{{ parentAccounts().length }} ولي أمر متاح</span>
+            </div>
+          </div>
+
+          <!-- Header Actions -->
+          <div class="sm-header-actions">
+            <button class="sm-action-btn ghost" type="button" (click)="navigateTo('/import-students')">
+              <span class="material-symbols-outlined">file_upload</span>
               استيراد
             </button>
-            <button class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 transition-colors flex items-center gap-2" type="button" (click)="navigateTo('/transfer-student')">
-              <span class="material-symbols-outlined text-sm">transfer_within_a_station</span>
+            <button class="sm-action-btn ghost" type="button" (click)="navigateTo('/transfer-student')">
+              <span class="material-symbols-outlined">transfer_within_a_station</span>
               نقل طالب
             </button>
-            <button class="px-4 py-2 text-sm font-medium text-white bg-blue-700 rounded-2xl hover:bg-blue-800 transition-colors flex items-center gap-2" type="button" (click)="openCreateModal()">
-              <span class="material-symbols-outlined text-sm">person_add</span>
+            <button class="sm-action-btn solid" type="button" (click)="openCreateModal()">
+              <span class="material-symbols-outlined">person_add</span>
               إضافة طالب
             </button>
           </div>
-        </section>
+        </div>
+      </header>
 
-        <!-- Summary Grid -->
-        <section class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <article class="bg-white border border-gray-100 p-4 rounded-2xl text-center flex flex-col justify-center">
-            <span class="block text-xs text-gray-500 font-medium mb-1">إجمالي الطلاب</span>
-            <strong class="block text-2xl font-bold text-gray-900">{{ students().length }}</strong>
-            <span class="block text-[10px] text-gray-400 mt-1">عدد ملفات الطلاب داخل النظام</span>
-          </article>
+      <!-- ─── Alerts ─────────────────────────────────────────────── -->
+      @if (errorMessage()) {
+        <div class="sm-alert sm-alert-error">
+          <div class="alert-icon"><span class="material-symbols-outlined">error</span></div>
+          <span>{{ errorMessage() }}</span>
+        </div>
+      }
 
-          <article class="bg-emerald-50 border border-emerald-100 p-4 rounded-2xl text-center flex flex-col justify-center">
-            <span class="block text-xs text-emerald-600 font-medium mb-1">بحسابات دخول</span>
-            <strong class="block text-2xl font-bold text-emerald-900">{{ linkedStudentUserIds().size }}</strong>
-            <span class="block text-[10px] text-emerald-500 mt-1">طلاب مرتبطون بحسابات Student</span>
-          </article>
+      @if (successMessage()) {
+        <div class="sm-alert sm-alert-success">
+          <div class="alert-icon"><span class="material-symbols-outlined">check_circle</span></div>
+          <span>{{ successMessage() }}</span>
+        </div>
+      }
 
-          <article class="bg-orange-50 border border-orange-100 p-4 rounded-2xl text-center flex flex-col justify-center">
-            <span class="block text-xs text-orange-600 font-medium mb-1">أولياء الأمور المتاحون</span>
-            <strong class="block text-2xl font-bold text-orange-900">{{ parentAccounts().length }}</strong>
-            <span class="block text-[10px] text-orange-500 mt-1">حسابات Parent الجاهزة للربط</span>
-          </article>
-        </section>
-
-        <!-- Feedback Banners -->
-        @if (errorMessage()) {
-          <div class="flex items-center gap-3 p-4 text-sm text-red-800 rounded-2xl bg-red-50 border border-red-200">
-            <span class="material-symbols-outlined text-lg">error</span>
-            <span class="font-medium">{{ errorMessage() }}</span>
+      <!-- ─── Summary Grid ───────────────────────────────────────── -->
+      <section class="sm-summary-grid">
+        <article class="sm-summary-card neutral">
+          <div class="sm-summary-icon neutral">
+            <span class="material-symbols-outlined">groups</span>
           </div>
-        }
-
-        @if (successMessage()) {
-          <div class="flex items-center gap-3 p-4 text-sm text-green-800 rounded-2xl bg-emerald-50 border border-green-200">
-            <span class="material-symbols-outlined text-lg">check_circle</span>
-            <span class="font-medium">{{ successMessage() }}</span>
+          <div class="sm-summary-body">
+            <span class="sm-summary-value">{{ students().length }}</span>
+            <span class="sm-summary-label">إجمالي الطلاب</span>
+            <span class="sm-summary-hint">عدد ملفات الطلاب داخل النظام</span>
           </div>
-        }
+        </article>
 
-        <!-- Workspace Grid (Table + Sidebar) -->
-        <section class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          
-          <!-- Students Table (Main content) -->
-          <div class="lg:col-span-8 bg-white rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50 flex flex-col overflow-hidden">
-            <div class="p-5 border-b border-gray-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div>
-                <h2 class="text-lg font-bold text-gray-900">قائمة الطلاب</h2>
-                <p class="text-sm text-gray-500 mt-1">ابحث ثم اختر الطالب لعرض الربط والحسابات في اللوحة الجانبية.</p>
+        <article class="sm-summary-card success">
+          <div class="sm-summary-icon success">
+            <span class="material-symbols-outlined">link</span>
+          </div>
+          <div class="sm-summary-body">
+            <span class="sm-summary-value">{{ linkedStudentUserIds().size }}</span>
+            <span class="sm-summary-label">بحسابات دخول</span>
+            <span class="sm-summary-hint">طلاب مرتبطون بحسابات Student</span>
+          </div>
+        </article>
+
+        <article class="sm-summary-card warning">
+          <div class="sm-summary-icon warning">
+            <span class="material-symbols-outlined">family_restroom</span>
+          </div>
+          <div class="sm-summary-body">
+            <span class="sm-summary-value">{{ parentAccounts().length }}</span>
+            <span class="sm-summary-label">أولياء الأمور المتاحون</span>
+            <span class="sm-summary-hint">حسابات Parent الجاهزة للربط</span>
+          </div>
+        </article>
+      </section>
+
+      <!-- ─── Students Table (full width) ─────────────────────────── -->
+      <section class="sm-workspace">
+        <div class="sm-panel sm-table-panel anim-card" style="--card-delay:0.05s">
+          <div class="sm-panel-head">
+            <div class="sm-panel-title-wrap">
+              <div class="panel-icon-wrap">
+                <span class="material-symbols-outlined">list_alt</span>
               </div>
-
-              <div class="relative w-full sm:w-64">
-                <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                  <span class="material-symbols-outlined text-gray-400 text-sm">search</span>
-                </div>
-                <input
-                  type="text"
-                  class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full pr-10 p-2.5"
-                  placeholder="ابحث بالاسم أو الرقم القومي أو البريد"
-                  [value]="searchQuery()"
-                  (input)="searchQuery.set($any($event.target).value); currentPage.set(1)"
-                />
+              <div>
+                <p class="panel-eyebrow">قائمة الطلاب</p>
+                <h2>ابحث واختر الطالب لعرض التفاصيل والربط</h2>
               </div>
             </div>
 
-            <div class="overflow-x-auto flex-1">
-              <table class="w-full text-sm text-right text-gray-500">
-                <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-100">
+            <div class="sm-search-box">
+              <span class="material-symbols-outlined">search</span>
+              <input
+                type="text"
+                placeholder="ابحث بالاسم أو الرقم القومي أو البريد"
+                [value]="searchQuery()"
+                (input)="searchQuery.set($any($event.target).value); currentPage.set(1)"
+              />
+            </div>
+          </div>
+
+          <div class="sm-table-wrap">
+            <table class="sm-table">
+              <thead>
+                <tr>
+                  <th>الاسم</th>
+                  <th>الرقم القومي</th>
+                  <th>النوع</th>
+                  <th class="text-center">الحساب</th>
+                  <th class="text-center">الحالة</th>
+                  <th class="text-center">إجراءات</th>
+                </tr>
+              </thead>
+              <tbody>
+                @if (isLoading() && students().length === 0) {
                   <tr>
-                    <th scope="col" class="px-6 py-4">الاسم</th>
-                    <th scope="col" class="px-6 py-4">الرقم القومي</th>
-                    <th scope="col" class="px-6 py-4">النوع</th>
-                    <th scope="col" class="px-6 py-4 text-center">الحساب</th>
-                    <th scope="col" class="px-6 py-4 text-center">الحالة</th>
-                    <th scope="col" class="px-6 py-4 text-center">إجراءات</th>
+                    <td colspan="6" class="sm-loading-cell">
+                      <span class="material-symbols-outlined spinning">progress_activity</span>
+                      <p>جار تحميل ملفات الطلاب...</p>
+                    </td>
                   </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-200">
-                  @if (isLoading() && students().length === 0) {
-                    <tr>
-                      <td colspan="6" class="px-6 py-12 text-center text-gray-500">
-                        <div class="flex flex-col items-center justify-center">
-                          <span class="material-symbols-outlined animate-spin text-4xl text-blue-600 mb-2">progress_activity</span>
-                          <p>جار تحميل ملفات الطلاب...</p>
+                } @else if (filteredStudents().length === 0) {
+                  <tr>
+                    <td colspan="6" class="sm-empty-cell">
+                      <span class="material-symbols-outlined">person_search</span>
+                      <p>لا توجد نتائج مطابقة أو لم يتم إنشاء طلاب بعد.</p>
+                    </td>
+                  </tr>
+                } @else {
+                  @for (student of paginatedStudents(); track student.id) {
+                    <tr
+                      class="sm-row"
+                      [class.is-selected]="selectedStudentId() === student.id"
+                      (click)="selectStudent(student)"
+                    >
+                      <td>
+                        <div class="sm-name-cell">
+                          <strong>{{ student.fullName }}</strong>
+                          <span>#{{ student.id }}</span>
+                        </div>
+                      </td>
+                      <td class="sm-muted">{{ student.nationalId || '—' }}</td>
+                      <td class="sm-muted">{{ getGenderLabel(student.gender) }}</td>
+                      <td class="text-center">
+                        <span class="sm-chip" [class.is-on]="student.userId" [class.is-off]="!student.userId">
+                          {{ student.userId ? 'مرتبط' : 'غير مرتبط' }}
+                        </span>
+                      </td>
+                      <td class="text-center">
+                        <span class="sm-chip" [class.is-on]="student.isActive" [class.is-off]="!student.isActive">
+                          {{ student.isActive ? 'نشط' : 'غير نشط' }}
+                        </span>
+                      </td>
+                      <td class="text-center">
+                        <div class="sm-row-actions" (click)="$event.stopPropagation()">
+                          <button class="sm-icon-btn blue" type="button" (click)="openEditModal(student)" title="تعديل">
+                            <span class="material-symbols-outlined">edit</span>
+                          </button>
+                          <button class="sm-icon-btn danger" type="button" (click)="deleteStudent(student)" title="حذف">
+                            <span class="material-symbols-outlined">delete</span>
+                          </button>
                         </div>
                       </td>
                     </tr>
-                  } @else if (filteredStudents().length === 0) {
-                    <tr>
-                      <td colspan="6" class="px-6 py-16 text-center text-gray-500">
-                        <div class="flex flex-col items-center justify-center">
-                          <span class="material-symbols-outlined text-5xl text-gray-300 mb-3">person_search</span>
-                          <p class="text-base font-medium text-gray-900">لا توجد نتائج مطابقة أو لم يتم إنشاء طلاب بعد.</p>
-                        </div>
-                      </td>
-                    </tr>
-                  } @else {
-                    @for (student of paginatedStudents(); track student.id) {
-                      <tr
-                        class="hover:bg-blue-50 transition-colors cursor-pointer"
-                        [class.bg-blue-50]="selectedStudentId() === student.id"
-                        [class.bg-white]="selectedStudentId() !== student.id"
-                        (click)="selectStudent(student)"
-                      >
-                        <td class="px-6 py-4">
-                          <div class="flex flex-col">
-                            <strong class="text-gray-900">{{ student.fullName }}</strong>
-                            <span class="text-xs text-gray-400">#{{ student.id }}</span>
-                          </div>
-                        </td>
-                        <td class="px-6 py-4 text-gray-600">{{ student.nationalId || '—' }}</td>
-                        <td class="px-6 py-4 text-gray-600">{{ getGenderLabel(student.gender) }}</td>
-                        <td class="px-6 py-4 text-center">
-                          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border"
-                                [class.bg-emerald-50]="student.userId"
-                                [class.text-green-700]="student.userId"
-                                [class.border-green-200]="student.userId"
-                                [class.bg-gray-100]="!student.userId"
-                                [class.text-gray-700]="!student.userId"
-                                [class.border-gray-200]="!student.userId">
-                            {{ student.userId ? 'مرتبط' : 'غير مرتبط' }}
-                          </span>
-                        </td>
-                        <td class="px-6 py-4 text-center">
-                          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border"
-                                [class.bg-emerald-50]="student.isActive"
-                                [class.text-green-700]="student.isActive"
-                                [class.border-green-200]="student.isActive"
-                                [class.bg-gray-100]="!student.isActive"
-                                [class.text-gray-700]="!student.isActive"
-                                [class.border-gray-200]="!student.isActive">
-                            {{ student.isActive ? 'نشط' : 'غير نشط' }}
-                          </span>
-                        </td>
-                        <td class="px-6 py-4 text-center">
-                          <div class="flex items-center justify-center gap-2" (click)="$event.stopPropagation()">
-                            <button class="p-2 text-blue-600 hover:bg-blue-100 rounded-2xl transition-colors" type="button" (click)="openEditModal(student)" title="تعديل">
-                              <span class="material-symbols-outlined text-sm">edit</span>
-                            </button>
-                            <button class="p-2 text-red-600 hover:bg-red-50 rounded-2xl transition-colors" type="button" (click)="deleteStudent(student)" title="حذف">
-                              <span class="material-symbols-outlined text-sm">delete</span>
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
+                  }
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Pagination -->
+          @if (totalPages() > 1) {
+            <div class="sm-pagination">
+              <span class="sm-pagination-info">
+                إظهار <strong>{{ rangeStart() }}</strong> إلى <strong>{{ rangeEnd() }}</strong> من أصل <strong>{{ filteredStudents().length }}</strong> طالب
+              </span>
+
+              <div class="sm-pagination-controls">
+                <button class="sm-page-btn" [disabled]="currentPage() === 1" (click)="prevPage()">
+                  <span class="material-symbols-outlined">chevron_right</span>
+                  السابق
+                </button>
+
+                <div class="sm-page-numbers">
+                  @for (p of pages(); track trackByPageIndex($index, p)) {
+                    @if (p === '...') {
+                      <span class="sm-page-dots">…</span>
+                    } @else {
+                      <button
+                        class="sm-page-num"
+                        [class.is-active]="p === currentPage()"
+                        (click)="goToPage(+p)"
+                      >{{ p }}</button>
                     }
                   }
-                </tbody>
-              </table>
-            </div>
-
-            <!-- Pagination -->
-            @if (totalPages() > 1) {
-              <div class="flex flex-col sm:flex-row items-center justify-between p-4 bg-gray-50 border-t border-gray-100 gap-4">
-                <span class="text-sm text-gray-700">
-                  إظهار <span class="font-semibold text-gray-900">{{ rangeStart() }}</span> إلى <span class="font-semibold text-gray-900">{{ rangeEnd() }}</span> من أصل <span class="font-semibold text-gray-900">{{ filteredStudents().length }}</span> طالب
-                </span>
-                
-                <div class="flex items-center gap-2">
-                  <button class="flex items-center justify-center px-3 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed" [disabled]="currentPage() === 1" (click)="prevPage()">
-                    <span class="material-symbols-outlined text-sm mr-1">chevron_right</span>
-                    السابق
-                  </button>
-                  
-                  <div class="hidden sm:flex items-center gap-1">
-                    @for (p of pages(); track trackByPageIndex($index, p)) {
-                      @if (p === '...') {
-                        <span class="flex items-center justify-center w-8 h-8 text-sm font-medium text-gray-400">…</span>
-                      } @else {
-                        <button class="flex items-center justify-center w-8 h-8 text-sm font-medium rounded-2xl transition-colors border"
-                                [class.bg-blue-600]="p === currentPage()"
-                                [class.text-white]="p === currentPage()"
-                                [class.border-blue-600]="p === currentPage()"
-                                [class.bg-white]="p !== currentPage()"
-                                [class.text-gray-900]="p !== currentPage()"
-                                [class.border-gray-200]="p !== currentPage()"
-                                [class.hover:bg-gray-50]="p !== currentPage()"
-                                (click)="goToPage(+p)">
-                          {{ p }}
-                        </button>
-                      }
-                    }
-                  </div>
-
-                  <button class="flex items-center justify-center px-3 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed" [disabled]="currentPage() === totalPages()" (click)="nextPage()">
-                    التالي
-                    <span class="material-symbols-outlined text-sm ml-1">chevron_left</span>
-                  </button>
                 </div>
+
+                <button class="sm-page-btn" [disabled]="currentPage() === totalPages()" (click)="nextPage()">
+                  التالي
+                  <span class="material-symbols-outlined">chevron_left</span>
+                </button>
               </div>
-            }
-          </div>
+            </div>
+          }
+        </div>
 
-          <!-- Student Details Sidebar -->
-          <aside class="lg:col-span-4 flex flex-col gap-4">
-            <div class="bg-white rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50 p-5 sticky top-24">
-              <div class="mb-5 border-b border-gray-100 pb-4">
-                <h2 class="text-lg font-bold text-gray-900">تفاصيل الطالب</h2>
-                <p class="text-sm text-gray-500 mt-1">اختر طالبًا من الجدول لبدء الربط أو مراجعة علاقاته الحالية.</p>
-              </div>
+        <!-- Student Details Slide-over Drawer -->
+        @if (selectedStudent(); as student) {
+          <div class="sm-drawer-overlay" (click)="closeStudentDrawer()">
+            <aside class="sm-drawer anim-card" style="--card-delay:0s" (click)="$event.stopPropagation()">
 
-              @if (selectedStudent(); as student) {
-                <div class="flex flex-col gap-6">
-                  
-                  <!-- Profile info -->
-                  <div class="space-y-3">
-                    <div class="flex justify-between items-center text-sm">
-                      <span class="text-gray-500">الاسم</span>
-                      <strong class="text-gray-900 font-bold text-left">{{ student.fullName }}</strong>
-                    </div>
-                    <div class="flex justify-between items-center text-sm border-t border-gray-100 pt-3">
-                      <span class="text-gray-500">الرقم القومي</span>
-                      <strong class="text-gray-900 font-bold">{{ student.nationalId || 'غير مسجل' }}</strong>
-                    </div>
-                    <div class="flex justify-between items-center text-sm border-t border-gray-100 pt-3">
-                      <span class="text-gray-500">النوع</span>
-                      <strong class="text-gray-900 font-bold">{{ getGenderLabel(student.gender) }}</strong>
-                    </div>
-                    <div class="flex justify-between items-center text-sm border-t border-gray-100 pt-3">
-                      <span class="text-gray-500">تاريخ الميلاد</span>
-                      <strong class="text-gray-900 font-bold">{{ student.birthDate || 'غير محدد' }}</strong>
-                    </div>
-                    <div class="flex justify-between items-center text-sm border-t border-gray-100 pt-3">
-                      <span class="text-gray-500">الحساب الحالي</span>
-                      <strong class="text-gray-900 font-bold" [class.text-orange-600]="!student.userEmail">{{ student.userEmail || 'لا يوجد حساب مرتبط' }}</strong>
-                    </div>
+              <!-- Drawer Head -->
+              <div class="sm-drawer-head">
+                <div class="sm-drawer-head-left">
+                  <div class="panel-icon-wrap panel-icon-teal">
+                    <span class="material-symbols-outlined">badge</span>
                   </div>
-
-                  <!-- Link Account -->
-                  <div class="bg-gray-50 border border-gray-100 rounded-2xl p-4">
-                    <div class="mb-3">
-                      <h3 class="text-sm font-bold text-gray-900">ربط حساب طالب</h3>
-                      <p class="text-[11px] text-gray-500 mt-0.5">يتم الربط من حسابات الدور Student فقط.</p>
-                    </div>
-
-                    <div class="flex flex-col gap-3">
-                      <select
-                        class="bg-white border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5"
-                        [value]="selectedStudentUserId() ?? ''"
-                        (change)="selectedStudentUserId.set($any($event.target).value ? +$any($event.target).value : null)"
-                      >
-                        <option value="">اختر حساب طالب</option>
-                        @for (account of availableStudentAccounts(); track account.id) {
-                          <option [value]="account.id">{{ account.fullName }} - {{ account.email }}</option>
-                        }
-                      </select>
-
-                      <button class="w-full text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-lg transform transition-all hover:-translate-y-0.5 focus:ring-4 focus:ring-indigo-300 font-medium rounded-2xl text-sm px-4 py-2 transition-colors flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" type="button" (click)="linkStudentAccount()" [disabled]="isLoading()">
-                        <span class="material-symbols-outlined text-sm">link</span>
-                        ربط حساب الطالب
-                      </button>
-                    </div>
-                  </div>
-
-                  <!-- Link Parent -->
-                  <div class="bg-gray-50 border border-gray-100 rounded-2xl p-4">
-                    <div class="mb-3">
-                      <h3 class="text-sm font-bold text-gray-900">ربط ولي أمر</h3>
-                      <p class="text-[11px] text-gray-500 mt-0.5">اختر حساب Parent وحدد صلة القرابة.</p>
-                    </div>
-
-                    <div class="flex flex-col gap-3">
-                      <select
-                        class="bg-white border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5"
-                        [value]="selectedParentId() ?? ''"
-                        (change)="selectedParentId.set($any($event.target).value ? +$any($event.target).value : null)"
-                      >
-                        <option value="">اختر ولي الأمر</option>
-                        @for (parent of parentAccounts(); track parent.id) {
-                          <option [value]="parent.id">{{ parent.fullName }} - {{ parent.email }}</option>
-                        }
-                      </select>
-
-                      <select
-                        class="bg-white border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5"
-                        [value]="selectedRelationship()"
-                        (change)="setRelationshipFromValue($any($event.target).value)"
-                      >
-                        <option value="1">الأب</option>
-                        <option value="2">الأم</option>
-                        <option value="3">الوصي</option>
-                        <option value="4">أخ / أخت</option>
-                        <option value="5">أخرى</option>
-                      </select>
-
-                      <button class="w-full text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-lg transform transition-all hover:-translate-y-0.5 focus:ring-4 focus:ring-indigo-300 font-medium rounded-2xl text-sm px-4 py-2 transition-colors flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" type="button" (click)="linkParentToStudent()" [disabled]="isLoading()">
-                        <span class="material-symbols-outlined text-sm">family_restroom</span>
-                        ربط ولي الأمر
-                      </button>
-                    </div>
-                  </div>
-
-                  <!-- Current Relations -->
                   <div>
-                    <h3 class="text-sm font-bold text-gray-900 mb-1">العلاقات الحالية</h3>
-                    <p class="text-xs text-gray-500 mb-3">أولياء الأمور المرتبطين بهذا الطالب.</p>
+                    <p class="panel-eyebrow">تفاصيل الطالب</p>
+                    <h2>{{ student.fullName }}</h2>
+                  </div>
+                </div>
+                <button class="sm-modal-close" type="button" (click)="closeStudentDrawer()" title="إغلاق">
+                  <span class="material-symbols-outlined">close</span>
+                </button>
+              </div>
 
-                    @if (parentLinks().length === 0) {
-                      <div class="bg-gray-50 rounded-2xl p-4 text-center text-sm text-gray-500 border border-dashed border-gray-200">
-                        لا توجد روابط أولياء أمور لهذا الطالب حتى الآن.
-                      </div>
-                    } @else {
-                      <div class="flex flex-col gap-2">
-                        @for (link of parentLinks(); track link.id) {
-                          <div class="bg-white border border-gray-100 rounded-2xl p-3 flex justify-between items-start gap-3 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50">
-                            <div class="flex-1 min-w-0">
-                              <strong class="block text-sm text-gray-900 truncate">{{ link.parentName }}</strong>
-                              <p class="text-xs text-gray-500 truncate mb-1">{{ link.parentEmail }}</p>
-                              <span class="inline-block bg-blue-50 text-blue-700 text-[10px] px-2 py-0.5 rounded border border-blue-100 font-medium">{{ getRelationshipLabel(link.relationship) }}</span>
-                            </div>
-                            <button class="p-1.5 text-red-600 hover:bg-red-50 rounded-xl transition-colors shrink-0" type="button" (click)="unlinkParent(link)" title="إلغاء الربط">
-                              <span class="material-symbols-outlined text-sm">link_off</span>
-                            </button>
-                          </div>
-                        }
-                      </div>
-                    }
+              <div class="sm-drawer-body">
+
+                <!-- Profile info -->
+                <div class="sm-profile-lines">
+                  <div class="sm-profile-line">
+                    <span>الاسم</span>
+                    <strong>{{ student.fullName }}</strong>
+                  </div>
+                  <div class="sm-profile-line">
+                    <span>الرقم القومي</span>
+                    <strong>{{ student.nationalId || 'غير مسجل' }}</strong>
+                  </div>
+                  <div class="sm-profile-line">
+                    <span>النوع</span>
+                    <strong>{{ getGenderLabel(student.gender) }}</strong>
+                  </div>
+                  <div class="sm-profile-line">
+                    <span>تاريخ الميلاد</span>
+                    <strong>{{ student.birthDate || 'غير محدد' }}</strong>
+                  </div>
+                  <div class="sm-profile-line">
+                    <span>الحساب الحالي</span>
+                    <strong [class.text-warning]="!student.userEmail">{{ student.userEmail || 'لا يوجد حساب مرتبط' }}</strong>
+                  </div>
+                </div>
+
+                <!-- Link Account -->
+                <div class="sm-link-block">
+                  <div class="sm-link-head">
+                    <div class="sm-link-head-icon blue">
+                      <span class="material-symbols-outlined">account_circle</span>
+                    </div>
+                    <div>
+                      <h3>ربط حساب طالب</h3>
+                      <p>يتم الربط من حسابات الدور Student فقط.</p>
+                    </div>
                   </div>
 
+                  <div class="sm-link-fields">
+                    <select
+                      [value]="selectedStudentUserId() ?? ''"
+                      (change)="selectedStudentUserId.set($any($event.target).value ? +$any($event.target).value : null)"
+                    >
+                      <option value="">اختر حساب طالب</option>
+                      @for (account of availableStudentAccounts(); track account.id) {
+                        <option [value]="account.id">{{ account.fullName }} - {{ account.email }}</option>
+                      }
+                    </select>
+
+                    <button class="sm-link-btn blue" type="button" (click)="linkStudentAccount()" [disabled]="isLoading()">
+                      <span class="material-symbols-outlined">link</span>
+                      ربط حساب الطالب
+                    </button>
+                  </div>
                 </div>
-              } @else {
-                <div class="flex flex-col items-center justify-center p-8 text-center text-gray-500 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
-                  <span class="material-symbols-outlined text-5xl text-gray-300 mb-3">school</span>
-                  <p class="text-sm">اختر طالبًا من الجدول لعرض بياناته وربط الحسابات وأولياء الأمور.</p>
+
+                <!-- Link Parent -->
+                <div class="sm-link-block">
+                  <div class="sm-link-head">
+                    <div class="sm-link-head-icon orange">
+                      <span class="material-symbols-outlined">family_restroom</span>
+                    </div>
+                    <div>
+                      <h3>ربط ولي أمر</h3>
+                      <p>اختر حساب Parent وحدد صلة القرابة.</p>
+                    </div>
+                  </div>
+
+                  <div class="sm-link-fields">
+                    <select
+                      [value]="selectedParentId() ?? ''"
+                      (change)="selectedParentId.set($any($event.target).value ? +$any($event.target).value : null)"
+                    >
+                      <option value="">اختر ولي الأمر</option>
+                      @for (parent of parentAccounts(); track parent.id) {
+                        <option [value]="parent.id">{{ parent.fullName }} - {{ parent.email }}</option>
+                      }
+                    </select>
+
+                    <select
+                      [value]="selectedRelationship()"
+                      (change)="setRelationshipFromValue($any($event.target).value)"
+                    >
+                      <option value="1">الأب</option>
+                      <option value="2">الأم</option>
+                      <option value="3">الوصي</option>
+                      <option value="4">أخ / أخت</option>
+                      <option value="5">أخرى</option>
+                    </select>
+
+                    <button class="sm-link-btn orange" type="button" (click)="linkParentToStudent()" [disabled]="isLoading()">
+                      <span class="material-symbols-outlined">family_restroom</span>
+                      ربط ولي الأمر
+                    </button>
+                  </div>
                 </div>
-              }
-            </div>
-          </aside>
-        </section>
-      </div>
-    </div>
+
+                <!-- Current Relations -->
+                <div class="sm-relations">
+                  <div class="sm-relations-head">
+                    <h3>العلاقات الحالية</h3>
+                    <p>أولياء الأمور المرتبطين بهذا الطالب.</p>
+                  </div>
+
+                  @if (parentLinks().length === 0) {
+                    <div class="sm-relations-empty">
+                      <span class="material-symbols-outlined">link_off</span>
+                      <p>لا توجد روابط أولياء أمور لهذا الطالب حتى الآن.</p>
+                    </div>
+                  } @else {
+                    <div class="sm-relations-list">
+                      @for (link of parentLinks(); track link.id) {
+                        <div class="sm-relation-item">
+                          <div class="sm-relation-info">
+                            <strong>{{ link.parentName }}</strong>
+                            <p>{{ link.parentEmail }}</p>
+                            <span class="sm-relation-badge">{{ getRelationshipLabel(link.relationship) }}</span>
+                          </div>
+                          <button class="sm-icon-btn danger" type="button" (click)="unlinkParent(link)" title="إلغاء الربط">
+                            <span class="material-symbols-outlined">link_off</span>
+                          </button>
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+
+              </div>
+            </aside>
+          </div>
+        }
+
+      </section>
+
+    </section>
   </main>
 </div>
 
-<!-- Modals -->
+<!-- ═══════════════════════════════════════════════════════════════
+     MODALS
+     ═══════════════════════════════════════════════════════════════ -->
 
+<!-- Create Modal -->
 @if (showCreateModal()) {
-  <div class="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/50 backdrop-blur-sm p-4" (click)="closeModals()">
-    <div class="bg-white rounded-3xl shadow-xl max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden" (click)="$event.stopPropagation()">
-      <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-        <div>
-          <h2 class="text-xl font-bold text-gray-900">إضافة طالب جديد</h2>
-          <p class="text-sm text-gray-500 mt-1">أنشئ ملف الطالب الأكاديمي أولًا، ثم اربطه لاحقًا.</p>
+  <div class="sm-modal-overlay" (click)="closeModals()">
+    <div class="sm-modal" (click)="$event.stopPropagation()">
+      <div class="sm-modal-head">
+        <div class="sm-modal-head-left">
+          <div class="sm-modal-icon">
+            <span class="material-symbols-outlined">person_add</span>
+          </div>
+          <div>
+            <h2>إضافة طالب جديد</h2>
+            <p>أنشئ ملف الطالب الأكاديمي أولًا، ثم اربطه لاحقًا.</p>
+          </div>
         </div>
-        <button class="text-gray-400 hover:text-gray-900 hover:bg-gray-200 p-2 rounded-2xl transition-colors" type="button" (click)="closeModals()">
+        <button class="sm-modal-close" type="button" (click)="closeModals()">
           <span class="material-symbols-outlined">close</span>
         </button>
       </div>
 
-      <div class="p-6 overflow-y-auto flex-1">
-        <div class="flex flex-col gap-4">
-          <div class="flex flex-col gap-2">
-            <label class="text-sm font-medium text-gray-900">الاسم الكامل</label>
-            <input class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" [value]="formName()" (input)="formName.set($any($event.target).value)" />
+      <div class="sm-modal-body">
+        <div class="sm-form-field">
+          <label>الاسم الكامل</label>
+          <div class="sm-input-wrap">
+            <span class="input-icon material-symbols-outlined">person</span>
+            <input [value]="formName()" (input)="formName.set($any($event.target).value)" placeholder="أدخل اسم الطالب" />
+          </div>
+        </div>
+
+        <div class="sm-form-field">
+          <label>الرقم القومي</label>
+          <div class="sm-input-wrap">
+            <span class="input-icon material-symbols-outlined">badge</span>
+            <input [value]="formNationalId()" (input)="formNationalId.set($any($event.target).value)" placeholder="الرقم القومي (اختياري)" />
+          </div>
+        </div>
+
+        <div class="sm-form-grid">
+          <div class="sm-form-field">
+            <label>النوع</label>
+            <div class="sm-input-wrap">
+              <span class="input-icon material-symbols-outlined">wc</span>
+              <select [value]="formGender() ?? ''" (change)="formGender.set($any($event.target).value ? +$any($event.target).value : null)">
+                <option value="">اختر النوع</option>
+                <option value="1">ذكر</option>
+                <option value="2">أنثى</option>
+              </select>
+            </div>
           </div>
 
-          <div class="flex flex-col gap-2">
-            <label class="text-sm font-medium text-gray-900">الرقم القومي</label>
-            <input class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" [value]="formNationalId()" (input)="formNationalId.set($any($event.target).value)" />
-          </div>
-
-          <div class="flex flex-col gap-2">
-            <label class="text-sm font-medium text-gray-900">النوع</label>
-            <select class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" [value]="formGender() ?? ''" (change)="formGender.set($any($event.target).value ? +$any($event.target).value : null)">
-              <option value="">اختر النوع</option>
-              <option value="1">ذكر</option>
-              <option value="2">أنثى</option>
-            </select>
-          </div>
-
-          <div class="flex flex-col gap-2">
-            <label class="text-sm font-medium text-gray-900">تاريخ الميلاد</label>
-            <input class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" type="date" [value]="formBirthDate()" (input)="formBirthDate.set($any($event.target).value)" />
+          <div class="sm-form-field">
+            <label>تاريخ الميلاد</label>
+            <div class="sm-input-wrap">
+              <span class="input-icon material-symbols-outlined">cake</span>
+              <input type="date" [value]="formBirthDate()" (input)="formBirthDate.set($any($event.target).value)" />
+            </div>
           </div>
         </div>
       </div>
 
-      <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 bg-gray-50">
-        <button class="px-5 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 transition-colors" type="button" (click)="closeModals()">إلغاء</button>
-        <button class="px-5 py-2.5 text-sm font-medium text-white bg-blue-700 rounded-2xl hover:bg-blue-800 focus:ring-4 focus:ring-indigo-300 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" type="button" (click)="saveStudent()" [disabled]="!canSaveStudent()">
+      <div class="sm-modal-footer">
+        <button class="sm-action-btn ghost" type="button" (click)="closeModals()">إلغاء</button>
+        <button class="sm-action-btn solid" type="button" (click)="saveStudent()" [disabled]="!canSaveStudent()">
+          <span class="material-symbols-outlined">save</span>
           حفظ الطالب
         </button>
       </div>
@@ -415,79 +478,107 @@
   </div>
 }
 
-<!-- ══ Floating inline confirm bars (fixed bottom) ════════════════════════ -->
+<!-- Edit Modal -->
+@if (showEditModal()) {
+  <div class="sm-modal-overlay" (click)="closeModals()">
+    <div class="sm-modal" (click)="$event.stopPropagation()">
+      <div class="sm-modal-head">
+        <div class="sm-modal-head-left">
+          <div class="sm-modal-icon panel-icon-orange">
+            <span class="material-symbols-outlined">edit</span>
+          </div>
+          <div>
+            <h2>تعديل بيانات الطالب</h2>
+            <p>يمكن تعديل البيانات الأساسية للطالب من هنا.</p>
+          </div>
+        </div>
+        <button class="sm-modal-close" type="button" (click)="closeModals()">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <div class="sm-modal-body">
+        <div class="sm-form-field">
+          <label>الاسم الكامل</label>
+          <div class="sm-input-wrap">
+            <span class="input-icon material-symbols-outlined">person</span>
+            <input [value]="formName()" (input)="formName.set($any($event.target).value)" placeholder="أدخل اسم الطالب" />
+          </div>
+        </div>
+
+        <div class="sm-form-field">
+          <label>الرقم القومي</label>
+          <div class="sm-input-wrap">
+            <span class="input-icon material-symbols-outlined">badge</span>
+            <input class="is-disabled" [value]="formNationalId()" disabled />
+          </div>
+          <span class="sm-field-hint">لا يمكن تعديل الرقم القومي بعد الإنشاء.</span>
+        </div>
+
+        <div class="sm-form-grid">
+          <div class="sm-form-field">
+            <label>النوع</label>
+            <div class="sm-input-wrap">
+              <span class="input-icon material-symbols-outlined">wc</span>
+              <select [value]="formGender() ?? ''" (change)="formGender.set($any($event.target).value ? +$any($event.target).value : null)">
+                <option value="">اختر النوع</option>
+                <option value="1">ذكر</option>
+                <option value="2">أنثى</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="sm-form-field">
+            <label>تاريخ الميلاد</label>
+            <div class="sm-input-wrap">
+              <span class="input-icon material-symbols-outlined">cake</span>
+              <input type="date" [value]="formBirthDate()" (input)="formBirthDate.set($any($event.target).value)" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sm-modal-footer">
+        <button class="sm-action-btn ghost" type="button" (click)="closeModals()">إلغاء</button>
+        <button class="sm-action-btn solid" type="button" (click)="updateStudent()" [disabled]="!canUpdateStudent()">
+          <span class="material-symbols-outlined">save</span>
+          حفظ التعديلات
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ══ Floating inline confirm bars ═════════════════════════════ -->
 
 @if (deleteStudentConfirm(); as studentToDelete) {
-  <div class="fixed bottom-6 inset-x-0 z-[300] flex justify-center px-4 pointer-events-none">
-    <div class="bg-white border border-red-200 rounded-2xl shadow-xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3 max-w-xl w-full pointer-events-auto">
-      <span class="material-symbols-outlined text-red-600 text-xl shrink-0">warning</span>
-      <span class="text-sm font-medium text-gray-900">هل أنت متأكد من حذف ملف الطالب «{{ studentToDelete.fullName }}»؟ هذا الإجراء لا يمكن التراجع عنه.</span>
-      <div class="flex gap-2 sm:mr-auto shrink-0">
-        <button class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 transition-colors" type="button" (click)="cancelDeleteStudent()">إلغاء</button>
-        <button class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-2xl transition-colors disabled:opacity-50" type="button" (click)="confirmDeleteStudent()" [disabled]="isLoading()">تأكيد الحذف</button>
+  <div class="sm-confirm-overlay">
+    <div class="sm-confirm-bar danger">
+      <div class="sm-confirm-icon danger">
+        <span class="material-symbols-outlined">warning</span>
+      </div>
+      <span class="sm-confirm-text">هل أنت متأكد من حذف ملف الطالب «{{ studentToDelete.fullName }}»؟ هذا الإجراء لا يمكن التراجع عنه.</span>
+      <div class="sm-confirm-actions">
+        <button class="sm-action-btn ghost sm" type="button" (click)="cancelDeleteStudent()">إلغاء</button>
+        <button class="sm-action-btn solid-danger" type="button" (click)="confirmDeleteStudent()" [disabled]="isLoading()">
+          تأكيد الحذف
+        </button>
       </div>
     </div>
   </div>
 }
 
 @if (unlinkParentConfirm(); as linkToRemove) {
-  <div class="fixed bottom-6 inset-x-0 z-[300] flex justify-center px-4 pointer-events-none">
-    <div class="bg-white border border-amber-200 rounded-2xl shadow-xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3 max-w-xl w-full pointer-events-auto">
-      <span class="material-symbols-outlined text-amber-600 text-xl shrink-0">link_off</span>
-      <span class="text-sm font-medium text-gray-900">هل تريد إلغاء ربط ولي الأمر «{{ linkToRemove.parentName }}» من هذا الطالب؟</span>
-      <div class="flex gap-2 sm:mr-auto shrink-0">
-        <button class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 transition-colors" type="button" (click)="cancelUnlinkParent()">إلغاء</button>
-        <button class="px-4 py-2 text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 rounded-2xl transition-colors disabled:opacity-50" type="button" (click)="confirmUnlinkParent()" [disabled]="isLoading()">تأكيد إلغاء الربط</button>
+  <div class="sm-confirm-overlay">
+    <div class="sm-confirm-bar warning">
+      <div class="sm-confirm-icon warning">
+        <span class="material-symbols-outlined">link_off</span>
       </div>
-    </div>
-  </div>
-}
-
-@if (showEditModal()) {
-  <div class="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/50 backdrop-blur-sm p-4" (click)="closeModals()">
-    <div class="bg-white rounded-3xl shadow-xl max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden" (click)="$event.stopPropagation()">
-      <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-        <div>
-          <h2 class="text-xl font-bold text-gray-900">تعديل بيانات الطالب</h2>
-          <p class="text-sm text-gray-500 mt-1">يمكن تعديل البيانات الأساسية للطالب من هنا.</p>
-        </div>
-        <button class="text-gray-400 hover:text-gray-900 hover:bg-gray-200 p-2 rounded-2xl transition-colors" type="button" (click)="closeModals()">
-          <span class="material-symbols-outlined">close</span>
-        </button>
-      </div>
-
-      <div class="p-6 overflow-y-auto flex-1">
-        <div class="flex flex-col gap-4">
-          <div class="flex flex-col gap-2">
-            <label class="text-sm font-medium text-gray-900">الاسم الكامل</label>
-            <input class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" [value]="formName()" (input)="formName.set($any($event.target).value)" />
-          </div>
-
-          <div class="flex flex-col gap-2">
-            <label class="text-sm font-medium text-gray-900">الرقم القومي</label>
-            <input class="bg-gray-100 border border-gray-200 text-gray-500 text-sm rounded-2xl block w-full p-2.5 cursor-not-allowed" [value]="formNationalId()" disabled />
-          </div>
-
-          <div class="flex flex-col gap-2">
-            <label class="text-sm font-medium text-gray-900">النوع</label>
-            <select class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" [value]="formGender() ?? ''" (change)="formGender.set($any($event.target).value ? +$any($event.target).value : null)">
-              <option value="">اختر النوع</option>
-              <option value="1">ذكر</option>
-              <option value="2">أنثى</option>
-            </select>
-          </div>
-
-          <div class="flex flex-col gap-2">
-            <label class="text-sm font-medium text-gray-900">تاريخ الميلاد</label>
-            <input class="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5" type="date" [value]="formBirthDate()" (input)="formBirthDate.set($any($event.target).value)" />
-          </div>
-        </div>
-      </div>
-
-      <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 bg-gray-50">
-        <button class="px-5 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 transition-colors" type="button" (click)="closeModals()">إلغاء</button>
-        <button class="px-5 py-2.5 text-sm font-medium text-white bg-blue-700 rounded-2xl hover:bg-blue-800 focus:ring-4 focus:ring-indigo-300 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" type="button" (click)="updateStudent()" [disabled]="!canUpdateStudent()">
-          حفظ التعديلات
+      <span class="sm-confirm-text">هل تريد إلغاء ربط ولي الأمر «{{ linkToRemove.parentName }}» من هذا الطالب؟</span>
+      <div class="sm-confirm-actions">
+        <button class="sm-action-btn ghost sm" type="button" (click)="cancelUnlinkParent()">إلغاء</button>
+        <button class="sm-action-btn solid-warning" type="button" (click)="confirmUnlinkParent()" [disabled]="isLoading()">
+          تأكيد إلغاء الربط
         </button>
       </div>
     </div>
