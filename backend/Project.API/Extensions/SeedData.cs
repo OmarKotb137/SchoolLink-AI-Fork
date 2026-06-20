@@ -689,19 +689,41 @@ public static class SeedData
 
         // =================================================================
         // 18. PeriodicAssessments (monthly + final exams)
-        //     per enrollment × subject (Math + Arabic) × term (1st + 2nd)
+        //     per enrollment × ALL subjects × term (1st + 2nd)
         // =================================================================
         var allAssessments = new List<PeriodicAssessment>();
+        var assessmentRanges = new (string key, int e1Lo, int e1Hi, int e2Lo, int e2Hi, int semLo, int semHi)[]
+        {
+            ("MTH", 11, 16, 11, 16, 20, 31),
+            ("ARB", 8,  15,  8, 15, 20, 31),
+            ("ENG", 9,  15,  9, 15, 18, 30),
+            ("SCI", 10, 15, 10, 15, 19, 30),
+            ("SOC", 8,  14,  8, 14, 18, 28),
+            ("ISL", 10, 15, 10, 15, 20, 30),
+            ("CMP", 9,  14,  9, 14, 18, 28),
+        };
+
         foreach (var enr in enrollments)
         {
             foreach (var term in new[] { AcademicTerm.FirstSemester, AcademicTerm.SecondSemester })
             {
                 var isFirst = term == AcademicTerm.FirstSemester;
-                foreach (var (subjectKey, mathRange, arabRange) in new[] {
-                    ("MTH", (lo: 11, hi: 16), (lo: 20, hi: 31)),
-                    ("ARB", (lo: 8,  hi: 15), (lo: 20, hi: 31)) })
+                foreach (var (subjectKey, e1Lo, e1Hi, e2Lo, e2Hi, semLo, semHi) in assessmentRanges)
                 {
                     var subjectId = S[subjectKey].Id;
+                    // ── تواريخ منطقية ضمن فترة الدراسة الفعلية لكل ترم ───────────────
+                    // الترم الأول: 2025/9/21 ← 2026/1/22
+                    //   Monthly1  = نوفمبر 2025
+                    //   Monthly2  = ديسمبر 2025
+                    //   Semester  = يناير 2026
+                    // الترم الثاني: 2026/4/4 ← 2026/7/11
+                    //   Monthly1  = مايو 2026
+                    //   Monthly2  = يونيو 2026
+                    //   Semester  = يوليو 2026
+                    var (m1Date, m2Date, semDate) = isFirst
+                        ? (new DateOnly(2025, 11, 15), new DateOnly(2025, 12, 20), new DateOnly(2026, 1, 20))
+                        : (new DateOnly(2026, 5, 10),  new DateOnly(2026, 6, 5),   new DateOnly(2026, 7, 5));
+
                     // MonthlyExam1
                     allAssessments.Add(new PeriodicAssessment
                     {
@@ -709,9 +731,9 @@ public static class SeedData
                         SubjectId      = subjectId,
                         AssessmentType = PeriodicAssessmentType.MonthlyExam1,
                         Term           = term,
-                        Score          = rng.Next(mathRange.lo, mathRange.hi),
+                        Score          = rng.Next(e1Lo, e1Hi),
                         MaxScore       = 15,
-                        AssessmentDate = isFirst ? new DateOnly(2026, 3, 15) : new DateOnly(2026, 5, 10),
+                        AssessmentDate = m1Date,
                         CreatedAt = now, UpdatedAt = now
                     });
                     // MonthlyExam2
@@ -721,9 +743,9 @@ public static class SeedData
                         SubjectId      = subjectId,
                         AssessmentType = PeriodicAssessmentType.MonthlyExam2,
                         Term           = term,
-                        Score          = rng.Next(mathRange.lo, mathRange.hi),
+                        Score          = rng.Next(e2Lo, e2Hi),
                         MaxScore       = 15,
-                        AssessmentDate = isFirst ? new DateOnly(2026, 4, 15) : new DateOnly(2026, 6, 5),
+                        AssessmentDate = m2Date,
                         CreatedAt = now, UpdatedAt = now
                     });
                     // SemesterExam (final exam /30)
@@ -733,9 +755,9 @@ public static class SeedData
                         SubjectId      = subjectId,
                         AssessmentType = PeriodicAssessmentType.SemesterExam,
                         Term           = term,
-                        Score          = rng.Next(arabRange.lo, arabRange.hi),
+                        Score          = rng.Next(semLo, semHi),
                         MaxScore       = 30,
-                        AssessmentDate = isFirst ? new DateOnly(2026, 1, 20) : new DateOnly(2026, 7, 5),
+                        AssessmentDate = semDate,
                         CreatedAt = now, UpdatedAt = now
                     });
                 }
@@ -746,34 +768,62 @@ public static class SeedData
 
         // =================================================================
         // 19. FinalGrades  (one per subject per enrollment per term)
+        //     PeriodAvgScore يُجمع من PeriodAverages الحقيقية (المحسوبة في القسم 17)
         // =================================================================
         var asmLookup = allAssessments
             .GroupBy(a => new { a.EnrollmentId, SubjectId = a.SubjectId ?? 0, Term = (int)a.Term! })
             .ToDictionary(g => g.Key, g => g.ToList());
+
+        // ── lookup لمتوسطات الفترات حسب (enrollmentId, term) ──────────────
+        // نجمّع كل PeriodAverage للطالب ونرجّعها لنسبة مئوية (0-100) ثم لمقياس
+        // النصف (من 40 درجة - النسبة المعتمدة للأنشطة في الصف الإعدادي).
+        // الفترة تنتمي لترم معين عبر SemesterNumber الموجود في EvaluationPeriod.
+        var periodById = periodsList.ToDictionary(p => p.Id);
+        var periodAvgByEnrTerm = avgBatch
+            .GroupBy(a => a.EnrollmentId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.GroupBy(a => periodById[a.PeriodId].SemesterNumber ?? 0)
+                      .ToDictionary(
+                          sg => sg.Key,
+                          sg => sg.Sum(x => (double)x.AvgScore)));
+
+        // مقياس درجات الأنشطة/الفترات في FinalGrade (مجموع written دون الامتحان)
+        const double periodMaxScore = 40.0;
 
         var allFinalGrades = new List<FinalGrade>();
         foreach (var enr in enrollments)
         {
             foreach (var term in new[] { AcademicTerm.FirstSemester, AcademicTerm.SecondSemester })
             {
-                foreach (var subjectId in new[] { S["MTH"].Id, S["ARB"].Id })
+                var semesterNum = term == AcademicTerm.FirstSemester ? 1 : 2;
+                foreach (var subject in subjectEntities)
                 {
-                    var key = new { EnrollmentId = enr.Id, SubjectId = subjectId, Term = (int)term };
+                    var key = new { EnrollmentId = enr.Id, SubjectId = subject.Id, Term = (int)term };
                     var asms = asmLookup.GetValueOrDefault(key) ?? new();
-                    var e1   = asms.FirstOrDefault(a => a.AssessmentType == PeriodicAssessmentType.MonthlyExam1)?.Score ?? 0;
-                    var e2   = asms.FirstOrDefault(a => a.AssessmentType == PeriodicAssessmentType.MonthlyExam2)?.Score ?? 0;
+                    var e1      = asms.FirstOrDefault(a => a.AssessmentType == PeriodicAssessmentType.MonthlyExam1)?.Score ?? 0;
+                    var e2      = asms.FirstOrDefault(a => a.AssessmentType == PeriodicAssessmentType.MonthlyExam2)?.Score ?? 0;
                     var semExam = asms.FirstOrDefault(a => a.AssessmentType == PeriodicAssessmentType.SemesterExam)?.Score
-                                  ?? rng.Next(20, 31);
-                    var periodAvg = (int)Math.Round(subjectId == S["MTH"].Id
-                        ? rng.Next(28, 39) + rng.NextDouble()
-                        : rng.Next(25, 36) + rng.NextDouble());
+                                      ?? rng.Next(20, 31);
+
+                    // PeriodAvgScore مأخوذ من PeriodAverages الحقيقية المجمّعة
+                    // تحويل النسبة من مقياس الفترات إلى مقياس periodMaxScore (40).
+                    double? periodAvgD = null;
+                    if (periodAvgByEnrTerm.TryGetValue(enr.Id, out var byTerm) &&
+                        byTerm.TryGetValue(semesterNum, out var rawEarned))
+                    {
+                        periodAvgD = Math.Round(rawEarned, 0);
+                        if (periodAvgD > periodMaxScore) periodAvgD = periodMaxScore;
+                    }
+                    var periodAvg = (int)Math.Round(periodAvgD ?? rng.Next(25, 39));
+
                     var written  = periodAvg + e1 + e2;
                     var total    = written + semExam;
                     var isComplete = e1 > 0 && e2 > 0 && semExam > 0;
                     allFinalGrades.Add(new FinalGrade
                     {
                         EnrollmentId     = enr.Id,
-                        SubjectId        = subjectId,
+                        SubjectId        = subject.Id,
                         Term             = term,
                         PeriodAvgScore   = periodAvg,
                         Assessment1Score = e1,
@@ -794,9 +844,25 @@ public static class SeedData
 
         // =================================================================
         // 20. DailyAbsences  (~25% of students, 3 absences each)
+        //     التواريخ ضمن فترات الترم الأول الفعلية (أكتوبر/نوفمبر/ديسمبر 2025)
+        //     و PeriodId يربط بالفترة الصحيحة المطابقة لتاريخ الغياب.
         // =================================================================
         var mathCstClass1 = cstList.First(c => c.ClassId == class1.Id && c.SubjectId == S["MTH"].Id);
-        var febStart = new DateOnly(2026, 2, 1);
+
+        // مواقع الدراسة في الترم الأول ضمنها الغياب (من بداية الدراسة حتى امتحانات الترم)
+        var studyDates = new[]
+        {
+            new DateOnly(2025, 10, 5),
+            new DateOnly(2025, 10, 26),
+            new DateOnly(2025, 11, 16),
+            new DateOnly(2025, 12, 7),
+            new DateOnly(2025, 12, 28),
+        };
+
+        // helper محلي: يرجّع الفترة المناسبة لتاريخ معين (أو null لو بره أي فترة)
+        int? PeriodIdForDate(DateOnly d) =>
+            periodsList.FirstOrDefault(p => p.StartDate <= d && p.EndDate >= d)?.Id;
+
         var absences = new List<DailyAbsence>();
         foreach (var enr in enrollments)
         {
@@ -804,14 +870,16 @@ public static class SeedData
             var mathCstForClass = cstList.First(c => c.ClassId == enr.ClassId && c.SubjectId == S["MTH"].Id);
             for (int d = 0; d < 3; d++)
             {
+                var absenceDate = studyDates[rng.Next(studyDates.Length)]
+                    .AddDays(rng.Next(0, 5));  // إزاحة صغيرة ضمن نفس الأسبوع
                 absences.Add(new DailyAbsence
                 {
                     EnrollmentId          = enr.Id,
                     ClassSubjectTeacherId = mathCstForClass.Id,
-                    AbsenceDate           = febStart.AddDays(d * 8 + rng.Next(0, 7)),
+                    AbsenceDate           = absenceDate,
                     IsAbsent              = true,
                     Reason                = "مرض",
-                    PeriodId              = periodsList[rng.Next(periodsList.Count)].Id,
+                    PeriodId              = PeriodIdForDate(absenceDate),
                     RecordedById          = mathTeacherId,
                     CreatedAt = now, UpdatedAt = now
                 });
@@ -938,7 +1006,7 @@ public static class SeedData
         await ctx.SaveChangesAsync();
 
         // =================================================================
-        // 23. Exam + Group + Question + Option + Attempt + Answer
+        // 24. Exam + Group + Question + Option + Attempt + Answer
         // =================================================================
         var exam = new Exam
         {
@@ -1106,51 +1174,61 @@ public static class SeedData
                 }
             }
 
-            var enr = enrollments.First(e => e.ClassId == cls.Id);
-            var attempt = new StudentExamAttempt
-            {
-                EnrollmentId = enr.Id,
-                ExamId = exam.Id,
-                StartedAt = now,
-                SubmittedAt = now.AddMinutes(duration - 5),
-                Score = totalScore - 8, // one wrong answer
-                TotalScore = totalScore,
-                IsGraded = true,
-                CreatedAt = now, UpdatedAt = now
-            };
-            ctx.StudentExamAttempts.Add(attempt);
-            await ctx.SaveChangesAsync();
+            // ── توليد محاولات لعدة طلاب (10 طلاب) لكل امتحان ──────────────────
+            var classEnrollments = enrollments.Where(e => e.ClassId == cls.Id).Take(10).ToList();
 
-            foreach (var q in createdQuestions)
+            foreach (var enr in classEnrollments)
             {
-                bool isWrong = q.DisplayOrder == 4; // wrong on 1st TrueFalse
-                var ans = new StudentExamAnswer
+                // كل طالب يخطئ في سؤال مختلف عشوائياً للحصول على تنوع في الدرجات
+                int wrongIdx = rng.Next(1, createdQuestions.Count + 1);
+                var attempt = new StudentExamAttempt
                 {
-                    AttemptId = attempt.Id,
-                    QuestionId = q.Id,
-                    IsCorrect = !isWrong,
-                    PointsEarned = isWrong ? 0 : q.Points,
+                    EnrollmentId = enr.Id,
+                    ExamId = exam.Id,
+                    StartedAt = now,
+                    SubmittedAt = now.AddMinutes(rng.Next(5, duration)),
+                    Score = totalScore, // يُعاد حسابه من الإجابات أدناه
+                    TotalScore = totalScore,
+                    IsGraded = true,
                     CreatedAt = now, UpdatedAt = now
                 };
+                ctx.StudentExamAttempts.Add(attempt);
+                await ctx.SaveChangesAsync();
 
-                if (q.QuestionType == QuestionType.MultipleChoice)
+                decimal earned = 0;
+                foreach (var q in createdQuestions)
                 {
-                    var correctOpt = createdOptions.First(o => o.QuestionId == q.Id && o.IsCorrect);
-                    ans.SelectedOptionId = correctOpt.Id;
-                    ans.AnswerText = correctOpt.OptionText;
+                    bool isWrong = q.DisplayOrder == wrongIdx;
+                    var ans = new StudentExamAnswer
+                    {
+                        AttemptId = attempt.Id,
+                        QuestionId = q.Id,
+                        IsCorrect = !isWrong,
+                        PointsEarned = isWrong ? 0 : q.Points,
+                        CreatedAt = now, UpdatedAt = now
+                    };
+
+                    if (q.QuestionType == QuestionType.MultipleChoice)
+                    {
+                        var correctOpt = createdOptions.First(o => o.QuestionId == q.Id && o.IsCorrect);
+                        ans.SelectedOptionId = correctOpt.Id;
+                        ans.AnswerText = correctOpt.OptionText;
+                    }
+                    else if (q.QuestionType == QuestionType.TrueFalse)
+                    {
+                        ans.BooleanAnswer = isWrong ? !bool.Parse(q.CorrectAnswer!) : bool.Parse(q.CorrectAnswer!);
+                        ans.AnswerText = ans.BooleanAnswer.Value ? "True" : "False";
+                    }
+                    else
+                    {
+                        ans.AnswerText = "إجابة الطالب: " + q.CorrectAnswer;
+                    }
+                    if (!isWrong) earned += q.Points;
+                    ctx.StudentExamAnswers.Add(ans);
                 }
-                else if (q.QuestionType == QuestionType.TrueFalse)
-                {
-                    ans.BooleanAnswer = isWrong ? !bool.Parse(q.CorrectAnswer!) : bool.Parse(q.CorrectAnswer!);
-                    ans.AnswerText = ans.BooleanAnswer.Value ? "True" : "False";
-                }
-                else
-                {
-                    ans.AnswerText = "إجابة الطالب: " + q.CorrectAnswer;
-                }
-                ctx.StudentExamAnswers.Add(ans);
+                attempt.Score = earned;
+                await ctx.SaveChangesAsync();
             }
-            await ctx.SaveChangesAsync();
         }
 
         // ── Helper: seed one assignment ────────────────────────────────────
@@ -1211,51 +1289,68 @@ public static class SeedData
                 }
             }
 
-            var enr = enrollments.First(e => e.ClassId == cls.Id);
-            var submission = new StudentAssignmentSubmission
+            // ── توليد تسليمات لعدة طلاب (10 طلاب) لكل واجب ─────────────────────
+            var classEnrollments = enrollments.Where(e => e.ClassId == cls.Id).Take(10).ToList();
+            var feedbackOptions = new[]
             {
-                EnrollmentId = enr.Id,
-                AssignmentId = assignment.Id,
-                SubmittedAt = now,
-                Score = maxScore - 8,
-                MaxScore = maxScore,
-                IsGraded = true,
-                AIFeedback = "أحسنت! معظم الإجابات صحيحة.",
-                CreatedAt = now, UpdatedAt = now
+                "أحسنت! معظم الإجابات صحيحة.",
+                "عمل جيد، راجع الأسئلة الخاطئة.",
+                "ممتاز! إجابات نموذجية.",
+                "تحتاج إلى مزيد من التركيز في المرة القادمة."
             };
-            ctx.StudentAssignmentSubmissions.Add(submission);
-            await ctx.SaveChangesAsync();
 
-            foreach (var q in createdQuestions)
+            foreach (var enr in classEnrollments)
             {
-                bool isWrong = q.DisplayOrder == 3; // wrong on 2nd MCQ
-                var ans = new StudentAssignmentAnswer
+                // كل طالب يخطئ في سؤال مختلف عشوائياً
+                int wrongIdx = rng.Next(1, createdQuestions.Count + 1);
+                var submission = new StudentAssignmentSubmission
                 {
-                    SubmissionId = submission.Id,
-                    QuestionId = q.Id,
-                    IsCorrect = !isWrong,
-                    PointsEarned = isWrong ? 0 : q.Points,
+                    EnrollmentId = enr.Id,
+                    AssignmentId = assignment.Id,
+                    SubmittedAt = now,
+                    Score = maxScore, // يُعاد حسابه من الإجابات
+                    MaxScore = maxScore,
+                    IsGraded = true,
+                    AIFeedback = feedbackOptions[rng.Next(feedbackOptions.Length)],
                     CreatedAt = now, UpdatedAt = now
                 };
+                ctx.StudentAssignmentSubmissions.Add(submission);
+                await ctx.SaveChangesAsync();
 
-                if (q.QuestionType == QuestionType.MultipleChoice)
+                decimal earned = 0;
+                foreach (var q in createdQuestions)
                 {
-                    var correctOpt = createdOptions.First(o => o.QuestionId == q.Id && o.IsCorrect);
-                    ans.SelectedOptionId = correctOpt.Id;
-                    ans.AnswerText = correctOpt.OptionText;
+                    bool isWrong = q.DisplayOrder == wrongIdx;
+                    var ans = new StudentAssignmentAnswer
+                    {
+                        SubmissionId = submission.Id,
+                        QuestionId = q.Id,
+                        IsCorrect = !isWrong,
+                        PointsEarned = isWrong ? 0 : q.Points,
+                        CreatedAt = now, UpdatedAt = now
+                    };
+
+                    if (q.QuestionType == QuestionType.MultipleChoice)
+                    {
+                        var correctOpt = createdOptions.First(o => o.QuestionId == q.Id && o.IsCorrect);
+                        ans.SelectedOptionId = correctOpt.Id;
+                        ans.AnswerText = correctOpt.OptionText;
+                    }
+                    else if (q.QuestionType == QuestionType.TrueFalse)
+                    {
+                        ans.BooleanAnswer = isWrong ? !bool.Parse(q.CorrectAnswer!) : bool.Parse(q.CorrectAnswer!);
+                        ans.AnswerText = ans.BooleanAnswer.Value ? "True" : "False";
+                    }
+                    else
+                    {
+                        ans.AnswerText = "إجابة الطالب: " + q.CorrectAnswer;
+                    }
+                    if (!isWrong) earned += q.Points;
+                    ctx.StudentAssignmentAnswers.Add(ans);
                 }
-                else if (q.QuestionType == QuestionType.TrueFalse)
-                {
-                    ans.BooleanAnswer = isWrong ? !bool.Parse(q.CorrectAnswer!) : bool.Parse(q.CorrectAnswer!);
-                    ans.AnswerText = ans.BooleanAnswer.Value ? "True" : "False";
-                }
-                else
-                {
-                    ans.AnswerText = "إجابة الطالب: " + q.CorrectAnswer;
-                }
-                ctx.StudentAssignmentAnswers.Add(ans);
+                submission.Score = earned;
+                await ctx.SaveChangesAsync();
             }
-            await ctx.SaveChangesAsync();
         }
 
         // ===================================================================
@@ -1444,7 +1539,7 @@ public static class SeedData
         await ctx.SaveChangesAsync();
 
         // =================================================================
-        // 25. Notifications
+        // 27. Notifications
         // =================================================================
         ctx.Notifications.Add(new Notification
         {
@@ -1458,54 +1553,100 @@ public static class SeedData
         await ctx.SaveChangesAsync();
 
         // =================================================================
-        // 26. Announcements
+        // 28. Announcements
         // =================================================================
-        ctx.Announcements.AddRange(
-            new Announcement
-            {
-                AuthorId = admin.Id,
-                Title    = "مرحباً بكم في العام الدراسي 2025/2026",
-                Body     = "يسعد إدارة المدرسة أن ترحب بجميع الطلاب وأولياء الأمور. نتمنى للجميع عاماً دراسياً موفقاً ومثمراً.",
-                TargetRole = null,
-                ExpiresAt  = new DateTime(2025, 10, 1, 0, 0, 0, DateTimeKind.Utc),
-                CreatedAt  = new DateTime(2025,  9,21, 8, 0, 0, DateTimeKind.Utc),
-                UpdatedAt  = now
-            },
-            new Announcement
-            {
-                AuthorId = admin.Id,
-                Title    = "موعد امتحانات نصف العام",
-                Body     = "تُعلن الإدارة عن بدء امتحانات نصف العام في 15 يناير 2026. يُرجى الاطلاع على الجدول المعتمد.",
-                TargetRole = null,
-                ExpiresAt  = new DateTime(2026, 1, 20, 0, 0, 0, DateTimeKind.Utc),
-                CreatedAt  = new DateTime(2026, 1,  5, 8, 0, 0, DateTimeKind.Utc),
-                UpdatedAt  = now
-            },
-            new Announcement
-            {
-                AuthorId   = admin.Id,
-                Title      = "تنبيه للمعلمين: رفع الدرجات",
-                Body       = "يُرجى من جميع المعلمين الانتهاء من رفع درجات الفصل الأول قبل 20 يناير 2026.",
-                TargetRole = UserRole.Teacher,
-                ExpiresAt  = new DateTime(2026, 1, 20, 0, 0, 0, DateTimeKind.Utc),
-                CreatedAt  = new DateTime(2026, 1, 10, 8, 0, 0, DateTimeKind.Utc),
-                UpdatedAt  = now
-            },
-            new Announcement
-            {
-                AuthorId   = admin.Id,
-                Title      = "نتائج الفصل الأول متاحة",
-                Body       = "يمكن لأولياء الأمور الاطلاع على نتائج الفصل الأول لأبنائهم من خلال تطبيق SchoolLink.",
-                TargetRole = UserRole.Parent,
-                ExpiresAt  = new DateTime(2026, 3,  1, 0, 0, 0, DateTimeKind.Utc),
-                CreatedAt  = new DateTime(2026, 1, 22, 8, 0, 0, DateTimeKind.Utc),
-                UpdatedAt  = now
-            }
-        );
+        var annWelcome = new Announcement
+        {
+            AuthorId = admin.Id,
+            Title    = "مرحباً بكم في العام الدراسي 2025/2026",
+            Body     = "يسعد إدارة المدرسة أن ترحب بجميع الطلاب وأولياء الأمور. نتمنى للجميع عاماً دراسياً موفقاً ومثمراً.",
+            TargetRole = null,
+            ExpiresAt  = new DateTime(2025, 10, 1, 0, 0, 0, DateTimeKind.Utc),
+            CreatedAt  = new DateTime(2025,  9,21, 8, 0, 0, DateTimeKind.Utc),
+            UpdatedAt  = now
+        };
+        var annExams = new Announcement
+        {
+            AuthorId = admin.Id,
+            Title    = "موعد امتحانات نصف العام",
+            Body     = "تُعلن الإدارة عن بدء امتحانات نصف العام في 15 يناير 2026. يُرجى الاطلاع على الجدول المعتمد.",
+            TargetRole = null,
+            ExpiresAt  = new DateTime(2026, 1, 20, 0, 0, 0, DateTimeKind.Utc),
+            CreatedAt  = new DateTime(2026, 1,  5, 8, 0, 0, DateTimeKind.Utc),
+            UpdatedAt  = now
+        };
+        var annTeachers = new Announcement
+        {
+            AuthorId   = admin.Id,
+            Title      = "تنبيه للمعلمين: رفع الدرجات",
+            Body       = "يُرجى من جميع المعلمين الانتهاء من رفع درجات الفصل الأول قبل 20 يناير 2026.",
+            TargetRole = UserRole.Teacher,
+            ExpiresAt  = new DateTime(2026, 1, 20, 0, 0, 0, DateTimeKind.Utc),
+            CreatedAt  = new DateTime(2026, 1, 10, 8, 0, 0, DateTimeKind.Utc),
+            UpdatedAt  = now
+        };
+        var annResults = new Announcement
+        {
+            AuthorId   = admin.Id,
+            Title      = "نتائج الفصل الأول متاحة",
+            Body       = "يمكن لأولياء الأمور الاطلاع على نتائج الفصل الأول لأبنائهم من خلال تطبيق SchoolLink.",
+            TargetRole = UserRole.Parent,
+            ExpiresAt  = new DateTime(2026, 3,  1, 0, 0, 0, DateTimeKind.Utc),
+            CreatedAt  = new DateTime(2026, 1, 22, 8, 0, 0, DateTimeKind.Utc),
+            UpdatedAt  = now
+        };
+        ctx.Announcements.AddRange(annWelcome, annExams, annTeachers, annResults);
         await ctx.SaveChangesAsync();
 
         // =================================================================
-        // 27. LibraryItems
+        // 28b. AnnouncementUsers  (تتبّع "من قرأ الإعلان")
+        //     لكل إعلان نربط عينة من المستخدمين: بعضهم قرأه وبعضهم لا.
+        // =================================================================
+        var announcementUserRows = new List<AnnouncementUser>();
+
+        // إعلان الترحيب: قرأه غالبية المعلمين + بعض الطلاب
+        announcementUserRows.AddRange(teacherUsers.Select(t => new AnnouncementUser
+        {
+            AnnouncementId = annWelcome.Id, UserId = t.Id,
+            CreatedAt = now, UpdatedAt = now
+        }));
+        announcementUserRows.AddRange(studentUsers.Take(30).Select(s => new AnnouncementUser
+        {
+            AnnouncementId = annWelcome.Id, UserId = s.Id,
+            CreatedAt = now, UpdatedAt = now
+        }));
+
+        // إعلان الامتحانات: قرأه نصف الطلاب تقريباً + كل أولياء الأمور تقريباً
+        announcementUserRows.AddRange(studentUsers.Take(90).Select(s => new AnnouncementUser
+        {
+            AnnouncementId = annExams.Id, UserId = s.Id,
+            CreatedAt = now, UpdatedAt = now
+        }));
+        announcementUserRows.AddRange(parentUsers.Take(120).Select(p => new AnnouncementUser
+        {
+            AnnouncementId = annExams.Id, UserId = p.Id,
+            CreatedAt = now, UpdatedAt = now
+        }));
+
+        // إعلان المعلمين: قرأه 4 من 7 معلمين
+        announcementUserRows.AddRange(teacherUsers.Take(4).Select(t => new AnnouncementUser
+        {
+            AnnouncementId = annTeachers.Id, UserId = t.Id,
+            CreatedAt = now, UpdatedAt = now
+        }));
+
+        // إعلان النتائج: قرأه 60 ولي أمر فقط (الأغلبية لسه ما قرأتهش)
+        announcementUserRows.AddRange(parentUsers.Take(60).Select(p => new AnnouncementUser
+        {
+            AnnouncementId = annResults.Id, UserId = p.Id,
+            CreatedAt = now, UpdatedAt = now
+        }));
+
+        ctx.AnnouncementUsers.AddRange(announcementUserRows);
+        await ctx.SaveChangesAsync();
+
+        // =================================================================
+        // 29. LibraryItems
         // =================================================================
         ctx.LibraryItems.AddRange(
             new LibraryItem
@@ -1533,7 +1674,68 @@ public static class SeedData
         await ctx.SaveChangesAsync();
 
         // =================================================================
-        // 28. ResultVisibilitySettings
+        // 30. ParentMeetingRequests  (طلبات مقابلات أولياء الأمور)
+        //     نولّد مجموعة طلبات بحالات مختلفة (Pending / Approved / Rejected / Completed)
+        // =================================================================
+        // عيّن عيّنة من الطلاب وأولياء أمورهم لربط الطلبات بهم
+        var sampleStudentsForMeetings = students.Take(8).ToList();
+        var sampleParentsForMeetings  = sampleStudentsForMeetings
+            .Select(st => parentStudentLinks.First(ps => ps.StudentId == st.Id))
+            .ToList();
+
+        var meetingReasons = new[]
+        {
+            "مناقشة مستوى الطالب الدراسي",
+            "الاستفسار عن سلوك الطالب",
+            "مناقشة نتيجة امتحانات الفصل الأول",
+            "تنسيق خطة دعم للمواد التي يحتاجها الطالب"
+        };
+        var meetingNotes = new[]
+        {
+            "تم الاتفاق على متابعة الواجبات يومياً.",
+            "يُوصى بجلسات تقوية في الرياضيات.",
+            "الأداء ممتاز، شكراً لتعاونكم.",
+            null
+        };
+
+        var meetingRequests = new (ParentStudent link, int delayDays, MeetingRequestStatus status, int handlerIndex)[]
+        {
+            (sampleParentsForMeetings[0], -20, MeetingRequestStatus.Completed, 0),
+            (sampleParentsForMeetings[1], -15, MeetingRequestStatus.Completed, 1),
+            (sampleParentsForMeetings[2], -10, MeetingRequestStatus.Approved,  2),
+            (sampleParentsForMeetings[3],  -7, MeetingRequestStatus.Approved,  3),
+            (sampleParentsForMeetings[4],  -5, MeetingRequestStatus.Rejected,  4),
+            (sampleParentsForMeetings[5],  -3, MeetingRequestStatus.Rejected,  5),
+            (sampleParentsForMeetings[6],  -2, MeetingRequestStatus.Pending,   -1),
+            (sampleParentsForMeetings[7],  -1, MeetingRequestStatus.Pending,   -1),
+        };
+
+        var teacherHandlers = teacherUsers.ToList();
+        var meetingRows = new List<ParentMeetingRequest>();
+        for (int i = 0; i < meetingRequests.Length; i++)
+        {
+            var (link, delayDays, status, handlerIndex) = meetingRequests[i];
+            var preferred = now.AddDays(delayDays).Date;
+            var row = new ParentMeetingRequest
+            {
+                ParentId      = link.ParentId,
+                StudentId     = link.StudentId,
+                Reason        = meetingReasons[i % meetingReasons.Length],
+                PreferredDate = preferred,
+                Status        = status,
+                Notes         = status == MeetingRequestStatus.Pending ? null : meetingNotes[i % meetingNotes.Length],
+                HandledById   = handlerIndex >= 0 ? teacherHandlers[handlerIndex % teacherHandlers.Count].Id : null,
+                ScheduledDate = status == MeetingRequestStatus.Approved || status == MeetingRequestStatus.Completed
+                                ? preferred.AddDays(3) : null,
+                CreatedAt = now.AddDays(delayDays), UpdatedAt = now,
+            };
+            meetingRows.Add(row);
+        }
+        ctx.ParentMeetingRequests.AddRange(meetingRows);
+        await ctx.SaveChangesAsync();
+
+        // =================================================================
+        // 31. ResultVisibilitySettings
         // =================================================================
         ctx.ResultVisibilitySettings.AddRange(
             new ResultVisibilitySetting
@@ -1560,7 +1762,7 @@ public static class SeedData
         await ctx.SaveChangesAsync();
 
         // =================================================================
-        // 29. RefreshToken + EmailOtp
+        // 32. RefreshToken + EmailOtp
         // =================================================================
         ctx.RefreshTokens.Add(new RefreshToken
         {
@@ -1582,7 +1784,7 @@ public static class SeedData
         await ctx.SaveChangesAsync();
 
         // =================================================================
-        // 30. StudyPlan + StudyPlanItem
+        // 33. StudyPlan + StudyPlanItem
         // =================================================================
         var studyPlan = new StudyPlan
         {
@@ -1611,7 +1813,7 @@ public static class SeedData
         await ctx.SaveChangesAsync();
 
         // =================================================================
-        // 31. LessonFeedback
+        // 34. LessonFeedback
         // =================================================================
         ctx.LessonFeedbacks.Add(new LessonFeedback
         {
@@ -1626,7 +1828,7 @@ public static class SeedData
         await ctx.SaveChangesAsync();
 
         // =================================================================
-        // 32. AIGenerationLog
+        // 35. AIGenerationLog
         // =================================================================
         ctx.AIGenerationLogs.Add(new AIGenerationLog
         {
@@ -1641,7 +1843,67 @@ public static class SeedData
         await ctx.SaveChangesAsync();
 
         // =================================================================
-        // 33. AgentConversationMessage
+        // 35b. AIReports  (تقارير الذكاء الاصطناعي للطلاب/الفصول)
+        //     تقرير للطالب الأول + تقرير للفصل class1 + توصيات عامة
+        // =================================================================
+        var firstStudentForReport = students.First();
+        var latestPeriod = periodsList.OrderByDescending(p => p.Id).FirstOrDefault();
+
+        ctx.AIReports.Add(new AIReport
+        {
+            StudentId   = firstStudentForReport.Id,
+            PeriodId    = latestPeriod?.Id,
+            ClassId     = class1.Id,
+            Term        = AcademicTerm.SecondSemester,
+            ReportType  = "Student",
+            Summary     = "أداء الطالب جيد جداً مع تفوّق في الرياضيات والعلوم، يحتاج متابعة في اللغة الإنجليزية.",
+            Content     = "تقرير أداء فردي للطالب:\n\n" +
+                          "• نقاط القوة: استيعاب سريع للمفاهيم الرياضية، مشاركة فعّالة في الحصص.\n" +
+                          "• مجالات التحسين: مهارات الكتابة في اللغة الإنجليزية.\n" +
+                          "• التوصيات: حل تمارين إضافية للغة الإنجليزية بمعدل 3 مرات أسبوعياً.\n" +
+                          "• معدل الحضور: 95% — ممتاز.\n" +
+                          "• متوسط الدرجات: 87%.",
+            IsPublished = true,
+            CreatedAt = now, UpdatedAt = now
+        });
+        ctx.AIReports.Add(new AIReport
+        {
+            StudentId   = firstStudentForReport.Id,
+            PeriodId    = latestPeriod?.Id,
+            ClassId     = class1.Id,
+            Term        = AcademicTerm.SecondSemester,
+            ReportType  = "Class",
+            Summary     = "أداء الفصل 1/1 متوازن عموماً، مع ارتفاع ملحوظ في مادة الرياضيات.",
+            Content     = "تقرير أداء الفصل 1/1:\n\n" +
+                          "• متوسط الدرجة الكلية للفصل: 82%.\n" +
+                          "• أفضل مادة: الرياضيات (89%).\n" +
+                          "• أضعف مادة: الدراسات الاجتماعية (74%).\n" +
+                          "• نسبة الحضور: 92%.\n" +
+                          "• عدد الطلاب المتفوقين: 12 من 30.\n" +
+                          "• التوصيات: تكثيف المراجعات في الدراسات الاجتماعية، وإطلاق مسابقة في الرياضيات.",
+            IsPublished = true,
+            CreatedAt = now, UpdatedAt = now
+        });
+        ctx.AIReports.Add(new AIReport
+        {
+            StudentId   = firstStudentForReport.Id,
+            PeriodId    = latestPeriod?.Id,
+            ClassId     = class1.Id,
+            Term        = AcademicTerm.SecondSemester,
+            ReportType  = "Recommendations",
+            Summary     = "خطة تطوير مقترحة للطالب خلال الأسابيع الأربعة القادمة.",
+            Content     = "توصيات مخصصة:\n\n" +
+                          "1. جدول مراجعة مكثّف للغة الإنجليزية أيام السبت والثلاثاء.\n" +
+                          "2. الانضمام لمجموعة تقوية في الرياضيات للحفاظ على التميّز.\n" +
+                          "3. قراءة قصة قصيرة أسبوعياً لتحسين مهارات الاستيعاب القرائي.\n" +
+                          "4. متابعة أولي الأمر أسبوعياً لتقارير التقدّم.",
+            IsPublished = false,
+            CreatedAt = now, UpdatedAt = now
+        });
+        await ctx.SaveChangesAsync();
+
+        // =================================================================
+        // 36. AgentConversationMessage
         // =================================================================
         ctx.AgentConversationMessages.Add(new AgentConversationMessage
         {

@@ -6,6 +6,8 @@ import { AcademicYear, AcademicYearService } from '../../core/services/academic-
 import { ClassEntity, ClassService } from '../../core/services/class.service';
 import { GradeLevel, GradeLevelService } from '../../core/services/grade-level.service';
 import {
+  AcademicStatus,
+  ProgressionTermScope,
   StudentProgressionCandidate,
   StudentProgressionRequest,
   StudentProgressionResult,
@@ -14,7 +16,7 @@ import {
 import { Sidebar } from '../../layouts/sidebar/sidebar';
 type ProgressionAction = 1 | 2 | 3;
 type AccountFilter = 'all' | 'with-account' | 'without-account';
-type GradeFilter = 'all' | 'published' | 'unpublished' | 'missing';
+type StatusFilter = 'all' | 'passed' | 'failed' | 'unpublished' | 'no-grades';
 type SortMode = 'name' | 'high' | 'low';
 
 @Component({
@@ -50,9 +52,24 @@ export class StudentProgression implements OnInit {
   threshold = signal(50);
   searchQuery = signal('');
   accountFilter = signal<AccountFilter>('all');
-  gradeFilter = signal<GradeFilter>('all');
+  statusFilter = signal<StatusFilter>('all');
   sortMode = signal<SortMode>('name');
-  selectedTerm = signal<number>(1);
+  termScope = signal<ProgressionTermScope>(3); // Both semesters = end-of-year basis
+
+  /** Enrollment IDs whose subject-breakdown row is expanded in the table. */
+  expandedSubjectIds = signal<Set<number>>(new Set());
+
+  /** Snapshot of academic-status counts (Passed/Failed/Unpublished/NoGrades) for the loaded list. */
+  statusCounts = computed(() => {
+    const counts = { passed: 0, failed: 0, unpublished: 0, noGrades: 0 };
+    for (const c of this.candidates()) {
+      if (c.academicStatus === 2) counts.passed++;
+      else if (c.academicStatus === 3) counts.failed++;
+      else if (c.academicStatus === 1) counts.unpublished++;
+      else counts.noGrades++;
+    }
+    return counts;
+  });
 
   isBootstrapping = signal(false);
   isLoadingCandidates = signal(false);
@@ -106,7 +123,7 @@ export class StudentProgression implements OnInit {
   filteredCandidates = computed(() => {
     const query = this.searchQuery().trim().toLowerCase();
     const accountFilter = this.accountFilter();
-    const gradeFilter = this.gradeFilter();
+    const statusFilter = this.statusFilter();
     const sortMode = this.sortMode();
 
     const filtered = this.candidates().filter(candidate => {
@@ -120,13 +137,14 @@ export class StudentProgression implements OnInit {
         (accountFilter === 'with-account' && candidate.hasStudentAccount) ||
         (accountFilter === 'without-account' && !candidate.hasStudentAccount);
 
-      const matchesGrade =
-        gradeFilter === 'all' ||
-        (gradeFilter === 'published' && candidate.hasPublishedFinalGrade) ||
-        (gradeFilter === 'unpublished' && candidate.hasFinalGrade && !candidate.hasPublishedFinalGrade) ||
-        (gradeFilter === 'missing' && !candidate.hasFinalGrade);
+      const matchesStatus =
+        statusFilter === 'all' ||
+        (statusFilter === 'passed' && candidate.academicStatus === 2) ||
+        (statusFilter === 'failed' && candidate.academicStatus === 3) ||
+        (statusFilter === 'unpublished' && candidate.academicStatus === 1) ||
+        (statusFilter === 'no-grades' && candidate.academicStatus === 0);
 
-      return matchesQuery && matchesAccount && matchesGrade;
+      return matchesQuery && matchesAccount && matchesStatus;
     });
 
     return filtered.sort((a, b) => {
@@ -197,14 +215,6 @@ export class StudentProgression implements OnInit {
 
   ngOnInit(): void {
     this.loadPageData();
-    this.academicYearService.getCurrentTerm().subscribe({
-      next: (res) => {
-        if (res?.data != null && this.selectedTerm() !== res.data) {
-          this.selectedTerm.set(res.data);
-          this.loadCandidates();
-        }
-      }
-    });
   }
 
   loadPageData() {
@@ -252,23 +262,24 @@ export class StudentProgression implements OnInit {
     this.lastResult.set(null);
     this.selectedEnrollmentIds.set([]);
 
-    this.studentProgressionService.getCandidates(sourceGradeId, sourceYearId, this.selectedTerm())
-      .pipe(finalize(() => this.isLoadingCandidates.set(false)))
-      .subscribe({
-        next: res => {
-          const candidates = this.unwrapData<StudentProgressionCandidate[]>(res) ?? [];
-          this.candidates.set(candidates);
-          this.selectedTargetClassId.set(null);
+    this.studentProgressionService
+        .getCandidates(sourceGradeId, sourceYearId, this.termScope(), this.threshold())
+        .pipe(finalize(() => this.isLoadingCandidates.set(false)))
+        .subscribe({
+          next: res => {
+            const candidates = this.unwrapData<StudentProgressionCandidate[]>(res) ?? [];
+            this.candidates.set(candidates);
+            this.selectedTargetClassId.set(null);
 
-          if (!candidates.length) {
-            this.successMessage.set('لا يوجد طلاب نشطون في هذا الصف خلال السنة الدراسية المحددة.');
+            if (!candidates.length) {
+              this.successMessage.set('لا يوجد طلاب نشطون في هذا الصف خلال السنة الدراسية المحددة.');
+            }
+          },
+          error: err => {
+            this.candidates.set([]);
+            this.showError(this.extractErrorMessage(err, 'تعذر تحميل الطلاب المرشحين.'));
           }
-        },
-        error: err => {
-          this.candidates.set([]);
-          this.showError(this.extractErrorMessage(err, 'تعذر تحميل الطلاب المرشحين.'));
-        }
-      });
+        });
   }
 
   onSourceSelectionChanged() {
@@ -280,10 +291,77 @@ export class StudentProgression implements OnInit {
     this.clearMessages();
   }
 
-  onTermChange(event: Event) {
-    const value = (event.target as HTMLSelectElement).value;
-    this.selectedTerm.set(Number(value));
-    this.loadCandidates();
+  onTermScopeChange(value: ProgressionTermScope) {
+    this.termScope.set(value);
+    // Threshold is a server-side decision now; reload with the new scope.
+    if (this.candidates().length || this.selectedSourceGradeLevelId()) {
+      this.loadCandidates();
+    }
+  }
+
+  /**
+   * Selects all visible candidates whose academic status matches the given value.
+   * Used by the "passed / failed / unpublished / no-grades" quick-select buttons.
+   */
+  selectVisibleByStatus(status: AcademicStatus) {
+    const matched = this.filteredCandidates()
+      .filter(c => c.academicStatus === status)
+      .map(c => c.enrollmentId);
+
+    const visibleIds = new Set(this.filteredCandidates().map(c => c.enrollmentId));
+    const preservedHidden = this.selectedEnrollmentIds().filter(id => !visibleIds.has(id));
+    this.selectedEnrollmentIds.set([...preservedHidden, ...matched]);
+  }
+
+  /** Quick auto-decide helper: leaves "no-grades/unpublished" unselected. */
+  autoDecideSelection() {
+    const ids = this.filteredCandidates()
+      .filter(c => c.academicStatus === 2 || c.academicStatus === 3) // passed or failed
+      .map(c => c.enrollmentId);
+
+    const visibleIds = new Set(this.filteredCandidates().map(c => c.enrollmentId));
+    const preservedHidden = this.selectedEnrollmentIds().filter(id => !visibleIds.has(id));
+    this.selectedEnrollmentIds.set([...preservedHidden, ...ids]);
+  }
+
+  getStatusLabel(status: AcademicStatus): string {
+    switch (status) {
+      case 2: return 'ناجح';
+      case 3: return 'راسب';
+      case 1: return 'غير منشورة';
+      default: return 'بدون درجات';
+    }
+  }
+
+  getStatusBadgeClass(status: AcademicStatus): string {
+    switch (status) {
+      case 2: return 'bg-emerald-50 text-emerald-800 border-emerald-200';
+      case 3: return 'bg-red-50 text-red-800 border-red-200';
+      case 1: return 'bg-amber-50 text-amber-800 border-amber-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  }
+
+  getTermLabel(term: number | null | undefined): string {
+    return term === 1 ? 'الترم الأول' : term === 2 ? 'الترم الثاني' : '—';
+  }
+
+  getScopeLabel(scope: ProgressionTermScope): string {
+    return scope === 1 ? 'الترم الأول' : scope === 2 ? 'الترم الثاني' : 'الترمين';
+  }
+
+  toggleSubjectDetails(enrollmentId: number) {
+    const next = new Set(this.expandedSubjectIds());
+    if (next.has(enrollmentId)) {
+      next.delete(enrollmentId);
+    } else {
+      next.add(enrollmentId);
+    }
+    this.expandedSubjectIds.set(next);
+  }
+
+  isSubjectDetailsOpen(enrollmentId: number): boolean {
+    return this.expandedSubjectIds().has(enrollmentId);
   }
 
   onActionChanged(action: ProgressionAction) {
@@ -331,33 +409,6 @@ export class StudentProgression implements OnInit {
 
   clearSelection() {
     this.selectedEnrollmentIds.set([]);
-  }
-
-  selectVisibleByThreshold(mode: 'gte' | 'lt' | 'missing') {
-    const visibleCandidates = this.filteredCandidates();
-    const visibleIds = new Set(visibleCandidates.map(candidate => candidate.enrollmentId));
-    const preservedHiddenSelection = this.selectedEnrollmentIds().filter(id => !visibleIds.has(id));
-    const threshold = this.threshold();
-
-    const matchedVisibleIds = visibleCandidates
-      .filter(candidate => {
-        if (mode === 'missing') return !candidate.hasFinalGrade;
-        if (!candidate.hasPublishedFinalGrade || candidate.finalTotal === null || candidate.finalTotal === undefined) {
-          return false;
-        }
-
-        return mode === 'gte'
-          ? candidate.finalTotal >= threshold
-          : candidate.finalTotal < threshold;
-      })
-      .map(candidate => candidate.enrollmentId);
-
-    this.selectedEnrollmentIds.set([...preservedHiddenSelection, ...matchedVisibleIds]);
-  }
-
-  applyPreset(threshold: number, mode: 'gte' | 'lt') {
-    this.threshold.set(threshold);
-    this.selectVisibleByThreshold(mode);
   }
 
   execute() {
@@ -412,28 +463,6 @@ export class StudentProgression implements OnInit {
     if (action === 1) return 'ترقية';
     if (action === 2) return 'إبقاء';
     return 'تخرج';
-  }
-
-  getFinalGradeStatus(candidate: StudentProgressionCandidate): string {
-    if (!candidate.hasFinalGrade) return 'لا توجد درجة';
-    if (!candidate.hasPublishedFinalGrade) return 'غير منشورة';
-    return `منشورة: ${candidate.finalTotal ?? '—'}`;
-  }
-
-  getFinalGradeBadgeClass(candidate: StudentProgressionCandidate): string {
-    if (!candidate.hasFinalGrade) {
-      return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-
-    if (!candidate.hasPublishedFinalGrade) {
-      return 'bg-amber-50 text-amber-800 border-amber-200';
-    }
-
-    if ((candidate.finalTotal ?? 0) >= this.threshold()) {
-      return 'bg-emerald-50 text-emerald-800 border-emerald-200';
-    }
-
-    return 'bg-red-50 text-red-800 border-red-200';
   }
 
   trackByEnrollmentId(_: number, candidate: StudentProgressionCandidate): number {

@@ -117,6 +117,34 @@
             </div>
           </div>
 
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="field-label">أساس القرار (الترم)</label>
+              <select class="field-select"
+                      [ngModel]="termScope()"
+                      (ngModelChange)="onTermScopeChange($event)">
+                <option [ngValue]="3">الترمين (نهاية العام)</option>
+                <option [ngValue]="1">الترم الأول فقط</option>
+                <option [ngValue]="2">الترم الثاني فقط</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="field-label">نسبة النجاح (%)</label>
+              <input type="number" min="0" max="100" step="1" class="field-input"
+                     [ngModel]="threshold()"
+                     (ngModelChange)="threshold.set(+$event || 0)" />
+            </div>
+          </div>
+
+          <div class="notice notice-neutral">
+            <span class="material-symbols-outlined">menu_book</span>
+            <span>
+              قاعدة التقييم: الطالب <strong>ناجح</strong> إذا نجح في
+              <strong>كل مادة</strong> (درجة المادة ≥ {{ threshold() }}%) ضمن {{ getScopeLabel(termScope()) }}.
+            </span>
+          </div>
+
           <button (click)="loadCandidates()"
                   [disabled]="isBootstrapping() || isLoadingCandidates()"
                   class="prg-btn prg-btn-primary w-full">
@@ -286,20 +314,46 @@
               </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
-              <div>
-                <label class="field-label">الفصل الدراسي</label>
-                <select class="field-select" (change)="onTermChange($event)">
-                  <option value="1">الترم الأول</option>
-                  <option value="2">الترم الثاني</option>
-                </select>
+            <!-- Live status counters -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3" *ngIf="candidates().length">
+              <div class="status-counter status-counter-passed">
+                <span class="status-counter-value">{{ statusCounts().passed }}</span>
+                <span class="status-counter-label">ناجح</span>
               </div>
+              <div class="status-counter status-counter-failed">
+                <span class="status-counter-value">{{ statusCounts().failed }}</span>
+                <span class="status-counter-label">راسب</span>
+              </div>
+              <div class="status-counter status-counter-unpublished">
+                <span class="status-counter-value">{{ statusCounts().unpublished }}</span>
+                <span class="status-counter-label">غير منشورة</span>
+              </div>
+              <div class="status-counter status-counter-missing">
+                <span class="status-counter-value">{{ statusCounts().noGrades }}</span>
+                <span class="status-counter-label">بدون درجات</span>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
               <div>
                 <label class="field-label">بحث</label>
                 <input type="text" class="field-input"
                        placeholder="اسم الطالب أو الفصل"
                        [ngModel]="searchQuery()"
                        (ngModelChange)="searchQuery.set($event)" />
+              </div>
+
+              <div>
+                <label class="field-label">الحالة الأكاديمية</label>
+                <select class="field-select"
+                        [ngModel]="statusFilter()"
+                        (ngModelChange)="statusFilter.set($event)">
+                  <option value="all">الكل</option>
+                  <option value="passed">ناجح</option>
+                  <option value="failed">راسب</option>
+                  <option value="unpublished">غير منشورة</option>
+                  <option value="no-grades">بدون درجات</option>
+                </select>
               </div>
 
               <div>
@@ -310,18 +364,6 @@
                   <option value="all">الكل</option>
                   <option value="with-account">له حساب طالب</option>
                   <option value="without-account">بدون حساب</option>
-                </select>
-              </div>
-
-              <div>
-                <label class="field-label">حالة الدرجة النهائية</label>
-                <select class="field-select"
-                        [ngModel]="gradeFilter()"
-                        (ngModelChange)="gradeFilter.set($event)">
-                  <option value="all">الكل</option>
-                  <option value="published">منشورة</option>
-                  <option value="unpublished">غير منشورة</option>
-                  <option value="missing">بدون درجات</option>
                 </select>
               </div>
 
@@ -337,23 +379,27 @@
               </div>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-[220px,1fr] gap-4">
-              <div>
-                <label class="field-label">درجة النجاح المقترحة</label>
-                <input type="number" min="0" step="1" class="field-input"
-                       [ngModel]="threshold()"
-                       (ngModelChange)="threshold.set(+$event || 0)" />
-              </div>
-
+            <!-- Smart selection: by academic status -->
+            <div>
+              <p class="panel-subtitle" style="margin-bottom:8px">
+                <span class="material-symbols-outlined" style="font-size:16px;vertical-align:middle">auto_awesome</span>
+                تحديد ذكي حسب الحالة الأكاديمية
+              </p>
               <div class="flex flex-wrap items-end gap-2">
-                <button type="button" (click)="selectVisibleByThreshold('gte')" class="smart-btn smart-btn-primary">
-                  تحديد &gt;= الدرجة
+                <button type="button" (click)="selectVisibleByStatus(2)" class="smart-btn smart-btn-success">
+                  تحديد الناجحين (ترقية)
                 </button>
-                <button type="button" (click)="selectVisibleByThreshold('lt')" class="smart-btn smart-btn-warn">
-                  تحديد &lt; الدرجة
+                <button type="button" (click)="selectVisibleByStatus(3)" class="smart-btn smart-btn-warn">
+                  تحديد الراسبين (إبقاء)
                 </button>
-                <button type="button" (click)="selectVisibleByThreshold('missing')" class="smart-btn smart-btn-neutral">
+                <button type="button" (click)="selectVisibleByStatus(1)" class="smart-btn smart-btn-neutral">
+                  تحديد غير المنشورة
+                </button>
+                <button type="button" (click)="selectVisibleByStatus(0)" class="smart-btn smart-btn-neutral">
                   تحديد بدون درجات
+                </button>
+                <button type="button" (click)="autoDecideSelection()" class="smart-btn smart-btn-primary">
+                  تصنيف تلقائي (ناجح + راسب)
                 </button>
                 <button type="button" (click)="toggleAllVisibleCandidates(true)" class="smart-btn smart-btn-success">
                   تحديد الكل
@@ -362,13 +408,6 @@
                   إلغاء الكل
                 </button>
               </div>
-            </div>
-
-            <div class="flex flex-wrap gap-2">
-              <button type="button" (click)="applyPreset(50, 'gte')" class="preset-pill">&gt;= 50</button>
-              <button type="button" (click)="applyPreset(60, 'gte')" class="preset-pill">&gt;= 60</button>
-              <button type="button" (click)="applyPreset(70, 'gte')" class="preset-pill">&gt;= 70</button>
-              <button type="button" (click)="applyPreset(50, 'lt')" class="preset-pill tone-warn">&lt; 50</button>
             </div>
           </div>
 
@@ -408,40 +447,83 @@
                     <th>الطالب</th>
                     <th>الفصل الحالي</th>
                     <th>الحساب</th>
-                    <th>الدرجة النهائية</th>
+                    <th>الحالة الأكاديمية</th>
+                    <th class="text-center" style="width:120px">تفاصيل</th>
                   </tr>
                 </thead>
 
                 <tbody>
-                  <tr *ngFor="let candidate of filteredCandidates(); trackBy: trackByEnrollmentId">
-                    <td class="text-center">
-                      <input type="checkbox"
-                             [checked]="isCandidateSelected(candidate.enrollmentId)"
-                             (change)="toggleCandidateSelection(candidate.enrollmentId, $any($event.target).checked)" />
-                    </td>
-                    <td>
-                      <div class="student-name">{{ candidate.studentName }}</div>
-                      <div class="student-meta">{{ candidate.currentGradeLevelName }}</div>
-                    </td>
-                    <td>
-                      <span class="tag tag-neutral">{{ candidate.currentClassName }}</span>
-                    </td>
-                    <td>
-                      <span class="tag"
-                            [class.tag-success]="candidate.hasStudentAccount"
-                            [class.tag-mute]="!candidate.hasStudentAccount">
-                        {{ candidate.hasStudentAccount ? 'له حساب' : 'بدون حساب' }}
-                      </span>
-                    </td>
-                    <td>
-                      <span class="tag" [ngClass]="getFinalGradeBadgeClass(candidate)">
-                        {{ getFinalGradeStatus(candidate) }}
-                      </span>
-                    </td>
-                  </tr>
+                  <ng-container *ngFor="let candidate of filteredCandidates(); trackBy: trackByEnrollmentId">
+                    <tr>
+                      <td class="text-center">
+                        <input type="checkbox"
+                               [checked]="isCandidateSelected(candidate.enrollmentId)"
+                               (change)="toggleCandidateSelection(candidate.enrollmentId, $any($event.target).checked)" />
+                      </td>
+                      <td>
+                        <div class="student-name">{{ candidate.studentName }}</div>
+                        <div class="student-meta">{{ candidate.currentGradeLevelName }}</div>
+                      </td>
+                      <td>
+                        <span class="tag tag-neutral">{{ candidate.currentClassName }}</span>
+                      </td>
+                      <td>
+                        <span class="tag"
+                              [class.tag-success]="candidate.hasStudentAccount"
+                              [class.tag-mute]="!candidate.hasStudentAccount">
+                          {{ candidate.hasStudentAccount ? 'له حساب' : 'بدون حساب' }}
+                        </span>
+                      </td>
+                      <td>
+                        <span class="tag" [ngClass]="getStatusBadgeClass(candidate.academicStatus)">
+                          {{ getStatusLabel(candidate.academicStatus) }}
+                        </span>
+                        <div class="student-meta" *ngIf="candidate.academicStatus === 2 || candidate.academicStatus === 3">
+                          {{ candidate.passedSubjectsCount }} ناجحة / {{ candidate.failedSubjectsCount }} راسبة
+                          · {{ candidate.finalTotal }}%
+                        </div>
+                      </td>
+                      <td class="text-center">
+                        <button type="button"
+                                class="expand-btn"
+                                *ngIf="candidate.subjectGrades.length"
+                                (click)="toggleSubjectDetails(candidate.enrollmentId)"
+                                [attr.aria-expanded]="isSubjectDetailsOpen(candidate.enrollmentId)">
+                          <span class="material-symbols-outlined">
+                            {{ isSubjectDetailsOpen(candidate.enrollmentId) ? 'expand_less' : 'expand_more' }}
+                          </span>
+                        </button>
+                        <span class="student-meta" *ngIf="!candidate.subjectGrades.length">—</span>
+                      </td>
+                    </tr>
+
+                    <!-- Expandable subject-breakdown row -->
+                    <tr *ngIf="isSubjectDetailsOpen(candidate.enrollmentId) && candidate.subjectGrades.length"
+                        class="subjects-row">
+                      <td colspan="6">
+                        <div class="subjects-grid">
+                          <div *ngFor="let sg of candidate.subjectGrades"
+                               class="subject-chip"
+                               [class.subject-passed]="sg.isPassed"
+                               [class.subject-failed]="!sg.isPassed">
+                            <div class="subject-chip-head">
+                              <span class="subject-chip-name">{{ sg.subjectName }}</span>
+                              <span class="subject-chip-term">{{ getTermLabel(sg.term) }}</span>
+                            </div>
+                            <div class="subject-chip-score">
+                              <strong>{{ sg.percentage }}%</strong>
+                              <span class="subject-chip-badge">
+                                {{ sg.isPassed ? 'ناجح' : 'راسب' }}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  </ng-container>
 
                   <tr *ngIf="!filteredCandidates().length">
-                    <td colspan="5" class="empty-state">
+                    <td colspan="6" class="empty-state">
                       <span class="material-symbols-outlined">school</span>
                       <p class="student-name mb-1" style="font-size:16px">لا توجد نتائج معروضة</p>
                       <p class="panel-subtitle">حمّل المرشحين أولاً أو غيّر الفلاتر الحالية.</p>

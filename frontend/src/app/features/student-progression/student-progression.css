@@ -976,3 +976,148 @@
 
   .btn-shimmer { display: none; }
 }
+
+/* ─── Status counters (live stats) ───────────────────────────── */
+
+.status-counter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 8px;
+  border-radius: 14px;
+  border: 1px solid var(--outline-variant, rgba(0,0,0,.08));
+  background: rgba(255,255,255,.7);
+  gap: 2px;
+  backdrop-filter: blur(6px);
+}
+
+.status-counter-value {
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.status-counter-label {
+  font-size: 12px;
+  font-weight: 600;
+  opacity: .75;
+}
+
+.status-counter-passed   { border-color: rgba(16,185,129,.35); background: rgba(16,185,129,.08); }
+.status-counter-passed   .status-counter-value { color: #047857; }
+
+.status-counter-failed   { border-color: rgba(239,68,68,.35); background: rgba(239,68,68,.08); }
+.status-counter-failed   .status-counter-value { color: #b91c1c; }
+
+.status-counter-unpublished { border-color: rgba(245,158,11,.35); background: rgba(245,158,11,.08); }
+.status-counter-unpublished .status-counter-value { color: #b45309; }
+
+.status-counter-missing  { border-color: rgba(107,114,128,.35); background: rgba(107,114,128,.08); }
+.status-counter-missing  .status-counter-value { color: #374151; }
+
+/* ─── Expand button + subject breakdown row ──────────────────── */
+
+.expand-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid var(--outline-variant, rgba(0,0,0,.12));
+  background: rgba(255,255,255,.7);
+  color: var(--on-surface-variant, #475569);
+  cursor: pointer;
+  transition: background .15s ease, transform .15s ease;
+}
+
+.expand-btn:hover {
+  background: rgba(99,102,241,.1);
+  transform: translateY(-1px);
+}
+
+.expand-btn .material-symbols-outlined {
+  font-size: 22px;
+}
+
+.subjects-row td {
+  background: rgba(248,250,252,.6);
+  padding: 14px 18px !important;
+  border-top: 1px dashed rgba(0,0,0,.06) !important;
+}
+
+.subjects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.subject-chip {
+  border: 1px solid rgba(0,0,0,.08);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.subject-chip-passed {
+  border-color: rgba(16,185,129,.4);
+  background: rgba(16,185,129,.06);
+}
+
+.subject-chip-failed {
+  border-color: rgba(239,68,68,.4);
+  background: rgba(239,68,68,.06);
+}
+
+.subject-chip-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.subject-chip-name {
+  font-weight: 700;
+  font-size: 13px;
+  color: #1f2937;
+}
+
+.subject-chip-term {
+  font-size: 11px;
+  color: #6b7280;
+  white-space: nowrap;
+}
+
+.subject-chip-score {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.subject-chip-score strong {
+  font-size: 16px;
+  color: #111827;
+}
+
+.subject-chip-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.subject-passed .subject-chip-badge {
+  background: rgba(16,185,129,.15);
+  color: #047857;
+}
+
+.subject-failed .subject-chip-badge {
+  background: rgba(239,68,68,.15);
+  color: #b91c1c;
+}
+

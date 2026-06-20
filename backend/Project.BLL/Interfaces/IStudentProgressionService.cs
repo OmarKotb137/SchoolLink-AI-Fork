@@ -9,7 +9,8 @@ public interface IStudentProgressionService
     Task<OperationResult<IEnumerable<StudentProgressionCandidateDto>>> GetCandidatesAsync(
         int gradeLevelId,
         int academicYearId,
-        AcademicTerm? term = null,
+        ProgressionTermScope termScope = ProgressionTermScope.BothSemesters,
+        decimal passingThreshold = 50m,
         CancellationToken ct = default);
 
     Task<OperationResult<StudentProgressionResultDto>> ExecuteAsync(

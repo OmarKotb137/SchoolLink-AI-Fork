@@ -19,9 +19,13 @@ public class StudentProgressionService : IStudentProgressionService
     public async Task<OperationResult<IEnumerable<StudentProgressionCandidateDto>>> GetCandidatesAsync(
         int gradeLevelId,
         int academicYearId,
-        AcademicTerm? term = null,
+        ProgressionTermScope termScope = ProgressionTermScope.BothSemesters,
+        decimal passingThreshold = 50m,
         CancellationToken ct = default)
     {
+        if (passingThreshold < 0m || passingThreshold > 100m)
+            return OperationResult<IEnumerable<StudentProgressionCandidateDto>>.Failure("نسبة النجاح يجب أن تكون بين 0 و 100");
+
         var gradeLevel = await _unitOfWork.GradeLevels.GetByIdAsync(gradeLevelId, ct);
         if (gradeLevel is null || gradeLevel.IsDeleted)
             return OperationResult<IEnumerable<StudentProgressionCandidateDto>>.Failure("الصف الدراسي غير موجود");
@@ -39,40 +43,161 @@ public class StudentProgressionService : IStudentProgressionService
                 "لا يوجد طلاب نشطون في الصف والسنة المحددين");
 
         var enrollmentIds = enrollments.Select(e => e.Id).ToList();
+
+        // Pick the terms we care about based on the chosen scope.
+        var termsToLoad = GetTermsForScope(termScope);
+
         var finalGrades = await _unitOfWork.FinalGrades.FindAsync(
-            fg => !fg.IsDeleted && enrollmentIds.Contains(fg.EnrollmentId) && (term == null || fg.Term == term),
+            fg => !fg.IsDeleted
+                  && enrollmentIds.Contains(fg.EnrollmentId)
+                  && termsToLoad.Contains(fg.Term),
             ct);
 
-        var finalGradesByEnrollmentId = finalGrades.ToDictionary(fg => fg.EnrollmentId);
+        // Subject names are not loaded on FinalGrade by default — fetch them once.
+        var subjectIds = finalGrades
+            .Where(fg => fg.SubjectId.HasValue)
+            .Select(fg => fg.SubjectId!.Value)
+            .Distinct()
+            .ToList();
+
+        var subjects = subjectIds.Count != 0
+            ? await _unitOfWork.Subjects.FindAsync(s => subjectIds.Contains(s.Id) && !s.IsDeleted, ct)
+            : new List<Subject>();
+        var subjectNamesById = subjects.ToDictionary(s => s.Id, s => s.Name);
+
+        // FinalGrades are stored per (Enrollment + Subject + Term). Group by EnrollmentId.
+        var finalGradesByEnrollmentId = finalGrades
+            .GroupBy(fg => fg.EnrollmentId)
+            .ToDictionary(g => g.Key, g => g.ToList());
 
         var candidates = enrollments
             .OrderBy(e => e.Student.FullName)
-            .Select(enrollment =>
-            {
-                finalGradesByEnrollmentId.TryGetValue(enrollment.Id, out var finalGrade);
-
-                return new StudentProgressionCandidateDto
-                {
-                    EnrollmentId = enrollment.Id,
-                    StudentId = enrollment.StudentId,
-                    StudentName = enrollment.Student.FullName,
-                    CurrentClassId = enrollment.ClassId,
-                    CurrentClassName = enrollment.Class.Name,
-                    CurrentGradeLevelId = enrollment.Class.GradeLevelId,
-                    CurrentGradeLevelName = enrollment.Class.GradeLevel.Name,
-                    AcademicYearId = enrollment.AcademicYearId,
-                    AcademicYearName = academicYear.Name,
-                    StudentIsActive = enrollment.Student.IsActive,
-                    HasStudentAccount = enrollment.Student.UserId.HasValue,
-                    HasFinalGrade = finalGrade is not null,
-                    HasPublishedFinalGrade = finalGrade?.IsPublished ?? false,
-                    FinalTotal = finalGrade is { IsPublished: true } ? finalGrade.Total : null
-                };
-            })
+            .Select(enrollment => BuildCandidate(
+                enrollment,
+                academicYear,
+                finalGradesByEnrollmentId,
+                subjectNamesById,
+                passingThreshold))
             .ToList();
 
         return OperationResult<IEnumerable<StudentProgressionCandidateDto>>.Success(candidates);
     }
+
+    private static List<AcademicTerm> GetTermsForScope(ProgressionTermScope scope)
+        => scope switch
+        {
+            ProgressionTermScope.FirstSemester => new List<AcademicTerm> { AcademicTerm.FirstSemester },
+            ProgressionTermScope.SecondSemester => new List<AcademicTerm> { AcademicTerm.SecondSemester },
+            // BothSemesters (and any unexpected value) → consider the whole year.
+            _ => new List<AcademicTerm> { AcademicTerm.FirstSemester, AcademicTerm.SecondSemester }
+        };
+
+    private static StudentProgressionCandidateDto BuildCandidate(
+        StudentEnrollment enrollment,
+        AcademicYear academicYear,
+        IReadOnlyDictionary<int, List<FinalGrade>> finalGradesByEnrollmentId,
+        IReadOnlyDictionary<int, string> subjectNamesById,
+        decimal passingThreshold)
+    {
+        finalGradesByEnrollmentId.TryGetValue(enrollment.Id, out var grades);
+        grades ??= new List<FinalGrade>();
+
+        var hasAnyFinalGrade = grades.Count != 0;
+        var publishedGrades = grades.Where(g => g.IsPublished).ToList();
+        var hasPublishedFinalGrade = publishedGrades.Count != 0;
+
+        // Aggregate per subject across the chosen term scope (average of the terms we loaded).
+        var subjectGroups = publishedGrades
+            .GroupBy(g => g.SubjectId)
+            .ToList();
+
+        var subjectGrades = new List<SubjectGradeDto>();
+        var passed = 0;
+        var failed = 0;
+
+        foreach (var subjectGroup in subjectGroups)
+        {
+            var subjectId = subjectGroup.Key;
+            var subjectGradeRows = subjectGroup.ToList();
+
+            // Average the percentage across terms within the scope.
+            var percentage = subjectGradeRows
+                .Where(g => g.MaxTotal > 0)
+                .Select(g => (decimal)g.Total / g.MaxTotal * 100m)
+                .DefaultIfEmpty(0m)
+                .Average();
+
+            percentage = Math.Round(percentage, 1);
+            var isPassed = percentage >= passingThreshold;
+            if (isPassed) passed++; else failed++;
+
+            // Representative term for display (first available within the scope).
+            var representativeTerm = subjectGradeRows
+                .Select(g => g.Term)
+                .OrderBy(t => t)
+                .FirstOrDefault();
+
+            subjectGrades.Add(new SubjectGradeDto
+            {
+                SubjectId = subjectId,
+                SubjectName = subjectId.HasValue && subjectNamesById.TryGetValue(subjectId.Value, out var name)
+                    ? name
+                    : "غير محدد",
+                Percentage = percentage,
+                IsPublished = true,
+                IsPassed = isPassed,
+                Term = MapTerm(representativeTerm)
+            });
+        }
+
+        // Decide the overall academic status using the "must pass EVERY subject" rule.
+        AcademicStatus status;
+        if (!hasAnyFinalGrade)
+            status = AcademicStatus.NoGrades;
+        else if (!hasPublishedFinalGrade)
+            status = AcademicStatus.Unpublished;
+        else if (failed == 0 && passed > 0)
+            status = AcademicStatus.Passed;
+        else
+            status = AcademicStatus.Failed;
+
+        // A single overall percentage to display (average of published subjects).
+        var finalTotal = hasPublishedFinalGrade
+            ? Math.Round(subjectGrades.Average(sg => sg.Percentage), 1)
+            : (decimal?)null;
+
+        return new StudentProgressionCandidateDto
+        {
+            EnrollmentId = enrollment.Id,
+            StudentId = enrollment.StudentId,
+            StudentName = enrollment.Student.FullName,
+            CurrentClassId = enrollment.ClassId,
+            CurrentClassName = enrollment.Class.Name,
+            CurrentGradeLevelId = enrollment.Class.GradeLevelId,
+            CurrentGradeLevelName = enrollment.Class.GradeLevel.Name,
+            AcademicYearId = enrollment.AcademicYearId,
+            AcademicYearName = academicYear.Name,
+            StudentIsActive = enrollment.Student.IsActive,
+            HasStudentAccount = enrollment.Student.UserId.HasValue,
+            HasFinalGrade = hasAnyFinalGrade,
+            HasPublishedFinalGrade = hasPublishedFinalGrade,
+            FinalTotal = finalTotal,
+            AcademicStatus = status,
+            PassedSubjectsCount = passed,
+            FailedSubjectsCount = failed,
+            SubjectGrades = subjectGrades
+                .OrderByDescending(sg => sg.Percentage)
+                .ToList()
+        };
+    }
+
+    private static AcademicTermLabel? MapTerm(AcademicTerm term)
+        => term switch
+        {
+            AcademicTerm.FirstSemester => AcademicTermLabel.FirstSemester,
+            AcademicTerm.SecondSemester => AcademicTermLabel.SecondSemester,
+            _ => null
+        };
 
     public async Task<OperationResult<StudentProgressionResultDto>> ExecuteAsync(
         StudentProgressionRequest request,

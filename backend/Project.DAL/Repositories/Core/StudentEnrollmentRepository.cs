@@ -52,6 +52,9 @@ public class StudentEnrollmentRepository : Repository<StudentEnrollment>, IStude
                 e.AcademicYearId == academicYearId &&
                 e.LeftAt == null &&
                 !e.IsDeleted &&
+                e.Student != null &&
+                !e.Student.IsDeleted &&
+                e.Student.IsActive &&
                 e.Class.GradeLevelId == gradeLevelId &&
                 !e.Class.IsDeleted)
             .Include(e => e.Student)

@@ -2,7 +2,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Project.BLL.DTOs.Enrollments;
 using Project.BLL.Interfaces;
-using Project.Domain.Enums;
 
 namespace Project.API.Controllers;
 
@@ -22,10 +21,17 @@ public class StudentProgressionController : ControllerBase
     public async Task<IActionResult> GetCandidates(
         [FromQuery] int gradeLevelId,
         [FromQuery] int academicYearId,
-        [FromQuery] AcademicTerm? term = null,
+        [FromQuery] ProgressionTermScope termScope = ProgressionTermScope.BothSemesters,
+        [FromQuery] decimal passingThreshold = 50m,
         CancellationToken cancellationToken = default)
     {
-        var result = await _service.GetCandidatesAsync(gradeLevelId, academicYearId, term, cancellationToken);
+        var result = await _service.GetCandidatesAsync(
+            gradeLevelId,
+            academicYearId,
+            termScope,
+            passingThreshold,
+            cancellationToken);
+
         if (!result.IsSuccess)
             return BadRequest(result);
 

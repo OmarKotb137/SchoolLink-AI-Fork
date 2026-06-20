@@ -1,109 +1,137 @@
 <app-sidebar [(isOpen)]="sidebarOpen" />
+
 <div class="main-content">
-  <main class="pt-16 min-h-screen bg-gray-50 flex flex-col md:flex-row">
-    
-    <!-- Right Sidebar Navigation (Settings Tabs) -->
-    <div class="w-full md:w-72 bg-white border-l border-gray-100 py-6 shrink-0 md:h-[calc(100vh-64px)] md:sticky md:top-16 overflow-y-auto border-b md:border-b-0">
-      <div class="px-6 mb-6">
-        <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">أقسام الإعدادات</h3>
-      </div>
-      <div class="space-y-2 px-3">
+  <main class="settings-page">
 
-        <button (click)="activeTab.set('academic')"
-                [ngClass]="activeTab() === 'academic' ? 'bg-blue-50 text-blue-700 border-blue-200 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50' : 'bg-white text-gray-700 border-transparent hover:bg-gray-50'"
-                class="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border transition-all text-right group">
-          <span class="material-symbols-outlined"
-                [style.font-variation-settings]="activeTab() === 'academic' ? '\'FILL\' 1' : ''">school</span>
-          <div class="flex flex-col">
-            <span class="text-sm font-medium">إعدادات الأكاديمية</span>
-            <span class="text-[11px] opacity-80">السنوات والمراحل</span>
-          </div>
-        </button>
-
-        <button (click)="activeTab.set('permissions')"
-                [ngClass]="activeTab() === 'permissions' ? 'bg-blue-50 text-blue-700 border-blue-200 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50' : 'bg-white text-gray-700 border-transparent hover:bg-gray-50'"
-                class="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border transition-all text-right group">
-          <span class="material-symbols-outlined"
-                [style.font-variation-settings]="activeTab() === 'permissions' ? '\'FILL\' 1' : ''">verified_user</span>
-          <div class="flex flex-col">
-            <span class="text-sm font-medium">الصلاحيات</span>
-            <span class="text-[11px] opacity-80">أدوار المستخدمين والوصول</span>
-          </div>
-        </button>
-
-        <button (click)="activeTab.set('results')"
-                [ngClass]="activeTab() === 'results' ? 'bg-blue-50 text-blue-700 border-blue-200 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50' : 'bg-white text-gray-700 border-transparent hover:bg-gray-50'"
-                class="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border transition-all text-right group">
-          <span class="material-symbols-outlined"
-                [style.font-variation-settings]="activeTab() === 'results' ? '\'FILL\' 1' : ''">visibility</span>
-          <div class="flex flex-col">
-            <span class="text-sm font-medium">النتائج</span>
-            <span class="text-[11px] opacity-80">إظهار نتائج نهاية الترم</span>
-          </div>
-        </button>
-      </div>
+    <!-- ─── Decorative Background ──────────────────────────────── -->
+    <div class="pg-bg" aria-hidden="true">
+      <div class="pg-orb pg-orb-1"></div>
+      <div class="pg-orb pg-orb-2"></div>
+      <div class="pg-orb pg-orb-3"></div>
     </div>
 
-    <!-- Main Content Area -->
-    <div class="flex-1 p-4 md:p-6 lg:p-8 overflow-x-hidden">
-      <div class="max-w-5xl mx-auto space-y-6 pb-10">
+    <section class="settings-shell">
 
-        <!-- Hero Section -->
-        <section class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50">
-          <div>
-            <span class="text-sm font-medium text-blue-600 mb-1 block">System Settings</span>
-            <h1 class="text-2xl font-bold text-gray-900 mb-2">إعدادات المنظومة الأكاديمية</h1>
-            <p class="text-sm text-gray-500 max-w-xl">
-              مساحة منظمة لإدارة السنوات الدراسية والمراحل بشكل أوضح، مع فصل أفضل بين أقسام الإعدادات والمحتوى التنفيذي.
-            </p>
-          </div>
-
-          <div class="flex items-center gap-4 w-full md:w-auto">
-            <div class="bg-blue-50 border border-blue-100 p-4 rounded-2xl flex-1 md:w-36 text-center">
-              <span class="block text-xs text-blue-600 font-medium mb-1">السنوات الدراسية</span>
-              <strong class="block text-2xl font-bold text-blue-900">{{ academicYears().length }}</strong>
-            </div>
-            <div class="bg-gray-50 border border-gray-100 p-4 rounded-2xl flex-1 md:w-36 text-center">
-              <span class="block text-xs text-gray-500 font-medium mb-1">المراحل والصفوف</span>
-              <strong class="block text-2xl font-bold text-gray-900">{{ gradeLevels().length }}</strong>
-            </div>
-          </div>
-        </section>
-
-        <!-- Global Success Toast -->
-        <div *ngIf="successMessage()"
-             class="fixed top-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-5 py-3 rounded-2xl bg-emerald-50 border border-green-200 text-green-800 shadow-md text-sm font-medium">
-          <span class="material-symbols-outlined text-lg">check_circle</span>
-          {{ successMessage() }}
+      <!-- ─── Header Banner ─────────────────────────────────────── -->
+      <header class="settings-header">
+        <div class="header-banner" aria-hidden="true">
+          <div class="banner-orb banner-orb-1"></div>
+          <div class="banner-orb banner-orb-2"></div>
+          <div class="banner-wave"></div>
         </div>
 
-        <!-- Permissions Tab -->
-        <ng-container *ngIf="activeTab() === 'permissions'">
-          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-6">
-            <div>
-              <h2 class="text-xl font-bold text-gray-900 mb-1">الصلاحيات وأدوار المستخدمين</h2>
-              <p class="text-sm text-gray-500">قم بإدارة مستويات الوصول والتحكم في الميزات لكل فئة من مستخدمي النظام.</p>
-            </div>
-            <div class="flex gap-2 w-full sm:w-auto">
-              <button class="flex-1 sm:flex-none px-5 py-2.5 text-sm font-medium text-gray-900 bg-white rounded-2xl border border-gray-200 hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 transition-colors">إلغاء</button>
-              <button class="flex-1 sm:flex-none px-5 py-2.5 text-sm font-medium text-white bg-blue-700 rounded-2xl hover:bg-blue-800 transition-all shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50">حفظ التغييرات</button>
+        <div class="header-content">
+          <!-- Icon Badge -->
+          <div class="settings-badge-wrap">
+            <div class="badge-ring-outer" aria-hidden="true"></div>
+            <div class="badge-ring-inner" aria-hidden="true"></div>
+            <div class="settings-badge-icon">
+              <span class="material-symbols-outlined">tune</span>
             </div>
           </div>
 
-          <div class="bg-white rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50 overflow-hidden mb-6">
+          <!-- Info -->
+          <div class="header-info">
+            <p class="settings-eyebrow">
+              <span class="eyebrow-pulse"></span>
+              System Settings
+            </p>
+            <h1>إعدادات المنظومة الأكاديمية</h1>
+            <div class="settings-meta-row">
+              <span class="meta-chip">
+                <span class="material-symbols-outlined">calendar_today</span>
+                {{ academicYears().length }} سنة دراسية
+              </span>
+              <span class="meta-chip">
+                <span class="material-symbols-outlined">layers</span>
+                {{ gradeLevels().length }} مرحلة / صف
+              </span>
+              <span class="meta-role-badge">{{ activeTab() === 'academic' ? 'الأكاديمية' : activeTab() === 'permissions' ? 'الصلاحيات' : 'النتائج' }}</span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- ─── Horizontal Tabs ───────────────────────────────────── -->
+      <nav class="settings-tabs" role="tablist">
+        <button type="button"
+                role="tab"
+                (click)="activeTab.set('academic')"
+                [class.is-active]="activeTab() === 'academic'"
+                class="settings-tab-btn">
+          <span class="settings-tab-icon">
+            <span class="material-symbols-outlined">school</span>
+          </span>
+          <span class="settings-tab-copy">
+            <span class="settings-tab-title">إعدادات الأكاديمية</span>
+            <span class="settings-tab-sub">السنوات والمراحل</span>
+          </span>
+        </button>
+
+        <button type="button"
+                role="tab"
+                (click)="activeTab.set('permissions')"
+                [class.is-active]="activeTab() === 'permissions'"
+                class="settings-tab-btn">
+          <span class="settings-tab-icon">
+            <span class="material-symbols-outlined">verified_user</span>
+          </span>
+          <span class="settings-tab-copy">
+            <span class="settings-tab-title">الصلاحيات</span>
+            <span class="settings-tab-sub">أدوار المستخدمين والوصول</span>
+          </span>
+        </button>
+
+        <button type="button"
+                role="tab"
+                (click)="activeTab.set('results')"
+                [class.is-active]="activeTab() === 'results'"
+                class="settings-tab-btn">
+          <span class="settings-tab-icon">
+            <span class="material-symbols-outlined">visibility</span>
+          </span>
+          <span class="settings-tab-copy">
+            <span class="settings-tab-title">النتائج</span>
+            <span class="settings-tab-sub">إظهار نتائج نهاية الترم</span>
+          </span>
+        </button>
+      </nav>
+
+      <!-- ─── Global Success Toast ──────────────────────────────── -->
+      <div *ngIf="successMessage()" class="profile-alert profile-alert-success">
+        <div class="alert-icon"><span class="material-symbols-outlined">check_circle</span></div>
+        <span>{{ successMessage() }}</span>
+      </div>
+
+      <!-- ═════════════ PERMISSIONS TAB ═════════════ -->
+      <ng-container *ngIf="activeTab() === 'permissions'">
+
+        <section class="profile-panel anim-card" style="--card-delay:0.05s">
+          <div class="panel-title">
+            <div class="panel-icon-wrap">
+              <span class="material-symbols-outlined">shield_person</span>
+            </div>
+            <div>
+              <p class="panel-eyebrow">التحكم في الوصول</p>
+              <h2>الصلاحيات وأدوار المستخدمين</h2>
+            </div>
+          </div>
+          <p class="panel-desc">قم بإدارة مستويات الوصول والتحكم في الميزات لكل فئة من مستخدمي النظام.</p>
+
+          <div class="settings-table-wrap">
             <div class="overflow-x-auto">
-              <table class="w-full text-sm text-right text-gray-500">
-                <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-100">
+              <table class="w-full text-sm text-right">
+                <thead class="settings-table-head">
                   <tr>
                     <th class="px-6 py-4">الوحدة / القسم</th>
-                    <th class="px-6 py-4 text-center">مدير النظام (Admin)</th>
-                    <th class="px-6 py-4 text-center">معلم (Teacher)</th>
-                    <th class="px-6 py-4 text-center">ولي أمر (Parent)</th>
-                    <th class="px-6 py-4 text-center">طالب (Student)</th>
+                    <th class="px-6 py-4 text-center">مدير النظام</th>
+                    <th class="px-6 py-4 text-center">معلم</th>
+                    <th class="px-6 py-4 text-center">ولي أمر</th>
+                    <th class="px-6 py-4 text-center">طالب</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr class="bg-white border-b hover:bg-gray-50 transition-colors">
+                  <tr class="settings-table-row">
                     <td class="px-6 py-4 font-bold text-blue-700 flex items-center gap-2 whitespace-nowrap">
                       <span class="material-symbols-outlined text-base">dashboard</span> لوحة القيادة الرئيسية
                     </td>
@@ -117,307 +145,399 @@
             </div>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50 relative overflow-hidden">
-              <div class="flex justify-between items-start relative z-10">
-                <div class="space-y-1">
-                  <div class="flex items-center gap-2">
-                    <span class="material-symbols-outlined text-purple-600" style="font-variation-settings: 'FILL' 1;">smart_toy</span>
-                    <h3 class="text-base font-bold text-gray-900">مساعد الذكاء الاصطناعي</h3>
-                  </div>
-                  <p class="text-sm text-gray-500">تفعيل الدردشة الآلية لأولياء الأمور.</p>
+          <div class="settings-action-row">
+            <button class="profile-secondary" type="button">إلغاء</button>
+            <button class="profile-primary" type="button">
+              <span class="btn-shimmer"></span>
+              <span class="material-symbols-outlined">save</span>
+              حفظ التغييرات
+            </button>
+          </div>
+        </section>
+
+        <section class="profile-panel anim-card" style="--card-delay:0.15s">
+          <div class="panel-title">
+            <div class="panel-icon-wrap panel-icon-purple">
+              <span class="material-symbols-outlined">smart_toy</span>
+            </div>
+            <div>
+              <p class="panel-eyebrow">الميزات الذكية</p>
+              <h2>مساعد الذكاء الاصطناعي</h2>
+            </div>
+          </div>
+
+          <div class="settings-toggle-row">
+            <p class="toggle-text">تفعيل الدردشة الآلية لأولياء الأمور.</p>
+            <label class="settings-switch">
+              <input checked class="sr-only" type="checkbox" />
+              <span class="settings-switch-track"></span>
+            </label>
+          </div>
+        </section>
+
+      </ng-container>
+
+      <!-- ═════════════ RESULTS VISIBILITY TAB ═════════════ -->
+      <ng-container *ngIf="activeTab() === 'results'">
+
+        <section class="profile-panel anim-card" style="--card-delay:0.05s">
+          <div class="panel-title">
+            <div class="panel-icon-wrap panel-icon-teal">
+              <span class="material-symbols-outlined">visibility</span>
+            </div>
+            <div>
+              <p class="panel-eyebrow">ظهور النتائج</p>
+              <h2>التحكم في إظهار النتائج</h2>
+            </div>
+          </div>
+          <p class="panel-desc">تحكم في ظهور نتيجة نهاية الترم لأولياء الأمور. امتحانات الشهور تظهر دائمًا في لوحة ولي الأمر.</p>
+
+          <!-- Error -->
+          <div *ngIf="visibilityError()" class="profile-alert profile-alert-error">
+            <div class="alert-icon"><span class="material-symbols-outlined">error</span></div>
+            <span>{{ visibilityError() }}</span>
+            <button (click)="visibilityError.set(null)" class="alert-close" type="button">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+
+          <!-- Success -->
+          <div *ngIf="visibilitySuccess()" class="profile-alert profile-alert-success">
+            <div class="alert-icon"><span class="material-symbols-outlined">check_circle</span></div>
+            <span>{{ visibilitySuccess() }}</span>
+          </div>
+
+          <!-- Form -->
+          <div class="settings-form-grid">
+            <div class="form-field">
+              <label>
+                <span class="field-label">السنة الدراسية</span>
+                <div class="input-wrap">
+                  <span class="input-icon material-symbols-outlined">calendar_today</span>
+                  <select [(ngModel)]="selectedYearForVisibility" (change)="onAcademicYearChange()">
+                    <option [ngValue]="null" disabled>اختر السنة...</option>
+                    <option *ngFor="let year of academicYears()" [ngValue]="year.id">{{ year.name }}</option>
+                  </select>
                 </div>
-                <label class="relative inline-flex items-center cursor-pointer">
-                  <input checked class="sr-only peer" type="checkbox"/>
-                  <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-200 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              </label>
+            </div>
+
+            <div class="form-field">
+              <label>
+                <span class="field-label">الترم</span>
+                <div class="input-wrap">
+                  <span class="input-icon material-symbols-outlined">school</span>
+                  <select [(ngModel)]="selectedTermForVisibility" (change)="onTermChange()">
+                    <option *ngFor="let t of terms" [ngValue]="t.value">{{ t.label }}</option>
+                  </select>
+                </div>
+              </label>
+            </div>
+
+            <div class="form-field span-full">
+              <div class="settings-toggle-row">
+                <span class="toggle-text fw">{{ isVisible() ? 'النتائج ظاهرة' : 'النتائج مخفية' }}</span>
+                <label class="settings-switch">
+                  <input type="checkbox" [(ngModel)]="isVisible" class="sr-only" />
+                  <span class="settings-switch-track"></span>
                 </label>
               </div>
             </div>
           </div>
-        </ng-container>
 
-        <!-- Results Visibility Tab -->
-        <ng-container *ngIf="activeTab() === 'results'">
-          <div class="mb-6">
-            <h2 class="text-xl font-bold text-gray-900 mb-1">التحكم في إظهار النتائج</h2>
-            <p class="text-sm text-gray-500">تحكم في ظهور نتيجة نهاية الترم لأولياء الأمور. امتحانات الشهور تظهر دائمًا في لوحة ولي الأمر.</p>
+          <div class="settings-action-row">
+            <button *ngIf="editingVisibilityId()" (click)="resetVisibilityForm()" class="profile-secondary" type="button">إلغاء</button>
+            <button (click)="saveVisibility()" [disabled]="!selectedYearForVisibility()" class="profile-primary" type="button">
+              <span class="btn-shimmer"></span>
+              <span class="material-symbols-outlined">save</span>
+              {{ editingVisibilityId() ? 'تحديث' : 'حفظ' }}
+            </button>
           </div>
 
-          <div class="bg-white rounded-2xl p-5 md:p-6 border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50 mb-6">
-            <!-- Error -->
-            <div *ngIf="visibilityError()" class="flex items-center gap-3 p-4 mb-4 rounded-2xl bg-red-50 border border-red-200 text-red-800 text-sm">
-              <span class="material-symbols-outlined text-lg flex-shrink-0">error</span>
-              <span>{{ visibilityError() }}</span>
-              <button (click)="visibilityError.set(null)" class="mr-auto text-red-500 hover:text-red-700 rounded-2xl transition-colors">
-                <span class="material-symbols-outlined text-lg">close</span>
-              </button>
-            </div>
-
-            <!-- Success -->
-            <div *ngIf="visibilitySuccess()" class="flex items-center gap-3 p-4 mb-4 rounded-2xl bg-emerald-50 border border-green-200 text-green-800 text-sm">
-              <span class="material-symbols-outlined text-lg flex-shrink-0">check_circle</span>
-              <span>{{ visibilitySuccess() }}</span>
-            </div>
-
-            <!-- Form -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 bg-gray-50 p-4 rounded-2xl border border-gray-100">
-              <div>
-                <label class="block mb-2 text-sm font-medium text-gray-900">السنة الدراسية</label>
-                <select [(ngModel)]="selectedYearForVisibility" (change)="onAcademicYearChange()"
-                        class="bg-white border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5">
-                  <option [ngValue]="null" disabled>اختر السنة...</option>
-                  <option *ngFor="let year of academicYears()" [ngValue]="year.id">{{ year.name }}</option>
-                </select>
-              </div>
-              <div>
-                <label class="block mb-2 text-sm font-medium text-gray-900">الترم</label>
-                <select [(ngModel)]="selectedTermForVisibility" (change)="onTermChange()"
-                        class="bg-white border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5">
-                  <option *ngFor="let t of terms" [ngValue]="t.value">{{ t.label }}</option>
-                </select>
-              </div>
-              <div class="flex items-center gap-3">
-                <label class="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" [(ngModel)]="isVisible" class="sr-only peer"/>
-                  <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-200 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                </label>
-                <span class="text-sm font-medium text-gray-900">{{ isVisible() ? 'النتائج ظاهرة' : 'النتائج مخفية' }}</span>
-              </div>
-              <div class="flex items-end gap-2">
-                <button *ngIf="editingVisibilityId()" (click)="resetVisibilityForm()" class="text-gray-900 bg-white border border-gray-200 hover:bg-gray-50 font-medium rounded-2xl text-sm px-4 py-2.5 transition-colors">إلغاء</button>
-                <button (click)="saveVisibility()" [disabled]="!selectedYearForVisibility()"
-                        class="text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md font-medium rounded-2xl text-sm px-5 py-2.5 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-                  <span class="material-symbols-outlined text-lg">save</span>
-                  {{ editingVisibilityId() ? 'تحديث' : 'حفظ' }}
-                </button>
-              </div>
-            </div>
-
-            <!-- Existing Settings List -->
-            <h4 class="font-bold text-gray-900 mb-3">الإعدادات الحالية</h4>
-            <div *ngIf="filteredVisibilityByYear.length === 0" class="text-center py-8 text-gray-400">
-              <span class="material-symbols-outlined text-4xl mb-2">visibility_off</span>
-              <p class="text-sm">لا توجد إعدادات إظهار نتائج لهذه السنة</p>
-            </div>
-            <div class="space-y-3">
-              <div *ngFor="let setting of filteredVisibilityByYear"
-                   class="flex items-center justify-between p-4 border rounded-2xl bg-white border-gray-100 hover:border-blue-200 transition-all">
-                <div class="flex items-center gap-4">
-                  <div class="w-10 h-10 rounded-full flex items-center justify-center border"
-                       [class.bg-green-50]="setting.isVisible"
-                       [class.border-green-200]="setting.isVisible"
-                       [class.bg-red-50]="!setting.isVisible"
-                       [class.border-red-200]="!setting.isVisible">
-                    <span class="material-symbols-outlined text-sm"
-                          [ngClass]="setting.isVisible ? 'text-green-600' : 'text-red-600'">
-                      {{ setting.isVisible ? 'visibility' : 'visibility_off' }}
-                    </span>
-                  </div>
-                  <div>
-                    <span class="font-bold text-gray-900 block">{{ getAcademicYearName(setting.academicYearId) }}</span>
-                    <span class="text-xs text-gray-500">{{ getTermLabel(setting.term) }} — {{ setting.isVisible ? 'ظاهرة' : 'مخفية' }}</span>
-                    <span *ngIf="setting.visibleFrom" class="text-xs text-gray-400 mr-2">من {{ setting.visibleFrom | date:'short' }}</span>
-                    <span *ngIf="setting.visibleUntil" class="text-xs text-gray-400">حتى {{ setting.visibleUntil | date:'short' }}</span>
-                  </div>
-                </div>
-                <div class="flex items-center gap-1">
-                  <button (click)="editVisibility(setting)" class="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-2xl transition-colors" title="تعديل">
-                    <span class="material-symbols-outlined text-sm">edit</span>
-                  </button>
-                  <button (click)="deleteVisibility(setting.id)" class="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-2xl transition-colors" title="حذف">
-                    <span class="material-symbols-outlined text-sm">delete</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </ng-container>
-
-        <!-- Academic Settings Tab -->
-        <ng-container *ngIf="activeTab() === 'academic'">
-          <div class="mb-6">
-            <h2 class="text-xl font-bold text-gray-900 mb-1">إعدادات النظام الأكاديمي</h2>
-            <p class="text-sm text-gray-500">إدارة السنوات والمراحل الدراسية الخاصة بالمدرسة.</p>
+          <!-- Existing Settings List -->
+          <div class="settings-list-head">
+            <h4>الإعدادات الحالية</h4>
           </div>
 
-          <!-- Academic Years Section -->
-          <div class="bg-white rounded-2xl p-5 md:p-6 border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50 mb-6">
-            <div class="flex justify-between items-center mb-5">
-              <h3 class="text-lg font-bold text-blue-700 flex items-center gap-2">
-                <span class="material-symbols-outlined">calendar_today</span> السنوات الدراسية
-              </h3>
-            </div>
+          <div *ngIf="filteredVisibilityByYear.length === 0" class="settings-empty">
+            <span class="material-symbols-outlined">visibility_off</span>
+            <p>لا توجد إعدادات إظهار نتائج لهذه السنة</p>
+          </div>
 
-            <!-- Error Alert -->
-            <div *ngIf="yearError()" class="flex items-center gap-3 p-4 mb-4 rounded-2xl bg-red-50 border border-red-200 text-red-800 text-sm">
-              <span class="material-symbols-outlined text-lg flex-shrink-0">error</span>
-              <span>{{ yearError() }}</span>
-              <button (click)="yearError.set(null)" class="mr-auto text-red-500 hover:text-red-700 rounded-2xl transition-colors">
-                <span class="material-symbols-outlined text-lg">close</span>
-              </button>
-            </div>
-
-            <!-- Add / Edit Year Form -->
-            <div class="flex flex-col gap-4 mb-6 bg-gray-50 p-4 rounded-2xl border border-gray-100">
-              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div class="w-full">
-                  <label class="block mb-2 text-sm font-medium text-gray-900">اسم السنة (مثال: 2025/2026)</label>
-                  <input type="text" [(ngModel)]="newYear.name" class="bg-white border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5">
+          <div class="settings-list">
+            <div *ngFor="let setting of filteredVisibilityByYear" class="settings-result-row">
+              <div class="settings-result-info">
+                <div class="settings-result-icon"
+                     [class.is-visible]="setting.isVisible"
+                     [class.is-hidden]="!setting.isVisible">
+                  <span class="material-symbols-outlined">
+                    {{ setting.isVisible ? 'visibility' : 'visibility_off' }}
+                  </span>
                 </div>
-                <div class="w-full">
-                  <label class="block mb-2 text-sm font-medium text-gray-900">تاريخ بداية السنة</label>
-                  <input type="date" [(ngModel)]="newYear.startDate" class="bg-white border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5">
-                </div>
-                <div class="w-full">
-                  <label class="block mb-2 text-sm font-medium text-gray-900">تاريخ نهاية السنة</label>
-                  <input type="date" [(ngModel)]="newYear.endDate" class="bg-white border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5">
-                </div>
-              </div>
-              <div class="border-t border-gray-200 pt-3">
-                <h4 class="text-sm font-bold text-blue-700 mb-3">إعدادات الترمين الدراسيين</h4>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div class="bg-white p-3 rounded-2xl border border-blue-100">
-                    <p class="text-sm font-medium text-blue-800 mb-2">الترم الأول</p>
-                    <div class="flex gap-3">
-                      <div class="flex-1">
-                        <label class="block mb-1 text-xs font-medium text-gray-700">تاريخ البداية</label>
-                        <input type="date" [(ngModel)]="newYear.firstSemesterStartDate" class="bg-white border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2">
-                      </div>
-                      <div class="flex-1">
-                        <label class="block mb-1 text-xs font-medium text-gray-700">تاريخ النهاية</label>
-                        <input type="date" [(ngModel)]="newYear.firstSemesterEndDate" class="bg-white border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2">
-                      </div>
-                    </div>
-                  </div>
-                  <div class="bg-white p-3 rounded-2xl border border-green-100">
-                    <p class="text-sm font-medium text-green-800 mb-2">الترم الثاني</p>
-                    <div class="flex gap-3">
-                      <div class="flex-1">
-                        <label class="block mb-1 text-xs font-medium text-gray-700">تاريخ البداية</label>
-                        <input type="date" [(ngModel)]="newYear.secondSemesterStartDate" class="bg-white border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2">
-                      </div>
-                      <div class="flex-1">
-                        <label class="block mb-1 text-xs font-medium text-gray-700">تاريخ النهاية</label>
-                        <input type="date" [(ngModel)]="newYear.secondSemesterEndDate" class="bg-white border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2">
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="flex gap-2 w-full md:w-auto mt-2">
-                <button *ngIf="editingYearId()" (click)="cancelYearEdit()" class="flex-1 md:flex-none text-gray-900 bg-white border border-gray-200 hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 font-medium rounded-2xl text-sm px-4 py-2.5 transition-colors">إلغاء</button>
-                <button (click)="addAcademicYear()" class="flex-1 md:flex-none text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-lg transform transition-all hover:-translate-y-0.5 font-medium rounded-2xl text-sm px-5 py-2.5 transition-colors flex items-center justify-center gap-2">
-                  <span class="material-symbols-outlined text-lg">save</span>
-                  {{ editingYearId() ? 'تحديث' : 'إضافة' }}
-                </button>
-              </div>
-            </div>
-
-            <!-- Years List -->
-            <div class="space-y-3">
-              <div *ngFor="let year of academicYears()"
-                   class="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-2xl transition-colors gap-4"
-                   [ngClass]="year.isCurrent ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-100 hover:bg-gray-50'">
                 <div>
-                  <div class="font-bold text-gray-900 flex items-center gap-2">
-                    {{ year.name }}
-                    <span *ngIf="year.isCurrent" class="px-2 py-0.5 rounded text-xs bg-blue-100 text-blue-800 font-medium border border-blue-200">السنة الحالية</span>
-                  </div>
-                  <div class="text-sm text-gray-500 mt-1">
-                    {{ year.startDate | date }} - {{ year.endDate | date }}
-                    <span *ngIf="year.firstSemesterStartDate" class="mr-3 text-blue-600">
-                      | الترم الأول: {{ year.firstSemesterStartDate | date }} - {{ year.firstSemesterEndDate | date }}
-                    </span>
-                    <span *ngIf="year.secondSemesterStartDate" class="mr-3 text-green-600">
-                      | الترم الثاني: {{ year.secondSemesterStartDate | date }} - {{ year.secondSemesterEndDate | date }}
-                    </span>
-                  </div>
-                </div>
-                <div class="flex flex-wrap gap-2">
-                  <button *ngIf="!year.isCurrent" (click)="setYearActive(year.id)" class="text-sm font-medium text-blue-700 bg-white border border-blue-300 hover:bg-blue-50 rounded-2xl px-3 py-1.5 transition-colors">
-                    تعيين كحالية
-                  </button>
-                  <button (click)="editYear(year)" class="text-sm font-medium text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 rounded-2xl px-3 py-1.5 transition-colors">
-                    تعديل
-                  </button>
-                  <button *ngIf="!year.isCurrent" (click)="deleteYear(year.id)" class="text-sm font-medium text-red-600 bg-white border border-red-200 hover:bg-red-50 rounded-2xl px-3 py-1.5 transition-colors flex items-center">
-                    <span class="material-symbols-outlined text-sm">delete</span>
-                  </button>
+                  <span class="settings-result-title">{{ getAcademicYearName(setting.academicYearId) }}</span>
+                  <span class="settings-result-meta">{{ getTermLabel(setting.term) }} — {{ setting.isVisible ? 'ظاهرة' : 'مخفية' }}</span>
+                  <span *ngIf="setting.visibleFrom" class="settings-result-date">من {{ setting.visibleFrom | date:'short' }}</span>
+                  <span *ngIf="setting.visibleUntil" class="settings-result-date">حتى {{ setting.visibleUntil | date:'short' }}</span>
                 </div>
               </div>
-            </div>
-          </div>
-
-          <!-- Grade Levels Section -->
-          <div class="bg-white rounded-2xl p-5 md:p-6 border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50">
-            <div class="flex justify-between items-center mb-5">
-              <h3 class="text-lg font-bold text-blue-700 flex items-center gap-2">
-                <span class="material-symbols-outlined">layers</span> المراحل والصفوف الدراسية
-              </h3>
-            </div>
-
-            <!-- Error Alert -->
-            <div *ngIf="gradeError()" class="flex items-center gap-3 p-4 mb-4 rounded-2xl bg-red-50 border border-red-200 text-red-800 text-sm">
-              <span class="material-symbols-outlined text-lg flex-shrink-0">error</span>
-              <span>{{ gradeError() }}</span>
-              <button (click)="gradeError.set(null)" class="mr-auto text-red-500 hover:text-red-700 rounded-2xl transition-colors">
-                <span class="material-symbols-outlined text-lg">close</span>
-              </button>
-            </div>
-
-            <!-- Add / Edit Grade Form -->
-            <div class="flex flex-col md:flex-row gap-4 mb-6 bg-gray-50 p-4 rounded-2xl border border-gray-100 items-end">
-              <div class="flex-1 w-full">
-                <label class="block mb-2 text-sm font-medium text-gray-900">اسم الصف</label>
-                <input type="text" [(ngModel)]="newGrade.name" placeholder="مثال: الصف الأول الإعدادي" class="bg-white border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5">
-              </div>
-              <div class="flex-1 w-full">
-                <label class="block mb-2 text-sm font-medium text-gray-900">المرحلة التعليمية</label>
-                <select [(ngModel)]="newGrade.stage" class="bg-white border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5">
-                  <option [ngValue]="null">-- اختياري --</option>
-                  <option *ngFor="let s of stageOptions" [value]="s">{{ s }}</option>
-                </select>
-              </div>
-              <div class="w-full md:w-28">
-                <label class="block mb-2 text-sm font-medium text-gray-900">الترتيب</label>
-                <input type="number" [(ngModel)]="newGrade.levelOrder" min="1" class="bg-white border border-gray-200 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500  block w-full p-2.5">
-              </div>
-              <div class="flex gap-2 w-full md:w-auto mt-2 md:mt-0">
-                <button *ngIf="editingGradeId()" (click)="cancelGradeEdit()" class="flex-1 md:flex-none text-gray-900 bg-white border border-gray-200 hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 font-medium rounded-2xl text-sm px-4 py-2.5 transition-colors">إلغاء</button>
-                <button (click)="addGradeLevel()" class="flex-1 md:flex-none text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-lg transform transition-all hover:-translate-y-0.5 font-medium rounded-2xl text-sm px-5 py-2.5 transition-colors flex items-center justify-center gap-2">
-                  <span class="material-symbols-outlined text-lg">{{ editingGradeId() ? 'save' : 'add' }}</span>
-                  {{ editingGradeId() ? 'تحديث' : 'إضافة' }}
+              <div class="settings-row-actions">
+                <button (click)="editVisibility(setting)" class="settings-icon-btn" title="تعديل" type="button">
+                  <span class="material-symbols-outlined">edit</span>
+                </button>
+                <button (click)="deleteVisibility(setting.id)" class="settings-icon-btn danger" title="حذف" type="button">
+                  <span class="material-symbols-outlined">delete</span>
                 </button>
               </div>
             </div>
+          </div>
+        </section>
 
-            <!-- Grades List -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div *ngFor="let grade of gradeLevels()" class="flex justify-between items-center p-4 border border-gray-100 rounded-2xl bg-white hover:border-blue-300 hover:shadow-lg hover:shadow-xl transition-shadow duration-300 border-indigo-50 transition-all">
-                <div class="flex items-center gap-3">
-                  <div class="w-10 h-10 rounded-full bg-blue-50 border border-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm">
-                    {{ grade.levelOrder }}
-                  </div>
-                  <div>
-                    <span class="font-bold text-gray-900 block">{{ grade.name }}</span>
-                    <span *ngIf="grade.stage" class="text-xs text-gray-500 font-medium">{{ grade.stage }}</span>
-                  </div>
-                </div>
-                <div class="flex items-center gap-1">
-                  <button (click)="editGradeLevel(grade)" class="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-2xl transition-colors" title="تعديل">
-                    <span class="material-symbols-outlined text-sm">edit</span>
-                  </button>
-                  <button (click)="deleteGradeLevel(grade.id)" class="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-2xl transition-colors" title="حذف">
-                    <span class="material-symbols-outlined text-sm">delete</span>
-                  </button>
-                </div>
-              </div>
+      </ng-container>
+
+      <!-- ═════════════ ACADEMIC TAB ═════════════ -->
+      <ng-container *ngIf="activeTab() === 'academic'">
+
+        <!-- ── Academic Years ── -->
+        <section class="profile-panel anim-card" style="--card-delay:0.05s">
+          <div class="panel-title">
+            <div class="panel-icon-wrap">
+              <span class="material-symbols-outlined">calendar_today</span>
+            </div>
+            <div>
+              <p class="panel-eyebrow">السنوات الدراسية</p>
+              <h2>إدارة السنوات الدراسية</h2>
             </div>
           </div>
 
-        </ng-container>
+          <!-- Error Alert -->
+          <div *ngIf="yearError()" class="profile-alert profile-alert-error">
+            <div class="alert-icon"><span class="material-symbols-outlined">error</span></div>
+            <span>{{ yearError() }}</span>
+            <button (click)="yearError.set(null)" class="alert-close" type="button">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
 
-      </div>
-    </div>
+          <!-- Editing flag -->
+          <div *ngIf="editingYearId()" class="settings-editing-flag">
+            <span class="material-symbols-outlined">edit</span>
+            أنت الآن تعدّل سنة دراسية موجودة
+          </div>
+
+          <!-- Add / Edit Year Form -->
+          <div class="settings-form-panel">
+            <div class="settings-form-grid">
+              <div class="form-field">
+                <label>
+                  <span class="field-label">اسم السنة (مثال: 2025/2026)</span>
+                  <div class="input-wrap">
+                    <span class="input-icon material-symbols-outlined">event_note</span>
+                    <input type="text" [(ngModel)]="newYear.name" placeholder="2025/2026" />
+                  </div>
+                </label>
+              </div>
+              <div class="form-field">
+                <label>
+                  <span class="field-label">تاريخ بداية السنة</span>
+                  <div class="input-wrap">
+                    <span class="input-icon material-symbols-outlined">play_circle</span>
+                    <input type="date" [(ngModel)]="newYear.startDate" />
+                  </div>
+                </label>
+              </div>
+              <div class="form-field">
+                <label>
+                  <span class="field-label">تاريخ نهاية السنة</span>
+                  <div class="input-wrap">
+                    <span class="input-icon material-symbols-outlined">stop_circle</span>
+                    <input type="date" [(ngModel)]="newYear.endDate" />
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <div class="settings-semester-divider">
+              <h4 class="settings-semester-title">إعدادات الترمين الدراسيين</h4>
+              <div class="settings-semester-grid">
+                <div class="settings-semester-card term-1">
+                  <p class="settings-semester-label">
+                    <span class="settings-semester-dot"></span>
+                    الترم الأول
+                  </p>
+                  <div class="settings-mini-grid">
+                    <label>
+                      <span class="field-label-sm">تاريخ البداية</span>
+                      <input type="date" [(ngModel)]="newYear.firstSemesterStartDate" />
+                    </label>
+                    <label>
+                      <span class="field-label-sm">تاريخ النهاية</span>
+                      <input type="date" [(ngModel)]="newYear.firstSemesterEndDate" />
+                    </label>
+                  </div>
+                </div>
+                <div class="settings-semester-card term-2">
+                  <p class="settings-semester-label">
+                    <span class="settings-semester-dot green"></span>
+                    الترم الثاني
+                  </p>
+                  <div class="settings-mini-grid">
+                    <label>
+                      <span class="field-label-sm">تاريخ البداية</span>
+                      <input type="date" [(ngModel)]="newYear.secondSemesterStartDate" />
+                    </label>
+                    <label>
+                      <span class="field-label-sm">تاريخ النهاية</span>
+                      <input type="date" [(ngModel)]="newYear.secondSemesterEndDate" />
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="settings-action-row">
+              <button *ngIf="editingYearId()" (click)="cancelYearEdit()" class="profile-secondary" type="button">إلغاء</button>
+              <button (click)="addAcademicYear()" class="profile-primary" type="button">
+                <span class="btn-shimmer"></span>
+                <span class="material-symbols-outlined">save</span>
+                {{ editingYearId() ? 'تحديث' : 'إضافة' }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Years List -->
+          <div class="settings-list">
+            <div *ngFor="let year of academicYears()" class="settings-year-row" [class.is-current]="year.isCurrent">
+              <div class="settings-year-main">
+                <div class="settings-year-name">
+                  {{ year.name }}
+                  <span *ngIf="year.isCurrent" class="settings-current-badge">
+                    <span class="material-symbols-outlined">stars</span>
+                    السنة الحالية
+                  </span>
+                </div>
+                <div class="settings-year-meta">
+                  <span class="settings-meta-pill neutral">{{ year.startDate | date }} - {{ year.endDate | date }}</span>
+                  <span *ngIf="year.firstSemesterStartDate" class="settings-meta-pill term-1">
+                    الترم الأول: {{ year.firstSemesterStartDate | date }} - {{ year.firstSemesterEndDate | date }}
+                  </span>
+                  <span *ngIf="year.secondSemesterStartDate" class="settings-meta-pill term-2">
+                    الترم الثاني: {{ year.secondSemesterStartDate | date }} - {{ year.secondSemesterEndDate | date }}
+                  </span>
+                </div>
+              </div>
+              <div class="settings-year-actions">
+                <button *ngIf="!year.isCurrent" (click)="setYearActive(year.id)" class="settings-pill-btn blue" type="button">
+                  <span class="material-symbols-outlined">check_circle</span>
+                  تعيين كحالية
+                </button>
+                <button (click)="editYear(year)" class="settings-icon-btn" title="تعديل" type="button">
+                  <span class="material-symbols-outlined">edit</span>
+                </button>
+                <button *ngIf="!year.isCurrent" (click)="deleteYear(year.id)" class="settings-icon-btn danger" title="حذف" type="button">
+                  <span class="material-symbols-outlined">delete</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── Grade Levels ── -->
+        <section class="profile-panel anim-card" style="--card-delay:0.15s">
+          <div class="panel-title">
+            <div class="panel-icon-wrap panel-icon-indigo">
+              <span class="material-symbols-outlined">layers</span>
+            </div>
+            <div>
+              <p class="panel-eyebrow">المراحل والصفوف</p>
+              <h2>المراحل والصفوف الدراسية</h2>
+            </div>
+          </div>
+
+          <!-- Error Alert -->
+          <div *ngIf="gradeError()" class="profile-alert profile-alert-error">
+            <div class="alert-icon"><span class="material-symbols-outlined">error</span></div>
+            <span>{{ gradeError() }}</span>
+            <button (click)="gradeError.set(null)" class="alert-close" type="button">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+
+          <!-- Editing flag -->
+          <div *ngIf="editingGradeId()" class="settings-editing-flag">
+            <span class="material-symbols-outlined">edit</span>
+            أنت الآن تعدّل مرحلة دراسية موجودة
+          </div>
+
+          <!-- Add / Edit Grade Form -->
+          <div class="settings-form-panel">
+            <div class="settings-grade-form-grid">
+              <div class="form-field">
+                <label>
+                  <span class="field-label">اسم الصف</span>
+                  <div class="input-wrap">
+                    <span class="input-icon material-symbols-outlined">class</span>
+                    <input type="text" [(ngModel)]="newGrade.name" placeholder="مثال: الصف الأول الإعدادي" />
+                  </div>
+                </label>
+              </div>
+              <div class="form-field">
+                <label>
+                  <span class="field-label">المرحلة التعليمية</span>
+                  <div class="input-wrap">
+                    <span class="input-icon material-symbols-outlined">stairs</span>
+                    <select [(ngModel)]="newGrade.stage">
+                      <option [ngValue]="null">-- اختياري --</option>
+                      <option *ngFor="let s of stageOptions" [value]="s">{{ s }}</option>
+                    </select>
+                  </div>
+                </label>
+              </div>
+              <div class="form-field form-field-sm">
+                <label>
+                  <span class="field-label">الترتيب</span>
+                  <div class="input-wrap">
+                    <span class="input-icon material-symbols-outlined">format_list_numbered</span>
+                    <input type="number" [(ngModel)]="newGrade.levelOrder" min="1" />
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <div class="settings-action-row">
+              <button *ngIf="editingGradeId()" (click)="cancelGradeEdit()" class="profile-secondary" type="button">إلغاء</button>
+              <button (click)="addGradeLevel()" class="profile-primary" type="button">
+                <span class="btn-shimmer"></span>
+                <span class="material-symbols-outlined">{{ editingGradeId() ? 'save' : 'add' }}</span>
+                {{ editingGradeId() ? 'تحديث' : 'إضافة' }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Grades List -->
+          <div class="settings-grade-grid">
+            <div *ngFor="let grade of gradeLevels()" class="settings-grade-row">
+              <div class="settings-grade-left">
+                <div class="settings-grade-order">{{ grade.levelOrder }}</div>
+                <div>
+                  <span class="settings-grade-name">{{ grade.name }}</span>
+                  <span *ngIf="grade.stage" class="settings-grade-stage">{{ grade.stage }}</span>
+                </div>
+              </div>
+              <div class="settings-row-actions">
+                <button (click)="editGradeLevel(grade)" class="settings-icon-btn" title="تعديل" type="button">
+                  <span class="material-symbols-outlined">edit</span>
+                </button>
+                <button (click)="deleteGradeLevel(grade.id)" class="settings-icon-btn danger" title="حذف" type="button">
+                  <span class="material-symbols-outlined">delete</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </ng-container>
+
+    </section>
   </main>
 </div>
