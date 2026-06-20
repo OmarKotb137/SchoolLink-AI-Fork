@@ -348,134 +348,83 @@ public static class SeedData
         await ctx.SaveChangesAsync();
 
         // =================================================================
-        // 12. EvaluationTemplates — Math + Arabic (للصفوف الثلاثة)
+        // 12. EvaluationTemplates — all 7 subjects × 3 grade levels = 21 templates
         // =================================================================
-        var templateMath = new EvaluationTemplate
+        var subjectCodes = new[] { "ARB", "ENG", "MTH", "SCI", "SOC", "ISL", "CMP" };
+        var subjectNames = new Dictionary<string, string>
         {
-            GradeLevelId = grade1.Id, SubjectId = S["MTH"].Id, AcademicYearId = year.Id,
-            Name = "تقييم الرياضيات - الأول الإعدادي",
-            CalculationType = EvaluationCalculationType.MiddleSchool,
-            IsActive = true, Weeks = 14, Term = AcademicTerm.SecondSemester,
-            CreatedAt = now, UpdatedAt = now
+            ["ARB"] = "اللغة العربية", ["ENG"] = "اللغة الإنجليزية", ["MTH"] = "الرياضيات",
+            ["SCI"] = "العلوم", ["SOC"] = "الدراسات الاجتماعية", ["ISL"] = "التربية الإسلامية", ["CMP"] = "الحاسب الآلي"
         };
-        var templateArb = new EvaluationTemplate
+        var gradeLevels = new[] { (level: grade1, suffix: "الأول الإعدادي"), (level: grade2, suffix: "الثاني الإعدادي"), (level: grade3, suffix: "الثالث الإعدادي") };
+
+        var allTemplates = new List<EvaluationTemplate>();
+        foreach (var (grade, suffix) in gradeLevels)
         {
-            GradeLevelId = grade1.Id, SubjectId = S["ARB"].Id, AcademicYearId = year.Id,
-            Name = "تقييم اللغة العربية - الأول الإعدادي",
-            CalculationType = EvaluationCalculationType.MiddleSchool,
-            IsActive = true, Weeks = 14, Term = AcademicTerm.SecondSemester,
-            CreatedAt = now, UpdatedAt = now
-        };
-        var templateMath2 = new EvaluationTemplate
-        {
-            GradeLevelId = grade2.Id, SubjectId = S["MTH"].Id, AcademicYearId = year.Id,
-            Name = "تقييم الرياضيات - الثاني الإعدادي",
-            CalculationType = EvaluationCalculationType.MiddleSchool,
-            IsActive = true, Weeks = 14, Term = AcademicTerm.SecondSemester,
-            CreatedAt = now, UpdatedAt = now
-        };
-        var templateArb2 = new EvaluationTemplate
-        {
-            GradeLevelId = grade2.Id, SubjectId = S["ARB"].Id, AcademicYearId = year.Id,
-            Name = "تقييم اللغة العربية - الثاني الإعدادي",
-            CalculationType = EvaluationCalculationType.MiddleSchool,
-            IsActive = true, Weeks = 14, Term = AcademicTerm.SecondSemester,
-            CreatedAt = now, UpdatedAt = now
-        };
-        var templateMath3 = new EvaluationTemplate
-        {
-            GradeLevelId = grade3.Id, SubjectId = S["MTH"].Id, AcademicYearId = year.Id,
-            Name = "تقييم الرياضيات - الثالث الإعدادي",
-            CalculationType = EvaluationCalculationType.MiddleSchool,
-            IsActive = true, Weeks = 14, Term = AcademicTerm.SecondSemester,
-            CreatedAt = now, UpdatedAt = now
-        };
-        var templateArb3 = new EvaluationTemplate
-        {
-            GradeLevelId = grade3.Id, SubjectId = S["ARB"].Id, AcademicYearId = year.Id,
-            Name = "تقييم اللغة العربية - الثالث الإعدادي",
-            CalculationType = EvaluationCalculationType.MiddleSchool,
-            IsActive = true, Weeks = 14, Term = AcademicTerm.SecondSemester,
-            CreatedAt = now, UpdatedAt = now
-        };
-        ctx.EvaluationTemplates.AddRange(
-            templateMath, templateArb,
-            templateMath2, templateArb2,
-            templateMath3, templateArb3);
+            foreach (var code in subjectCodes)
+            {
+                allTemplates.Add(new EvaluationTemplate
+                {
+                    GradeLevelId = grade.Id,
+                    SubjectId = S[code].Id,
+                    AcademicYearId = year.Id,
+                    Name = $"تقييم {subjectNames[code]} - {suffix}",
+                    CalculationType = EvaluationCalculationType.MiddleSchool,
+                    IsActive = true,
+                    Weeks = 14,
+                    Term = AcademicTerm.SecondSemester,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                });
+            }
+        }
+        ctx.EvaluationTemplates.AddRange(allTemplates);
         await ctx.SaveChangesAsync();
 
-        // EvaluationItems — grade 1
-        var mathItems = BuildItems(templateMath.Id, now, new[]
-        {
-            ("الأداء المنزلي",    10m, ItemType.Number, AutoCalcType.None),
-            ("التقييم الأسبوعي", 20m, ItemType.Number, AutoCalcType.None),
-            ("السلوك والمواظبة",  10m, ItemType.Number, AutoCalcType.Attendance),
-        });
-        var arbItems = BuildItems(templateArb.Id, now, new[]
-        {
-            ("الأداء المنزلي",    10m, ItemType.Number, AutoCalcType.None),
-            ("التقييم الأسبوعي", 20m, ItemType.Number, AutoCalcType.None),
-            ("السلوك والمواظبة",  10m, ItemType.Number, AutoCalcType.Attendance),
-        });
+        // Build a lookup: (GradeLevelId, SubjectId) → Template
+        var templateLookup = allTemplates.ToDictionary(t => (t.GradeLevelId, t.SubjectId), t => t);
 
-        // EvaluationItems — grade 2
-        var mathItems2 = BuildItems(templateMath2.Id, now, new[]
+        // ── EvaluationItems for every template (3 items each) ──────────
+        var allEvalItems = new List<EvaluationItem>();
+        foreach (var (grade, _) in gradeLevels)
         {
-            ("الأداء المنزلي",    10m, ItemType.Number, AutoCalcType.None),
-            ("التقييم الأسبوعي", 20m, ItemType.Number, AutoCalcType.None),
-            ("السلوك والمواظبة",  10m, ItemType.Number, AutoCalcType.Attendance),
-        });
-        var arbItems2 = BuildItems(templateArb2.Id, now, new[]
-        {
-            ("الأداء المنزلي",    10m, ItemType.Number, AutoCalcType.None),
-            ("التقييم الأسبوعي", 20m, ItemType.Number, AutoCalcType.None),
-            ("السلوك والمواظبة",  10m, ItemType.Number, AutoCalcType.Attendance),
-        });
-
-        // EvaluationItems — grade 3
-        var mathItems3 = BuildItems(templateMath3.Id, now, new[]
-        {
-            ("الأداء المنزلي",    10m, ItemType.Number, AutoCalcType.None),
-            ("التقييم الأسبوعي", 20m, ItemType.Number, AutoCalcType.None),
-            ("السلوك والمواظبة",  10m, ItemType.Number, AutoCalcType.Attendance),
-        });
-        var arbItems3 = BuildItems(templateArb3.Id, now, new[]
-        {
-            ("الأداء المنزلي",    10m, ItemType.Number, AutoCalcType.None),
-            ("التقييم الأسبوعي", 20m, ItemType.Number, AutoCalcType.None),
-            ("السلوك والمواظبة",  10m, ItemType.Number, AutoCalcType.Attendance),
-        });
-
-        var allEvalItems = mathItems.Concat(arbItems)
-            .Concat(mathItems2).Concat(arbItems2)
-            .Concat(mathItems3).Concat(arbItems3).ToList();
+            foreach (var code in subjectCodes)
+            {
+                var tmpl = templateLookup[(grade.Id, S[code].Id)];
+                allEvalItems.AddRange(BuildItems(tmpl.Id, now, new[]
+                {
+                    ("الأداء المنزلي",    10m, ItemType.Number, AutoCalcType.None),
+                    ("التقييم الأسبوعي", 20m, ItemType.Number, AutoCalcType.None),
+                    ("السلوك والمواظبة",  10m, ItemType.Number, AutoCalcType.Attendance),
+                }));
+            }
+        }
         ctx.EvaluationItems.AddRange(allEvalItems);
         await ctx.SaveChangesAsync();
 
         // =================================================================
-        // 13. ClassTemplateLinks  (each class × its grade templates)
+        // 13. ClassTemplateLinks  (each class × all 7 subject templates)
         // =================================================================
-        var classTmplPairs = new (SchoolClass cls, EvaluationTemplate math, EvaluationTemplate arb)[]
+        var classGradeMap = new (SchoolClass cls, GradeLevel grade)[]
         {
-            (class1, templateMath,  templateArb),
-            (class2, templateMath,  templateArb),
-            (class3, templateMath2, templateArb2),
-            (class4, templateMath2, templateArb2),
-            (class5, templateMath3, templateArb3),
-            (class6, templateMath3, templateArb3),
+            (class1, grade1), (class2, grade1),
+            (class3, grade2), (class4, grade2),
+            (class5, grade3), (class6, grade3),
         };
-        foreach (var (cls, tmplMath, tmplArb) in classTmplPairs)
+        foreach (var (cls, grade) in classGradeMap)
         {
-            ctx.ClassTemplateLinks.Add(new ClassTemplateLink
+            foreach (var code in subjectCodes)
             {
-                ClassId = cls.Id, TemplateId = tmplMath.Id, AcademicYearId = year.Id,
-                CreatedAt = now, UpdatedAt = now
-            });
-            ctx.ClassTemplateLinks.Add(new ClassTemplateLink
-            {
-                ClassId = cls.Id, TemplateId = tmplArb.Id, AcademicYearId = year.Id,
-                CreatedAt = now, UpdatedAt = now
-            });
+                var tmpl = templateLookup[(grade.Id, S[code].Id)];
+                ctx.ClassTemplateLinks.Add(new ClassTemplateLink
+                {
+                    ClassId = cls.Id,
+                    TemplateId = tmpl.Id,
+                    AcademicYearId = year.Id,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                });
+            }
         }
         await ctx.SaveChangesAsync();
 
@@ -586,16 +535,18 @@ public static class SeedData
         var periodTotals = new Dictionary<(int, int), (double earned, double max)>();
 
         var evalBatch = new List<StudentEvaluation>(500);
-        // كل فصل ياخد items بتاعة درجته بس
-        var classEvalItems = new Dictionary<int, List<EvaluationItem>>
+        // Build a mapping: ClassId → EvaluationItems for that class's templates
+        var classEvalItems = new Dictionary<int, List<EvaluationItem>>();
+        foreach (var (cls, grade) in classGradeMap)
         {
-            [class1.Id] = mathItems.Concat(arbItems).ToList(),
-            [class2.Id] = mathItems.Concat(arbItems).ToList(),
-            [class3.Id] = mathItems2.Concat(arbItems2).ToList(),
-            [class4.Id] = mathItems2.Concat(arbItems2).ToList(),
-            [class5.Id] = mathItems3.Concat(arbItems3).ToList(),
-            [class6.Id] = mathItems3.Concat(arbItems3).ToList(),
-        };
+            var items = new List<EvaluationItem>();
+            foreach (var code in subjectCodes)
+            {
+                var tmpl = templateLookup[(grade.Id, S[code].Id)];
+                items.AddRange(allEvalItems.Where(ei => ei.TemplateId == tmpl.Id));
+            }
+            classEvalItems[cls.Id] = items;
+        }
         foreach (var enr in enrollments)
         {
             var gradeItems = classEvalItems[enr.ClassId];
@@ -609,7 +560,7 @@ public static class SeedData
                     var maxD  = (double)item.MaxScore;
                     var score = item.AutoCalcType == AutoCalcType.Attendance
                         ? maxD
-                        : Math.Round((rng.NextDouble() * maxD * 0.6 + maxD * 0.4) * 2, MidpointRounding.AwayFromZero) / 2;
+                        : Math.Round((rng.NextDouble() * maxD * 0.3 + maxD * 0.7) * 2, MidpointRounding.AwayFromZero) / 2;
 
                     evalBatch.Add(new StudentEvaluation
                     {
@@ -667,9 +618,14 @@ public static class SeedData
             foreach (var term in new[] { AcademicTerm.FirstSemester, AcademicTerm.SecondSemester })
             {
                 var isFirst = term == AcademicTerm.FirstSemester;
-                foreach (var (subjectKey, mathRange, arabRange) in new[] {
+                foreach (var (subjectKey, monthlyRange, semesterRange) in new[] {
+                    ("ARB", (lo: 8,  hi: 15), (lo: 20, hi: 31)),
+                    ("ENG", (lo: 9,  hi: 15), (lo: 21, hi: 30)),
                     ("MTH", (lo: 11, hi: 16), (lo: 20, hi: 31)),
-                    ("ARB", (lo: 8,  hi: 15), (lo: 20, hi: 31)) })
+                    ("SCI", (lo: 10, hi: 15), (lo: 22, hi: 30)),
+                    ("SOC", (lo: 9,  hi: 14), (lo: 20, hi: 29)),
+                    ("ISL", (lo: 10, hi: 15), (lo: 21, hi: 30)),
+                    ("CMP", (lo: 11, hi: 15), (lo: 22, hi: 30)) })
                 {
                     var subjectId = S[subjectKey].Id;
                     // MonthlyExam1
@@ -679,7 +635,7 @@ public static class SeedData
                         SubjectId      = subjectId,
                         AssessmentType = PeriodicAssessmentType.MonthlyExam1,
                         Term           = term,
-                        Score          = rng.Next(mathRange.lo, mathRange.hi),
+                        Score          = rng.Next(monthlyRange.lo, monthlyRange.hi),
                         MaxScore       = 15,
                         AssessmentDate = isFirst ? new DateOnly(2026, 3, 15) : new DateOnly(2026, 5, 10),
                         CreatedAt = now, UpdatedAt = now
@@ -691,7 +647,7 @@ public static class SeedData
                         SubjectId      = subjectId,
                         AssessmentType = PeriodicAssessmentType.MonthlyExam2,
                         Term           = term,
-                        Score          = rng.Next(mathRange.lo, mathRange.hi),
+                        Score          = rng.Next(monthlyRange.lo, monthlyRange.hi),
                         MaxScore       = 15,
                         AssessmentDate = isFirst ? new DateOnly(2026, 4, 15) : new DateOnly(2026, 6, 5),
                         CreatedAt = now, UpdatedAt = now
@@ -703,7 +659,7 @@ public static class SeedData
                         SubjectId      = subjectId,
                         AssessmentType = PeriodicAssessmentType.SemesterExam,
                         Term           = term,
-                        Score          = rng.Next(arabRange.lo, arabRange.hi),
+                        Score          = rng.Next(semesterRange.lo, semesterRange.hi),
                         MaxScore       = 30,
                         AssessmentDate = isFirst ? new DateOnly(2026, 1, 20) : new DateOnly(2026, 7, 5),
                         CreatedAt = now, UpdatedAt = now
@@ -726,7 +682,7 @@ public static class SeedData
         {
             foreach (var term in new[] { AcademicTerm.FirstSemester, AcademicTerm.SecondSemester })
             {
-                foreach (var subjectId in new[] { S["MTH"].Id, S["ARB"].Id })
+                foreach (var subjectId in new[] { S["ARB"].Id, S["ENG"].Id, S["MTH"].Id, S["SCI"].Id, S["SOC"].Id, S["ISL"].Id, S["CMP"].Id })
                 {
                     var key = new { EnrollmentId = enr.Id, SubjectId = subjectId, Term = (int)term };
                     var asms = asmLookup.GetValueOrDefault(key) ?? new();
@@ -734,9 +690,14 @@ public static class SeedData
                     var e2   = asms.FirstOrDefault(a => a.AssessmentType == PeriodicAssessmentType.MonthlyExam2)?.Score ?? 0;
                     var semExam = asms.FirstOrDefault(a => a.AssessmentType == PeriodicAssessmentType.SemesterExam)?.Score
                                   ?? rng.Next(20, 31);
-                    var periodAvg = (int)Math.Round(subjectId == S["MTH"].Id
-                        ? rng.Next(28, 39) + rng.NextDouble()
-                        : rng.Next(25, 36) + rng.NextDouble());
+                    var periodAvg = (int)Math.Round(
+                        subjectId == S["MTH"].Id ? rng.Next(28, 39) + rng.NextDouble() :
+                        subjectId == S["ARB"].Id ? rng.Next(25, 36) + rng.NextDouble() :
+                        subjectId == S["ENG"].Id ? rng.Next(26, 37) + rng.NextDouble() :
+                        subjectId == S["SCI"].Id ? rng.Next(27, 38) + rng.NextDouble() :
+                        subjectId == S["SOC"].Id ? rng.Next(24, 35) + rng.NextDouble() :
+                        subjectId == S["ISL"].Id ? rng.Next(28, 38) + rng.NextDouble() :
+                        /* CMP */                   rng.Next(26, 36) + rng.NextDouble());
                     var written  = periodAvg + e1 + e2;
                     var total    = written + semExam;
                     var isComplete = e1 > 0 && e2 > 0 && semExam > 0;

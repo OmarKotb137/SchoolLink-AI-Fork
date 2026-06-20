@@ -95,110 +95,92 @@ public class ParentDashboardService : IParentDashboardService
                     g => g.ToLookup(a => a.AssessmentType));
 
             // ── Period Averages (weekly performance) ───────────────
-            var allPeriodAvgs = await _unitOfWork.PeriodAverages
-                .FindAsync(pa => pa.EnrollmentId == enrollment.Id);
+            // Get weekly period IDs for the current term (used everywhere below)
+            var semesterNumber = term.HasValue ? (int)term.Value : (int?)null;
+            var weeklyPeriodList = await _context.EvaluationPeriods
+                .Where(p =>
+                    (!semesterNumber.HasValue || p.SemesterNumber == semesterNumber) &&
+                    p.PeriodType == PeriodType.Weekly &&
+                    !p.IsDeleted)
+                .OrderBy(p => p.Id)
+                .ToListAsync();
+            var weeklyPeriodIds = weeklyPeriodList.Select(p => p.Id).ToHashSet();
 
-            // Filter by current term
-            var periodIdsForTerm = await GetTermPeriodIdsAsync(term);
-            var periodAvgs = allPeriodAvgs
-                .Where(pa => periodIdsForTerm == null || periodIdsForTerm.Contains(pa.PeriodId))
-                .ToList();
-
-            var totalPct = periodAvgs.Any()
-                ? $"{Math.Round(periodAvgs.Average(a => (double)(a.AvgScore / a.MaxScore) * 100), 1)}%"
-                : "—";
-
-            var performance = periodAvgs.Any()
-                ? (decimal)Math.Round(periodAvgs.Average(a => (double)(a.AvgScore / a.MaxScore) * 100), 1)
-                : 0;
-
-            // ── Weekly performances (for chart) ────────────────────
+            // Use GetByEnrollmentGroupedBySubjectAsync as the single source of truth
+            // for performance, chart, and subject cards — guaranteed consistency
+            var subjResult = await _periodAverageService.GetByEnrollmentGroupedBySubjectAsync(enrollment.Id, term);
+            decimal performance = 0;
+            string totalPct = "—";
             var weekPerformances = new List<WeeklyPerformanceDto>();
-            if (enrollment != null)
-            {
-                // Get weekly evaluation periods for the current term
-                var semesterNumber = term.HasValue ? (int)term.Value : (int?)null;
-                var weeklyPeriods = await _context.EvaluationPeriods
-                    .Where(p =>
-                        (!semesterNumber.HasValue || p.SemesterNumber == semesterNumber) &&
-                        p.PeriodType == PeriodType.Weekly &&
-                        !p.IsDeleted)
-                    .OrderBy(p => p.Id)
-                    .ToListAsync();
-
-                // Get all student evaluations for this enrollment, filtered to weekly periods
-                var weeklyPeriodIds = weeklyPeriods.Select(p => p.Id).ToList();
-                var evaluations = await _context.StudentEvaluations
-                    .Where(e =>
-                        e.EnrollmentId == enrollment.Id &&
-                        weeklyPeriodIds.Contains(e.PeriodId) &&
-                        !e.IsDeleted)
-                    .Include(e => e.EvaluationItem)
-                    .ToListAsync();
-
-                // Group by period and compute weighted average
-                int weekNum = 1;
-                var evalGroups = evaluations
-                    .GroupBy(e => e.PeriodId)
-                    .OrderBy(g => g.Key)
-                    .ToList();
-
-                foreach (var group in evalGroups)
-                {
-                    var period = weeklyPeriods.First(p => p.Id == group.Key);
-                    var totalWeighted = 0m;
-                    var totalWeights = 0m;
-                    foreach (var e in group)
-                    {
-                        var item = e.EvaluationItem;
-                        if (item == null) continue;
-                        var score = e.Score ?? 0;
-                        totalWeighted += score * item.Weight;
-                        totalWeights += item.MaxScore * item.Weight;
-                    }
-                    var avgPct = totalWeights > 0
-                        ? Math.Round(totalWeighted / totalWeights * 100, 1)
-                        : 0;
-
-                    weekPerformances.Add(new WeeklyPerformanceDto
-                    {
-                        PeriodName = period.Name ?? $"الأسبوع {weekNum}",
-                        WeekNumber = weekNum++,
-                        AvgScore = avgPct,
-                        MaxScore = 100,
-                        TotalScore = totalWeighted,
-                        TotalMaxScore = totalWeights
-                    });
-                }
-            }
-
-            // ── Subject performances + Monthly/Final exams per subject ──
             var subjectPerformances = new List<ChildSubjectDto>();
             var monthlyExams = new List<MonthlyExamResultDto>();
             var finalExams = new List<FinalExamResultDto>();
-            if (enrollment != null)
-            {
-                var subjResult = await _periodAverageService.GetByEnrollmentGroupedBySubjectAsync(enrollment.Id, term);
-                if (subjResult.IsSuccess && subjResult.Data != null)
-                {
-                    foreach (var group in subjResult.Data)
-                    {
-                        // Filter periods to current term only
-                        var termPeriods = group.Periods
-                            .Where(p => periodIdsForTerm == null || periodIdsForTerm.Contains(p.PeriodId))
-                            .ToList();
 
-                        // ── Latest period → subject performance (current) ──
-                        var latest = termPeriods.OrderByDescending(p => p.PeriodId).FirstOrDefault();
-                        if (latest != null)
+            if (subjResult.IsSuccess && subjResult.Data != null)
+            {
+                // ── Build per-period aggregates from per-subject data (for chart) ──
+                var periodData = new Dictionary<int, (decimal totalScore, decimal totalMax, string name)>();
+                foreach (var group in subjResult.Data)
+                {
+                    foreach (var p in group.Periods)
+                    {
+                        if (!weeklyPeriodIds.Contains(p.PeriodId)) continue;
+                        var pct = p.AvgScore / 100;
+                        var earned = pct * p.MaxScore;
+                        if (!periodData.ContainsKey(p.PeriodId))
                         {
-                            subjectPerformances.Add(new ChildSubjectDto
-                            {
-                                SubjectName = group.SubjectName,
-                                Score = latest.AvgScore > 0 ? Math.Round(latest.AvgScore / 100 * latest.MaxScore, 1) : 0,
-                                MaxScore = latest.MaxScore
-                            });
+                            var period = weeklyPeriodList.FirstOrDefault(wp => wp.Id == p.PeriodId);
+                            periodData[p.PeriodId] = (0, 0, period?.Name ?? "");
                         }
+                        var cur = periodData[p.PeriodId];
+                        periodData[p.PeriodId] = (cur.totalScore + earned, cur.totalMax + p.MaxScore, cur.name);
+                    }
+                }
+
+                int weekNum = 1;
+                var allWeekPcts = new List<decimal>();
+                foreach (var kv in periodData.OrderBy(kv => kv.Key))
+                {
+                    var pct = kv.Value.totalMax > 0
+                        ? Math.Round(kv.Value.totalScore / kv.Value.totalMax * 100, 1)
+                        : 0m;
+                    allWeekPcts.Add(pct);
+                    weekPerformances.Add(new WeeklyPerformanceDto
+                    {
+                        PeriodName = kv.Value.name != "" ? kv.Value.name : $"الأسبوع {weekNum}",
+                        WeekNumber = weekNum++,
+                        AvgScore = pct,
+                        MaxScore = 100,
+                        TotalScore = kv.Value.totalScore,
+                        TotalMaxScore = kv.Value.totalMax
+                    });
+                }
+
+                // ── الأداء العام = average of all weekly percentages ──
+                if (allWeekPcts.Count > 0)
+                {
+                    performance = Math.Round(allWeekPcts.Average(), 1);
+                    totalPct = $"{performance}%";
+                }
+
+                // ── Subject performances (latest week) + Monthly/Final exams ──
+                foreach (var group in subjResult.Data)
+                {
+                    // All periods for this subject in this term (includes weekly, monthly, semester)
+                    var termPeriods = group.Periods.ToList();
+
+                    // Latest WEEKLY period → subject performance (current)
+                    var weeklyOnly = termPeriods.Where(p => weeklyPeriodIds.Contains(p.PeriodId)).ToList();
+                    var latest = weeklyOnly.OrderByDescending(p => p.PeriodId).FirstOrDefault();
+                    if (latest != null)
+                    {
+                        subjectPerformances.Add(new ChildSubjectDto
+                        {
+                            SubjectName = group.SubjectName,
+                            Score = latest.AvgScore > 0 ? Math.Round(latest.AvgScore / 100 * latest.MaxScore, 1) : 0,
+                            MaxScore = latest.MaxScore
+                        });
+                    }
 
                         // ── Monthly periods (PeriodType=2) → monthly exams per subject ──
                         // Take only first 2 monthly periods (each subject has 2 monthly exams)
@@ -246,8 +228,8 @@ public class ParentDashboardService : IParentDashboardService
                             {
                                 // Fallback: use term-based naming
                                 monthName = term == AcademicTerm.FirstSemester
-                                    ? (monthIdx == 1 ? "مارس" : "إبريل")
-                                    : (monthIdx == 1 ? "مايو" : "يونيو");
+                                    ? (monthIdx == 1 ? "أكتوبر" : "نوفمبر")
+                                    : (monthIdx == 1 ? "مارس" : "إبريل");
                             }
 
                             monthlyExams.Add(new MonthlyExamResultDto
@@ -321,9 +303,8 @@ public class ParentDashboardService : IParentDashboardService
                         }
                     }
                 }
-            }
 
-            // ── Upcoming exams ─────────────────────────────────────
+                // ── Upcoming exams ─────────────────────────────────────
             var upcomingExams = new List<ChildUpcomingExamDto>();
             if (enrollment.ClassId > 0 && enrollment.Class?.AcademicYearId > 0)
             {
