@@ -28,7 +28,7 @@ public class ChildProgressService : IChildProgressService
         foreach (var link in activeLinks)
         {
             var student = link.Student!;
-            var enrollment = student.Enrollments.FirstOrDefault(e => e.LeftAt == null && e.AcademicYearId == currentYear.Id);
+            var enrollment = student.Enrollments.FirstOrDefault(e => e.LeftAt == null && e.AcademicYearId == currentYear.Id && !e.IsDeleted);
             if (enrollment is null) continue;
 
             var className = enrollment.Class?.Name ?? "";

@@ -1,141 +1,317 @@
-    <app-sidebar [(isOpen)]="sidebarOpen" />
-    <div class="main-content">
-      <main class="p-gutter-desktop">
-        <div class="flex flex-col gap-gutter-desktop">
-          @if (loading()) {
-            <div class="text-center py-16 text-outline font-headline-md">جاري تحميل البيانات...</div>
-          } @else if (data(); as d) {
-          <!-- Hero Section -->
-          <section class="bg-surface-container-lowest rounded-3xl p-widget-padding shadow-sm flex flex-col items-center text-center">
-            <h1 class="font-headline-lg text-headline-lg text-on-surface mb-2">مرحباً بك، {{ studentName() }}! 👋</h1>
-            <p class="text-on-surface-variant font-body-md text-body-md mb-8">أداؤك الأكاديمي في تحسن مستمر. إليك نظرة سريعة على تقدمك.</p>
-            <div class="flex items-center gap-3 mb-6">
-              <label class="font-label-sm text-label-sm text-outline">الفصل الدراسي:</label>
-              <select (change)="onTermChange($event)" style="padding:8px 16px;border-radius:12px;border:1px solid var(--outline-variant, #e0e0e0);background:rgba(255,255,255,0.7);backdrop-filter:blur(8px);font-size:14px;">
-<option value="1">الترم الأول</option>
-<option value="2">الترم الثاني</option>
-              </select>
-            </div>
-            <div class="relative w-64 h-64 mb-6">
-              <svg class="w-full h-full -rotate-90" viewBox="0 0 36 36">
-                <circle class="stroke-surface-container-high" cx="18" cy="18" fill="none" r="15.9155" stroke-width="2.5"></circle>
-                <circle class="stroke-primary" cx="18" cy="18" fill="none" r="15.9155" [attr.stroke-dasharray]="d.overallPercentage + ', 100'" stroke-linecap="round" stroke-width="2.5"></circle>
-              </svg>
-              <div class="absolute inset-0 flex flex-col items-center justify-center">
-                <span class="text-6xl font-bold text-primary">{{ d.overallPercentage }}%</span>
-                <span class="text-on-surface-variant font-headline-md">{{ levelText }}</span>
-              </div>
-            </div>
-            <div class="grid grid-cols-3 gap-8 w-full max-w-2xl border-t border-outline-variant/30 pt-6">
-              <div><p class="text-on-surface-variant font-label-sm">المهام المكتملة</p><p class="font-headline-md text-primary">{{ d.completedTasksPercent }}%</p></div>
-              <div><p class="text-on-surface-variant font-label-sm">عدد الفترات</p><p class="font-headline-md text-primary">{{ d.periodAverages.length }}</p></div>
-              <div><p class="text-on-surface-variant font-label-sm">الغياب</p><p class="font-headline-md text-primary">{{ d.absencesCount }}</p></div>
-            </div>
-          </section>
+<app-sidebar [(isOpen)]="sidebarOpen" />
 
-          <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <!-- Left Column -->
-            <div class="lg:col-span-8 flex flex-col gap-6">
-              <div class="bg-surface-container-lowest border border-outline-variant/30 rounded-3xl p-widget-padding shadow-sm">
-                <h3 class="font-headline-md mb-6">نظرة عامة على متوسطات الفترات</h3>
-                <div class="h-64 flex items-end justify-between gap-2 px-2">
-                  @for (pa of d.periodAverages; track pa.avgScore) {
-                    <div class="flex-1 bg-primary rounded-t-lg relative group"
-                         [style.height.%]="pa.maxScore > 0 ? (pa.avgScore / pa.maxScore) * 100 : 0">
-                      <span class="absolute -top-6 left-1/2 -translate-x-1/2 text-label-sm font-bold text-primary whitespace-nowrap">{{ pa.maxScore > 0 ? ((pa.avgScore / pa.maxScore) * 100).toFixed(0) + '%' : '0%' }}</span>
-                    </div>
-                  } @empty {
-                    <div class="w-full text-center text-outline py-8">لا توجد بيانات متوسطات بعد</div>
-                  }
-                </div>
-              </div>
-              <!-- AI Insights (left as-is) -->
-              <div class="bg-inverse-surface text-inverse-on-surface rounded-3xl p-widget-padding shadow-xl">
-                <div class="flex items-center gap-3 mb-6">
-                  <span class="material-symbols-outlined text-secondary-fixed-dim" style="font-variation-settings:'FILL'1">auto_awesome</span>
-                  <h3 class="font-headline-md">تحليل الذكاء الاصطناعي للأداء</h3>
-                </div>
-                <div class="grid md:grid-cols-2 gap-6">
-                  <div>
-                    <p class="text-secondary-fixed-dim font-bold text-label-md border-b border-white/10 pb-2">أقوى نقاط التميز</p>
-                    <div class="flex flex-wrap gap-2 mt-4">
-                      <span class="bg-white/10 px-4 py-2 rounded-xl text-label-sm">اللغة العربية (نحو)</span>
-                      <span class="bg-white/10 px-4 py-2 rounded-xl text-label-sm">الكيمياء العضوية</span>
-                    </div>
-                  </div>
-                  <div>
-                    <p class="text-error-container font-bold text-label-md border-b border-white/10 pb-2">مجالات تتطلب التركيز</p>
-                    <div class="flex flex-wrap gap-2 mt-4">
-                      <span class="bg-white/10 px-4 py-2 rounded-xl text-label-sm">تطبيقات التفاضل</span>
-                      <span class="bg-white/10 px-4 py-2 rounded-xl text-label-sm">فيزياء الكم</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <!-- Right Column -->
-            <div class="lg:col-span-4 flex flex-col gap-6">
-              <div class="bg-surface-container-lowest border border-outline-variant/30 rounded-3xl p-widget-padding">
-                <h3 class="font-label-md font-bold mb-4 flex items-center gap-2"><span class="material-symbols-outlined text-secondary text-sm">task_alt</span> خطة اليوم</h3>
-                <div class="space-y-3">
-                  @if (d.sessions.length > 0) {
-                    @for (s of d.sessions; track s.id) {
-                      <div class="flex items-center justify-between p-3 bg-surface-container-low rounded-xl">
-                        <div><p class="font-label-md">{{ s.title }}</p><p class="text-[10px] text-outline">{{ s.duration }} دقيقة • {{ s.subject }}</p></div>
-                        <span class="material-symbols-outlined" [class.text-primary]="s.isCompleted" [class.text-outline]="!s.isCompleted">{{ s.isCompleted ? 'check_circle' : 'radio_button_unchecked' }}</span>
-                      </div>
-                    }
-                  } @else {
-                    <div class="text-center text-outline py-4 text-label-sm">لا توجد جلسات مخططة اليوم</div>
-                  }
-                </div>
-              </div>
-              <div class="bg-surface-container-lowest border border-outline-variant/30 rounded-3xl p-widget-padding">
-                <h3 class="font-label-md font-bold mb-4 flex items-center gap-2"><span class="material-symbols-outlined text-primary text-sm">assignment</span> الواجبات</h3>
-                <div class="space-y-3">
-                  @for (a of d.assignments; track a.id) {
-                    <div class="p-3 rounded-lg"
-                      [class.border-r-2]="true"
-                      [class.border-error]="a.status === 'late'"
-                      [class.bg-error/5]="a.status === 'late'"
-                      [class.border-tertiary]="a.status === 'submitted'"
-                      [class.bg-tertiary/5]="a.status === 'submitted'"
-                      [class.border-secondary]="a.status === 'not-submitted'"
-                      [class.bg-secondary/5]="a.status === 'not-submitted'">
-                      <div class="flex justify-between items-start">
-                        <div>
-                          <p class="font-label-sm font-bold">{{ a.title }}</p>
-                          <p class="text-[10px] text-outline">{{ a.subject }}@if (a.dueDate) { • {{ a.dueDate.slice(0,10) }} }</p>
-                        </div>
-                        <span class="text-label-sm font-bold"
-                          [class.text-error]="a.status === 'late'"
-                          [class.text-tertiary]="a.status === 'submitted'"
-                          [class.text-secondary]="a.status === 'not-submitted'">
-                          @if (a.status === 'submitted' && a.score !== undefined) { {{ a.score }}/{{ a.maxScore }} }
-                          @else if (a.status === 'late') { متأخر }
-                          @else if (a.status === 'submitted') { تم }
-                          @else { مستحق }
-                        </span>
-                      </div>
-                    </div>
-                  } @empty {
-                    <div class="text-center text-outline py-4 text-label-sm">لا توجد واجبات</div>
-                  }
-                </div>
-              </div>
-              <div class="bg-primary text-on-primary rounded-3xl p-6">
-                <h3 class="font-label-md font-bold mb-2">المكتبة الذكية</h3>
-                <p class="text-[11px] opacity-70 mb-4">أكثر من 5,000 مورد تعليمي مدعوم بالذكاء الاصطناعي.</p>
-                <button class="w-full py-2 bg-white text-primary rounded-xl text-label-sm font-bold">تصفح الموارد</button>
-              </div>
+<div class="main-content">
+  <main class="sd-main">
+
+    <!-- ══ Loading ══════════════════════════════════════════════════════ -->
+    @if (loading()) {
+      <div class="sd-loader">
+        <div class="sd-spinner"></div>
+        <p>جاري تحميل بياناتك...</p>
+      </div>
+    }
+
+    @if (!loading()) {
+      @if (data(); as d) {
+
+      <!-- ══ HERO HEADER ══════════════════════════════════════════════ -->
+      <header class="sd-hero">
+        <div class="sd-hero-bg"></div>
+        <div class="sd-hero-content">
+          <div class="sd-hero-avatar">
+            <span class="material-symbols-outlined" style="font-variation-settings:'FILL'1;font-size:36px">school</span>
+          </div>
+          <div class="sd-hero-info">
+            <h1>مرحباً، {{ d.name }} 👋</h1>
+            <p class="sd-hero-sub">{{ d.grade }} — {{ d.class }} | الترم {{ d.currentTermName }}</p>
+          </div>
+          <div class="sd-hero-term">
+            <label>الفصل الدراسي</label>
+            <select class="sd-select" id="term-select" (change)="onTermChange($event)">
+              <option value="1" [selected]="selectedTerm() === 1">الترم الأول</option>
+              <option value="2" [selected]="selectedTerm() === 2">الترم الثاني</option>
+            </select>
+          </div>
+        </div>
+      </header>
+
+      <!-- ══ KPI ROW ══════════════════════════════════════════════════ -->
+      <section class="sd-kpi-row">
+
+        <!-- Overall performance ring -->
+        <div class="sd-kpi-ring">
+          <svg viewBox="0 0 120 120" class="sd-ring-svg">
+            <circle cx="60" cy="60" r="50" class="sd-ring-bg"/>
+            <circle cx="60" cy="60" r="50" class="sd-ring-fill"
+              [attr.stroke-dasharray]="(d.performance * 3.14159) + ' 314.159'"
+              [attr.stroke]="levelColor"/>
+          </svg>
+          <div class="sd-ring-inner">
+            <span class="sd-ring-pct" [style.color]="levelColor">{{ d.performance }}%</span>
+            <span class="sd-ring-label">{{ levelText }}</span>
+          </div>
+        </div>
+
+        <!-- Stats chips -->
+        <div class="sd-kpi-chips">
+          <div class="sd-chip sd-chip--attendance">
+            <span class="material-symbols-outlined" style="font-variation-settings:'FILL'1">calendar_today</span>
+            <div>
+              <p class="sd-chip-val">{{ d.attendanceRate }}%</p>
+              <p class="sd-chip-lbl">نسبة الحضور</p>
             </div>
           </div>
-          }
+          <div class="sd-chip sd-chip--abs">
+            <span class="material-symbols-outlined" style="font-variation-settings:'FILL'1">event_busy</span>
+            <div>
+              <p class="sd-chip-val">{{ d.absences }}</p>
+              <p class="sd-chip-lbl">غياب ({{ d.excusedAbsences }} بعذر)</p>
+            </div>
+          </div>
+          <div class="sd-chip sd-chip--grade">
+            <span class="material-symbols-outlined" style="font-variation-settings:'FILL'1">grade</span>
+            <div>
+              <p class="sd-chip-val">{{ d.grades.last }}</p>
+              <p class="sd-chip-lbl">آخر تقييم</p>
+            </div>
+          </div>
+          <div class="sd-chip sd-chip--weeks">
+            <span class="material-symbols-outlined" style="font-variation-settings:'FILL'1">timeline</span>
+            <div>
+              <p class="sd-chip-val">{{ d.weeklyPerformances.length }}</p>
+              <p class="sd-chip-lbl">أسابيع مقيّمة</p>
+            </div>
+          </div>
         </div>
-      </main>
-    </div>
-    <!-- Floating AI Button -->
-    <button class="fixed bottom-8 left-8 w-16 h-16 bg-secondary text-on-secondary rounded-full shadow-2xl flex items-center justify-center group active:scale-95 transition-transform z-50">
-      <span class="material-symbols-outlined text-3xl group-hover:rotate-12 transition-transform" style="font-variation-settings:'FILL'1">auto_awesome</span>
-      <span class="absolute -top-12 right-0 bg-inverse-surface text-inverse-on-surface px-4 py-2 rounded-xl text-label-md font-label-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">اسأل المساعد الذكي</span>
-    </button>
+      </section>
+
+      <!-- ══ MAIN GRID ════════════════════════════════════════════════ -->
+      <div class="sd-grid">
+
+        <!-- ─── LEFT COLUMN ──────────────────────────────────────────── -->
+        <div class="sd-col-left">
+
+          <!-- Evolution Chart -->
+          <div class="sd-card sd-card--chart">
+            <div class="sd-card-header">
+              <span class="material-symbols-outlined" style="font-variation-settings:'FILL'1">show_chart</span>
+              <h2>منحنى الأداء الأسبوعي</h2>
+              <span class="sd-card-hint">اضغط على نقطة لعرض تفاصيل الأسبوع</span>
+            </div>
+            @if (d.weeklyPerformances.length > 0) {
+              <div class="sd-chart-wrap">
+                <canvas #evolutionCanvas></canvas>
+              </div>
+            } @else {
+              <div class="sd-empty">لا توجد بيانات أسبوعية بعد</div>
+            }
+          </div>
+
+          <!-- Subject Performance for Selected Week -->
+          <div class="sd-card">
+            <div class="sd-card-header">
+              <span class="material-symbols-outlined" style="font-variation-settings:'FILL'1">book_5</span>
+              <h2>أداء المواد الدراسية</h2>
+              @if (d.weeklyPerformances.length > 0) {
+                <select class="sd-select sd-select--sm" id="week-select" (change)="onWeekChange($event)">
+                  @for (w of d.weeklyPerformances; track w.weekNumber; let i = $index) {
+                    <option [value]="i" [selected]="selectedWeekIndex() === i">
+                      {{ w.periodName || ('الأسبوع ' + w.weekNumber) }}
+                      @if (w.startDate && w.endDate) { ({{ w.startDate | date:'d MMM' }} - {{ w.endDate | date:'d MMM' }}) }
+                    </option>
+                  }
+                </select>
+              }
+            </div>
+
+            @if (displayedSubjects().length > 0) {
+              <div class="sd-subjects">
+                @for (s of displayedSubjects(); track s.subjectName) {
+                  <div class="sd-subject">
+                    <div class="sd-subject-head">
+                      <span class="sd-subject-name">{{ s.subjectName }}</span>
+                      <span class="sd-subject-badge" [style.background]="subjectColor(s) + '22'" [style.color]="subjectColor(s)">{{ subjectGrade(s) }}</span>
+                    </div>
+                    <div class="sd-subject-score">
+                      <span>{{ s.score }}/{{ s.maxScore }}</span>
+                      <span class="sd-subject-pct">{{ subjectPct(s) }}%</span>
+                    </div>
+                    <div class="sd-progress-bar">
+                      <div class="sd-progress-fill" [style.width.%]="subjectPct(s)" [style.background]="subjectColor(s)"></div>
+                    </div>
+                  </div>
+                }
+              </div>
+            } @else {
+              <div class="sd-empty">لا توجد بيانات مواد بعد</div>
+            }
+          </div>
+
+          <!-- Monthly Exams -->
+          @if (d.monthlyExams.length > 0) {
+            <div class="sd-card">
+              <div class="sd-card-header">
+                <span class="material-symbols-outlined" style="font-variation-settings:'FILL'1">quiz</span>
+                <h2>الامتحانات الشهرية</h2>
+              </div>
+              <div class="sd-exam-grid">
+                @for (e of d.monthlyExams; track e.subjectName + e.title) {
+                  <div class="sd-exam-card sd-exam-card--monthly">
+                    <p class="sd-exam-title">{{ e.title }}</p>
+                    <p class="sd-exam-subject">{{ e.subjectName }}</p>
+                    <p class="sd-exam-score">{{ e.score }}<span>/{{ e.maxScore }}</span></p>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- Final Exams -->
+          @if (d.finalExams.length > 0) {
+            <div class="sd-card">
+              <div class="sd-card-header">
+                <span class="material-symbols-outlined" style="font-variation-settings:'FILL'1">workspace_premium</span>
+                <h2>امتحانات نهاية الترم</h2>
+              </div>
+              <div class="sd-exam-grid">
+                @for (e of d.finalExams; track e.subjectName) {
+                  <div class="sd-exam-card sd-exam-card--final">
+                    <p class="sd-exam-title">{{ e.title }}</p>
+                    <p class="sd-exam-subject">{{ e.subjectName }}</p>
+                    <p class="sd-exam-score">{{ e.score }}<span>/{{ e.maxScore }}</span></p>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- AI Recommendations -->
+          @if (d.recommendationSections.length > 0) {
+            <div class="sd-card sd-card--ai">
+              <div class="sd-card-header">
+                <span class="material-symbols-outlined" style="font-variation-settings:'FILL'1">auto_awesome</span>
+                <h2>توصيات الذكاء الاصطناعي</h2>
+              </div>
+              <div class="sd-recs">
+                @for (section of d.recommendationSections; track section.title) {
+                  <div class="sd-rec-section">
+                    <h3 class="sd-rec-title">{{ section.title }}</h3>
+                    <ul class="sd-rec-list">
+                      @for (item of section.items; track item) {
+                        <li>{{ item }}</li>
+                      }
+                    </ul>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
+        </div>
+
+        <!-- ─── RIGHT COLUMN ──────────────────────────────────────────── -->
+        <div class="sd-col-right">
+
+          <!-- Upcoming Exams -->
+          @if (d.upcomingExams.length > 0) {
+            <div class="sd-card">
+              <div class="sd-card-header">
+                <span class="material-symbols-outlined" style="font-variation-settings:'FILL'1">event</span>
+                <h2>الامتحانات القادمة</h2>
+              </div>
+              <div class="sd-upcoming">
+                @for (e of d.upcomingExams; track e.title) {
+                  <div class="sd-upcoming-item">
+                    <div class="sd-upcoming-dot"></div>
+                    <div>
+                      <p class="sd-upcoming-name">{{ e.title }}</p>
+                      <p class="sd-upcoming-meta">{{ e.subjectName }}@if (e.startTime) { · {{ e.startTime | date:'d MMM' }} }</p>
+                    </div>
+                    <span class="sd-upcoming-score">{{ e.totalScore }} د</span>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- Today's Study Plan -->
+          <div class="sd-card">
+            <div class="sd-card-header">
+              <span class="material-symbols-outlined" style="font-variation-settings:'FILL'1">task_alt</span>
+              <h2>خطة اليوم</h2>
+            </div>
+            @if (d.sessions.length > 0) {
+              <div class="sd-sessions">
+                @for (s of d.sessions; track s.id) {
+                  <div class="sd-session" [class.sd-session--done]="s.isCompleted">
+                    <span class="material-symbols-outlined sd-session-icon" style="font-variation-settings:'FILL'1">
+                      {{ s.isCompleted ? 'check_circle' : 'radio_button_unchecked' }}
+                    </span>
+                    <div>
+                      <p class="sd-session-title">{{ s.title }}</p>
+                      <p class="sd-session-meta">{{ s.duration }} دقيقة · {{ s.subject }}</p>
+                    </div>
+                  </div>
+                }
+              </div>
+            } @else {
+              <div class="sd-empty">لا توجد جلسات مخططة اليوم</div>
+            }
+          </div>
+
+          <!-- Assignments -->
+          <div class="sd-card">
+            <div class="sd-card-header">
+              <span class="material-symbols-outlined" style="font-variation-settings:'FILL'1">assignment</span>
+              <h2>الواجبات</h2>
+            </div>
+            @if (d.assignments.length > 0) {
+              <div class="sd-assignments">
+                @for (a of d.assignments; track a.id) {
+                  <div class="sd-assignment"
+                    [class.sd-assignment--late]="a.status === 'late'"
+                    [class.sd-assignment--done]="a.status === 'submitted'"
+                    [class.sd-assignment--pending]="a.status === 'not-submitted'">
+                    <div>
+                      <p class="sd-assignment-title">{{ a.title }}</p>
+                      <p class="sd-assignment-meta">{{ a.subject }}@if (a.dueDate) { · {{ a.dueDate.slice(0,10) }} }</p>
+                    </div>
+                    <span class="sd-assignment-status">
+                      @if (a.status === 'submitted' && a.score !== undefined) { {{ a.score }}/{{ a.maxScore }} }
+                      @else if (a.status === 'late') { متأخر }
+                      @else if (a.status === 'submitted') { تم ✓ }
+                      @else { مستحق }
+                    </span>
+                  </div>
+                }
+              </div>
+            } @else {
+              <div class="sd-empty">لا توجد واجبات حالياً</div>
+            }
+          </div>
+
+          <!-- Smart Library CTA -->
+          <div class="sd-card sd-card--cta">
+            <span class="material-symbols-outlined" style="font-variation-settings:'FILL'1;font-size:40px;color:#a5b4fc">menu_book</span>
+            <h3>المكتبة الذكية</h3>
+            <p>أكثر من 5,000 مورد تعليمي مدعوم بالذكاء الاصطناعي</p>
+            <button class="sd-cta-btn" id="library-btn">تصفح الموارد</button>
+          </div>
+
+        </div>
+      </div>
+
+      } @else {
+        <div class="sd-loader">
+          <p>لا توجد بيانات متاحة</p>
+        </div>
+      }
+    }
+  </main>
+</div>
+
+<!-- Floating AI Button -->
+<button class="sd-fab" id="ai-fab-btn" title="المساعد الذكي">
+  <span class="material-symbols-outlined" style="font-variation-settings:'FILL'1;font-size:28px">auto_awesome</span>
+  <span class="sd-fab-tooltip">اسأل المساعد الذكي</span>
+</button>

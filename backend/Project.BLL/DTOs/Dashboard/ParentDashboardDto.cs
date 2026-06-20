@@ -61,10 +61,13 @@ public class WeeklyPerformanceDto
 {
     public string PeriodName { get; set; } = string.Empty;
     public int WeekNumber { get; set; }
+    public DateOnly? StartDate { get; set; }
+    public DateOnly? EndDate { get; set; }
     public decimal AvgScore { get; set; }
     public decimal MaxScore { get; set; }
     public decimal TotalScore { get; set; }
     public decimal TotalMaxScore { get; set; }
+    public List<ChildSubjectDto> SubjectPerformances { get; set; } = new();
 }
 
 public class MonthlyExamResultDto

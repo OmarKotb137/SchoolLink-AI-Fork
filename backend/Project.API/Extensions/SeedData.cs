@@ -545,13 +545,19 @@ public static class SeedData
         ctx.Users.AddRange(parentUsers);
         await ctx.SaveChangesAsync();
 
-        var parentStudentLinks = students.Zip(parentUsers, (st, p) => new ParentStudent
+        var parentStudentLinks = new List<ParentStudent>();
+        for (int i = 0; i < students.Count; i++)
         {
-            ParentId     = p.Id,
-            StudentId    = st.Id,
-            Relationship = RelationshipType.Father,
-            CreatedAt = now, UpdatedAt = now
-        }).ToList();
+            // Link both student 0 (Ahmed) and student 1 (Mohamed) to parent 0
+            int parentIdx = (i == 1) ? 0 : i;
+            parentStudentLinks.Add(new ParentStudent
+            {
+                ParentId     = parentUsers[parentIdx].Id,
+                StudentId    = students[i].Id,
+                Relationship = RelationshipType.Father,
+                CreatedAt = now, UpdatedAt = now
+            });
+        }
         ctx.ParentStudents.AddRange(parentStudentLinks);
         await ctx.SaveChangesAsync();
 
@@ -2907,5 +2913,36 @@ public static class SeedData
             }
             await ctx.SaveChangesAsync();
         }
+
+        // ── 5. Ensure parent1 is linked to both student1 (Ahmed) and student2 (Mohamed) ──
+        try
+        {
+            var p1 = await ctx.Users.FirstOrDefaultAsync(u => u.Username == "parent1" && !u.IsDeleted);
+            if (p1 != null)
+            {
+                var u2 = await ctx.Users.FirstOrDefaultAsync(u => u.Username == "student2" && !u.IsDeleted);
+                if (u2 != null)
+                {
+                    var s2 = await ctx.Students.FirstOrDefaultAsync(s => s.UserId == u2.Id && !s.IsDeleted);
+                    if (s2 != null)
+                    {
+                        var linkExists = await ctx.ParentStudents.AnyAsync(ps => ps.ParentId == p1.Id && ps.StudentId == s2.Id && !ps.IsDeleted);
+                        if (!linkExists)
+                        {
+                            ctx.ParentStudents.Add(new ParentStudent
+                            {
+                                ParentId = p1.Id,
+                                StudentId = s2.Id,
+                                Relationship = RelationshipType.Father,
+                                CreatedAt = now,
+                                UpdatedAt = now
+                            });
+                            await ctx.SaveChangesAsync();
+                        }
+                    }
+                }
+            }
+        }
+        catch { /* ignore */ }
     }
 }

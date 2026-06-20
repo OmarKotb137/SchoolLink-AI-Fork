@@ -85,7 +85,7 @@ public class ParentStudentService : IParentStudentService
             .Select(l =>
             {
                 var activeEnrollment = l.Student.Enrollments
-                    .FirstOrDefault(e => e.LeftAt == null);
+                    .FirstOrDefault(e => e.LeftAt == null && !e.IsDeleted);
 
                 return new ParentDashboardChildDto
                 {
