@@ -397,7 +397,7 @@ export class StudyPlanner implements OnInit {
     return `${h}:${m} ${ampm}`;
   }
 
-  generateWithAI() {
+  generateWithAI(promptSummary?: string) {
     const eid = this.enrollmentId();
     if (!eid) { this.errorMsg.set('لا يوجد تسجيل نشط'); return; }
 
@@ -433,7 +433,7 @@ export class StudyPlanner implements OnInit {
       enrollmentId: eid,
       startDate: fmt(today),
       endDate: fmt(end),
-      aiPromptSummary: 'خطة أسبوعية مقترحة'
+      aiPromptSummary: promptSummary || 'خطة أسبوعية مقترحة'
     }).subscribe({
       next: (res: any) => {
         const p = res?.data as StudyPlanDto;
@@ -517,7 +517,7 @@ export class StudyPlanner implements OnInit {
     const eid = this.enrollmentId();
     const backup = this.backupPlanData();
     const aiP = this.aiPreview();
-    if (!eid || !backup || !aiP) return;
+    if (!eid || !aiP) return;
 
     const selectedAiItems = aiP.items
       .filter(i => this.aiSelectedDays().has(i.dayOfWeek))
@@ -530,28 +530,37 @@ export class StudyPlanner implements OnInit {
         notes: i.notes,
       }));
 
-    const nonSelectedBackupItems = backup.items.filter(i => !this.aiSelectedDays().has(i.dayOfWeek));
-
-    const merged = [...nonSelectedBackupItems, ...selectedAiItems];
-
     this.loading.set(true);
-    this.plannerSvc.createManualPlan({
-      enrollmentId: eid,
-      startDate: backup.startDate,
-      endDate: backup.endDate,
-      restDay: this.restDayIndex(),
-      items: merged,
-    }).subscribe({
-      next: () => {
-        this.loadPlan(eid);
-        this.dismissAiPreview();
-        this.loading.set(false);
-      },
-      error: () => {
-        this.loading.set(false);
-        this.errorMsg.set('فشل تطبيق الأيام المحددة');
-      }
-    });
+
+    if (backup) {
+      const nonSelectedBackupItems = backup.items.filter(i => !this.aiSelectedDays().has(i.dayOfWeek));
+      const merged = [...nonSelectedBackupItems, ...selectedAiItems];
+      this.plannerSvc.createManualPlan({
+        enrollmentId: eid,
+        startDate: backup.startDate,
+        endDate: backup.endDate,
+        restDay: this.restDayIndex(),
+        items: merged,
+      }).subscribe({
+        next: () => { this.loadPlan(eid); this.dismissAiPreview(); this.loading.set(false); },
+        error: () => { this.loading.set(false); this.errorMsg.set('فشل تطبيق الأيام المحددة'); }
+      });
+    } else {
+      const today = new Date();
+      const end = new Date(today);
+      end.setDate(end.getDate() + 7);
+      const fmt = (d: Date) => d.toISOString().slice(0, 10);
+      this.plannerSvc.createManualPlan({
+        enrollmentId: eid,
+        startDate: fmt(today),
+        endDate: fmt(end),
+        restDay: this.restDayIndex(),
+        items: selectedAiItems,
+      }).subscribe({
+        next: () => { this.loadPlan(eid); this.dismissAiPreview(); this.loading.set(false); },
+        error: () => { this.loading.set(false); this.errorMsg.set('فشل تطبيق الأيام المحددة'); }
+      });
+    }
   }
 
   aiGroupedSessions(): { dayName: string; dayIndex: number; items: StudyPlanItemDto[] }[] {
