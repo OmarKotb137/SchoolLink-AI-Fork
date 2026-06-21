@@ -5,5 +5,5 @@ namespace Project.BLL.Interfaces;
 
 public interface IChildProgressService
 {
-    Task<OperationResult<List<ChildProgressItemDto>>> GetChildProgressAsync(int parentUserId);
+    Task<OperationResult<List<ChildProgressItemDto>>> GetChildProgressAsync(int parentUserId, int? term = null);
 }

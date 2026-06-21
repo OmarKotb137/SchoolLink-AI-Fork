@@ -72,7 +72,8 @@ public class StudyPlanService : IStudyPlanService
             "{\n  \"sessions\": [\n    {\n      \"dayOfWeek\": 0,\n      \"subjectName\": \"اسم المادة\",\n      \"startHour\": 9,\n      \"durationHours\": 2,\n      \"topic\": \"عنوان الجلسة\",\n      \"notes\": \"ملاحظات\"\n    }\n  ]\n}\n" +
             "حيث dayOfWeek: 0=السبت, 1=الأحد, 2=الإثنين, 3=الثلاثاء, 4=الأربعاء, 5=الخميس, 6=الجمعة.\n" +
             "startHour من 8 إلى 22. durationHours من 1 إلى 3.\n" +
-            "خصص وقتاً أكبر للمواد التي يحتاج الطالب تحسينها بناءً على التقييمات.";
+            "خصص وقتاً أكبر للمواد التي يحتاج الطالب تحسينها بناءً على التقييمات.\n" +
+            $"تفضيلات الطالب التي أدخلها: {request.AIPromptSummary ?? "لا توجد تفضيلات محددة"}";
 
         var items = new List<StudyPlanItem>();
         try

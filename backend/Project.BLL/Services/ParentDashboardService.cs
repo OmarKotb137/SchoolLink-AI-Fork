@@ -83,14 +83,32 @@ public class ParentDashboardService : IParentDashboardService
                 .Where(a => !termStart.HasValue || (a.AbsenceDate >= termStart.Value && a.AbsenceDate <= termEnd!.Value))
                 .ToList();
 
-            var totalDays = termDays.Count;
-            var absences = termDays.Where(a => a.IsAbsent).ToList();
-            var absCount = absences.Count;
-            var excused = absences.Count(a => !string.IsNullOrWhiteSpace(a.Reason));
+            // Count distinct absent dates (student may have multiple records per day for different subjects)
+            var absentDates = termDays
+                .Where(a => a.IsAbsent)
+                .Select(a => a.AbsenceDate)
+                .Distinct()
+                .ToHashSet();
+            var absCount = absentDates.Count;
+            var excused = termDays
+                .Count(a => a.IsAbsent && !string.IsNullOrWhiteSpace(a.Reason) && absentDates.Contains(a.AbsenceDate));
             var unexcused = absCount - excused;
 
-            var attendanceRate = totalDays == 0 ? 100
-                : Math.Round((double)(totalDays - absCount) / totalDays * 100, 1);
+            // Count total school days (Sunday-Thursday Egyptian school week) from term start to today
+            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            var effectiveStart = termStart ?? DateOnly.MinValue;
+            var effectiveEnd = termEnd.HasValue
+                ? (today < termEnd.Value ? today : termEnd.Value)
+                : today;
+            var totalSchoolDays = 0;
+            for (var d = effectiveStart; d <= effectiveEnd; d = d.AddDays(1))
+            {
+                if (d.DayOfWeek != DayOfWeek.Friday && d.DayOfWeek != DayOfWeek.Saturday)
+                    totalSchoolDays++;
+            }
+
+            var attendanceRate = totalSchoolDays == 0 ? 100
+                : Math.Round((double)(totalSchoolDays - absCount) / totalSchoolDays * 100, 1);
 
             // ── Assessments (periodic) ─────────────────────────────
             var assessments = await _unitOfWork.PeriodicAssessments
@@ -491,14 +509,32 @@ public class ParentDashboardService : IParentDashboardService
             .Where(a => !termStart.HasValue || (a.AbsenceDate >= termStart.Value && a.AbsenceDate <= termEnd!.Value))
             .ToList();
 
-        var totalDays = termDays.Count;
-        var absences = termDays.Where(a => a.IsAbsent).ToList();
-        var absCount = absences.Count;
-        var excused = absences.Count(a => !string.IsNullOrWhiteSpace(a.Reason));
+        // Count distinct absent dates (student may have multiple records per day for different subjects)
+        var absentDates = termDays
+            .Where(a => a.IsAbsent)
+            .Select(a => a.AbsenceDate)
+            .Distinct()
+            .ToHashSet();
+        var absCount = absentDates.Count;
+        var excused = termDays
+            .Count(a => a.IsAbsent && !string.IsNullOrWhiteSpace(a.Reason) && absentDates.Contains(a.AbsenceDate));
         var unexcused = absCount - excused;
 
-        var attendanceRate = totalDays == 0 ? 100
-            : Math.Round((double)(totalDays - absCount) / totalDays * 100, 1);
+        // Count total school days (Sunday-Thursday Egyptian school week) from term start to today
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var effectiveStart = termStart ?? DateOnly.MinValue;
+        var effectiveEnd = termEnd.HasValue
+            ? (today < termEnd.Value ? today : termEnd.Value)
+            : today;
+        var totalSchoolDays = 0;
+        for (var d = effectiveStart; d <= effectiveEnd; d = d.AddDays(1))
+        {
+            if (d.DayOfWeek != DayOfWeek.Friday && d.DayOfWeek != DayOfWeek.Saturday)
+                totalSchoolDays++;
+        }
+
+        var attendanceRate = totalSchoolDays == 0 ? 100
+            : Math.Round((double)(totalSchoolDays - absCount) / totalSchoolDays * 100, 1);
 
         var assessments = await _unitOfWork.PeriodicAssessments
             .FindAsync(pa => pa.EnrollmentId == enrollment.Id);

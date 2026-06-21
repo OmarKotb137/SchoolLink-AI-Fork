@@ -14,7 +14,7 @@ public class ChildProgressService : IChildProgressService
         _unitOfWork = unitOfWork;
     }
 
-    public async Task<OperationResult<List<ChildProgressItemDto>>> GetChildProgressAsync(int parentUserId)
+    public async Task<OperationResult<List<ChildProgressItemDto>>> GetChildProgressAsync(int parentUserId, int? term = null)
     {
         var currentYear = await _unitOfWork.AcademicYears.FirstOrDefaultAsync(y => y.IsCurrent && !y.IsDeleted);
         if (currentYear is null)
@@ -138,13 +138,49 @@ public class ChildProgressService : IChildProgressService
                 .Select(a => (double)(a.Score!.Value / a.TotalScore) * 100));
             var avgScore = allPcts.Count > 0 ? Math.Round(allPcts.Average(), 1) : 0;
 
-            // — Attendance (based on actual recorded days, not hardcoded 180) —
+            // — Attendance based on actual school days from term start to today —
             var allDays = await _unitOfWork.DailyAbsences
                 .FindAsync(a => a.EnrollmentId == enrollment.Id && !a.IsDeleted);
-            var totalDays = allDays.Count;
-            var absCount = allDays.Count(a => a.IsAbsent);
-            var attendancePct = totalDays == 0 ? 100
-                : Math.Round((double)(totalDays - absCount) / totalDays * 100, 1);
+
+            // Determine term date range
+            DateOnly termStartDate, termEndDate;
+            if (term.HasValue)
+            {
+                termStartDate = term.Value == 1
+                    ? (currentYear.FirstSemesterStartDate ?? currentYear.StartDate)
+                    : (currentYear.SecondSemesterStartDate ?? currentYear.StartDate);
+                termEndDate = term.Value == 1
+                    ? (currentYear.FirstSemesterEndDate ?? currentYear.EndDate)
+                    : (currentYear.SecondSemesterEndDate ?? currentYear.EndDate);
+            }
+            else
+            {
+                termStartDate = currentYear.StartDate;
+                termEndDate = currentYear.EndDate;
+            }
+
+            // Filter absences by term and count distinct absent dates
+            var termDays = allDays
+                .Where(a => a.AbsenceDate >= termStartDate && a.AbsenceDate <= termEndDate)
+                .ToList();
+            var absCount = termDays
+                .Where(a => a.IsAbsent)
+                .Select(a => a.AbsenceDate)
+                .Distinct()
+                .Count();
+
+            // Count total school days (Sunday-Thursday) from term start to today
+            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            var effectiveEnd = today < termEndDate ? today : termEndDate;
+            var totalSchoolDays = 0;
+            for (var d = termStartDate; d <= effectiveEnd; d = d.AddDays(1))
+            {
+                if (d.DayOfWeek != DayOfWeek.Friday && d.DayOfWeek != DayOfWeek.Saturday)
+                    totalSchoolDays++;
+            }
+
+            var attendancePct = totalSchoolDays == 0 ? 100
+                : Math.Round((double)(totalSchoolDays - absCount) / totalSchoolDays * 100, 1);
 
             results.Add(new ChildProgressItemDto
             {
