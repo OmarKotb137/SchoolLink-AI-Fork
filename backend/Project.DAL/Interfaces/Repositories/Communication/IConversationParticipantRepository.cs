@@ -9,9 +9,7 @@ public interface IConversationParticipantRepository : IRepository<ConversationPa
     Task<IReadOnlyList<ConversationParticipant>> GetByConversationIdAsync(int conversationId, CancellationToken ct = default);
     Task<IReadOnlyList<ConversationParticipant>> GetByUserIdAsync(int userId, CancellationToken ct = default);
     Task<ConversationParticipant?>               GetByConversationAndUserAsync(int conversationId, int userId, CancellationToken ct = default);
+    Task<ConversationParticipant?>               GetByConversationAndUserWithDeletedAsync(int conversationId, int userId, CancellationToken ct = default);
     Task<bool>                                   IsParticipantAsync(int conversationId, int userId, CancellationToken ct = default);
     Task                                         UpdateLastReadAtAsync(int conversationId, int userId, DateTime readAt, CancellationToken ct = default);
 }
-
-
-

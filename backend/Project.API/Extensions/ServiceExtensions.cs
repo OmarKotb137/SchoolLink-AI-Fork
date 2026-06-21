@@ -106,6 +106,7 @@ public static class ServiceExtensions
         services.AddScoped<IChildProgressService, ChildProgressService>();
         services.AddScoped<IAcademicReportService, AcademicReportService>();
         services.AddScoped<ITeacherDashboardService, TeacherDashboardService>();
+        services.AddScoped<IClassAnalysisService, ClassAnalysisService>();
         services.AddScoped<ILessonFeedbackService, LessonFeedbackService>();
         services.AddScoped<IUnitService, UnitService>();
         services.AddScoped<WhisperTranscriptionService>();

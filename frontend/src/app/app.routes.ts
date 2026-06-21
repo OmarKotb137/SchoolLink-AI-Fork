@@ -30,7 +30,6 @@ export const routes: Routes = [
   { path: 'exam-management', canActivate: [authGuard], loadComponent: () => import('./features/exam-management/exam-management').then(c => c.ExamManagement) },
   { path: 'exam-generator', canActivate: [authGuard], loadComponent: () => import('./features/exam-generator/exam-generator').then(c => c.ExamGenerator) },
   { path: 'question-bank', canActivate: [authGuard], data: { roles: ['admin', 'teacher'] }, loadComponent: () => import('./features/question-bank/question-bank').then(c => c.QuestionBank) },
-  { path: 'lesson-creator', canActivate: [authGuard], loadComponent: () => import('./features/lesson-creator/lesson-creator').then(c => c.LessonCreator) },
   { path: 'monthly-report', canActivate: [authGuard], loadComponent: () => import('./features/monthly-report/monthly-report').then(c => c.MonthlyReport) },
   { path: 'study-planner', canActivate: [authGuard], loadComponent: () => import('./features/study-planner/study-planner').then(c => c.StudyPlanner) },
   { path: 'chat', canActivate: [authGuard], loadComponent: () => import('./features/chat/chat').then(c => c.Chat) },

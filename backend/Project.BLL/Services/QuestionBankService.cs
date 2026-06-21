@@ -115,7 +115,7 @@ public class QuestionBankService : IQuestionBankService
         var optionsJson = dto.Options?.Count > 0
             ? JsonSerializer.Serialize(dto.Options.Select(o => new
             {
-                text = o.Text,
+                optionText = o.Text,
                 isCorrect = o.IsCorrect,
                 displayOrder = o.DisplayOrder
             }), JsonOpts)
@@ -175,7 +175,7 @@ public class QuestionBankService : IQuestionBankService
                 var optionsJson = question.Options?.Count > 0
                     ? JsonSerializer.Serialize(question.Options.Select(o => new
                     {
-                        text = o.OptionText,
+                        optionText = o.OptionText,
                         isCorrect = o.IsCorrect,
                         displayOrder = o.DisplayOrder
                     }), JsonOpts)
@@ -259,7 +259,7 @@ public class QuestionBankService : IQuestionBankService
         item.OptionsJson = dto.Options?.Count > 0
             ? JsonSerializer.Serialize(dto.Options.Select(o => new
             {
-                text = o.Text,
+                optionText = o.Text,
                 isCorrect = o.IsCorrect,
                 displayOrder = o.DisplayOrder
             }), JsonOpts)
@@ -287,9 +287,21 @@ public class QuestionBankService : IQuestionBankService
         {
             try
             {
-                var rawOptions = JsonSerializer.Deserialize<List<QuestionBankOptionDto>>(item.OptionsJson, JsonOpts);
-                if (rawOptions is not null)
-                    options = rawOptions;
+                using var doc = JsonDocument.Parse(item.OptionsJson);
+                foreach (var el in doc.RootElement.EnumerateArray())
+                {
+                    var opt = new QuestionBankOptionDto
+                    {
+                        OptionText = el.TryGetProperty("optionText", out var ot)
+                            ? ot.GetString() ?? ""
+                            : el.TryGetProperty("text", out var t)
+                                ? t.GetString() ?? ""
+                                : "",
+                        IsCorrect = el.TryGetProperty("isCorrect", out var ic) && ic.GetBoolean(),
+                        DisplayOrder = el.TryGetProperty("displayOrder", out var d) ? d.GetInt32() : 0
+                    };
+                    options.Add(opt);
+                }
             }
             catch { }
         }

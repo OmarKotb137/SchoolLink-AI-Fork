@@ -477,8 +477,11 @@ namespace Project.BLL.Services
                     };
                 }
 
-                // Use QuestionType from DTO (preserves Essay, FillBlank, etc.)
-                question.QuestionType = qDto.QuestionType;
+                // Preserve existing QuestionType when incoming value is default (0 = unset)
+                if (isNew)
+                    question.QuestionType = qDto.QuestionType;
+                else if (qDto.QuestionType != 0)
+                    question.QuestionType = qDto.QuestionType;
 
                 // Set CorrectAnswer from options (MCQ/TF) or from DTO (FillBlank/Essay)
                 if (qDto.Options.Count > 0)

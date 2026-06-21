@@ -36,6 +36,16 @@ public class ConversationParticipantRepository
                 p.ConversationId == conversationId &&
                 p.UserId         == userId, ct);
 
+    public async Task<ConversationParticipant?> GetByConversationAndUserWithDeletedAsync(
+        int conversationId,
+        int userId,
+        CancellationToken ct = default)
+        => await _context.ConversationParticipants
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(p =>
+                p.ConversationId == conversationId &&
+                p.UserId         == userId, ct);
+
     public async Task<bool> IsParticipantAsync(
         int conversationId,
         int userId,

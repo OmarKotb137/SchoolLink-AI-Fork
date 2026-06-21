@@ -1492,16 +1492,6 @@ public static class SeedData
         });
         await ctx.SaveChangesAsync();
 
-        ctx.BlockedUsers.Add(new BlockedUser
-        {
-            BlockerId      = firstTeacher.Id,
-            BlockedUserId  = firstStudentUser.Id,
-            ConversationId = conversation.Id,
-            CreatedAt      = now,
-            UpdatedAt      = now
-        });
-        await ctx.SaveChangesAsync();
-
         // =================================================================
         // 27. Notifications
         // =================================================================

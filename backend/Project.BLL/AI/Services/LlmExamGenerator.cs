@@ -65,12 +65,14 @@ public class LlmExamGenerator : IExamGenerator
                   "questions": [
                     {
                       "questionText": "نص السؤال",
-                      "questionType": 0,
+                      "questionType": 1,
                       "points": 5,
                       "displayOrder": 1,
                       "options": [
                         { "text": "خيار أ", "isCorrect": true, "displayOrder": 1 },
-                        { "text": "خيار ب", "isCorrect": false, "displayOrder": 2 }
+                        { "text": "خيار ب", "isCorrect": false, "displayOrder": 2 },
+                        { "text": "خيار ج", "isCorrect": false, "displayOrder": 3 },
+                        { "text": "خيار د", "isCorrect": false, "displayOrder": 4 }
                       ]
                     }
                   ]
@@ -79,7 +81,7 @@ public class LlmExamGenerator : IExamGenerator
               "standaloneQuestions": [
                 {
                   "questionText": "نص السؤال المستقل",
-                  "questionType": 0,
+                  "questionType": 1,
                   "points": 5,
                   "displayOrder": 1,
                   "correctAnswer": "الإجابة الصحيحة"
@@ -88,12 +90,12 @@ public class LlmExamGenerator : IExamGenerator
             }
 
             displayType: 0=بدون, 1=نص, 2=صورة, 3=خريطة, 4=رسم بياني
-            questionType: 0=اختيار من متعدد, 1=صح/خطأ, 2=مطابقة, 3=تعبئة فراغ, 4=مقالي
+            questionType: 1=اختيار من متعدد, 2=صح/خطأ, 3=أكمل الفراغ, 4=مقالي
             category: 0=أول فصل, 1=ثاني فصل, 2=نهائي, 3=اختبار قصير
 
             للأسئلة المقالية (questionType=4) لا تضف options بل ضع correctAnswer.
-            لأسئلة الاختيار من متعدد (questionType=0) ضع options بدون correctAnswer (الصحيح داخل options).
-            لأسئلة صح/خطأ (questionType=1) ضع options: [{"text":"صح","isCorrect":true},{"text":"خطأ","isCorrect":false}].
+            لأسئلة الاختيار من متعدد (questionType=1) ضع 4 خيارات بدون correctAnswer (الصحيح داخل options).
+            لأسئلة صح/خطأ (questionType=2) ضع options: [{"text":"صح","isCorrect":true},{"text":"خطأ","isCorrect":false}].
             """;
 
         var messages = new List<LlmChatMessage>

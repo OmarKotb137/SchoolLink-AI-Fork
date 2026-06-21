@@ -40,7 +40,7 @@
             }
           </select>
         </div>
-        <button (click)="generateWithAI()" [disabled]="loading()" class="kids-ai-btn">
+        <button (click)="startAIWizard()" [disabled]="loading()" class="kids-ai-btn">
           <span class="material-symbols-outlined">auto_awesome</span>اقتراح AI ✨
         </button>
       </div>
@@ -48,9 +48,29 @@
 
     <!-- ── Loading ── -->
     @if (loading()) {
-      <div class="kids-loading-state">
-        <span class="spin-book">📚</span>
-        <p>جاري التحميل…</p>
+      <div class="sp-loading-overlay">
+        <div class="sp-loading-card">
+          <div class="sp-load-brain">
+            <div class="sp-brain-ring"></div>
+            <div class="sp-brain-ring sp-brain-ring-2"></div>
+            <div class="sp-brain-ring sp-brain-ring-3"></div>
+            <span class="sp-brain-icon">🧠</span>
+          </div>
+          <div class="sp-load-text">
+            <span>AI</span>
+            <span class="sp-load-dots">
+              <span>.</span><span>.</span><span>.</span>
+            </span>
+          </div>
+          <p class="sp-load-sub">يحلل بياناتك ويصمم الخطة المثالية</p>
+          <div class="sp-load-bar-track">
+            <div class="sp-load-bar-fill"></div>
+          </div>
+          <div class="sp-load-tips">
+            <span>💡</span>
+            <span id="sp-tip-text">نصيحة: خصص وقتاً للمواد التي تحتاج تحسيناً</span>
+          </div>
+        </div>
       </div>
     } @else {
 
@@ -254,7 +274,7 @@
             </div>
           </div>
           <p class="ai-card-desc">اضغط الزر وسيساعدك الذكاء الاصطناعي في بناء خطة دراسية مثالية بناءً على مواد الأسبوع!</p>
-          <button (click)="generateWithAI()" [disabled]="loading()" class="kids-ai-main-btn">
+          <button (click)="startAIWizard()" [disabled]="loading()" class="kids-ai-main-btn">
             🚀 ابدأ مع AI
           </button>
         </div>
@@ -416,5 +436,114 @@
         <button (click)="confirmSelectedDays()" [disabled]="aiSelectedDays().size === 0" class="kbtn kbtn-save">✅ تأكيد</button>
       </div>
     }
+  </div>
+}
+
+<!-- ══════════════════════════════════════════
+     AI Wizard Modal
+══════════════════════════════════════════ -->
+@if (aiWizardVisible()) {
+  <div class="kids-overlay" (click)="aiWizardVisible.set(false)"></div>
+  <div class="kids-popup kids-popup-wide sp-wizard-popup">
+    <div class="popup-hd">
+      <span class="popup-hd-icon">🧠</span>
+      <span class="popup-hd-title">مساعد الخطة الذكي</span>
+      <span class="sp-wiz-step-badge">خطوة {{ aiWizardStep() + 1 }} / 4</span>
+    </div>
+    <div class="sp-wiz-steps">
+      <div class="sp-wiz-dot" [class.sp-wiz-dot-done]="aiWizardStep() > 0" [class.sp-wiz-dot-active]="aiWizardStep() === 0"></div>
+      <div class="sp-wiz-dot" [class.sp-wiz-dot-done]="aiWizardStep() > 1" [class.sp-wiz-dot-active]="aiWizardStep() === 1"></div>
+      <div class="sp-wiz-dot" [class.sp-wiz-dot-done]="aiWizardStep() > 2" [class.sp-wiz-dot-active]="aiWizardStep() === 2"></div>
+      <div class="sp-wiz-dot" [class.sp-wiz-dot-done]="aiWizardStep() > 3" [class.sp-wiz-dot-active]="aiWizardStep() === 3"></div>
+    </div>
+    @if (addError()) {
+      <div class="popup-error">{{ addError() }}</div>
+    }
+    @if (aiWizardStep() === 0) {
+      <p class="sp-wiz-desc">اختر المواد التي تريد <strong>تكثيف المذاكرة</strong> فيها:</p>
+      <div class="sp-wiz-chips">
+        @for (subj of subjects(); track subj.id) {
+          <button class="sp-chip"
+            [class.sp-chip-on]="aiFocusSubjects().has(subj.id)"
+            (click)="toggleFocusSubject(subj.id)">
+            {{ subj.name }}
+            @if (aiFocusSubjects().has(subj.id)) { <span class="sp-chip-check">✓</span> }
+          </button>
+        }
+      </div>
+    }
+    @if (aiWizardStep() === 1) {
+      <p class="sp-wiz-desc">هل لديك <strong>مواعيد مشغولة</strong> لا يمكنك المذاكرة فيها؟</p>
+      <div class="sp-busy-list">
+        @for (bt of aiBusyTimes(); track $index) {
+          <div class="sp-busy-item">
+            <span class="sp-busy-day">{{ days[bt.dayOfWeek] }}</span>
+            <span class="sp-busy-time">{{ to12h(bt.startTime) }} – {{ to12h(bt.endTime) }}</span>
+            <button (click)="removeBusyTime($index)" class="sp-busy-rm">✕</button>
+          </div>
+        }
+      </div>
+      <div class="sp-busy-add-row">
+        <select [(ngModel)]="aiNewBusyDay" class="k-select sp-sel-day">
+          @for (day of days; track $index) { <option [value]="$index">{{ day }}</option> }
+        </select>
+        <div class="time-row">
+          <select [(ngModel)]="aiNewBusyStart" class="k-select k-sel-sm"> @for (h of hours; track h) { <option [value]="h">{{ h }}</option> } </select>
+          <span class="t-colon">:</span>
+          <select [(ngModel)]="aiNewBusyStartMin" class="k-select k-sel-sm"> @for (m of minutes; track m) { <option [value]="m">{{ m }}</option> } </select>
+          <select [(ngModel)]="aiNewBusyStartPeriod" class="k-select k-sel-period">
+            <option value="ص">ص</option><option value="م">م</option>
+          </select>
+        </div>
+        <span class="sp-busy-to">إلى</span>
+        <div class="time-row">
+          <select [(ngModel)]="aiNewBusyEnd" class="k-select k-sel-sm"> @for (h of hours; track h) { <option [value]="h">{{ h }}</option> } </select>
+          <span class="t-colon">:</span>
+          <select [(ngModel)]="aiNewBusyEndMin" class="k-select k-sel-sm"> @for (m of minutes; track m) { <option [value]="m">{{ m }}</option> } </select>
+          <select [(ngModel)]="aiNewBusyEndPeriod" class="k-select k-sel-period">
+            <option value="ص">ص</option><option value="م">م</option>
+          </select>
+        </div>
+        <button (click)="addBusyTime()" class="sp-busy-add-btn">+ إضافة</button>
+      </div>
+    }
+    @if (aiWizardStep() === 2) {
+      <p class="sp-wiz-desc">ما <strong>الفترات</strong> التي تفضل المذاكرة فيها؟</p>
+      <div class="sp-wiz-periods">
+        @for (entry of periods; track $index) {
+          @let key = ['morning', 'afternoon', 'evening', 'night'][$index];
+          <button class="sp-period-card"
+            [class.sp-period-on]="aiPreferredPeriods().has(key)"
+            (click)="togglePreferredPeriod(key)">
+            <span class="material-symbols-outlined" [style.color]="entry.color" style="font-variation-settings:'FILL'1;">{{ entry.icon }}</span>
+            <span class="sp-period-label">{{ entry.label }}</span>
+            <span class="sp-period-time">{{ to12h(entry.start) }} – {{ to12h(entry.end) }}</span>
+            @if (aiPreferredPeriods().has(key)) { <span class="sp-period-check">✓</span> }
+          </button>
+        }
+      </div>
+    }
+    @if (aiWizardStep() === 3) {
+      <p class="sp-wiz-desc"><strong>ملخص اختياراتك</strong> — راجعها ثم اضغط "إنشاء الخطة"</p>
+      <div class="sp-wiz-summary">
+        @if (aiFocusSubjects().size > 0) {
+          <div class="sp-sum-row"><span class="sp-sum-icon">📚</span><span>التركيز على: <strong>{{ aiFocusSubjects().size }} مادة</strong></span></div>
+        }
+        @if (aiBusyTimes().length > 0) {
+          <div class="sp-sum-row"><span class="sp-sum-icon">⏰</span><span>مواعيد مشغولة: <strong>{{ aiBusyTimes().length }} موعد</strong></span></div>
+        }
+        @if (aiPreferredPeriods().size > 0) {
+          <div class="sp-sum-row"><span class="sp-sum-icon">🌙</span><span>الفترات المفضلة: <strong>{{ aiPreferredPeriods().size }} فترة</strong></span></div>
+        }
+        @if (aiFocusSubjects().size === 0 && aiBusyTimes().length === 0 && aiPreferredPeriods().size === 0) {
+          <div class="sp-sum-row"><span class="sp-sum-icon">🤖</span><span>سيتم إنشاء خطة متوازنة بدون تفضيلات محددة</span></div>
+        }
+      </div>
+    }
+    <div class="popup-actions">
+      @if (aiWizardStep() > 0) { <button (click)="prevWizardStep()" class="kbtn kbtn-cancel">← السابق</button> }
+      @if (aiWizardStep() < 3) { <button (click)="nextWizardStep()" class="kbtn kbtn-save">التالي →</button> }
+      @if (aiWizardStep() === 3) { <button (click)="runAIWithWizard()" [disabled]="loading()" class="kbtn kbtn-save">🚀 إنشاء الخطة</button> }
+    </div>
   </div>
 }

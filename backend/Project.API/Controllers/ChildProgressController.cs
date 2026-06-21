@@ -19,10 +19,10 @@ public class ChildProgressController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> Get()
+    public async Task<IActionResult> Get([FromQuery] int? term = null)
     {
         var parentId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var result = await _service.GetChildProgressAsync(parentId);
+        var result = await _service.GetChildProgressAsync(parentId, term);
         return Ok(result);
     }
 }

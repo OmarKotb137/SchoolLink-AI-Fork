@@ -880,12 +880,16 @@ export class Chat implements OnInit, OnDestroy {
     if (!other) return;
     this.conversationService.isUserBlocked(conv.id, other.userId).subscribe({
       next: res => {
-        if (res.isSuccess) {
-          this.isBlocked.set(res.data);
-          this.blockedByOther.set(res.data);
+        if (res.isSuccess && res.data) {
+          this.isBlocked.set(res.data.isBlocked);
+          this.blockedByOther.set(res.data.blockedByOther);
+          if (res.data.blockedByMe) {
+            this.blockedByMe.update(s => new Set(s).add(other.userId));
+          } else {
+            this.blockedByMe.update(s => { const n = new Set(s); n.delete(other.userId); return n; });
+          }
         }
       },
-      error: () => {},
     });
   }
 
@@ -1192,6 +1196,7 @@ export class Chat implements OnInit, OnDestroy {
 
   openAddParticipantModal(): void {
     this.showAddParticipantModal.set(true);
+    this.showGroupMembersModal.set(false);
     this.searchUserQuery.set('');
     this.searchUserResults.set([]);
   }
@@ -1200,6 +1205,7 @@ export class Chat implements OnInit, OnDestroy {
     this.showAddParticipantModal.set(false);
     this.searchUserQuery.set('');
     this.searchUserResults.set([]);
+    this.showGroupMembersModal.set(true);
   }
 
   openGroupMembersModal(): void {
@@ -1380,7 +1386,7 @@ export class Chat implements OnInit, OnDestroy {
     this.conversationService.blockUser(convId, blockedUserId).subscribe({
       next: res => {
         if (res.isSuccess) {
-          this.blockedByMe.update(s => new Set(s).add(blockedUserId));
+          this.blockedByMe.update(s => { const n = new Set(s).add(blockedUserId); return n; });
           this.isBlocked.set(true);
           this.showError('تم حظر المستخدم بنجاح');
         } else {

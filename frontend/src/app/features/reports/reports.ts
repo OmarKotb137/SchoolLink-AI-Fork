@@ -47,6 +47,8 @@ interface StudentReportDto {
   overallMax: number;
   overallTrend: string;
   overallChange: number;
+  finalGradeAverage: number;
+  finalGradeMax: number;
   subjectGrades: SubjectGradeDto[];
   metrics: MetricDto[];
   reportText: string | null;
@@ -92,7 +94,8 @@ export class Reports implements OnInit {
 
   sidebarOpen = signal(false);
   loading = signal(false);
-  generating = signal(false);
+  generatingReport = signal(false);
+  generatingRecs = signal(false);
   error = signal<string | null>(null);
 
   userName = computed(() => this.authService.user()?.fullName ?? 'ولي الأمر');
@@ -120,6 +123,20 @@ export class Reports implements OnInit {
   recommendationsText = computed(() => this.recsData()?.recommendationsText ?? null);
   recommendationItems = computed(() => this.recsData()?.recommendationItems ?? []);
   recSections = computed(() => this.recsData()?.sections ?? []);
+  finalGradeAverage = computed(() => this.reportData()?.finalGradeAverage ?? 0);
+  finalGradeMax = computed(() => this.reportData()?.finalGradeMax ?? 100);
+
+  // Circle info popup
+  circleInfo = signal<{ title: string; score: number; max: number; lines: string[] } | null>(null);
+
+  /** Computed breakdown for the evaluations circle */
+  evalBreakdown = computed(() => {
+    const grades = this.subjectGrades();
+    const totalScore = grades.reduce((s, g) => s + g.score, 0);
+    const totalMax = grades.reduce((s, g) => s + g.maxScore, 0);
+    const n = grades.length;
+    return { totalScore, totalMax, subjectCount: n };
+  });
 
   private aiBase = buildApiUrl('ai/reports');
 
@@ -164,22 +181,41 @@ export class Reports implements OnInit {
     ).subscribe({
       next: (data: AIReportResult[]) => {
         const reports = Array.isArray(data) ? data : [];
-        this.reportHistory.set(reports);
+        // Filter to only Student and Recommendations types (not Class)
+        this.reportHistory.set(reports.filter(r => r.reportType === 'Student' || r.reportType === 'Recommendations'));
         this.loading.set(false);
 
         // Auto-load latest structured report if summary exists AND has valid fields
         const studentReports = reports.filter(r => r.reportType === 'Student');
         if (studentReports.length > 0 && studentReports[0].summary) {
+          let parsed: any = null;
           try {
-            const parsed = normalizeKeys(JSON.parse(studentReports[0].summary));
-            if (parsed && typeof parsed.overallScore === 'number') {
-              // Fallback: if summary doesn't have reportText, use raw content
-              if (!parsed.reportText && studentReports[0].content) {
-                parsed.reportText = studentReports[0].content;
-              }
-              this.reportData.set(parsed as StudentReportDto);
+            parsed = normalizeKeys(JSON.parse(studentReports[0].summary));
+          } catch { /* summary is plain text (old format) */ }
+          if (parsed && typeof parsed.overallScore === 'number') {
+            // Fallback: if summary doesn't have reportText, use raw content
+            if (!parsed.reportText && studentReports[0].content) {
+              parsed.reportText = studentReports[0].content;
             }
-          } catch { /* ignore parse errors */ }
+            this.reportData.set(parsed as StudentReportDto);
+          } else {
+            // Old format — use content/summary as plain report text
+            const fallback: StudentReportDto = {
+              studentId: studentReports[0].studentId,
+              studentName: '',
+              overallScore: 0,
+              overallMax: 100,
+              overallTrend: 'stable',
+              overallChange: 0,
+              finalGradeAverage: 0,
+              finalGradeMax: 100,
+              subjectGrades: [],
+              metrics: [],
+              reportText: studentReports[0].content || studentReports[0].summary || '',
+              recommendationsText: null,
+            };
+            this.reportData.set(fallback);
+          }
         }
 
         // Auto-load latest recommendations from stored content (NO AI call)
@@ -249,7 +285,7 @@ export class Reports implements OnInit {
   }
 
   generateReport(studentId: number) {
-    this.generating.set(true);
+    this.generatingReport.set(true);
     this.error.set(null);
 
     this.http.get<any>(`${this.aiBase}/student/${studentId}/period/0/structured`).subscribe({
@@ -272,17 +308,17 @@ export class Reports implements OnInit {
         } else {
           this.error.set('تعذر قراءة بيانات التقرير');
         }
-        this.generating.set(false);
+        this.generatingReport.set(false);
       },
       error: () => {
         this.error.set('حدث خطأ أثناء توليد التقرير');
-        this.generating.set(false);
+        this.generatingReport.set(false);
       }
     });
   }
 
   generateRecommendations(studentId: number) {
-    this.generating.set(true);
+    this.generatingRecs.set(true);
 
     this.http.get<any>(`${this.aiBase}/recommendations/${studentId}/structured`).subscribe({
       next: (res) => {
@@ -290,10 +326,10 @@ export class Reports implements OnInit {
                                              : res?.recommendationItems != null ? res
                                              : null;
         if (dto) this.recsData.set(dto);
-        this.generating.set(false);
+        this.generatingRecs.set(false);
       },
       error: () => {
-        this.generating.set(false);
+        this.generatingRecs.set(false);
       }
     });
   }
@@ -306,30 +342,67 @@ export class Reports implements OnInit {
                                           : res?.id != null ? res
                                           : null;
         if (data) {
-          if (data.reportType === 'Student' && data.summary) {
-            try {
-              const parsed = normalizeKeys(JSON.parse(data.summary));
-              if (parsed && typeof parsed.overallScore === 'number') {
-                // Fallback: if summary doesn't have reportText, use raw content
-                if (!parsed.reportText && data.content) {
-                  parsed.reportText = data.content;
-                }
-                this.reportData.set(parsed as StudentReportDto);
-                this.recsData.set(null);
-              } else {
-                this.reportData.set(null);
-                this.recsData.set(null);
+          if (data.reportType === 'Student') {
+            let parsed: any = null;
+            // Try to parse summary as JSON (new format)
+            if (data.summary) {
+              try {
+                parsed = normalizeKeys(JSON.parse(data.summary));
+              } catch {
+                // Summary is plain text (old seed format), ignore
               }
-            } catch {
-              this.reportData.set(null);
+            }
+            if (parsed && typeof parsed.overallScore === 'number') {
+              if (!parsed.reportText && data.content) {
+                parsed.reportText = data.content;
+              }
+              this.reportData.set(parsed as StudentReportDto);
+              this.recsData.set(null);
+            } else {
+              // Old format or plain text summary — show content as report text
+              const fallbackReport: StudentReportDto = {
+                studentId: data.studentId,
+                studentName: '',
+                overallScore: 0,
+                overallMax: 100,
+                overallTrend: 'stable',
+                overallChange: 0,
+                finalGradeAverage: 0,
+                finalGradeMax: 100,
+                subjectGrades: [],
+                metrics: [],
+                reportText: data.content || data.summary || '',
+                recommendationsText: null,
+              };
+              this.reportData.set(fallbackReport);
               this.recsData.set(null);
             }
           } else if (data.reportType === 'Recommendations') {
             this.reportData.set(null);
             this.parseRecommendationsFromContent(data);
           } else {
-            this.reportData.set(null);
-            this.recsData.set(null);
+            // Unknown type — show raw content if available
+            if (data.content || data.summary) {
+              const fallback: StudentReportDto = {
+                studentId: data.studentId,
+                studentName: '',
+                overallScore: 0,
+                overallMax: 100,
+                overallTrend: 'stable',
+                overallChange: 0,
+                finalGradeAverage: 0,
+                finalGradeMax: 100,
+                subjectGrades: [],
+                metrics: [],
+                reportText: data.content || data.summary || '',
+                recommendationsText: null,
+              };
+              this.reportData.set(fallback);
+              this.recsData.set(null);
+            } else {
+              this.reportData.set(null);
+              this.recsData.set(null);
+            }
           }
         }
         this.loading.set(false);
@@ -438,5 +511,44 @@ export class Reports implements OnInit {
     if (pct >= 60) return '#2563eb';
     if (pct >= 40) return '#f59e0b';
     return '#dc2626';
+  }
+
+  showEvalInfo() {
+    const bd = this.evalBreakdown();
+    this.circleInfo.set({
+      title: 'التقييمات',
+      score: this.overallScore(),
+      max: this.overallMax(),
+      lines: [
+        `محسوبة من درجات ${bd.subjectCount} مواد في التقييمات الأسبوعية`,
+        `كل مادة من ${Math.round(bd.totalMax / bd.subjectCount)} درجات`,
+        `مجموع درجات الطالب: ${bd.totalScore} / ${bd.totalMax}`,
+        `النسبة: ${bd.totalScore} ÷ ${bd.totalMax} × 100 = ${this.overallScore().toFixed(1)}%`,
+      ],
+    });
+  }
+
+  showFinalInfo() {
+    const bd = this.evalBreakdown();
+    const n = bd.subjectCount;
+    // Estimate total final grade max = n * 100
+    const totalFinalMax = n * 100;
+    // Derive total earned from the average
+    const totalFinalEarned = this.finalGradeAverage() * n;
+    this.circleInfo.set({
+      title: 'الدرجات النهائية',
+      score: this.finalGradeAverage(),
+      max: this.finalGradeMax(),
+      lines: [
+        `محسوبة من متوسط الدرجات النهائية لـ ${n} مواد`,
+        `كل مادة من 100 درجة (امتحان الترم + أعمال السنة)`,
+        `مجموع درجات الطالب: ${totalFinalEarned.toFixed(1)} / ${totalFinalMax}`,
+        `المتوسط: ${totalFinalEarned.toFixed(1)} ÷ ${n} = ${this.finalGradeAverage().toFixed(1)}%`,
+      ],
+    });
+  }
+
+  closeCircleInfo() {
+    this.circleInfo.set(null);
   }
 }

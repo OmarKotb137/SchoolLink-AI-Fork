@@ -39,8 +39,8 @@
     @if (!loading() && selectedChildId()) {
       <!-- Action Buttons -->
       <div class="actions-row">
-        <button class="btn-primary" (click)="generateReport(selectedChildId()!)" [disabled]="generating()">
-          @if (generating()) {
+        <button class="btn-primary" (click)="generateReport(selectedChildId()!)" [disabled]="generatingReport()">
+          @if (generatingReport()) {
             <span class="spinner-sm"></span>
             <span>جاري التوليد...</span>
           } @else {
@@ -48,9 +48,14 @@
             <span>توليد تقرير جديد</span>
           }
         </button>
-        <button class="btn-secondary" (click)="generateRecommendations(selectedChildId()!)" [disabled]="generating()">
-          <span class="material-symbols-outlined">psychology</span>
-          <span>توصيات ذكية</span>
+        <button class="btn-secondary" (click)="generateRecommendations(selectedChildId()!)" [disabled]="generatingRecs()">
+          @if (generatingRecs()) {
+            <span class="spinner-sm"></span>
+            <span>جاري التوليد...</span>
+          } @else {
+            <span class="material-symbols-outlined">psychology</span>
+            <span>توصيات ذكية</span>
+          }
         </button>
       </div>
 
@@ -72,7 +77,7 @@
               <span>تقرير الطالب: <strong>{{ reportData()?.studentName || selectedChildName() }}</strong></span>
             </div>
 
-            <!-- Overall Grade Circle -->
+            <!-- Dual Grade Circles: Evaluations + Final Grades -->
             @if (overallMax() > 0) {
               <div class="card overall-card">
                 <div class="card-header">
@@ -81,18 +86,69 @@
                   <span class="student-name-badge">{{ reportData()?.studentName || selectedChildName() }}</span>
                 </div>
                 <div class="overall-body">
-                  <div class="grade-circle" [style.--grade-color]="getGradeColor(overallScore(), overallMax())">
-                    <svg viewBox="0 0 120 120" class="grade-svg">
-                      <circle cx="60" cy="60" r="52" class="grade-bg" />
-                      <circle cx="60" cy="60" r="52" class="grade-progress"
-                        [style.stroke-dashoffset]="340 - (overallScore() / overallMax()) * 340"
-                        [style.stroke]="getGradeColor(overallScore(), overallMax())" />
-                    </svg>
-                    <div class="grade-value">
-                      <span class="grade-num">{{ overallScore() }}</span>
-                      <span class="grade-max">/ {{ overallMax() }}</span>
+                  <div class="dual-circles">
+                    <!-- Circle 1: التقييمات -->
+                    <div class="dual-circle-item" (click)="showEvalInfo()">
+                      <div class="grade-circle clickable" [style.--grade-color]="getGradeColor(overallScore(), overallMax())">
+                        <svg viewBox="0 0 120 120" class="grade-svg">
+                          <circle cx="60" cy="60" r="52" class="grade-bg" />
+                          <circle cx="60" cy="60" r="52" class="grade-progress"
+                            [style.stroke-dashoffset]="340 - (overallScore() / overallMax()) * 340"
+                            [style.stroke]="getGradeColor(overallScore(), overallMax())" />
+                        </svg>
+                        <div class="grade-value">
+                          <span class="grade-num">{{ overallScore() | number:'1.1-1' }}</span>
+                          <span class="grade-max">/ {{ overallMax() }}</span>
+                        </div>
+                      </div>
+                      <span class="dual-circle-label">التقييمات</span>
+                      <span class="info-hint">اضغط للتفاصيل</span>
+                    </div>
+
+                    <!-- Circle 2: الدرجات النهائية -->
+                    <div class="dual-circle-item" (click)="showFinalInfo()">
+                      <div class="grade-circle clickable" [style.--grade-color]="getGradeColor(finalGradeAverage(), finalGradeMax())">
+                        <svg viewBox="0 0 120 120" class="grade-svg">
+                          <circle cx="60" cy="60" r="52" class="grade-bg" />
+                          <circle cx="60" cy="60" r="52" class="grade-progress"
+                            [style.stroke-dashoffset]="340 - (finalGradeAverage() / finalGradeMax()) * 340"
+                            [style.stroke]="getGradeColor(finalGradeAverage(), finalGradeMax())" />
+                        </svg>
+                        <div class="grade-value">
+                          <span class="grade-num">{{ finalGradeAverage() | number:'1.1-1' }}</span>
+                          <span class="grade-max">/ {{ finalGradeMax() }}</span>
+                        </div>
+                      </div>
+                      <span class="dual-circle-label">الدرجات النهائية</span>
+                      <span class="info-hint">اضغط للتفاصيل</span>
                     </div>
                   </div>
+
+                  <!-- Circle Info Popup -->
+                  @if (circleInfo(); as info) {
+                    <div class="circle-info-overlay" (click)="closeCircleInfo()">
+                      <div class="circle-info-card" (click)="$event.stopPropagation()">
+                        <button class="circle-info-close" (click)="closeCircleInfo()">
+                          <span class="material-symbols-outlined">close</span>
+                        </button>
+                        <div class="circle-info-header">
+                          <span class="circle-info-title">{{ info.title }}</span>
+                          <span class="circle-info-score" [style.color]="getGradeColor(info.score, info.max)">
+                            {{ info.score | number:'1.1-1' }}%
+                          </span>
+                        </div>
+                        <div class="circle-info-body">
+                          @for (line of info.lines; track $index) {
+                            <div class="circle-info-line">
+                              <span class="info-dot"></span>
+                              <span>{{ line }}</span>
+                            </div>
+                          }
+                        </div>
+                      </div>
+                    </div>
+                  }
+
                   @if (overallTrend() !== 'stable') {
                     <div class="trend-badge" [class.up]="overallTrend() === 'up'" [class.down]="overallTrend() === 'down'">
                       <span class="material-symbols-outlined">
@@ -117,7 +173,7 @@
                     <div class="metric-item">
                       <div class="metric-info">
                         <span class="metric-label">{{ m.label }}</span>
-                        <span class="metric-value">{{ m.value }}{{ m.max === 100 ? '%' : '/' + m.max }}</span>
+                        <span class="metric-value">{{ m.value | number:'1.1-1' }}{{ m.max === 100 ? '%' : '/' + m.max }}</span>
                       </div>
                       <div class="metric-bar-track">
                         <div class="metric-bar-fill" [style.width.%]="(m.value / m.max) * 100"

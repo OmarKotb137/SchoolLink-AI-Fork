@@ -135,7 +135,18 @@ public class AcademicReportService : IAcademicReportService
             }
         }
 
-        // ── 4. Build student rows ────────────────────────────
+        // ── 4. Compute per-subject evaluation average from evalMap (correct) ──
+        var enrollmentEvalAvg = new Dictionary<int, double>();
+        foreach (var eid in enrollmentIds)
+        {
+            if (evalMap.TryGetValue(eid, out var weeks) && weeks.Count > 0)
+            {
+                var avgRaw = weeks.Values.Select(w => w.RawScore).Average();
+                enrollmentEvalAvg[eid] = Math.Round(avgRaw, 1);
+            }
+        }
+
+        // ── 5. Build student rows ────────────────────────────
         var studentNameMap = new Dictionary<int, string>();
         var rows = new List<StudentReportRowDto>();
 
@@ -145,8 +156,12 @@ public class AcademicReportService : IAcademicReportService
             var studentName = grade.Enrollment?.Student?.FullName ?? "طالب";
             studentNameMap[enrollmentId] = studentName;
 
-            var pct = grade.MaxTotal > 0
-                ? Math.Round((double)(grade.Total / grade.MaxTotal * 100))
+            // Use per-subject evaluation average instead of the inflated PeriodAvgScore
+            var correctPeriodAvg = enrollmentEvalAvg.GetValueOrDefault(enrollmentId, 0);
+            var correctWrittenTotal = correctPeriodAvg + (double)grade.Assessment1Score + (double)grade.Assessment2Score;
+            var correctTotal = correctWrittenTotal + (double)grade.FinalExamScore;
+            var correctPct = grade.MaxTotal > 0
+                ? Math.Round(correctTotal / (double)grade.MaxTotal * 100)
                 : 0;
 
             var weeklyScores = weeklyPeriods.Select(p =>
@@ -171,25 +186,25 @@ public class AcademicReportService : IAcademicReportService
                 WeeklyScores = weeklyScores,
                 Assessment1 = (double)grade.Assessment1Score,
                 Assessment2 = (double)grade.Assessment2Score,
-                TotalMonthly = (double)grade.WrittenTotal,
-                FinalTotal = (double)grade.Total,
+                TotalMonthly = Math.Round(correctWrittenTotal, 1),
+                FinalTotal = Math.Round(correctTotal, 1),
                 MaxTotal = (double)grade.MaxTotal,
-                Percentage = pct
+                Percentage = correctPct
             });
         }
 
-        // ── 5. Monthly exam data ─────────────────────────────
+        // ── 6. Monthly exam data ─────────────────────────────
         // Fetch for all enrollment IDs directly rather than per-class
         var monthlyExams = await BuildMonthlyExams(enrollmentIds, studentNameMap, term);
 
-        // ── 6. Summary stats ─────────────────────────────────
+        // ── 7. Summary stats ─────────────────────────────────
         var n = rows.Count;
         var avgPct = n > 0 ? Math.Round(rows.Average(r => r.Percentage)) : 0;
         var avgA1 = n > 0 ? Math.Round(rows.Average(r => r.Assessment1), 1) : 0.0;
         var avgA2 = n > 0 ? Math.Round(rows.Average(r => r.Assessment2), 1) : 0.0;
         var avgFinal = n > 0 ? Math.Round(rows.Average(r => r.FinalTotal), 1) : 0.0;
 
-        // ── 7. Month groups ──────────────────────────────────
+        // ── 8. Month groups ──────────────────────────────────
         var monthGroups = weeklyPeriods
             .GroupBy(p => p.MonthName ?? "غير محدد")
             .Select(g => new MonthGroupDto
@@ -205,7 +220,7 @@ public class AcademicReportService : IAcademicReportService
             })
             .ToList();
 
-        // ── 8. Quick lists ───────────────────────────────────
+        // ── 9. Quick lists ───────────────────────────────────
         var topStudents = rows
             .OrderByDescending(r => r.Percentage)
             .Take(10)

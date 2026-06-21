@@ -1,11 +1,10 @@
 <app-sidebar [(isOpen)]="sidebarOpen" />
-<div class="kids-main">
-
-  <main class="kids-content">
+<div class="main-content">
+  <main class="page-wrapper">
 
     <!-- Error Banner -->
     @if (errorMsg()) {
-      <div class="kids-error-banner">
+      <div class="error-banner">
         <span class="material-symbols-outlined">info</span>
         <span>{{ errorMsg() }}</span>
         <button (click)="dismissError()"><span class="material-symbols-outlined">close</span></button>
@@ -13,16 +12,18 @@
     }
 
     <!-- Header -->
-    <div class="kids-header">
-      <div class="kids-header-title">
-        <span class="header-icon">📝</span>
+    <div class="page-header">
+      <div class="header-title-group">
+        <div class="header-icon-box">
+          <span class="material-symbols-outlined">auto_awesome</span>
+        </div>
         <div>
           <h1>مولد الامتحانات</h1>
           <p>إنشاء امتحان باستخدام الذكاء الاصطناعي</p>
         </div>
       </div>
-      <div class="kids-controls">
-        <button (click)="reset()" class="kids-ai-btn kids-ai-btn-outline">
+      <div class="header-actions">
+        <button (click)="reset()" class="gradient-btn gradient-btn-outline">
           <span class="material-symbols-outlined">refresh</span> إعادة تعيين
         </button>
       </div>
@@ -32,17 +33,17 @@
     <div class="exam-grid">
       <!-- Left: Form -->
       <div class="exam-form-col">
-        <div class="kids-card">
-          <div class="card-hd">
+        <div class="glass-card-custom">
+          <div class="card-header-custom">
             <span class="material-symbols-outlined">tune</span>
             <span>إعدادات الامتحان</span>
           </div>
-          <div class="card-body">
+          <div class="card-body-custom">
 
             <!-- Grade Level -->
-            <div class="pf">
+            <div class="form-field">
               <label>الصف الدراسي <span class="required-mark">*</span></label>
-              <select class="k-select" [ngModel]="selectedGradeLevelId()" (ngModelChange)="selectedGradeLevelId.set($event)">
+              <select class="select-glass" [ngModel]="selectedGradeLevelId()" (ngModelChange)="selectedGradeLevelId.set($event)">
                 <option [ngValue]="null">اختر الصف...</option>
                 @for (gl of gradeLevels(); track gl.id) {
                   <option [ngValue]="gl.id">{{ gl.name }}</option>
@@ -51,9 +52,9 @@
             </div>
 
             <!-- Subject -->
-            <div class="pf">
+            <div class="form-field">
               <label>المادة <span class="required-mark">*</span></label>
-              <select class="k-select" [ngModel]="selectedSubjectName()" (ngModelChange)="selectedSubjectName.set($event); onSubjectChange()">
+              <select class="select-glass" [ngModel]="selectedSubjectName()" (ngModelChange)="selectedSubjectName.set($event); onSubjectChange()">
                 <option value="" disabled>اختر مادة...</option>
                 @for (s of subjectOptions(); track s.subjectId) {
                   <option [value]="s.subjectName">{{ s.subjectName }}</option>
@@ -61,47 +62,47 @@
               </select>
             </div>
 
-            <!-- Class (اختياري — يظهر دايماً) -->
+            <!-- Class -->
             @if (selectedSubjectName() && classOptions().length > 0) {
-              <div class="pf">
+              <div class="form-field">
                 <label>الفصل (اختياري)</label>
-                <select class="k-select" [ngModel]="selectedCstId()" (ngModelChange)="selectedCstId.set($event); onClassChange()">
+                <select class="select-glass" [ngModel]="selectedCstId()" (ngModelChange)="selectedCstId.set($event); onClassChange()">
                   <option [ngValue]="null">بدون فصل</option>
                   @for (c of classOptions(); track c.id) {
                     <option [ngValue]="c.id">{{ c.className }}</option>
                   }
                 </select>
-                <small class="pf-hint">يمكنك ترك الفصل فارغاً — الامتحان مش هيتقيد بفصل محدد</small>
+                <small class="field-hint">يمكنك ترك الفصل فارغاً — الامتحان مش هيتقيد بفصل محدد</small>
               </div>
             }
 
             <!-- Title -->
-            <div class="pf">
+            <div class="form-field">
               <label>عنوان الامتحان</label>
-              <input class="k-input" type="text" placeholder="مثال: اختبار منتصف الفصل" [ngModel]="title()" (ngModelChange)="title.set($event)" />
+              <input class="input-glass" type="text" placeholder="مثال: اختبار منتصف الفصل" [ngModel]="title()" (ngModelChange)="title.set($event)" />
             </div>
 
-              <!-- Row: Duration + Score -->
-              <div class="pf-row">
-                <div class="pf flex-1">
-                  <label>المدة (دقيقة)</label>
-                  <input class="k-input" type="number" min="15" max="180" [ngModel]="durationMinutes()" (ngModelChange)="durationMinutes.set($event)" />
-                </div>
-                <div class="pf flex-1">
-                  <label>الدرجة الكلية</label>
-                  <input class="k-input" type="number" min="10" max="500" [ngModel]="totalScore()" (ngModelChange)="totalScore.set($event)" />
-                </div>
+            <!-- Row: Duration + Score -->
+            <div class="form-row">
+              <div class="form-field">
+                <label>المدة (دقيقة)</label>
+                <input class="input-glass" type="number" min="15" max="180" [ngModel]="durationMinutes()" (ngModelChange)="durationMinutes.set($event)" />
               </div>
+              <div class="form-field">
+                <label>الدرجة الكلية</label>
+                <input class="input-glass" type="number" min="10" max="500" [ngModel]="totalScore()" (ngModelChange)="totalScore.set($event)" />
+              </div>
+            </div>
 
             <!-- Question Types with Per-Type Count -->
-            <div class="pf">
+            <div class="form-field">
               <label>أنواع الأسئلة وعدد كل نوع</label>
               <div class="qtype-count-grid">
                 @for (qt of QUESTION_TYPE_LABELS; track qt.value) {
                   <div class="qtype-count-row" [class.qtype-on]="questionCounts()[qt.value] > 0">
                     <span class="material-symbols-outlined">{{ qt.icon }}</span>
                     <span class="qtype-label">{{ qt.label }}</span>
-                    <input class="k-input k-input-sm" type="number" min="0" max="50"
+                    <input class="input-glass input-glass-sm" type="number" min="0" max="50"
                            [ngModel]="questionCounts()[qt.value]"
                            (ngModelChange)="setQuestionCount(qt.value, $event)" />
                   </div>
@@ -111,15 +112,15 @@
             </div>
 
             <!-- Topic -->
-            <div class="pf">
+            <div class="form-field">
               <label>موضوع محدد (اختياري)</label>
-              <input class="k-input" type="text" placeholder="مثال: المعادلات التربيعية، البناء الضوئي" [ngModel]="topic()" (ngModelChange)="topic.set($event)" />
+              <input class="input-glass" type="text" placeholder="مثال: المعادلات التربيعية، البناء الضوئي" [ngModel]="topic()" (ngModelChange)="topic.set($event)" />
             </div>
 
             <!-- Unit -->
-            <div class="pf">
+            <div class="form-field">
               <label>الوحدة (اختياري)</label>
-              <select class="k-select" [ngModel]="selectedUnitId()" (ngModelChange)="selectedUnitId.set($event); onUnitChange()">
+              <select class="select-glass" [ngModel]="selectedUnitId()" (ngModelChange)="selectedUnitId.set($event); onUnitChange()">
                 <option [ngValue]="null">بدون اختيار وحدة</option>
                 @for (u of units(); track u.id) {
                   <option [ngValue]="u.id">{{ u.name }}</option>
@@ -129,7 +130,7 @@
 
             <!-- Lessons -->
             @if (lessons().length > 0) {
-              <div class="pf">
+              <div class="form-field">
                 <label>الدروس</label>
                 <div class="lesson-list">
                   @for (l of lessons(); track l.id) {
@@ -143,9 +144,9 @@
             }
 
             <!-- Generate Button -->
-            <button class="kids-ai-main-btn" (click)="preview()" [disabled]="generating() || !selectedSubjectName() || !selectedGradeLevelId()">
+            <button class="gradient-btn gradient-btn-full" (click)="preview()" [disabled]="generating() || !selectedSubjectName() || !selectedGradeLevelId()">
               @if (generating()) {
-                <span class="spinner"></span>
+                <span class="spinner-sm"></span>
                 <span>جاري الإنشاء...</span>
               } @else {
                 <span class="material-symbols-outlined">auto_awesome</span>
@@ -157,12 +158,12 @@
 
         <!-- History -->
         @if (history().length > 0) {
-          <div class="kids-card history-card">
-            <div class="card-hd">
+          <div class="glass-card-custom history-card">
+            <div class="card-header-custom">
               <span class="material-symbols-outlined">history</span>
               <span>الامتحانات السابقة</span>
             </div>
-            <div class="card-body">
+            <div class="card-body-custom">
               <div class="history-list">
                 @for (exam of history(); track exam.id) {
                   <div class="history-row" (click)="viewHistoryExam(exam.id)" role="button" tabindex="0">
@@ -187,17 +188,38 @@
       <!-- Right: Preview -->
       <div class="exam-preview-col">
         @if (generating() || viewingHistoryId()) {
-          <div class="kids-loading-state">
-            <span class="spin-book">🤖</span>
-            <p>جاري {{ viewingHistoryId() ? 'تحميل' : 'إنشاء' }} الامتحان...</p>
+          <div class="loading-state-generator">
+            <div class="loading-ai-card">
+              <div class="loading-ai-icon-wrap">
+                <div class="loading-glow-ring"></div>
+                <div class="loading-spin-ring"></div>
+                <div class="loading-spin-ring-2"></div>
+                <span class="loading-emoji">🤖</span>
+              </div>
+              <p>جاري {{ viewingHistoryId() ? 'تحميل' : 'إنشاء' }} الامتحان...</p>
+              <p class="loading-sub">{{ viewingHistoryId() ? 'يتم تحميل بيانات الامتحان' : 'الذكاء الاصطناعي يولد الأسئلة الآن' }}</p>
+              <div class="loading-dots">
+                <span></span><span></span><span></span><span></span><span></span>
+              </div>
+            </div>
           </div>
         } @else if (saving()) {
-          <div class="kids-loading-state">
-            <span class="spin-book">💾</span>
-            <p>جاري حفظ الامتحان...</p>
+          <div class="loading-state-generator">
+            <div class="loading-ai-card">
+              <div class="loading-ai-icon-wrap">
+                <div class="loading-glow-ring"></div>
+                <div class="loading-save-ring"></div>
+                <span class="loading-save-icon">💾</span>
+              </div>
+              <p>جاري حفظ الامتحان...</p>
+              <p class="loading-sub">يتم حفظ البيانات في قاعدة البيانات</p>
+              <div class="loading-dots">
+                <span></span><span></span><span></span><span></span><span></span>
+              </div>
+            </div>
           </div>
         } @else if (previewExam(); as preview) {
-          <div class="kids-card exam-result-card">
+          <div class="glass-card-custom exam-result-card">
             @if (savedExamId()) {
               <div class="saved-banner">
                 <span class="material-symbols-outlined">check_circle</span>
@@ -205,18 +227,18 @@
               </div>
               @if (savedExamUid(); as uid) {
                 <div class="preview-link-row">
-                  <a class="kids-ai-main-btn preview-link-btn" [href]="'/exam/' + uid + '/html'" target="_blank">
+                  <a class="gradient-btn preview-link-btn" [href]="'/exam/' + uid + '/html'" target="_blank">
                     <span class="material-symbols-outlined">visibility</span> معاينة الامتحان
                   </a>
                 </div>
               }
             }
-            <div class="card-hd">
+            <div class="card-header-custom">
               <span class="material-symbols-outlined">description</span>
               <span>{{ preview.title }}</span>
               <span class="ai-badge">AI</span>
             </div>
-            <div class="card-body">
+            <div class="card-body-custom">
               <!-- Exam Info -->
               <div class="exam-info-row">
                 <span><b>المادة:</b> {{ preview.subjectName }}</span>
@@ -230,23 +252,23 @@
 
               @if (editMode()) {
                 <div class="edit-meta-section">
-                  <div class="pf">
+                  <div class="form-field">
                     <label>عنوان الامتحان</label>
-                    <input class="k-input" type="text" [ngModel]="editTitle()" (ngModelChange)="editTitle.set($event)" />
+                    <input class="input-glass" type="text" [ngModel]="editTitle()" (ngModelChange)="editTitle.set($event)" />
                   </div>
-                  <div class="pf-row">
-                    <div class="pf flex-1">
+                  <div class="form-row">
+                    <div class="form-field">
                       <label>المدة (دقيقة)</label>
-                      <input class="k-input" type="number" min="15" max="180" [ngModel]="editDuration()" (ngModelChange)="editDuration.set($event)" />
+                      <input class="input-glass" type="number" min="15" max="180" [ngModel]="editDuration()" (ngModelChange)="editDuration.set($event)" />
                     </div>
-                    <div class="pf flex-1">
+                    <div class="form-field">
                       <label>الدرجة الكلية</label>
-                      <input class="k-input" type="number" min="10" max="500" [ngModel]="editTotalScore()" (ngModelChange)="editTotalScore.set($event)" />
+                      <input class="input-glass" type="number" min="10" max="500" [ngModel]="editTotalScore()" (ngModelChange)="editTotalScore.set($event)" />
                     </div>
                   </div>
-                  <div class="pf">
+                  <div class="form-field">
                     <label>المادة</label>
-                    <select class="k-select" [ngModel]="editSubjectName()" (ngModelChange)="editSubjectName.set($event); onEditSubjectChange()">
+                    <select class="select-glass" [ngModel]="editSubjectName()" (ngModelChange)="editSubjectName.set($event); onEditSubjectChange()">
                       <option value="" disabled>اختر مادة...</option>
                       @for (s of subjectOptions(); track s.subjectId) {
                         <option [value]="s.subjectName">{{ s.subjectName }}</option>
@@ -254,9 +276,9 @@
                     </select>
                   </div>
                   @if (editSubjectName()) {
-                    <div class="pf">
+                    <div class="form-field">
                       <label>الفصل</label>
-                      <select class="k-select" [ngModel]="editCstId()" (ngModelChange)="editCstId.set($event)">
+                      <select class="select-glass" [ngModel]="editCstId()" (ngModelChange)="editCstId.set($event)">
                         <option [ngValue]="null">{{ editHasMultipleClasses() ? 'بدون فصل' : 'تلقائي' }}</option>
                         @for (c of editClassOptions(); track c.id) {
                           <option [ngValue]="c.id">{{ c.className }}</option>
@@ -357,12 +379,12 @@
               <div class="save-section">
                 @if (editMode()) {
                   <div class="edit-actions-row">
-                    <button class="kids-ai-btn kids-ai-btn-outline" (click)="cancelEdit()" style="flex:1">
+                    <button class="gradient-btn gradient-btn-outline" (click)="cancelEdit()" style="flex:1">
                       <span class="material-symbols-outlined">close</span> إلغاء
                     </button>
-                    <button class="kids-ai-main-btn" (click)="saveEdits()" [disabled]="saving()" style="flex:1">
+                    <button class="gradient-btn" (click)="saveEdits()" [disabled]="saving()" style="flex:1">
                       @if (saving()) {
-                        <span class="spinner"></span>
+                        <span class="spinner-sm"></span>
                       } @else {
                         <span class="material-symbols-outlined">save</span>
                       }
@@ -371,20 +393,20 @@
                   </div>
                 } @else if (savedExamId()) {
                   <div class="edit-actions-row">
-                    <button class="kids-ai-btn kids-ai-btn-outline" (click)="reset()" style="flex:1">
+                    <button class="gradient-btn gradient-btn-outline" (click)="reset()" style="flex:1">
                       <span class="material-symbols-outlined">add</span> إنشاء امتحان جديد
                     </button>
                     @if (savedExamUid()) {
-                      <button class="kids-ai-btn kids-ai-btn-outline" (click)="toggleEdit()" style="flex:1">
+                      <button class="gradient-btn gradient-btn-outline" (click)="toggleEdit()" style="flex:1">
                         <span class="material-symbols-outlined">edit</span> تعديل الأسئلة
                       </button>
                     }
                   </div>
                   @if (savedExamUid(); as uid) {
                     <div class="edit-actions-row" style="margin-top:8px">
-                      <button class="kids-ai-btn kids-ai-btn-outline" (click)="embedToQuestionBank()" [disabled]="embedding()" style="flex:1">
+                      <button class="gradient-btn gradient-btn-outline" (click)="embedToQuestionBank()" [disabled]="embedding()" style="flex:1">
                         @if (embedding()) {
-                          <span class="spinner"></span>
+                          <span class="spinner-sm"></span>
                         } @else {
                           <span class="material-symbols-outlined">database</span>
                         }
@@ -393,7 +415,7 @@
                     </div>
                   }
                 } @else {
-                  <button class="kids-ai-main-btn save-btn" (click)="confirmSave()">
+                  <button class="gradient-btn save-btn" (click)="confirmSave()">
                     <span class="material-symbols-outlined">save</span> حفظ الامتحان
                   </button>
                 }
@@ -401,7 +423,7 @@
             </div>
           </div>
         } @else {
-          <div class="kids-card empty-preview">
+          <div class="empty-preview">
             <div class="empty-preview-inner">
               <span class="empty-icon">📄</span>
               <h3>لم يتم إنشاء امتحان بعد</h3>
@@ -422,8 +444,8 @@
       <h3>هل تريد حفظ هذا الامتحان؟</h3>
       <p>سيتم حفظ الامتحان في قاعدة البيانات ويمكنك الرجوع إليه لاحقاً</p>
       <div class="confirm-actions">
-        <button class="kids-ai-btn kids-ai-btn-outline" (click)="cancelSave()">إلغاء</button>
-        <button class="kids-ai-main-btn" (click)="saveExam()">حفظ الامتحان</button>
+        <button class="gradient-btn gradient-btn-outline" (click)="cancelSave()">إلغاء</button>
+        <button class="gradient-btn" (click)="saveExam()">حفظ الامتحان</button>
       </div>
     </div>
   </div>
@@ -436,8 +458,8 @@
       <h3>هل أنت متأكد من حذف الامتحان؟</h3>
       <p>سيتم حذف الامتحان بشكل نهائي ولا يمكن التراجع عن هذا الإجراء</p>
       <div class="confirm-actions">
-        <button class="kids-ai-btn kids-ai-btn-outline" (click)="cancelDelete()">إلغاء</button>
-        <button class="kids-ai-main-btn" style="background:linear-gradient(135deg,#ef4444,#dc2626)" (click)="confirmDelete()">حذف الامتحان</button>
+        <button class="gradient-btn gradient-btn-outline" (click)="cancelDelete()">إلغاء</button>
+        <button class="gradient-btn gradient-btn-danger" (click)="confirmDelete()">حذف الامتحان</button>
       </div>
     </div>
   </div>

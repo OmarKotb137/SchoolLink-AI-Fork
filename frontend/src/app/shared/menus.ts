@@ -98,7 +98,6 @@ export const TEACHER_MENU: SidebarMenuSection[] = [
       { label: 'إنشاء امتحان',    icon: 'quiz',           route: '/exam-generator'       },
       { label: 'بنك الأسئلة',     icon: 'database',       route: '/question-bank'        },
       { label: 'إدارة الواجبات',  icon: 'assignment_add', route: '/assignment-management'},
-      { label: 'محتوى الدروس',    icon: 'menu_book',      route: '/lesson-creator'       },
       { label: 'المكتبة الرقمية', icon: 'library_books',  route: '/digital-library'      },
     ],
   },
