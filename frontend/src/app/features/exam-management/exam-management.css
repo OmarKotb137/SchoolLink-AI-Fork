@@ -634,7 +634,25 @@
 }
 .qtype-mcq { background: rgba(124,58,237,0.1); color: #7c3aed; }
 .qtype-tf { background: rgba(245,158,11,0.1); color: #92400e; }
+.qtype-fill { background: rgba(2,132,199,0.1); color: #0284c7; }
 .qtype-essay { background: rgba(255,255,255,0.4); color: #6b7280; }
+
+/* ── Scope Badge (نطاق النشر: فصل / صف) ─────────── */
+.scope-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(0,35,111,0.08);
+  color: #00236f;
+  white-space: nowrap;
+}
+.scope-badge.scope-grade {
+  background: rgba(2,132,199,0.12);
+  color: #0369a1;
+}
 
 /* ── Attempt Row ────────────────────────────────── */
 .attempt-row {

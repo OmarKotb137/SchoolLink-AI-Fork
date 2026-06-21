@@ -80,10 +80,11 @@ export class TimetableService {
     return this.http.post<any>(this.apiUrl, data);
   }
 
-  cloneDraft(classId: number, academicYearId: number): Observable<any> {
+  cloneDraft(classId: number, academicYearId: number, replaceExisting: boolean = false): Observable<any> {
     const params = new HttpParams()
       .set('classId',        classId.toString())
-      .set('academicYearId', academicYearId.toString());
+      .set('academicYearId', academicYearId.toString())
+      .set('replaceExisting', replaceExisting.toString());
     return this.http.post<any>(`${this.apiUrl}/clone-draft`, {}, { params });
   }
 
@@ -119,6 +120,22 @@ export class TimetableService {
 
   deleteSlot(id: number): Observable<any> {
     return this.http.delete<any>(`${this.apiUrl}/slots/${id}`);
+  }
+
+  /**
+   * تحديث توقيت كل الحصص برقم حصة معيّن داخل الجدول دفعة واحدة (batch).
+   * يُستخدم من رأس الجدول الموحّد لتطبيق التوقيت على عمود كامل (كل الأيام).
+   */
+  updatePeriodTiming(
+    timetableId: number,
+    periodNumber: number,
+    startTime: string,
+    endTime: string
+  ): Observable<any> {
+    return this.http.put<any>(
+      `${this.apiUrl}/${timetableId}/period-time`,
+      { periodNumber, startTime, endTime }
+    );
   }
 
   /* ── Teacher ──────────────────────────────────────────── */

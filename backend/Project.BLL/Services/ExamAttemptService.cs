@@ -38,10 +38,9 @@ namespace Project.BLL.Services
             if (exam == null || exam.IsDeleted)
                 return OperationResult<List<ExamAttemptSummaryDto>>.Failure("الامتحان غير موجود", 404);
 
-            // Phase 6.2 — فحص الملكية: المعلم لازم يكون صاحب هذا الامتحان
-            var examWithCst = await _unitOfWork.Exams.GetWithClassSubjectTeacherAsync(examId);
-            if (examWithCst?.ClassSubjectTeacher?.TeacherId != null
-                && examWithCst.ClassSubjectTeacher.TeacherId != teacherId)
+            // فحص الملكية/الصلاحية: CST محدد → صاحبه، CST=null → من يُدرّس المادة
+            var authorized = await IsTeacherAuthorizedForExamAsync(exam, teacherId);
+            if (!authorized)
                 return OperationResult<List<ExamAttemptSummaryDto>>.Failure("غير مصرح لك بعرض نتائج هذا الامتحان", 403);
 
             var attempts = await _unitOfWork.StudentExamAttempts
@@ -183,6 +182,9 @@ namespace Project.BLL.Services
             return OperationResult.Failure("الامتحان غير موجود", 404);
 
         decimal totalScore = 0;
+        // عَلَّم: هل فيه إجابة أكمل-فراغ غير مطابقة نصياً وتنتظر مراجعة يدوية؟
+        bool hasPendingFillBlank = false;
+
         foreach (var answer in attempt.Answers)
         {
             var question = exam.Questions.FirstOrDefault(q => q.Id == answer.QuestionId);
@@ -198,10 +200,41 @@ namespace Project.BLL.Services
                 totalScore += answer.PointsEarned;
                 _unitOfWork.StudentExamAnswers.Update(answer);
             }
+            else if (question.QuestionType == QuestionType.FillBlank)
+            {
+                // لو الطالب لمّا يكتب إجابة مطابقة تماماً = تصحيح تلقائي (الدرجة كاملة)
+                // لو مش مطابقة = نعلّمها بانتظار مراجعة المعلم ولا نعتبرها graded نهائياً
+                if (string.IsNullOrEmpty(question.CorrectAnswer))
+                {
+                    hasPendingFillBlank = true;
+                    continue;
+                }
+
+                var isMatch = answer.AnswerText?.Trim()
+                    .Equals(question.CorrectAnswer.Trim(), StringComparison.OrdinalIgnoreCase) == true;
+
+                if (isMatch)
+                {
+                    answer.IsCorrect = true;
+                    answer.PointsEarned = question.Points;
+                    totalScore += answer.PointsEarned;
+                    _unitOfWork.StudentExamAnswers.Update(answer);
+                }
+                else
+                {
+                    // غير مطابقة نصياً → بانتظار مراجعة المعلم (يبقى IsCorrect=null)
+                    hasPendingFillBlank = true;
+                }
+            }
+            // Essay: لا يُصحّح تلقائياً (بانتظار المعلم)
         }
 
         attempt.Score = totalScore;
-        attempt.IsGraded = true;
+        // المرحلة 1: لا نعلّم graded لو فيه fill-blank/essay بانتظار المراجعة اليدوية
+        attempt.IsGraded = !hasPendingFillBlank
+            && !attempt.Answers
+                .Join(exam.Questions, a => a.QuestionId, q => q.Id, (a, q) => new { a, q })
+                .Any(x => x.q.QuestionType == QuestionType.Essay && !x.a.IsCorrect.HasValue);
         attempt.UpdatedAt = DateTime.UtcNow;
 
         _unitOfWork.StudentExamAttempts.Update(attempt);
@@ -221,10 +254,13 @@ namespace Project.BLL.Services
             if (attempt.SubmittedAt == null)
                 return OperationResult.Failure("لم يتم تقديم المحاولة بعد");
 
-            // فحص ملكية: المعلم لازم يكون صاحب هذا الامتحان
-            var examWithCst = await _unitOfWork.Exams.GetWithClassSubjectTeacherAsync(attempt.ExamId);
-            if (examWithCst?.ClassSubjectTeacher?.TeacherId != null
-                && examWithCst.ClassSubjectTeacher.TeacherId != teacherId)
+            // فحص ملكية/الصلاحية للامتحان (CST محدد → صاحبه، CST=null → من يُدرّس المادة)
+            var examForAuth = await _unitOfWork.Exams.GetWithClassSubjectTeacherAsync(attempt.ExamId);
+            if (examForAuth == null)
+                return OperationResult.Failure("الامتحان غير موجود", 404);
+
+            var authorized = await IsTeacherAuthorizedForExamAsync(examForAuth, teacherId);
+            if (!authorized)
                 return OperationResult.Failure("غير مصرح لك بتصحيح هذه المحاولة", 403);
 
             var exam = await _unitOfWork.Exams.GetWithQuestionsAsync(attempt.ExamId, CancellationToken.None);
@@ -236,7 +272,10 @@ namespace Project.BLL.Services
                 if (answer == null) continue;
 
                 var question = exam.Questions.FirstOrDefault(q => q.Id == answer.QuestionId);
-                if (question == null || question.QuestionType != Project.Domain.Enums.QuestionType.Essay) continue;
+                // نسمح بتصحيح الأسئلة المقالية وأسئلة أكمل-الفراغ يدوياً
+                if (question == null
+                    || (question.QuestionType != Project.Domain.Enums.QuestionType.Essay
+                        && question.QuestionType != Project.Domain.Enums.QuestionType.FillBlank)) continue;
 
                 // منع إدخال درجة أعلى من الحد الأقصى
                 var earned = Math.Min(ansDto.PointsEarned, question.Points);
@@ -249,13 +288,14 @@ namespace Project.BLL.Services
             // إعادة حساب مجموع الدرجة
             attempt.Score = attempt.Answers.Sum(a => a.PointsEarned);
 
-            // تحقق: هل لسه أسئلة مقالية بدون درجة محددة
-            var hasUngradedEssay = attempt.Answers
+            // تحقق: هل لسه أسئلة مقالية/أكمل-فراغ بدون درجة محددة
+            var hasUngradedManual = attempt.Answers
                 .Join(exam.Questions, a => a.QuestionId, q => q.Id, (a, q) => new { a, q })
-                .Any(x => x.q.QuestionType == Project.Domain.Enums.QuestionType.Essay
+                .Any(x => (x.q.QuestionType == Project.Domain.Enums.QuestionType.Essay
+                        || x.q.QuestionType == Project.Domain.Enums.QuestionType.FillBlank)
                        && !x.a.IsCorrect.HasValue);
 
-            if (!hasUngradedEssay)
+            if (!hasUngradedManual)
                 attempt.IsGraded = true;
 
             attempt.UpdatedAt = DateTime.UtcNow;
@@ -263,6 +303,36 @@ namespace Project.BLL.Services
             await _unitOfWork.SaveChangesAsync(CancellationToken.None);
 
             return OperationResult.Success("تم حفظ التصحيح بنجاح");
+        }
+
+        /// <summary>
+        /// التحقق من صلاحية المعلم على امتحان:
+        ///   - CST موجود → المعلم صاحب الـ CST.
+        ///   - CST=null (نشر للصف) → المعلم يُدرّس المادة (SubjectId).
+        /// </summary>
+        private async Task<bool> IsTeacherAuthorizedForExamAsync(Project.Domain.Entities.Exam exam, int teacherId)
+        {
+            // امتحان مربوط بفصل محدد
+            if (exam.ClassSubjectTeacher is not null)
+                return exam.ClassSubjectTeacher.TeacherId == teacherId;
+
+            if (exam.ClassSubjectTeacherId.HasValue)
+            {
+                var cst = await _unitOfWork.ClassSubjectTeachers.GetByIdAsync(exam.ClassSubjectTeacherId.Value);
+                return cst is not null && !cst.IsDeleted && cst.TeacherId == teacherId;
+            }
+
+            // امتحان CST=null (نشر للصف كله) → المعلم لازم يُدرّس المادة
+            if (exam.SubjectId.HasValue)
+            {
+                var csts = await _unitOfWork.ClassSubjectTeachers
+                    .FindAsync(c => c.SubjectId == exam.SubjectId.Value
+                                 && c.TeacherId == teacherId
+                                 && !c.IsDeleted, CancellationToken.None);
+                return csts.Count > 0;
+            }
+
+            return false;
         }
 
         // Legacy — kept to avoid breaking the auto-grade endpoint; candidates for removal

@@ -38,6 +38,7 @@ export class TakeExam implements OnInit, OnDestroy {
   isSubmitting = signal(false);
   errorMessage = signal<string | null>(null);
   confirmSubmitOpen = signal(false);
+  isPreparingSubmit = signal(false);
   remainingSeconds = signal(0);
 
   private examId = Number(this.route.snapshot.paramMap.get('examId'));
@@ -122,9 +123,18 @@ export class TakeExam implements OnInit, OnDestroy {
     return this.answers()[questionId];
   }
 
-  openSubmitConfirm() {
+  async openSubmitConfirm() {
+    if (this.isPreparingSubmit()) return;
+
     this.examsService.cancelPendingDebounces();
-    void this.examsService.flushQueue(this.attemptId);
+    this.isPreparingSubmit.set(true);
+    try {
+      // لازم نستنى كل الإجابات المعلّقة توصل السيرفر قبل ما نفتح تأكيد التسليم،
+      // وإلا آخر إجابة (خصوصاً لو كانت لسه في الـ debounce) ممكن تضيع
+      await this.examsService.flushQueue(this.attemptId);
+    } finally {
+      this.isPreparingSubmit.set(false);
+    }
     this.confirmSubmitOpen.set(true);
   }
 

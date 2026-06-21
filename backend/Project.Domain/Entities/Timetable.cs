@@ -4,7 +4,9 @@
     {
         public int ClassId { get; set; }
         public int AcademicYearId { get; set; }
-        public bool IsActive { get; set; } = true;
+        // الجداول تُنشأ دائمًا كمسودة (غير منشورة). التفعيل يتم فقط عبر ActivateTimetableAsync
+        // بعد اجتياز المراجعة. الافتراضي القديم `true` كان يسمح بنشر جدول فارغ عن طريق الخطأ.
+        public bool IsActive { get; set; } = false;
 
         // Navigation Properties
         public SchoolClass Class { get; set; } = null!;

@@ -7,6 +7,7 @@ namespace Project.DAL.Interfaces.Repositories.Core;
 public interface IStudentEnrollmentRepository : IRepository<StudentEnrollment>
 {
     Task<StudentEnrollment?>            GetActiveByStudentAndYearAsync(int studentId, int academicYearId, CancellationToken ct = default);
+    Task<IReadOnlyList<StudentEnrollment>> GetActiveByStudentsAndYearAsync(IReadOnlyCollection<int> studentIds, int academicYearId, CancellationToken ct = default);
     Task<IReadOnlyList<StudentEnrollment>> GetByClassAndYearAsync(int classId, int academicYearId, CancellationToken ct = default);
     Task<IReadOnlyList<StudentEnrollment>> GetActiveByClassAsync(int classId, int academicYearId, CancellationToken ct = default);
     Task<IReadOnlyList<StudentEnrollment>> GetActiveByGradeLevelAndYearWithDetailsAsync(int gradeLevelId, int academicYearId, CancellationToken ct = default);

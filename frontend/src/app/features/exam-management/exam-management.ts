@@ -12,6 +12,7 @@ import {
   ExamAttemptSummary, ExamAttemptGradingDetail
 } from './exam-manager.service';
 import { AcademicYearService } from '../../core/services/academic-year.service';
+import { GradeLevelService } from '../../core/services/grade-level.service';
 
 @Component({
   selector: 'app-exam-management',
@@ -23,6 +24,7 @@ export class ExamManagement implements OnInit, OnDestroy {
   private router = inject(Router);
   private api = inject(ExamManagerService);
   private academicYearSvc = inject(AcademicYearService);
+  private gradeLevelSvc = inject(GradeLevelService);
   private destroy$ = new Subject<void>();
 
   // ── Academic Year ─────────────────────────────────────────────
@@ -68,6 +70,9 @@ export class ExamManagement implements OnInit, OnDestroy {
   newName      = signal('');
   newSubjectId = signal<number | null>(null);
   newClassId   = signal<number | null>(null);
+  newGradeLevelId = signal<number | null>(null);
+  /** 'class' = نشر لفصل محدد، 'grade' = نشر للصف الدراسي كله */
+  scopeMode   = signal<'class' | 'grade'>('class');
   newDate      = signal('');
   newStart     = signal('');
   newEnd       = signal('');
@@ -82,7 +87,8 @@ export class ExamManagement implements OnInit, OnDestroy {
   exams    = signal<ExamItem[]>([]);
   stats    = signal<ExamStats>({ total: 0, upcoming: 0, ended: 0, avgScore: 0 });
   subjects = signal<{ id: number; name: string }[]>([]);
-  classes  = signal<{ id: number; name: string }[]>([]);
+  classes  = signal<{ id: number; name: string; gradeLevelId: number }[]>([]);
+  gradeLevels = signal<{ id: number; name: string }[]>([]);
 
   // ── Static tabs ───────────────────────────────────────────────
   readonly examTabs = [
@@ -103,6 +109,13 @@ export class ExamManagement implements OnInit, OnDestroy {
   ];
 
   calculatedDuration = computed(() => this.calculateDurationMinutes(this.newStart(), this.newEnd()));
+
+  /** الفصول المتاحة للصف الدراسي المختار حاليًا في الفورم (لو محدد) */
+  filteredClasses = computed(() => {
+    const gradeId = this.newGradeLevelId();
+    const all = this.classes();
+    return gradeId ? all.filter(c => c.gradeLevelId === gradeId) : all;
+  });
 
   ngOnInit() {
     this.academicYearSvc.getCurrent().subscribe({
@@ -225,9 +238,12 @@ export class ExamManagement implements OnInit, OnDestroy {
       error: () => this.subjects.set([])
     });
 
-    this.api.getClasses().subscribe({
-      next:  r => this.classes.set(r),
-      error: () => this.classes.set([])
+    this.gradeLevelSvc.getAll().subscribe({
+      next: (res: any) => {
+        const data = res?.data ?? (Array.isArray(res) ? res : []);
+        this.gradeLevels.set((data as any[]).map(g => ({ id: g.id, name: g.name })));
+      },
+      error: () => this.gradeLevels.set([])
     });
   }
 
@@ -240,6 +256,9 @@ export class ExamManagement implements OnInit, OnDestroy {
     this.newName.set('');
     this.newSubjectId.set(null);
     this.newClassId.set(null);
+    this.newGradeLevelId.set(null);
+    this.classes.set([]);
+    this.scopeMode.set('class');
     this.newDate.set('');
     this.newStart.set('');
     this.newEnd.set('');
@@ -249,29 +268,67 @@ export class ExamManagement implements OnInit, OnDestroy {
     this.showAddModal.set(true);
   }
 
+  /** تحميل قائمة الفصول الخاصة بمادة معيّنة (المعلم + المادة معاً) */
+  private loadClassesForSubject(subjectId: number | null) {
+    if (!subjectId) {
+      this.classes.set([]);
+      return;
+    }
+    this.api.getClasses(subjectId).subscribe({
+      next:  r => this.classes.set(r),
+      error: () => this.classes.set([])
+    });
+  }
+
+  /** لما يبدّل المعلم المادة في فورم إنشاء/تعديل امتحان — نعيد تحميل الفصول المرتبطة بها ونصفّر اختيار الفصل السابق */
+  onFormSubjectChange(value: number | string | null) {
+    const id = value ? Number(value) : null;
+    this.newSubjectId.set(id);
+    this.newClassId.set(null);
+    this.loadClassesForSubject(id);
+  }
+
+  /** لما يبدّل المعلم الصف الدراسي — نصفّر اختيار الفصل لو مبقى مش مناسب للصف الجديد */
+  onFormGradeLevelChange(value: number | string | null) {
+    const id = value ? Number(value) : null;
+    this.newGradeLevelId.set(id);
+    const currentClassId = this.newClassId();
+    if (currentClassId != null && id != null) {
+      const cls = this.classes().find(c => c.id === currentClassId);
+      if (cls && cls.gradeLevelId !== id) this.newClassId.set(null);
+    }
+  }
+
   openEditModal(e: ExamItem) {
     this.editingExam.set(e);
     this.newName.set(e.name);
     const subj = this.subjects().find(s => s.name === e.subject);
-    this.newSubjectId.set(subj ? subj.id : null);
-    const cls = this.classes().find(c => c.name === e.class);
-    this.newClassId.set(cls ? cls.id : null);
+    const subjectId = subj ? subj.id : (e.subjectId ?? null);
+    this.newSubjectId.set(subjectId);
+    this.newClassId.set(e.classId ?? null);
+    // scopeMode: لو classId موجود → 'class'، لو null → 'grade'
+    this.scopeMode.set(e.classId ? 'class' : 'grade');
+    this.newGradeLevelId.set(e.gradeLevelId ?? null);
     this.newDate.set(e.date);
     this.newStart.set(e.startTime);
     this.newEnd.set(e.endTime);
     this.formError.set('');
     this.draftQuestions.set([]);
 
+    this.loadClassesForSubject(subjectId);
+
     // جلب الأسئلة الحالية للامتحان وتعبئة draftQuestions
     this.api.getById(e.id).subscribe({
       next: detail => {
+        // حدّث الصف الدراسي من التفاصيل الكاملة لو موجود
+        if (detail.gradeLevelId != null) this.newGradeLevelId.set(detail.gradeLevelId);
         this.newTotalScore.set(detail.totalScore ?? 100);
         const drafts: ExamDraftQuestion[] = detail.questions.map(q => ({
           _localId: ++this._draftCounter,
           id: q.id,
-          type: q.type as 'mcq' | 'true-false' | 'essay',
+          type: q.type as 'mcq' | 'true-false' | 'fill-blank' | 'essay',
           text: q.text,
-          options: q.options ? [...q.options] : ['', '', '', ''],
+          options: q.options ? [...q.options] : (q.type === 'mcq' || q.type === 'true-false' ? ['', '', '', ''] : []),
           correctAnswer: q.correctAnswer,
           points: q.points ?? 10,
         }));
@@ -311,8 +368,18 @@ export class ExamManagement implements OnInit, OnDestroy {
 
   saveExam() {
     const durationMinutes = this.calculatedDuration();
-    if (!this.newName().trim() || !this.newSubjectId() || !this.newClassId() || !this.newDate() || !this.newStart() || !this.newEnd()) {
-      this.formError.set('من فضلك اكمل بيانات الامتحان قبل الحفظ');
+    const isGradeScope = this.scopeMode() === 'grade';
+
+    // بيانات أساسية مطلوبة دائماً
+    if (!this.newName().trim() || !this.newSubjectId() || !this.newGradeLevelId()
+        || !this.newDate() || !this.newStart() || !this.newEnd()) {
+      this.formError.set('من فضلك اكمل بيانات الامتحان (الاسم، المادة، الصف، التاريخ، الأوقات) قبل الحفظ');
+      return;
+    }
+
+    // لو scope = فصل محدد، الفصل مطلوب
+    if (!isGradeScope && !this.newClassId()) {
+      this.formError.set('من فضلك اختر الفصل الدراسي أو بدّل النطاق إلى "الصف كله"');
       return;
     }
 
@@ -346,12 +413,16 @@ export class ExamManagement implements OnInit, OnDestroy {
         this.formError.set('من فضلك حدد الإجابة الصحيحة لكل سؤال صح وخطأ');
         return;
       }
+      if (q.type === 'fill-blank' && !q.correctAnswer.trim()) {
+        this.formError.set('من فضلك حدد الإجابة الصحيحة لكل سؤال أكمل الفراغ');
+        return;
+      }
     }
 
     const questions: CreateExamQuestionPayload[] = drafts.map(q => ({
       type: q.type,
       text: q.text.trim(),
-      options: q.type !== 'essay' ? q.options.filter(o => o.trim()) : undefined,
+      options: (q.type === 'mcq' || q.type === 'true-false') ? q.options.filter(o => o.trim()) : undefined,
       correctAnswer: q.correctAnswer || undefined,
       points: q.points,
     }));
@@ -359,7 +430,8 @@ export class ExamManagement implements OnInit, OnDestroy {
     const payload = {
       title: this.newName().trim(),
       subjectId: this.newSubjectId() ?? 0,
-      classId: this.newClassId() ?? 0,
+      gradeLevelId: this.newGradeLevelId() ?? 0,
+      classId: isGradeScope ? null : (this.newClassId() ?? null),
       date: this.newDate(),
       startTime: this.newStart(),
       endTime: this.newEnd(),
@@ -456,7 +528,7 @@ export class ExamManagement implements OnInit, OnDestroy {
     this.draftQuestions.update(qs => qs.filter(q => q._localId !== localId));
   }
 
-  updateQuestionType(localId: number, type: 'mcq' | 'true-false' | 'essay') {
+  updateQuestionType(localId: number, type: 'mcq' | 'true-false' | 'fill-blank' | 'essay') {
     this.draftQuestions.update(qs => qs.map(q => {
       if (q._localId !== localId) return q;
       const options = type === 'true-false' ? ['صواب', 'خطأ']
@@ -521,7 +593,7 @@ export class ExamManagement implements OnInit, OnDestroy {
     if (!attempt) return;
 
     const answers = attempt.answers
-      .filter(a => a.questionType === 'essay')
+      .filter(a => a.questionType === 'essay' || a.questionType === 'fill-blank')
       .map(a => ({
         answerId:     a.id,
         pointsEarned: a.pointsEarned ?? 0,
@@ -585,6 +657,16 @@ export class ExamManagement implements OnInit, OnDestroy {
   getStatusClass(status: string): string {
     const map: Record<string, string> = { upcoming: 'bg-secondary/10 text-secondary', active: 'bg-green-50 text-green-700', ended: 'bg-surface-container-high text-outline', draft: 'bg-tertiary-fixed/20 text-tertiary' };
     return map[status] || '';
+  }
+
+  /** هل الامتحان منشور للصف الدراسي كله (CST=null)؟ */
+  isGradeScopeExam(e: ExamItem): boolean {
+    return e.classId == null;
+  }
+
+  /** نص وصف النطاق لعرضه على الكارت */
+  getScopeBadgeText(e: ExamItem): string {
+    return this.isGradeScopeExam(e) ? 'الصف كله' : 'فصل محدد';
   }
 
   hasSchedule(e: ExamItem): boolean {

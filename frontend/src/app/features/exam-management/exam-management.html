@@ -167,9 +167,10 @@
                   <span class="info-chip">
                     <span class="dot dot-subject"></span>{{ e.subject }}
                   </span>
-                  <span class="info-chip">
-                    <span class="dot dot-class"></span>{{ e.class }}
+                  <span class="info-chip" [class.info-warn]="isGradeScopeExam(e)" [title]="isGradeScopeExam(e) ? 'منشور لكل فصول هذا الصف الدراسي' : 'منشور لفصل محدد'">
+                    <span class="dot" [class.dot-class]="!isGradeScopeExam(e)"></span>{{ e.class || (e.gradeLevel ? e.gradeLevel + ' - كل الفصول' : '—') }}
                   </span>
+                  <span class="scope-badge" [class.scope-grade]="isGradeScopeExam(e)">{{ getScopeBadgeText(e) }}</span>
                   <span class="info-chip" [class.info-warn]="!e.date || e.date === ''">
                     <span class="material-symbols-outlined chip-icon">calendar_today</span>
                     {{ e.date || '—' }}
@@ -327,12 +328,28 @@
           </div>
           <div class="flex flex-col gap-1">
             <label class="font-label-md text-label-md" style="font-weight:600;">المادة</label>
-            <select class="glass-select" [ngModel]="newSubjectId()" (ngModelChange)="newSubjectId.set($event)" [disabled]="editingExam() !== null"><option [ngValue]="null">اختر...</option>@for (s of subjects(); track s.id) {<option [ngValue]="s.id">{{ s.name }}</option>}</select>
+            <select class="glass-select" [ngModel]="newSubjectId()" (ngModelChange)="onFormSubjectChange($event)" [disabled]="editingExam() !== null"><option [ngValue]="null">اختر...</option>@for (s of subjects(); track s.id) {<option [ngValue]="s.id">{{ s.name }}</option>}</select>
           </div>
           <div class="flex flex-col gap-1">
-            <label class="font-label-md text-label-md" style="font-weight:600;">الفصل</label>
-            <select class="glass-select" [ngModel]="newClassId()" (ngModelChange)="newClassId.set($event)" [disabled]="editingExam() !== null"><option [ngValue]="null">اختر...</option>@for (c of classes(); track c.id) {<option [ngValue]="c.id">{{ c.name }}</option>}</select>
+            <label class="font-label-md text-label-md" style="font-weight:600;">الصف الدراسي</label>
+            <select class="glass-select" [ngModel]="newGradeLevelId()" (ngModelChange)="onFormGradeLevelChange($event)"><option [ngValue]="null">اختر...</option>@for (g of gradeLevels(); track g.id) {<option [ngValue]="g.id">{{ g.name }}</option>}</select>
           </div>
+          <div class="flex flex-col gap-1">
+            <label class="font-label-md text-label-md" style="font-weight:600;">نطاق النشر</label>
+            <select class="glass-select" [ngModel]="scopeMode()" (ngModelChange)="scopeMode.set($event)">
+              <option value="class">فصل محدد</option>
+              <option value="grade">الصف الدراسي كله</option>
+            </select>
+          </div>
+          @if (scopeMode() === 'class') {
+            <div class="flex flex-col gap-1">
+              <label class="font-label-md text-label-md" style="font-weight:600;">الفصل</label>
+              <select class="glass-select" [ngModel]="newClassId()" (ngModelChange)="newClassId.set($event)"><option [ngValue]="null">اختر...</option>@for (c of filteredClasses(); track c.id) {<option [ngValue]="c.id">{{ c.name }}</option>}</select>
+              @if (newGradeLevelId() && filteredClasses().length === 0) {
+                <span class="font-label-sm text-label-sm text-warning">لا توجد فصول متاحة لهذا الصف والمادة</span>
+              }
+            </div>
+          }
           <div class="flex flex-col gap-1">
             <label class="font-label-md text-label-md" style="font-weight:600;">التاريخ</label>
             <input class="glass-input" type="date" [value]="newDate()" (input)="newDate.set($any($event.target).value)" />
@@ -402,6 +419,7 @@
                 <select class="glass-select flex-1" [ngModel]="q.type" (ngModelChange)="updateQuestionType(q._localId, $event)">
                   <option value="mcq">اختيار من متعدد</option>
                   <option value="true-false">صح وخطأ</option>
+                  <option value="fill-blank">أكمل الفراغ</option>
                   <option value="essay">مقالي</option>
                 </select>
                 <input type="number" class="glass-input w-20 text-center" min="1" max="100"
@@ -442,6 +460,10 @@
               @if (q.type === 'essay') {
                 <textarea class="glass-input resize-none mt-2" rows="3" placeholder="الإجابة النموذجية (اختياري)..."
                   [value]="q.correctAnswer" (input)="updateQuestionAnswer(q._localId, $any($event.target).value)"></textarea>
+              }
+              @if (q.type === 'fill-blank') {
+                <input class="glass-input mt-2" placeholder="الكلمة/الإجابة الصحيحة في الفراغ (مطلوب)..."
+                  [value]="q.correctAnswer" (input)="updateQuestionAnswer(q._localId, $any($event.target).value)" />
               }
             </div>
           }
@@ -511,6 +533,7 @@
                   <span class="bg-gradient-to-l from-primary to-blue-600 text-on-primary w-7 h-7 rounded-lg flex items-center justify-center font-bold text-label-sm">{{ $index + 1 }}</span>
                   @if (q.type === 'mcq') { <span class="qtype-badge qtype-mcq">اختيار من متعدد</span> }
                   @if (q.type === 'true-false') { <span class="qtype-badge qtype-tf">صح وخطأ</span> }
+                  @if (q.type === 'fill-blank') { <span class="qtype-badge qtype-fill">أكمل الفراغ</span> }
                   @if (q.type === 'essay') { <span class="qtype-badge qtype-essay">مقالي</span> }
                 </div>
                 <p class="font-body-lg text-body-lg mb-3">{{ q.text }}</p>
@@ -540,6 +563,14 @@
                       </div>
                     }
                   </div>
+                }
+                @if (q.type === 'fill-blank') {
+                  @if (q.correctAnswer) {
+                    <div class="p-4 bg-primary/5 border border-primary/10 backdrop-blur-sm rounded-xl mr-2">
+                      <p class="font-label-sm text-outline mb-1">الإجابة الصحيحة:</p>
+                      <p class="font-body-md text-body-md">{{ q.correctAnswer }}</p>
+                    </div>
+                  }
                 }
                 @if (q.type === 'essay') {
                   @if (q.correctAnswer) {
@@ -635,7 +666,7 @@
                 } @else {
                   <span class="attempt-badge attempt-badge-muted">لم يسلّم</span>
                 }
-                @if (attempt.status === 'waitingGrade' || attempt.isGraded) {
+                @if (attempt.status === 'waitingGrade' || attempt.status === 'submitted' || attempt.isGraded) {
                   <button class="action-btn action-tertiary" (click)="openGradingModal(attempt.id)">
                     <span class="material-symbols-outlined text-[16px]">grading</span>تصحيح
                   </button>
@@ -684,6 +715,7 @@
                 <span class="bg-gradient-to-l from-primary to-blue-600 text-on-primary w-7 h-7 rounded-lg flex items-center justify-center font-bold text-label-sm">{{ $index + 1 }}</span>
                 @if (ans.questionType === 'mcq') { <span class="qtype-badge qtype-mcq">اختيار من متعدد</span> }
                 @if (ans.questionType === 'true-false') { <span class="qtype-badge qtype-tf">صح وخطأ</span> }
+                @if (ans.questionType === 'fill-blank') { <span class="qtype-badge qtype-fill">أكمل الفراغ</span> }
                 @if (ans.questionType === 'essay') { <span class="qtype-badge qtype-essay">مقالي</span> }
                 <span class="mr-auto text-outline font-label-sm">حد أقصى: {{ ans.questionPoints }}</span>
               </div>
@@ -692,7 +724,7 @@
                 <p class="font-label-sm text-outline mb-1">إجابة الطالب:</p>
                 <p class="font-body-md text-body-md">{{ ans.answerText || 'لم يجب' }}</p>
               </div>
-              @if (ans.questionType !== 'essay') {
+              @if (ans.questionType !== 'essay' && ans.questionType !== 'fill-blank') {
                 <div class="flex items-center gap-2">
                   @if (ans.isCorrect === true) {
                     <span class="material-symbols-outlined text-green-600" style="font-variation-settings:'FILL'1;">check_circle</span>

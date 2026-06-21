@@ -33,9 +33,14 @@
             <span>{{ answeredCount() }}/{{ totalQuestions() }}</span>
             <div class="progress-track"><div [style.width.%]="progressPercent()"></div></div>
           </div>
-          <button class="submit-btn" type="button" (click)="openSubmitConfirm()" [disabled]="isSubmitting() || isLoading()">
-            <span class="material-symbols-outlined">send</span>
-            تسليم
+          <button class="submit-btn" type="button" (click)="openSubmitConfirm()" [disabled]="isSubmitting() || isLoading() || isPreparingSubmit()">
+            @if (isPreparingSubmit()) {
+              <span class="material-symbols-outlined animate-spin">progress_activity</span>
+              جاري الحفظ...
+            } @else {
+              <span class="material-symbols-outlined">send</span>
+              تسليم
+            }
           </button>
         </div>
       </div>

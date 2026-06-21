@@ -36,22 +36,20 @@ public class ExamManagerController : ControllerBase
         [FromQuery] int? academicYearId = null)
     {
         var userId = GetUserId();
-        List<int>? cstIds = null;
+
+        // نجيب CSTs + SubjectIds للمواد التي يُدرّسها المعلم (للأمتحانات CST=null)
+        var cstQuery = _context.ClassSubjectTeachers
+            .Where(c => c.TeacherId == userId && !c.IsDeleted);
 
         if (academicYearId.HasValue)
-        {
-            cstIds = await _context.ClassSubjectTeachers
-                .Where(c => c.TeacherId == userId && c.AcademicYearId == academicYearId.Value && !c.IsDeleted)
-                .Select(c => c.Id)
-                .ToListAsync();
-        }
-        else
-        {
-            cstIds = await _context.ClassSubjectTeachers
-                .Where(c => c.TeacherId == userId && !c.IsDeleted)
-                .Select(c => c.Id)
-                .ToListAsync();
-        }
+            cstQuery = cstQuery.Where(c => c.AcademicYearId == academicYearId.Value);
+
+        var cstData = await cstQuery
+            .Select(c => new { c.Id, c.SubjectId })
+            .ToListAsync();
+
+        var cstIds = cstData.Select(c => c.Id).Distinct().ToList();
+        var subjectIds = cstData.Select(c => c.SubjectId).Distinct().ToList();
 
         var filter = new ExamManagerFilterDto
         {
@@ -61,7 +59,8 @@ public class ExamManagerController : ControllerBase
             SortBy = sortBy,
             Page = page,
             PageSize = pageSize,
-            CstIds = cstIds.Count > 0 ? cstIds : null
+            CstIds = cstIds.Count > 0 ? cstIds : null,
+            SubjectIds = subjectIds.Count > 0 ? subjectIds : null
         };
 
         var result = await _service.GetAllAsync(filter);
@@ -92,7 +91,7 @@ public class ExamManagerController : ControllerBase
     [Authorize(Roles = "Admin,Teacher")]
     public async Task<IActionResult> Update(int id, [FromBody] CreateExamManagerDto dto)
     {
-        var result = await _service.UpdateAsync(id, dto);
+        var result = await _service.UpdateAsync(id, dto, GetUserId());
         if (!result.IsSuccess)
             return BadRequest(result);
         return Ok(result);
@@ -142,24 +141,23 @@ public class ExamManagerController : ControllerBase
     public async Task<IActionResult> GetStats([FromQuery] int? academicYearId)
     {
         var userId = GetUserId();
-        List<int>? cstIds = null;
+
+        var cstQuery = _context.ClassSubjectTeachers
+            .Where(c => c.TeacherId == userId && !c.IsDeleted);
 
         if (academicYearId.HasValue)
-        {
-            cstIds = await _context.ClassSubjectTeachers
-                .Where(c => c.TeacherId == userId && c.AcademicYearId == academicYearId.Value && !c.IsDeleted)
-                .Select(c => c.Id)
-                .ToListAsync();
-        }
-        else
-        {
-            cstIds = await _context.ClassSubjectTeachers
-                .Where(c => c.TeacherId == userId && !c.IsDeleted)
-                .Select(c => c.Id)
-                .ToListAsync();
-        }
+            cstQuery = cstQuery.Where(c => c.AcademicYearId == academicYearId.Value);
 
-        var result = await _service.GetStatsAsync(cstIds.Count > 0 ? cstIds : null);
+        var cstData = await cstQuery
+            .Select(c => new { c.Id, c.SubjectId })
+            .ToListAsync();
+
+        var cstIds = cstData.Select(c => c.Id).Distinct().ToList();
+        var subjectIds = cstData.Select(c => c.SubjectId).Distinct().ToList();
+
+        var result = await _service.GetStatsAsync(
+            cstIds.Count > 0 ? cstIds : null,
+            subjectIds.Count > 0 ? subjectIds : null);
         return Ok(result);
     }
 
@@ -193,15 +191,20 @@ public class ExamManagerController : ControllerBase
     }
 
     [HttpGet("classes")]
-    public async Task<IActionResult> GetClasses()
+    public async Task<IActionResult> GetClasses([FromQuery] int? subjectId = null)
     {
         var userId = GetUserId();
         var role   = User.FindFirstValue(ClaimTypes.Role);
 
         if (role == "Teacher")
         {
-            var classIds = await _context.ClassSubjectTeachers
-                .Where(c => c.TeacherId == userId && !c.IsDeleted)
+            var cstQuery = _context.ClassSubjectTeachers
+                .Where(c => c.TeacherId == userId && !c.IsDeleted);
+
+            if (subjectId.HasValue)
+                cstQuery = cstQuery.Where(c => c.SubjectId == subjectId.Value);
+
+            var classIds = await cstQuery
                 .Select(c => c.ClassId)
                 .Distinct()
                 .ToListAsync();
@@ -209,16 +212,28 @@ public class ExamManagerController : ControllerBase
             var classes = await _context.Classes
                 .Include(c => c.GradeLevel)
                 .Where(c => classIds.Contains(c.Id) && !c.IsDeleted)
-                .Select(c => new { c.Id, Name = c.GradeLevel.Name + " - " + c.Name })
+                .Select(c => new { c.Id, Name = c.GradeLevel.Name + " - " + c.Name, c.GradeLevelId })
                 .ToListAsync();
 
             return Ok(classes);
         }
 
-        var allClasses = await _context.Classes
+        var allClassesQuery = _context.Classes
             .Include(c => c.GradeLevel)
-            .Where(c => !c.IsDeleted)
-            .Select(c => new { c.Id, Name = c.GradeLevel.Name + " - " + c.Name })
+            .Where(c => !c.IsDeleted);
+
+        if (subjectId.HasValue)
+        {
+            var classIdsForSubject = await _context.ClassSubjectTeachers
+                .Where(c => c.SubjectId == subjectId.Value && !c.IsDeleted)
+                .Select(c => c.ClassId)
+                .Distinct()
+                .ToListAsync();
+            allClassesQuery = allClassesQuery.Where(c => classIdsForSubject.Contains(c.Id));
+        }
+
+        var allClasses = await allClassesQuery
+            .Select(c => new { c.Id, Name = c.GradeLevel.Name + " - " + c.Name, c.GradeLevelId })
             .ToListAsync();
         return Ok(allClasses);
     }

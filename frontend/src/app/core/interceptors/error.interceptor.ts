@@ -41,7 +41,14 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
       } else {
         message = backendMessage || 'حدث خطأ غير متوقع';
       }
-      return throwError(() => new Error(message));
+      // FIX: كنا بنستبدل الـ HttpErrorResponse بالكامل بـ Error عادي، فكل المكونات اللي بتفحص
+      // err.status أو err.error (زي getApiErrorMessage وفحص 403/404 في admin-schedule)
+      // كانت بتلاقيهم undefined دايمًا. الحل: نعدّل رسالة الـ error الأصلي بدل ما
+      // نستبدله، فيفضل .status و.error سليمين لأي كود تاني بيعتمد عليهم.
+      // ملاحظة: message في HttpErrorResponse معرّفة readonly في TypeScript،
+      // فبنستخدم Object.assign بدل التعيين المباشر عشان الـ build ما يكسرش.
+      const enrichedError = Object.assign(error, { message });
+      return throwError(() => enrichedError);
     })
   );
 };

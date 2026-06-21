@@ -168,18 +168,28 @@ public class ExamRepository : Repository<Exam>, IExamRepository
     {
         var enrollment = await _context.StudentEnrollments
             .AsNoTracking()
+            .Include(e => e.Class)
             .FirstOrDefaultAsync(e => e.Id == enrollmentId, ct);
 
         if (enrollment == null)
             return Array.Empty<Exam>();
 
+        var gradeLevelId = enrollment.Class.GradeLevelId;
+
         return await _context.Exams
             .Where(e =>
                 e.IsPublished &&
                 !e.IsDeleted &&
-                e.ClassSubjectTeacherId != null &&
-                e.ClassSubjectTeacher!.ClassId == enrollment.ClassId &&
-                e.ClassSubjectTeacher.AcademicYearId == enrollment.AcademicYearId)
+                (
+                    // امتحان منشور لفصل محدد
+                    (e.ClassSubjectTeacherId != null &&
+                     e.ClassSubjectTeacher!.ClassId == enrollment.ClassId &&
+                     e.ClassSubjectTeacher.AcademicYearId == enrollment.AcademicYearId)
+                    ||
+                    // امتحان منشور للصف الدراسي كله (CST = null)
+                    (e.ClassSubjectTeacherId == null &&
+                     e.GradeLevelId == gradeLevelId)
+                ))
             .Include(e => e.Subject)
             .Include(e => e.GradeLevel)
             .Include(e => e.ClassSubjectTeacher)
@@ -198,19 +208,29 @@ public class ExamRepository : Repository<Exam>, IExamRepository
     {
         var enrollment = await _context.StudentEnrollments
             .AsNoTracking()
+            .Include(e => e.Class)
             .FirstOrDefaultAsync(e => e.Id == enrollmentId, ct);
 
         if (enrollment == null)
             return null;
+
+        var gradeLevelId = enrollment.Class.GradeLevelId;
 
         return await _context.Exams
             .Where(e =>
                 e.Id == examId &&
                 e.IsPublished &&
                 !e.IsDeleted &&
-                e.ClassSubjectTeacherId != null &&
-                e.ClassSubjectTeacher!.ClassId == enrollment.ClassId &&
-                e.ClassSubjectTeacher.AcademicYearId == enrollment.AcademicYearId)
+                (
+                    // امتحان منشور لفصل محدد
+                    (e.ClassSubjectTeacherId != null &&
+                     e.ClassSubjectTeacher!.ClassId == enrollment.ClassId &&
+                     e.ClassSubjectTeacher.AcademicYearId == enrollment.AcademicYearId)
+                    ||
+                    // امتحان منشور للصف الدراسي كله (CST = null)
+                    (e.ClassSubjectTeacherId == null &&
+                     e.GradeLevelId == gradeLevelId)
+                ))
             .Include(e => e.Subject)
             .Include(e => e.GradeLevel)
             .Include(e => e.ClassSubjectTeacher)

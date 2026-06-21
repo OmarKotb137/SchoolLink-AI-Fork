@@ -27,11 +27,27 @@ namespace Project.BLL.Mapping
                         src.SubmittedAt.HasValue
                             ? (int)(src.SubmittedAt.Value - src.StartedAt).TotalMinutes
                             : 0))
+                // ─────────────────────────────────────────────────────────────────
+                // FIX: تبسيط منطق الـ Status
+                // القاعدة:
+                //   - لم يسلّم بعد              → "pending"
+                //   - سلّم + تم التصحيح الكامل  → "graded"
+                //   - سلّم + لم يكتمل التصحيح  → "waitingGrade"
+                //     (يشمل الأسئلة المقالية وأكمل الفراغ غير المصحَّحة)
+                //
+                // المشكلة القديمة: كان الكود يعتمد على a.Question != null لاكتشاف
+                // الأسئلة المقالية، لكن بسبب HasQueryFilter(IsDeleted) على ExamQuestion
+                // كان a.Question يرجع null لو السؤال اتحذف → يُصنَّف الـ attempt خطأ
+                // كـ "submitted" بدل "waitingGrade" → زرار التصحيح ما يظهرش.
+                //
+                // الحل: نعتمد على IsGraded فقط (يتحسب بدقة في SubmitAttemptAsync):
+                //   - hasManualQuestions = true  → IsGraded = false → "waitingGrade"
+                //   - hasManualQuestions = false → IsGraded = true  → "graded"
+                // ─────────────────────────────────────────────────────────────────
                 .ForMember(dest => dest.Status, opt => opt.MapFrom(src =>
-                    src.IsGraded ? "graded" :
-                    src.SubmittedAt.HasValue && src.Answers.Any(a => a.Question != null
-                        && a.Question.QuestionType == QuestionType.Essay) ? "waitingGrade" :
-                    src.SubmittedAt.HasValue ? "submitted" : "pending"));
+                    !src.SubmittedAt.HasValue ? "pending" :
+                    src.IsGraded             ? "graded"  :
+                                               "waitingGrade"));
 
             // StudentExamAnswer → GetExamAnswerDto
             CreateMap<StudentExamAnswer, GetExamAnswerDto>()
@@ -40,7 +56,8 @@ namespace Project.BLL.Mapping
                 .ForMember(dest => dest.QuestionType,
                     opt => opt.MapFrom(src =>
                         src.Question.QuestionType == QuestionType.MultipleChoice ? "mcq" :
-                        src.Question.QuestionType == QuestionType.TrueFalse ? "true-false" : "essay"))
+                        src.Question.QuestionType == QuestionType.TrueFalse ? "true-false" :
+                        src.Question.QuestionType == QuestionType.FillBlank ? "fill-blank" : "essay"))
                 .ForMember(dest => dest.QuestionPoints,
                     opt => opt.MapFrom(src => src.Question.Points))
                 .ForMember(dest => dest.AnswerText,
@@ -51,16 +68,16 @@ namespace Project.BLL.Mapping
                     opt => opt.MapFrom(src => src.Question.CorrectAnswer));
         }
 
-    private static string? ResolveAnswerText(StudentExamAnswer src)
-    {
-        if (src.SelectedOptionId.HasValue && src.Question?.Options != null)
+        private static string? ResolveAnswerText(StudentExamAnswer src)
         {
-            var selected = src.Question.Options.FirstOrDefault(o => o.Id == src.SelectedOptionId.Value);
-            if (selected != null) return selected.OptionText;
+            if (src.SelectedOptionId.HasValue && src.Question?.Options != null)
+            {
+                var selected = src.Question.Options.FirstOrDefault(o => o.Id == src.SelectedOptionId.Value);
+                if (selected != null) return selected.OptionText;
+            }
+            if (src.BooleanAnswer.HasValue)
+                return src.BooleanAnswer.Value ? "صح" : "خطأ";
+            return src.AnswerText;
         }
-        if (src.BooleanAnswer.HasValue)
-            return src.BooleanAnswer.Value ? "صح" : "خطأ";
-        return src.AnswerText;
-    }
     }
 }

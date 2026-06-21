@@ -20,6 +20,10 @@ export interface ExamItem {
   name: string;
   subject: string;
   class: string;
+  subjectId?: number | null;
+  classId?: number | null;
+  gradeLevelId?: number | null;
+  gradeLevel?: string;
   date: string;
   startTime: string;
   endTime: string;
@@ -47,7 +51,7 @@ export interface ExamQuestion {
 export interface ExamDraftQuestion {
   _localId: number;           // مُعرّف محلي فقط
   id?: number;                // مُعرّف السيرفر لو موجود (وقت التعديل)
-  type: 'mcq' | 'true-false' | 'essay';
+  type: 'mcq' | 'true-false' | 'fill-blank' | 'essay';
   text: string;
   options: string[];
   correctAnswer: string;
@@ -55,7 +59,7 @@ export interface ExamDraftQuestion {
 }
 
 export interface CreateExamQuestionPayload {
-  type: 'mcq' | 'true-false' | 'essay';
+  type: 'mcq' | 'true-false' | 'fill-blank' | 'essay';
   text: string;
   options?: string[];
   correctAnswer?: string;
@@ -111,6 +115,10 @@ export interface ExamDetail {
   name: string;
   subject: string;
   class: string;
+  subjectId?: number | null;
+  classId?: number | null;
+  gradeLevelId?: number | null;
+  gradeLevel?: string;
   date: string;
   startTime: string;
   endTime: string;
@@ -132,7 +140,8 @@ export interface ExamStats {
 export interface CreateExamPayload {
   title: string;
   subjectId: number;
-  classId: number;
+  gradeLevelId: number;          // الصف الدراسي (مطلوب دائماً)
+  classId?: number | null;        // فصل محدد (اختياري — null = نشر للصف كله)
   date: string;
   startTime: string;
   endTime: string;
@@ -221,7 +230,9 @@ export class ExamManagerService {
     return this.http.get<{ id: number; name: string }[]>(`${this.base}/subjects`);
   }
 
-  getClasses(): Observable<{ id: number; name: string }[]> {
-    return this.http.get<{ id: number; name: string }[]>(`${this.base}/classes`);
+  getClasses(subjectId?: number): Observable<{ id: number; name: string; gradeLevelId: number }[]> {
+    let params = new HttpParams();
+    if (subjectId) params = params.set('subjectId', subjectId);
+    return this.http.get<{ id: number; name: string; gradeLevelId: number }[]>(`${this.base}/classes`, { params });
   }
 }

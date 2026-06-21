@@ -10,15 +10,14 @@ namespace Project.DAL.Configurations
         {
             builder.HasKey(x => x.Id);
 
-            // حصة واحدة فقط لكل (جدول، يوم، رقم حصة)
+            // حصة واحدة فقط لكل (جدول، يوم، رقم حصة) — قاعدة الخلية الواحدة لكل فصل.
+            // هذا هو القيد الفعلي الوحيد على مستوى الـ DB: داخل الجدول الواحد (فصل واحد)،
+            // لا يمكن وجود حجزين في نفس (يوم، حصة). تعارض القاعة/المعلم عبر الفصول المختلفة
+            // هو Business Logic يُفحص في طبقة الـ application لأن الـ DB لا تفرق بين المسودة
+            // والجدول المنشور (كلاهما يحتوي نفس القاعات عند النسخ من المنشور لمسودة جديدة).
             builder.HasIndex(x => new { x.TimetableId, x.DayOfWeek, x.PeriodNumber })
                 .IsUnique()
                 .HasFilter("[IsDeleted] = 0");
-
-            // غرفة واحدة فقط لكل (غرفة، يوم، رقم حصة) — تعارض الغرف
-            builder.HasIndex(x => new { x.RoomId, x.DayOfWeek, x.PeriodNumber })
-                .IsUnique()
-                .HasFilter("[IsDeleted] = 0 AND [RoomId] IS NOT NULL");
 
             builder.Property(x => x.StartTime)
                 .HasColumnType("time");

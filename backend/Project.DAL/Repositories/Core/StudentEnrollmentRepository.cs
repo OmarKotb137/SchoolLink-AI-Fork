@@ -20,6 +20,25 @@ public class StudentEnrollmentRepository : Repository<StudentEnrollment>, IStude
                 e.AcademicYearId == academicYearId &&
                 e.LeftAt == null, ct);
 
+    /// <inheritdoc/>
+    public async Task<IReadOnlyList<StudentEnrollment>> GetActiveByStudentsAndYearAsync(
+        IReadOnlyCollection<int> studentIds,
+        int academicYearId,
+        CancellationToken ct = default)
+    {
+        if (studentIds.Count == 0)
+            return Array.Empty<StudentEnrollment>();
+
+        // استعلام واحد لكل التسجيلات النشطة لقائمة طلاب في سنة معينة (إصلاح N+1 في جداول الأبناء).
+        return await _context.StudentEnrollments
+            .AsNoTracking()
+            .Where(e =>
+                e.AcademicYearId == academicYearId &&
+                e.LeftAt == null &&
+                studentIds.Contains(e.StudentId))
+            .ToListAsync(ct);
+    }
+
     public async Task<IReadOnlyList<StudentEnrollment>> GetByClassAndYearAsync(
         int classId,
         int academicYearId,

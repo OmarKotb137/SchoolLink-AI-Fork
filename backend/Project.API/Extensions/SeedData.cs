@@ -39,6 +39,11 @@ public static class SeedData
         if (hasExistingData)
         {
             // Database has old data — run upgrade seeding for new sections
+            // FIX: الـ guard ده بيتأكد من Users بس، فلو جدول AcademicYears اتفضّى لأي سبب
+            // (تنظيف بيانات جزئي، اختبار، migration ناقص) بينما Users لسه فيه بيانات،
+            // كان السيستم هيفضل بدون أي سنة دراسية للأبد — وده بيقفل أي صفحة بتعتمد عليها
+            // زي بناء الجداول الدراسية. الدالة دي شبكة أمان تتأكد دايمًا من وجود سنة حالية.
+            await EnsureCurrentAcademicYearExists(ctx);
             await SeedCurrentWeekActivity(ctx);
             await SeedUpgrades(ctx);
             return;
@@ -280,44 +285,34 @@ public static class SeedData
         await ctx.SaveChangesAsync();
 
         // =================================================================
-        // 10. Timetables + TimetableSlots
+        // 10. Timetables + TimetableSlots (الصف الأول الإعدادي: فصلان)
         // =================================================================
+        // توقيت الحصص اليومي (7 حصص). ملاحظة: فيه فاصل طابور ضمني بين الحصة 3 و 4.
         var schoolDays = new[] { SchoolDay.Sunday, SchoolDay.Monday, SchoolDay.Tuesday, SchoolDay.Wednesday, SchoolDay.Thursday };
         var slotTimes  = new (TimeOnly start, TimeOnly end)[]
         {
             (new TimeOnly(8,  0), new TimeOnly(8,  45)),
             (new TimeOnly(8, 45), new TimeOnly(9,  30)),
-            (new TimeOnly(9, 45), new TimeOnly(10, 30)),
-            (new TimeOnly(10,30), new TimeOnly(11, 15)),
-            (new TimeOnly(11,30), new TimeOnly(12, 15)),
-            (new TimeOnly(12,15), new TimeOnly(13,  0)),
-            (new TimeOnly(13,15), new TimeOnly(14,  0)),
+            (new TimeOnly(9, 30), new TimeOnly(10, 15)),
+            (new TimeOnly(10,30), new TimeOnly(11, 15)), // بعد فاصل الطابور
+            (new TimeOnly(11,15), new TimeOnly(12,  0)),
+            (new TimeOnly(12,  0), new TimeOnly(12, 45)),
+            (new TimeOnly(12,45), new TimeOnly(13, 30)),
         };
-        var codes7 = new[] { "ARB", "ENG", "MTH", "SCI", "SOC", "ISL", "CMP" };
+        var subjectCodes = new[] { "ARB", "ENG", "MTH", "SCI", "SOC", "ISL", "CMP" };
 
-        var classArray = new[] { class1, class2, class3, class4, class5, class6 };
+        // الصف الأول الإعدادي: فصلان + قاعتهما الخاصة (تفادي تعارض القاعات).
+        var grade1Classes = new[] { (cls: class1, room: rooms[0]), (cls: class2, room: rooms[1]) };
 
-        // ── helper: خلط Fisher-Yates لمصفوفة المواد (نتيجة قابلة للتوقع بفضل seed ثابت) ──
-        string[] ShuffleCodes(string[] src)
-        {
-            var copy = (string[])src.Clone();
-            for (int i = copy.Length - 1; i > 0; i--)
-            {
-                int j = rng.Next(i + 1);
-                (copy[i], copy[j]) = (copy[j], copy[i]);
-            }
-            return copy;
-        }
+        // ClassId → (subjectId → cstId)  (مرة واحدة لتفادي استعلامات LINQ متكررة)
+        var cstMaps = grade1Classes.ToDictionary(
+            x => x.cls.Id,
+            x => cstList.Where(c => c.ClassId == x.cls.Id)
+                        .ToDictionary(c => c.SubjectId, c => c.Id));
 
-        // ClassId → (subjectId → cstId)  (يُحسب مرة واحدة لتفادي تكرار استعلامات LINQ)
-        var cstMaps = classArray.ToDictionary(
-            cls => cls.Id,
-            cls => cstList.Where(c => c.ClassId == cls.Id)
-                          .ToDictionary(c => c.SubjectId, c => c.Id));
-
-        // ── أنشئ Timetable واحد لكل فصل ──────────────────────────────────
+        // ── أنشئ Timetable واحد منشور لكل فصل ────────────────────────────
         var timetableByClass = new Dictionary<int, Timetable>();
-        foreach (var cls in classArray)
+        foreach (var (cls, _) in grade1Classes)
         {
             var tt = new Timetable
             {
@@ -329,25 +324,39 @@ public static class SeedData
         }
         await ctx.SaveChangesAsync();
 
-        // ── صمّم الحصص فترة-بفترة لضمان عدم تعارض المعلم ─────────────────
-        // في كل (يوم، فترة) نخلط المواد ونوزّع 6 مواد مختلفة على الـ 6 فصول،
-        // فينتج عن كل فترة ترتيب مختلف عما سبق → يشعر المعلم بتغيّر جدوله يومياً.
-        var slotsByClass = Enumerable.Range(0, classArray.Length)
-                                     .Select(_ => new List<TimetableSlot>())
-                                     .ToArray();
+        // ── خوارزمية جشعة متوازنة لجدولة الحصص بلا أي تعارض ──────────────
+        // القيود المضمونة:
+        //   1) تعارض المعلم: في كل (يوم، حصة) كل معلم في فصل واحد فقط (busyTeachers).
+        //   2) تعارض القاعة: كل فصل في قاعته الخاصة دائمًا.
+        //   3) WeeklyPeriods: نختار المادة الأكثر احتياجًا (longest-remaining-first)
+        //      لضمان توزيع متوازن وتحقيق عدد الحصص المطلوب لكل مادة.
+        var remaining = grade1Classes.ToDictionary(
+            x => x.cls.Id,
+            x => subjectCodes.ToDictionary(c => c, c => weeklyPeriods[c]));
+
+        var allSlots = new List<TimetableSlot>();
 
         for (int d = 0; d < schoolDays.Length; d++)
         {
             for (int p = 0; p < slotTimes.Length; p++)
             {
-                // 7 مواد مربوبة عشوائياً، نستخدم أول 6 منها (واحدة تبقى فارغة كل فترة)
-                var order = ShuffleCodes(codes7);
+                // المعلمون المشغولون في هذه الفتحة الزمنية عبر كل الفصول
+                var busyTeachers = new HashSet<int>();
 
-                for (int ci = 0; ci < classArray.Length; ci++)
+                foreach (var (cls, room) in grade1Classes)
                 {
-                    var cls  = classArray[ci];
-                    var code = order[ci]; // كل فصل مادة مختلفة → مفيش تعارض معلم في نفس التوقيت
-                    slotsByClass[ci].Add(new TimetableSlot
+                    // اختر المادة الأكثر احتياجًا ومعلمها غير مشغول في هذه الفتحة
+                    var code = subjectCodes
+                        .Where(c => remaining[cls.Id][c] > 0 && !busyTeachers.Contains(T[c].Id))
+                        .OrderByDescending(c => remaining[cls.Id][c])
+                        .FirstOrDefault();
+
+                    if (code is null) continue; // فتحة فارغة (راحة)
+
+                    remaining[cls.Id][code]--;
+                    busyTeachers.Add(T[code].Id);
+
+                    allSlots.Add(new TimetableSlot
                     {
                         TimetableId           = timetableByClass[cls.Id].Id,
                         DayOfWeek             = schoolDays[d],
@@ -355,15 +364,14 @@ public static class SeedData
                         StartTime             = slotTimes[p].start,
                         EndTime               = slotTimes[p].end,
                         ClassSubjectTeacherId = cstMaps[cls.Id][S[code].Id],
-                        RoomId                = rooms[ci].Id,  // كل فصل في أووضته الخاصة
+                        RoomId                = room.Id,
                         CreatedAt = now, UpdatedAt = now
                     });
                 }
             }
         }
 
-        foreach (var list in slotsByClass)
-            ctx.TimetableSlots.AddRange(list);
+        ctx.TimetableSlots.AddRange(allSlots);
         await ctx.SaveChangesAsync();
 
         // =================================================================
@@ -380,7 +388,6 @@ public static class SeedData
         // =================================================================
         // 12. EvaluationTemplates — all 7 subjects × 3 grade levels = 21 templates
         // =================================================================
-        var subjectCodes = new[] { "ARB", "ENG", "MTH", "SCI", "SOC", "ISL", "CMP" };
         var subjectNames = new Dictionary<string, string>
         {
             ["ARB"] = "اللغة العربية", ["ENG"] = "اللغة الإنجليزية", ["MTH"] = "الرياضيات",
@@ -1880,6 +1887,33 @@ public static class SeedData
     // =========================================================================
     // Private helpers
     // =========================================================================
+
+    /// <summary>
+    /// شبكة أمان: الـ guard الرئيسي بيتأكد من جدول Users بس عشان يقرر إن قاعدة البيانات
+    /// متهيأة بالفعل. لو جدول AcademicYears اتفضّى لأي سبب (تنظيف بيانات جزئي، اختبار،
+    /// migration ناقص) بينما Users لسه فيه بيانات، الدالة دي بتنشئ سنة دراسية افتراضية
+    /// واحدة وتخليها current، عشان أي صفحة بتعتمد على /api/academic-years ما تفضلش مقفولة.
+    /// لا تعمل حاجة لو فيه سنة دراسية واحدة على الأقل بالفعل (حتى لو IsDeleted).
+    /// </summary>
+    private static async Task EnsureCurrentAcademicYearExists(AppDbContext ctx)
+    {
+        bool hasAnyYear = await ctx.AcademicYears.IgnoreQueryFilters().AnyAsync();
+        if (hasAnyYear) return;
+
+        Serilog.Log.Warning("جدول AcademicYears فاضي رغم وجود بيانات مستخدمين — يتم إنشاء سنة دراسية افتراضية تلقائيًا");
+
+        var now = DateTime.UtcNow;
+        var fallbackYear = new AcademicYear
+        {
+            Name      = $"{now.Year}/{now.Year + 1}",
+            StartDate = new DateOnly(now.Year, 9, 1),
+            EndDate   = new DateOnly(now.Year + 1, 6, 30),
+            IsCurrent = true,
+            CreatedAt = now, UpdatedAt = now
+        };
+        ctx.AcademicYears.Add(fallbackYear);
+        await ctx.SaveChangesAsync();
+    }
 
     /// <summary>
     /// Seeds DailyAbsence rows for the current week so dashboard charts always have data.

@@ -171,15 +171,19 @@ public class StudentExamService : IStudentExamService
         if (attempt.SubmittedAt.HasValue)
             return OperationResult<StudentExamAttemptResultDto>.Failure("تم تسليم هذه المحاولة بالفعل");
 
-        // سجل وقت التسليم فوراً وقم بحفظه قبل البدء في عملية التصحيح الثقيلة
-        // هذا يضمن أن حالة 'تم التسليم' تُسجَّل حتى لو فشلت مرحلة التصحيح لاحقاً أو استغرقت وقتاً طويلاً
+        // ─── الخطوة 1: تسجيل وقت التسليم فوراً ────────────────────────────────
+        // يمنع أي auto-save يصل بعد كده من إنشاء إجابات مكررة (يرجع 409 للـ client)
         attempt.SubmittedAt = DateTime.UtcNow;
         attempt.UpdatedAt = DateTime.UtcNow;
         _unitOfWork.StudentExamAttempts.Update(attempt);
         await _unitOfWork.SaveChangesAsync();
 
-        // الإجابات معتمدة من الـ DB (محفوظة مسبقاً عن طريق الـ Auto-Save) مش من الـ DTO القادم في الطلب
-        var savedAnswersByQuestion = attempt.Answers.ToDictionary(a => a.QuestionId);
+        // ─── الخطوة 2: إعادة جلب الإجابات من الـ DB بعد قفل التسليم ──────────
+        // FIX: كنا نستخدم attempt.Answers المحمَّلة قبل Save1، اللي ممكن تفتقد
+        // إجابات وصلت من الـ auto-save في نفس اللحظة قبل ما نحفظ SubmittedAt.
+        // الإعادة دي تضمن أننا شايفين كل إجابة اتحفظت قبل قفل التسليم.
+        var freshAttempt = await _unitOfWork.StudentExamAttempts.GetWithAnswersForEnrollmentAsync(attemptId, enrollmentResult.Data!.Id);
+        var savedAnswersByQuestion = (freshAttempt?.Answers ?? attempt.Answers).ToDictionary(a => a.QuestionId);
 
         decimal totalScore = 0;
         var hasManualQuestions = false;
@@ -409,7 +413,30 @@ public class StudentExamService : IStudentExamService
             var isCorrect = correct.HasValue && answer.BooleanAnswer.HasValue && correct.Value == answer.BooleanAnswer.Value;
             answer.IsCorrect = isCorrect;
             answer.PointsEarned = isCorrect ? question.Points : 0;
+            return;
         }
+
+        if (question.QuestionType == QuestionType.FillBlank)
+        {
+            // لو المعلم محددش إجابة صحيحة نصية، السؤال يفضل بانتظار مراجعة يدوية دايماً
+            if (string.IsNullOrWhiteSpace(question.CorrectAnswer))
+                return; // IsCorrect تفضل null = بانتظار مراجعة المعلم
+
+            var isMatch = !string.IsNullOrWhiteSpace(answer.AnswerText) &&
+                          answer.AnswerText.Trim().Equals(question.CorrectAnswer.Trim(), StringComparison.OrdinalIgnoreCase);
+
+            if (isMatch)
+            {
+                // تطابق نصي تام → تصحيح تلقائي بالدرجة كاملة
+                answer.IsCorrect = true;
+                answer.PointsEarned = question.Points;
+            }
+            // مش متطابقة نصياً → تفضل IsCorrect = null عمداً (بانتظار مراجعة المعلم اليدوية)
+            // عشان اختلاف بسيط في الصياغة أو مرادفات ميتحسبش غلط أوتوماتيك
+            return;
+        }
+
+        // Essay: لا يُصحَّح تلقائياً أبداً، بينتظر تصحيح المعلم اليدوي دايماً (IsCorrect يفضل null)
     }
 
     private static bool? NormalizeBoolean(string? value)
@@ -482,7 +509,7 @@ public class StudentExamService : IStudentExamService
                                 correctAnswerText = a.Question.CorrectAnswer;
                             }
                         }
-                        else if (a.Question.QuestionType == QuestionType.Essay)
+                        else if (a.Question.QuestionType == QuestionType.FillBlank || a.Question.QuestionType == QuestionType.Essay)
                         {
                             correctAnswerText = a.Question.CorrectAnswer;
                         }

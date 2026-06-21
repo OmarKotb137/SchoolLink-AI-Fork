@@ -5,13 +5,13 @@ namespace Project.BLL.DTOs;
 
 public class AddTimetableSlotRequest
 {
-    [Range(1, int.MaxValue)]
+    [Range(1, int.MaxValue, ErrorMessage = "معرّف الجدول غير صالح")]
     public int TimetableId { get; set; }
 
-    [Required]
+    [Required, EnumDataType(typeof(SchoolDay), ErrorMessage = "اليوم الدراسي غير صالح")]
     public SchoolDay DayOfWeek { get; set; }
 
-    [Range(1, int.MaxValue)]
+    [Range(1, 20, ErrorMessage = "رقم الحصة يجب أن يكون بين 1 و 20")]
     public int PeriodNumber { get; set; }
 
     [Required]

@@ -30,6 +30,7 @@ public class ExamManagerService : IExamManagerService
 
         var query = _context.Exams
             .Include(e => e.Subject)
+            .Include(e => e.GradeLevel)
             .Include(e => e.ClassSubjectTeacher).ThenInclude(cst => cst!.Subject)
             .Include(e => e.ClassSubjectTeacher).ThenInclude(cst => cst!.Class).ThenInclude(c => c.GradeLevel)
             .Include(e => e.ClassSubjectTeacher).ThenInclude(cst => cst!.Class).ThenInclude(c => c.Enrollments)
@@ -39,13 +40,24 @@ public class ExamManagerService : IExamManagerService
             .Where(e => !e.IsDeleted)
             .AsQueryable();
 
-        // Filter by CST IDs (academic year)
-        if (filter.CstIds != null && filter.CstIds.Count > 0)
-            query = query.Where(e => filter.CstIds.Contains(e.ClassSubjectTeacherId!.Value));
+        // فلترة الملكية: امتحانات الفصول المحددة (CST) + امتحانات الصف كله (CST=null) للمواد التي يُدرّسها المعلم
+        var hasCst = filter.CstIds is { Count: > 0 };
+        var hasSubjects = filter.SubjectIds is { Count: > 0 };
+
+        if (hasCst || hasSubjects)
+        {
+            var cstIds = filter.CstIds ?? new List<int>();
+            var subjectIds = filter.SubjectIds ?? new List<int>();
+
+            query = query.Where(e =>
+                (e.ClassSubjectTeacherId.HasValue && cstIds.Contains(e.ClassSubjectTeacherId.Value))
+                || (e.ClassSubjectTeacherId == null && e.SubjectId.HasValue && subjectIds.Contains(e.SubjectId.Value)));
+        }
 
         // Filter by subject
         if (filter.SubjectId.HasValue)
-            query = query.Where(e => e.SubjectId == filter.SubjectId.Value);
+            query = query.Where(e => e.SubjectId == filter.SubjectId.Value
+                                     || e.ClassSubjectTeacher!.SubjectId == filter.SubjectId.Value);
 
         // Filter by search term
         if (!string.IsNullOrWhiteSpace(filter.Search))
@@ -89,9 +101,12 @@ public class ExamManagerService : IExamManagerService
             var status = GetStatus(e, now);
             var questionCount = e.Questions.Count + e.Groups.Sum(g => g.Questions.Count);
             var classEntity = e.ClassSubjectTeacher?.Class;
+            var gradeLevelName = classEntity?.GradeLevel?.Name ?? e.GradeLevel?.Name ?? "";
+            // لو CST=null (نشر للصف كله) → نعرض الصف + "كل الفصول"، لو CST موجود → "الصف - الفصل"
             var className = classEntity != null
                 ? $"{classEntity.GradeLevel.Name} - {classEntity.Name}"
-                : "";
+                : (!string.IsNullOrEmpty(gradeLevelName) ? $"{gradeLevelName} - كل الفصول" : "");
+            var subjectId = e.SubjectId ?? e.ClassSubjectTeacher?.SubjectId;
             var subjectName = e.Subject?.Name ?? e.ClassSubjectTeacher?.Subject.Name ?? "";
             var scoredAttempts = e.Attempts.Where(a => a.Score.HasValue).ToList();
             var avgScore = scoredAttempts.Count > 0
@@ -102,6 +117,7 @@ public class ExamManagerService : IExamManagerService
 
             return new ExamManagerItemDto(
                 e.Id, e.Title, subjectName, className,
+                subjectId, e.ClassSubjectTeacher?.ClassId, e.GradeLevelId, gradeLevelName,
                 e.StartTime?.ToString("yyyy-MM-dd") ?? "",
                 e.StartTime?.ToString("HH:mm") ?? "",
                 e.EndTime?.ToString("HH:mm") ?? "",
@@ -129,6 +145,7 @@ public class ExamManagerService : IExamManagerService
     {
         var exam = await _context.Exams
             .Include(e => e.Subject)
+            .Include(e => e.GradeLevel)
             .Include(e => e.ClassSubjectTeacher).ThenInclude(cst => cst!.Subject)
             .Include(e => e.ClassSubjectTeacher).ThenInclude(cst => cst!.Class).ThenInclude(c => c.GradeLevel)
             .Include(e => e.Questions).ThenInclude(q => q.Options)
@@ -142,9 +159,11 @@ public class ExamManagerService : IExamManagerService
         var status = GetStatus(exam, now);
         var questionCount = exam.Questions.Count + exam.Groups.Sum(g => g.Questions.Count);
         var classEntity = exam.ClassSubjectTeacher?.Class;
+        var gradeLevelName = classEntity?.GradeLevel?.Name ?? exam.GradeLevel?.Name ?? "";
         var className = classEntity != null
             ? $"{classEntity.GradeLevel.Name} - {classEntity.Name}"
-            : "";
+            : (!string.IsNullOrEmpty(gradeLevelName) ? $"{gradeLevelName} - كل الفصول" : "");
+        var subjectId = exam.SubjectId ?? exam.ClassSubjectTeacher?.SubjectId;
         var subjectName = exam.Subject?.Name ?? exam.ClassSubjectTeacher?.Subject.Name ?? "";
 
         var questions = new List<ExamManagerQuestionDto>();
@@ -164,6 +183,7 @@ public class ExamManagerService : IExamManagerService
 
         var dto = new ExamManagerDetailDto(
             exam.Id, exam.Title, subjectName, className,
+            subjectId, exam.ClassSubjectTeacher?.ClassId, exam.GradeLevelId, gradeLevelName,
             exam.StartTime?.ToString("yyyy-MM-dd") ?? "",
             exam.StartTime?.ToString("HH:mm") ?? "",
             exam.EndTime?.ToString("HH:mm") ?? "",
@@ -175,15 +195,26 @@ public class ExamManagerService : IExamManagerService
         return OperationResult<ExamManagerDetailDto>.Success(dto);
     }
 
-    public async Task<OperationResult<ExamManagerStatsDto>> GetStatsAsync(List<int>? cstIds = null)
+    public async Task<OperationResult<ExamManagerStatsDto>> GetStatsAsync(List<int>? cstIds = null, List<int>? subjectIds = null)
     {
         var query = _context.Exams
             .Include(e => e.Attempts)
             .Where(e => !e.IsDeleted)
             .AsQueryable();
 
-        if (cstIds != null && cstIds.Count > 0)
-            query = query.Where(e => cstIds.Contains(e.ClassSubjectTeacherId!.Value));
+        // نفس منطق GetAll: امتحانات CST + امتحانات CST=null للمواد التي يُدرّسها المعلم
+        var hasCst = cstIds is { Count: > 0 };
+        var hasSubjects = subjectIds is { Count: > 0 };
+
+        if (hasCst || hasSubjects)
+        {
+            var cIds = cstIds ?? new List<int>();
+            var sIds = subjectIds ?? new List<int>();
+
+            query = query.Where(e =>
+                (e.ClassSubjectTeacherId.HasValue && cIds.Contains(e.ClassSubjectTeacherId.Value))
+                || (e.ClassSubjectTeacherId == null && e.SubjectId.HasValue && sIds.Contains(e.SubjectId.Value)));
+        }
 
         var exams = await query.ToListAsync();
         var now = DateTime.UtcNow;
@@ -203,34 +234,60 @@ public class ExamManagerService : IExamManagerService
 
     public async Task<OperationResult<ExamManagerDetailDto>> CreateAsync(CreateExamManagerDto dto, int teacherId)
     {
-        var classEntity = await _context.Classes
-            .Include(c => c.GradeLevel)
-            .FirstOrDefaultAsync(c => c.Id == dto.ClassId && !c.IsDeleted);
+        // التحقق من المادة + الصف الدراسي (مطلوبان دائماً)
+        var subject = await _context.Subjects
+            .FirstOrDefaultAsync(s => s.Id == dto.SubjectId && !s.IsDeleted);
+        if (subject == null)
+            return OperationResult<ExamManagerDetailDto>.Failure("المادة غير موجودة", 404);
 
-        if (classEntity == null)
-            return OperationResult<ExamManagerDetailDto>.Failure("الفصل غير موجود", 404);
+        var gradeLevel = await _context.GradeLevels
+            .FirstOrDefaultAsync(g => g.Id == dto.GradeLevelId && !g.IsDeleted);
+        if (gradeLevel == null)
+            return OperationResult<ExamManagerDetailDto>.Failure("الصف الدراسي غير موجود", 404);
 
-        var cst = await _context.ClassSubjectTeachers
-            .Include(c => c.Subject)
-            .Include(c => c.Class).ThenInclude(c => c.GradeLevel)
-            .FirstOrDefaultAsync(c =>
-                c.ClassId == dto.ClassId &&
-                c.SubjectId == dto.SubjectId &&
-                c.TeacherId == teacherId &&
-                c.AcademicYearId == classEntity.AcademicYearId &&
-                !c.IsDeleted);
+        // التحقق إن المعلم يُدرّس هذه المادة (صلاحية)
+        bool teachesSubject = await _context.ClassSubjectTeachers
+            .AnyAsync(c => c.SubjectId == dto.SubjectId && c.TeacherId == teacherId && !c.IsDeleted);
+        if (!teachesSubject)
+            return OperationResult<ExamManagerDetailDto>.Failure("غير مصرح لك بإنشاء امتحان في هذه المادة", 403);
 
-        if (cst == null)
-            return OperationResult<ExamManagerDetailDto>.Failure("لا يوجد تدريس لهذه المادة في هذا الفصل", 400);
+        int? cstId = null;
+        int gradeLevelId = dto.GradeLevelId;
+
+        if (dto.ClassId.HasValue)
+        {
+            // نشر لفصل محدد → نحل CST المناسب
+            var classEntity = await _context.Classes
+                .Include(c => c.GradeLevel)
+                .FirstOrDefaultAsync(c => c.Id == dto.ClassId.Value && !c.IsDeleted);
+
+            if (classEntity == null)
+                return OperationResult<ExamManagerDetailDto>.Failure("الفصل غير موجود", 404);
+
+            var cst = await _context.ClassSubjectTeachers
+                .FirstOrDefaultAsync(c =>
+                    c.ClassId == dto.ClassId.Value &&
+                    c.SubjectId == dto.SubjectId &&
+                    c.TeacherId == teacherId &&
+                    c.AcademicYearId == classEntity.AcademicYearId &&
+                    !c.IsDeleted);
+
+            if (cst == null)
+                return OperationResult<ExamManagerDetailDto>.Failure("لا يوجد تدريس لهذه المادة في هذا الفصل", 400);
+
+            cstId = cst.Id;
+            gradeLevelId = cst.Class.GradeLevelId;
+        }
+        // else: نشر للصف كله → CST يبقى null
 
         var startTime = DateTime.Parse(dto.Date + " " + dto.StartTime);
         var endTime = DateTime.Parse(dto.Date + " " + dto.EndTime);
 
         var exam = new Exam
         {
-            ClassSubjectTeacherId = cst.Id,
+            ClassSubjectTeacherId = cstId,
             SubjectId = dto.SubjectId,
-            GradeLevelId = cst.Class.GradeLevelId,
+            GradeLevelId = gradeLevelId,
             Title = dto.Title,
             StartTime = startTime,
             EndTime = endTime,
@@ -253,16 +310,54 @@ public class ExamManagerService : IExamManagerService
         return detail;
     }
 
-    public async Task<OperationResult> UpdateAsync(int id, CreateExamManagerDto dto)
+    public async Task<OperationResult> UpdateAsync(int id, CreateExamManagerDto dto, int teacherId)
     {
         var exam = await _unitOfWork.Exams.GetByIdAsync(id);
         if (exam == null || exam.IsDeleted)
             return OperationResult.Failure("الامتحان غير موجود");
 
+        // التحقق من الصلاحية: المعلم لازم يُدرّس المادة دي
+        bool teachesSubject = await _context.ClassSubjectTeachers
+            .AnyAsync(c => c.SubjectId == dto.SubjectId && c.TeacherId == teacherId && !c.IsDeleted);
+        if (!teachesSubject)
+            return OperationResult.Failure("غير مصرح لك بتعديل امتحان في هذه المادة", 403);
+
+        // التحقق من الصف الدراسي
+        if (dto.GradeLevelId <= 0)
+            return OperationResult.Failure("الصف الدراسي مطلوب", 400);
+
+        int? cstId = null;
+        int gradeLevelId = dto.GradeLevelId;
+
+        if (dto.ClassId.HasValue)
+        {
+            var classEntity = await _context.Classes
+                .FirstOrDefaultAsync(c => c.Id == dto.ClassId.Value && !c.IsDeleted);
+            if (classEntity == null)
+                return OperationResult.Failure("الفصل غير موجود", 404);
+
+            var cst = await _context.ClassSubjectTeachers
+                .FirstOrDefaultAsync(c =>
+                    c.ClassId == dto.ClassId.Value &&
+                    c.SubjectId == dto.SubjectId &&
+                    c.TeacherId == teacherId &&
+                    c.AcademicYearId == classEntity.AcademicYearId &&
+                    !c.IsDeleted);
+
+            if (cst == null)
+                return OperationResult.Failure("لا يوجد تدريس لهذه المادة في هذا الفصل", 400);
+
+            cstId = cst.Id;
+            gradeLevelId = cst.Class.GradeLevelId;
+        }
+
         var startTime = DateTime.Parse(dto.Date + " " + dto.StartTime);
         var endTime = DateTime.Parse(dto.Date + " " + dto.EndTime);
 
         exam.Title = dto.Title;
+        exam.SubjectId = dto.SubjectId;
+        exam.ClassSubjectTeacherId = cstId;
+        exam.GradeLevelId = gradeLevelId;
         exam.StartTime = startTime;
         exam.EndTime = endTime;
         exam.DurationMinutes = dto.DurationMinutes;
@@ -312,8 +407,9 @@ public class ExamManagerService : IExamManagerService
         if (exam is null)
             return OperationResult.Failure("الامتحان غير موجود", 404);
 
-        if (exam.ClassSubjectTeacher?.TeacherId != teacherId)
-            return OperationResult.Failure("غير مصرح لك بنشر هذا الامتحان", 403);
+        var ownerCheck = await EnsureTeacherCanManageExamAsync(exam, teacherId);
+        if (!ownerCheck.IsSuccess)
+            return ownerCheck;
 
         exam.IsPublished = true;
         exam.UpdatedAt = DateTime.UtcNow;
@@ -334,8 +430,9 @@ public class ExamManagerService : IExamManagerService
         if (exam is null)
             return OperationResult.Failure("الامتحان غير موجود", 404);
 
-        if (exam.ClassSubjectTeacher?.TeacherId != teacherId)
-            return OperationResult.Failure("غير مصرح لك بتعديل هذا الامتحان", 403);
+        var ownerCheck = await EnsureTeacherCanManageExamAsync(exam, teacherId);
+        if (!ownerCheck.IsSuccess)
+            return ownerCheck;
 
         // Phase 6.4: منع النشر لو فيه محاولات لم تُصحح بعد
         if (isPublished)
@@ -352,6 +449,36 @@ public class ExamManagerService : IExamManagerService
         await _context.SaveChangesAsync();
 
         return OperationResult.Success();
+    }
+
+    /// <summary>
+    /// التحقق من ملكية/صلاحية إدارة الامتحان:
+    ///   - لو CST موجود: المعلم لازم يكون صاحبه (TeacherId).
+    ///   - لو CST=null (نشر للصف): المعلم لازم يُدرّس المادة دي (SubjectId).
+    /// </summary>
+    private async Task<OperationResult> EnsureTeacherCanManageExamAsync(Exam exam, int teacherId)
+    {
+        // امتحان مربوط بفصل محدد → التحقق المباشر
+        if (exam.ClassSubjectTeacher is not null)
+        {
+            if (exam.ClassSubjectTeacher.TeacherId != teacherId)
+                return OperationResult.Failure("غير مصرح لك بإدارة هذا الامتحان", 403);
+            return OperationResult.Success();
+        }
+
+        // امتحان CST=null (نشر للصف) → المعلم لازم يُدرّس المادة
+        if (exam.SubjectId.HasValue)
+        {
+            bool teachesSubject = await _context.ClassSubjectTeachers
+                .AnyAsync(c => c.SubjectId == exam.SubjectId.Value
+                            && c.TeacherId == teacherId
+                            && !c.IsDeleted);
+            if (!teachesSubject)
+                return OperationResult.Failure("غير مصرح لك بإدارة هذا الامتحان", 403);
+            return OperationResult.Success();
+        }
+
+        return OperationResult.Failure("غير مصرح لك بإدارة هذا الامتحان", 403);
     }
 
     private static string GetStatus(Exam exam, DateTime _ )
@@ -383,9 +510,10 @@ public class ExamManagerService : IExamManagerService
         {
             var qType = q.Type switch
             {
-                "mcq"        => QuestionType.MultipleChoice,
-                "true-false" => QuestionType.TrueFalse,
-                _            => QuestionType.Essay,
+                "mcq"         => QuestionType.MultipleChoice,
+                "true-false"  => QuestionType.TrueFalse,
+                "fill-blank"  => QuestionType.FillBlank,
+                _             => QuestionType.Essay,
             };
 
             var question = new ExamQuestion
@@ -429,6 +557,7 @@ public class ExamManagerService : IExamManagerService
         {
             QuestionType.MultipleChoice => "mcq",
             QuestionType.TrueFalse => "true-false",
+            QuestionType.FillBlank => "fill-blank",
             QuestionType.Essay => "essay",
             _ => "mcq"
         };
@@ -442,7 +571,7 @@ public class ExamManagerService : IExamManagerService
             var correct = q.Options.FirstOrDefault(o => o.IsCorrect);
             correctAnswer = correct?.OptionText ?? "";
         }
-        else if (q.QuestionType == QuestionType.Essay)
+        else if (q.QuestionType == QuestionType.FillBlank || q.QuestionType == QuestionType.Essay)
         {
             correctAnswer = q.CorrectAnswer ?? "";
         }
