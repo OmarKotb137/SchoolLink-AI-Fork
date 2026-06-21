@@ -126,6 +126,18 @@ export class Reports implements OnInit {
   finalGradeAverage = computed(() => this.reportData()?.finalGradeAverage ?? 0);
   finalGradeMax = computed(() => this.reportData()?.finalGradeMax ?? 100);
 
+  // Circle info popup
+  circleInfo = signal<{ title: string; score: number; max: number; lines: string[] } | null>(null);
+
+  /** Computed breakdown for the evaluations circle */
+  evalBreakdown = computed(() => {
+    const grades = this.subjectGrades();
+    const totalScore = grades.reduce((s, g) => s + g.score, 0);
+    const totalMax = grades.reduce((s, g) => s + g.maxScore, 0);
+    const n = grades.length;
+    return { totalScore, totalMax, subjectCount: n };
+  });
+
   private aiBase = buildApiUrl('ai/reports');
 
   ngOnInit() {
@@ -499,5 +511,44 @@ export class Reports implements OnInit {
     if (pct >= 60) return '#2563eb';
     if (pct >= 40) return '#f59e0b';
     return '#dc2626';
+  }
+
+  showEvalInfo() {
+    const bd = this.evalBreakdown();
+    this.circleInfo.set({
+      title: 'التقييمات',
+      score: this.overallScore(),
+      max: this.overallMax(),
+      lines: [
+        `محسوبة من درجات ${bd.subjectCount} مواد في التقييمات الأسبوعية`,
+        `كل مادة من ${Math.round(bd.totalMax / bd.subjectCount)} درجات`,
+        `مجموع درجات الطالب: ${bd.totalScore} / ${bd.totalMax}`,
+        `النسبة: ${bd.totalScore} ÷ ${bd.totalMax} × 100 = ${this.overallScore().toFixed(1)}%`,
+      ],
+    });
+  }
+
+  showFinalInfo() {
+    const bd = this.evalBreakdown();
+    const n = bd.subjectCount;
+    // Estimate total final grade max = n * 100
+    const totalFinalMax = n * 100;
+    // Derive total earned from the average
+    const totalFinalEarned = this.finalGradeAverage() * n;
+    this.circleInfo.set({
+      title: 'الدرجات النهائية',
+      score: this.finalGradeAverage(),
+      max: this.finalGradeMax(),
+      lines: [
+        `محسوبة من متوسط الدرجات النهائية لـ ${n} مواد`,
+        `كل مادة من 100 درجة (امتحان الترم + أعمال السنة)`,
+        `مجموع درجات الطالب: ${totalFinalEarned.toFixed(1)} / ${totalFinalMax}`,
+        `المتوسط: ${totalFinalEarned.toFixed(1)} ÷ ${n} = ${this.finalGradeAverage().toFixed(1)}%`,
+      ],
+    });
+  }
+
+  closeCircleInfo() {
+    this.circleInfo.set(null);
   }
 }

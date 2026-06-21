@@ -319,37 +319,138 @@
   font-size: 18px;
 }
 
-/* Score comparison (evaluations vs final grades) */
-.score-compare {
+/* ═══ Dual Grade Circles (Evaluations + Final Grades) ═══ */
+.dual-circles {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  margin-top: 14px;
-  padding: 8px 16px;
-  background: rgba(255,255,255,0.5);
-  border-radius: 12px;
-  border: 1px solid rgba(0,0,0,0.05);
+  gap: 32px;
+  width: 100%;
 }
-.score-compare-item {
+.dual-circle-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 8px;
 }
-.score-compare-label {
-  font-size: 10px;
-  color: #6b7280;
-  font-weight: 500;
+.dual-circle-item .grade-circle {
+  width: 120px;
+  height: 120px;
 }
-.score-compare-value {
-  font-size: 14px;
+.dual-circle-item .grade-num {
+  font-size: 28px;
+}
+.dual-circle-label {
+  font-size: 13px;
   font-weight: 700;
+  color: #444651;
+  background: #f4f3fa;
+  padding: 4px 16px;
+  border-radius: 999px;
+  white-space: nowrap;
 }
-.score-compare-vs {
-  color: #d1d5db;
+
+/* ─── Clickable circles ─── */
+.grade-circle.clickable {
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.grade-circle.clickable:hover {
+  transform: scale(1.04);
+}
+.info-hint {
+  font-size: 10px;
+  color: #9ca3af;
+  margin-top: -4px;
+}
+
+/* ─── Circle Info Popup ─── */
+.circle-info-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+.circle-info-card {
+  background: #fff;
+  border-radius: 20px;
+  padding: 28px 32px;
+  max-width: 380px;
+  width: 90%;
+  direction: rtl;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.15);
+  animation: slideUp 0.25s ease;
+  position: relative;
+}
+.circle-info-close {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: #f4f3fa;
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.circle-info-close:hover {
+  background: #e2e4ec;
+}
+.circle-info-close .material-symbols-outlined {
   font-size: 18px;
-  font-weight: 300;
+  color: #444651;
+}
+.circle-info-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.circle-info-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: #1a1b21;
+}
+.circle-info-score {
+  font-size: 24px;
+  font-weight: 800;
+}
+.circle-info-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.circle-info-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #444651;
+}
+.info-dot {
+  width: 8px;
+  height: 8px;
+  min-width: 8px;
+  border-radius: 50%;
+  background: #00236f;
+  margin-top: 6px;
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* ═══ Metrics ═══ */

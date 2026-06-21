@@ -176,7 +176,6 @@ public class AIReportService : IAIReportService
         // -- Overall score priority: use subject grades (evaluations) when available for consistency --
         double overallScore = 0;
         double overallMax = 100;
-        decimal periodAvg = 0;
         double finalGradeAvg = 0;
         List<FinalGrade> allFinalGrades = new();
 
@@ -187,39 +186,6 @@ public class AIReportService : IAIReportService
                 .FindAsync(fg => fg.EnrollmentId == enrollment.Id && fg.Term == term.Value && !fg.IsDeleted))
                 .Where(fg => fg.Total > 0)
                 .ToList();
-
-            if (allFinalGrades.Count > 0)
-            {
-                periodAvg = allFinalGrades.Average(fg => fg.PeriodAvgScore);
-            }
-
-            // Convert periodAvg raw score to percentage
-            if (periodAvg > 0)
-            {
-                try
-                {
-                    var schoolClass = await _unitOfWork.Classes.GetByIdAsync(enrollment.ClassId);
-                    if (schoolClass != null)
-                    {
-                        var templates = await _unitOfWork.EvaluationTemplates
-                            .GetByGradeLevelAndYearAsync(schoolClass.GradeLevelId, schoolClass.AcademicYearId, term, ct);
-                        var template = templates.FirstOrDefault(t => t.Term == null || t.Term == term);
-                        if (template != null)
-                        {
-                            var templateWithItems = await _unitOfWork.EvaluationTemplates
-                                .GetWithItemsAsync(template.Id, ct);
-                            var yearWorkMax = templateWithItems?.Items?
-                                .Where(i => !i.IsDeleted)
-                                .Sum(i => i.MaxScore * i.Weight) ?? 0;
-                            if (yearWorkMax > 0)
-                            {
-                                periodAvg = Math.Round(periodAvg / yearWorkMax * 100, 1);
-                            }
-                        }
-                    }
-                }
-                catch { /* keep raw periodAvg if yearWorkMax calc fails */ }
-            }
         }
 
         // Subject-level grades via evaluations
@@ -284,15 +250,6 @@ public class AIReportService : IAIReportService
             finalGradeAvg = Math.Round(allFinalGrades.Average(fg => (double)fg.Total), 1);
         }
 
-        // If periodAvg is still 0 but we have subject grades, calculate average percentage
-        if (periodAvg == 0 && subjectGrades.Count > 0)
-        {
-            var totalPct = subjectGrades
-                .Where(sg => sg.MaxScore > 0)
-                .Sum(sg => (double)(sg.Score / sg.MaxScore * 100));
-            periodAvg = Math.Round((decimal)(totalPct / subjectGrades.Count(sg => sg.MaxScore > 0)), 1);
-        }
-
         // Trend detection
         string overallTrend = "stable";
         double overallChange = 0;
@@ -323,8 +280,7 @@ public class AIReportService : IAIReportService
         // Metrics
         var metrics = new List<MetricDto>
         {
-            new() { Label = "المعدل العام", Value = overallScore, Max = overallMax },
-            new() { Label = "متوسط التقييمات", Value = (double)periodAvg, Max = 100 }
+            new() { Label = "التقييمات", Value = overallScore, Max = overallMax }
         };
 
         if (enrollment != null)
