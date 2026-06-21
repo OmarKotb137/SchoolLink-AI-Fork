@@ -173,20 +173,24 @@ public class AIReportService : IAIReportService
             .FindAsync(e => e.StudentId == studentId && e.LeftAt == null))
             .FirstOrDefault();
 
-        // Overall score from FinalGrade (fallback to evaluation-based calculation)
+        // -- Overall score priority: use subject grades (evaluations) when available for consistency --
         double overallScore = 0;
         double overallMax = 100;
         decimal periodAvg = 0;
+        double finalGradeAvg = 0;
+        List<FinalGrade> allFinalGrades = new();
 
         if (enrollment != null && term.HasValue)
         {
-            var finalGrade = await _unitOfWork.FinalGrades
-                .GetByEnrollmentIdAsync(enrollment.Id, term, subjectId: null, ct);
-            if (finalGrade != null)
+            // Fetch ALL FinalGrades for this enrollment
+            allFinalGrades = (await _unitOfWork.FinalGrades
+                .FindAsync(fg => fg.EnrollmentId == enrollment.Id && fg.Term == term.Value && !fg.IsDeleted))
+                .Where(fg => fg.Total > 0)
+                .ToList();
+
+            if (allFinalGrades.Count > 0)
             {
-                overallScore = (double)(finalGrade.Total > 0 ? finalGrade.Total : finalGrade.PeriodAvgScore);
-                overallMax = (double)(finalGrade.MaxTotal > 0 ? finalGrade.MaxTotal : 100);
-                periodAvg = finalGrade.PeriodAvgScore;
+                periodAvg = allFinalGrades.Average(fg => fg.PeriodAvgScore);
             }
 
             // Convert periodAvg raw score to percentage
@@ -262,11 +266,22 @@ public class AIReportService : IAIReportService
             }
         }
 
-        // If overallScore is still 0 but we have subject grades, calculate from them
-        if (overallScore == 0 && subjectGrades.Count > 0)
+        // Calculate overall from subject grades (evaluations) — consistent with what's displayed
+        if (subjectGrades.Count > 0)
         {
-            overallScore = (double)subjectGrades.Sum(sg => sg.Score);
-            overallMax = (double)subjectGrades.Sum(sg => sg.MaxScore);
+            var sumScore = (double)subjectGrades.Sum(sg => sg.Score);
+            var sumMax = (double)subjectGrades.Sum(sg => sg.MaxScore);
+            if (sumMax > 0)
+            {
+                overallScore = Math.Round(sumScore / sumMax * 100, 1);
+                overallMax = 100;
+            }
+        }
+
+        // Also compute FinalGrade average (from 100 each)
+        if (allFinalGrades.Count > 0)
+        {
+            finalGradeAvg = Math.Round(allFinalGrades.Average(fg => (double)fg.Total), 1);
         }
 
         // If periodAvg is still 0 but we have subject grades, calculate average percentage
@@ -324,15 +339,7 @@ public class AIReportService : IAIReportService
             catch { /* skip */ }
         }
 
-        foreach (var sg in subjectGrades)
-        {
-            metrics.Add(new MetricDto
-            {
-                Label = sg.SubjectName,
-                Value = (double)sg.Score,
-                Max = (double)sg.MaxScore
-            });
-        }
+        // Metrics: only overall metrics — subjects are shown in their own card below
 
         // Generate AI-enhanced report text with real scores
         var currentYear = DateTime.UtcNow.Year;
@@ -362,6 +369,8 @@ public class AIReportService : IAIReportService
             OverallMax = overallMax,
             OverallTrend = overallTrend,
             OverallChange = overallChange,
+            FinalGradeAverage = finalGradeAvg,
+            FinalGradeMax = 100,
             SubjectGrades = subjectGrades,
             Metrics = metrics,
             ReportText = aiContent

@@ -53,6 +53,12 @@ export interface PagedResult<T> {
   totalPages: number;
 }
 
+export interface BlockStatusDto {
+  isBlocked: boolean;
+  blockedByMe: boolean;
+  blockedByOther: boolean;
+}
+
 @Injectable({ providedIn: 'root' })
 export class ConversationService {
   private http = inject(HttpClient);
@@ -182,8 +188,8 @@ export class ConversationService {
     return this.http.delete<ApiResponse<any>>(`${this.baseUrl}/${conversationId}/block/${blockedUserId}`);
   }
 
-  isUserBlocked(conversationId: number, otherUserId: number): Observable<ApiResponse<boolean>> {
-    return this.http.get<ApiResponse<boolean>>(`${this.baseUrl}/${conversationId}/block/${otherUserId}`);
+  isUserBlocked(conversationId: number, otherUserId: number): Observable<ApiResponse<BlockStatusDto>> {
+    return this.http.get<ApiResponse<BlockStatusDto>>(`${this.baseUrl}/${conversationId}/block/${otherUserId}`);
   }
 
   uploadFile(file: File): Observable<any> {

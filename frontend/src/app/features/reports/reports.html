@@ -39,8 +39,8 @@
     @if (!loading() && selectedChildId()) {
       <!-- Action Buttons -->
       <div class="actions-row">
-        <button class="btn-primary" (click)="generateReport(selectedChildId()!)" [disabled]="generating()">
-          @if (generating()) {
+        <button class="btn-primary" (click)="generateReport(selectedChildId()!)" [disabled]="generatingReport()">
+          @if (generatingReport()) {
             <span class="spinner-sm"></span>
             <span>جاري التوليد...</span>
           } @else {
@@ -48,9 +48,14 @@
             <span>توليد تقرير جديد</span>
           }
         </button>
-        <button class="btn-secondary" (click)="generateRecommendations(selectedChildId()!)" [disabled]="generating()">
-          <span class="material-symbols-outlined">psychology</span>
-          <span>توصيات ذكية</span>
+        <button class="btn-secondary" (click)="generateRecommendations(selectedChildId()!)" [disabled]="generatingRecs()">
+          @if (generatingRecs()) {
+            <span class="spinner-sm"></span>
+            <span>جاري التوليد...</span>
+          } @else {
+            <span class="material-symbols-outlined">psychology</span>
+            <span>توصيات ذكية</span>
+          }
         </button>
       </div>
 
@@ -89,7 +94,7 @@
                         [style.stroke]="getGradeColor(overallScore(), overallMax())" />
                     </svg>
                     <div class="grade-value">
-                      <span class="grade-num">{{ overallScore() }}</span>
+                      <span class="grade-num">{{ overallScore() | number:'1.1-1' }}</span>
                       <span class="grade-max">/ {{ overallMax() }}</span>
                     </div>
                   </div>
@@ -101,6 +106,18 @@
                       <span>{{ overallChange() > 0 ? overallChange() : '' }}{{ overallTrend() === 'up' ? ' تحسن' : ' تراجع' }}</span>
                     </div>
                   }
+                  <!-- Two score comparison -->
+                  <div class="score-compare">
+                    <div class="score-compare-item">
+                      <span class="score-compare-label">التقييمات</span>
+                      <span class="score-compare-value" [style.color]="getGradeColor(overallScore(), overallMax())">{{ overallScore() | number:'1.1-1' }}%</span>
+                    </div>
+                    <span class="score-compare-vs">|</span>
+                    <div class="score-compare-item">
+                      <span class="score-compare-label">الدرجات النهائية</span>
+                      <span class="score-compare-value" [style.color]="getGradeColor(finalGradeAverage(), finalGradeMax())">{{ finalGradeAverage() | number:'1.1-1' }}%</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             }
@@ -117,7 +134,7 @@
                     <div class="metric-item">
                       <div class="metric-info">
                         <span class="metric-label">{{ m.label }}</span>
-                        <span class="metric-value">{{ m.value }}{{ m.max === 100 ? '%' : '/' + m.max }}</span>
+                        <span class="metric-value">{{ m.value | number:'1.1-1' }}{{ m.max === 100 ? '%' : '/' + m.max }}</span>
                       </div>
                       <div class="metric-bar-track">
                         <div class="metric-bar-fill" [style.width.%]="(m.value / m.max) * 100"

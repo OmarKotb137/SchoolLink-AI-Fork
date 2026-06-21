@@ -32,6 +32,10 @@ public class StudentReportDto
     public string OverallTrend { get; set; } = "stable";
     public double OverallChange { get; set; }
 
+    /// <summary>متوسط الدرجات النهائية من FinalGrade (كل مادة من 100)</summary>
+    public double FinalGradeAverage { get; set; }
+    public double FinalGradeMax { get; set; } = 100;
+
     // Subject-level grades
     public List<SubjectGradeDto> SubjectGrades { get; set; } = new();
 

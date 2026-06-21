@@ -413,9 +413,32 @@ public class ConversationService : IConversationService
         if (user == null || user.IsDeleted || !user.IsActive)
             return OperationResult.Failure("المستخدم غير موجود أو غير نشط");
 
-        var alreadyParticipant = await _unitOfWork.ConversationParticipants.IsParticipantAsync(conversationId, userId);
-        if (alreadyParticipant)
-            return OperationResult.Failure("المستخدم مشترك بالفعل");
+        // Check if user was previously a participant (including soft-deleted)
+        var existingParticipant = await _unitOfWork.ConversationParticipants
+            .GetByConversationAndUserWithDeletedAsync(conversationId, userId);
+
+        if (existingParticipant != null)
+        {
+            if (!existingParticipant.IsDeleted)
+                return OperationResult.Failure("المستخدم مشترك بالفعل");
+
+            // Restore soft-deleted participant
+            existingParticipant.IsDeleted = false;
+            existingParticipant.JoinedAt = DateTime.UtcNow;
+            existingParticipant.UpdatedAt = DateTime.UtcNow;
+            _unitOfWork.ConversationParticipants.Update(existingParticipant);
+            await _unitOfWork.SaveChangesAsync();
+
+            await _notificationService.SendNotificationAsync(new SendNotificationRequest
+            {
+                UserId = userId,
+                Title = "دعوة محادثة جماعية",
+                Body = $"تمت إعادة إضافتك إلى محادثة جماعية: {conversation.Title ?? conversation.Id.ToString()}",
+                Type = NotificationType.GroupChatInvite
+            });
+
+            return OperationResult.Success("تم إعادة إضافة المشترك بنجاح");
+        }
 
         var participant = new ConversationParticipant
         {
@@ -647,11 +670,16 @@ public class ConversationService : IConversationService
         return OperationResult.Success("تم إلغاء حظر المستخدم بنجاح");
     }
 
-    public async Task<OperationResult<bool>> IsUserBlockedAsync(int conversationId, int userId, int otherUserId)
+    public async Task<OperationResult<BlockStatusDto>> IsUserBlockedAsync(int conversationId, int userId, int otherUserId)
     {
-        var blocked = await _unitOfWork.BlockedUsers.IsBlockedAsync(userId, otherUserId, conversationId)
-                    || await _unitOfWork.BlockedUsers.IsBlockedAsync(otherUserId, userId, conversationId);
-        return OperationResult<bool>.Success(blocked);
+        var blockedByMe = await _unitOfWork.BlockedUsers.IsBlockedAsync(userId, otherUserId, conversationId);
+        var blockedByOther = await _unitOfWork.BlockedUsers.IsBlockedAsync(otherUserId, userId, conversationId);
+        return OperationResult<BlockStatusDto>.Success(new BlockStatusDto
+        {
+            IsBlocked = blockedByMe || blockedByOther,
+            BlockedByMe = blockedByMe,
+            BlockedByOther = blockedByOther
+        });
     }
 
     public async Task<OperationResult<PagedResult<MessageDto>>> GetMessagesAsync(

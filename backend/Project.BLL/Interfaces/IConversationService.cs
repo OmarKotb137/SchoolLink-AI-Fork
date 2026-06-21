@@ -21,7 +21,7 @@ public interface IConversationService
     Task<OperationResult<MessageDto>> TranscribeMessageAsync(int messageId, int userId, string voiceText);
     Task<OperationResult> BlockUserAsync(int conversationId, int blockerId, int blockedUserId);
     Task<OperationResult> UnblockUserAsync(int conversationId, int blockerId, int blockedUserId);
-    Task<OperationResult<bool>> IsUserBlockedAsync(int conversationId, int userId, int otherUserId);
+    Task<OperationResult<BlockStatusDto>> IsUserBlockedAsync(int conversationId, int userId, int otherUserId);
     Task<OperationResult> AddParticipantAsync(int conversationId, int userId, int callerUserId);
     Task<OperationResult> RemoveParticipantAsync(int conversationId, int userId, int callerUserId);
     Task<OperationResult> DeleteConversationAsync(int conversationId, int userId);
