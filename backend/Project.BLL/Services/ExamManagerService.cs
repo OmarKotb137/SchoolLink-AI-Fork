@@ -23,10 +23,6 @@ public class ExamManagerService : IExamManagerService
 
     public async Task<OperationResult<PagedResult<ExamManagerItemDto>>> GetAllAsync(ExamManagerFilterDto filter)
     {
-        var cairoZone = TimeZoneInfo.FindSystemTimeZoneById(
-            OperatingSystem.IsWindows() ? "Egypt Standard Time" : "Africa/Cairo"
-        );
-        var now = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, cairoZone);
 
         var query = _context.Exams
             .Include(e => e.Subject)
@@ -71,7 +67,7 @@ public class ExamManagerService : IExamManagerService
         // Apply status filter in memory (since status is computed at runtime)
         if (!string.IsNullOrWhiteSpace(filter.Status) && filter.Status != "all")
         {
-            exams = exams.Where(e => GetStatus(e, now) == filter.Status).ToList();
+            exams = exams.Where(e => GetStatus(e) == filter.Status).ToList();
         }
 
         var totalCount = exams.Count;
@@ -86,7 +82,7 @@ public class ExamManagerService : IExamManagerService
 
         var dtos = pagedExams.Select(e =>
         {
-            var status = GetStatus(e, now);
+            var status = GetStatus(e);
             var questionCount = e.Questions.Count + e.Groups.Sum(g => g.Questions.Count);
             var classEntity = e.ClassSubjectTeacher?.Class;
             var className = classEntity != null
@@ -138,8 +134,7 @@ public class ExamManagerService : IExamManagerService
         if (exam == null)
             return OperationResult<ExamManagerDetailDto>.Failure("الامتحان غير موجود", 404);
 
-        var now = DateTime.UtcNow;
-        var status = GetStatus(exam, now);
+        var status = GetStatus(exam);
         var questionCount = exam.Questions.Count + exam.Groups.Sum(g => g.Questions.Count);
         var classEntity = exam.ClassSubjectTeacher?.Class;
         var className = classEntity != null
@@ -186,11 +181,10 @@ public class ExamManagerService : IExamManagerService
             query = query.Where(e => cstIds.Contains(e.ClassSubjectTeacherId!.Value));
 
         var exams = await query.ToListAsync();
-        var now = DateTime.UtcNow;
 
         var total = exams.Count;
-        var upcoming = exams.Count(e => GetStatus(e, now) == "upcoming");
-        var ended = exams.Count(e => GetStatus(e, now) == "ended");
+        var upcoming = exams.Count(e => GetStatus(e) == "upcoming");
+        var ended = exams.Count(e => GetStatus(e) == "ended");
         var avgScore = exams.SelectMany(e => e.Attempts)
             .Where(a => a.Score.HasValue && a.TotalScore > 0)
             .Select(a => (double)(a.Score!.Value / a.TotalScore * 100))
@@ -223,8 +217,16 @@ public class ExamManagerService : IExamManagerService
         if (cst == null)
             return OperationResult<ExamManagerDetailDto>.Failure("لا يوجد تدريس لهذه المادة في هذا الفصل", 400);
 
-        var startTime = DateTime.Parse(dto.Date + " " + dto.StartTime);
-        var endTime = DateTime.Parse(dto.Date + " " + dto.EndTime);
+        // The incoming date/time strings are in Egypt time (Cairo UTC+3)
+        // Parse and store as-is (no timezone conversion) — GetStatus also works in Cairo time
+        var startTime = DateTime.SpecifyKind(
+            DateTime.Parse(dto.Date + " " + dto.StartTime),
+            DateTimeKind.Unspecified
+        );
+        var endTime = DateTime.SpecifyKind(
+            DateTime.Parse(dto.Date + " " + dto.EndTime),
+            DateTimeKind.Unspecified
+        );
 
         var exam = new Exam
         {
@@ -259,8 +261,16 @@ public class ExamManagerService : IExamManagerService
         if (exam == null || exam.IsDeleted)
             return OperationResult.Failure("الامتحان غير موجود");
 
-        var startTime = DateTime.Parse(dto.Date + " " + dto.StartTime);
-        var endTime = DateTime.Parse(dto.Date + " " + dto.EndTime);
+        // The incoming date/time strings are in Egypt time (Cairo UTC+3)
+        // Parse and store as-is (no timezone conversion) — GetStatus also works in Cairo time
+        var startTime = DateTime.SpecifyKind(
+            DateTime.Parse(dto.Date + " " + dto.StartTime),
+            DateTimeKind.Unspecified
+        );
+        var endTime = DateTime.SpecifyKind(
+            DateTime.Parse(dto.Date + " " + dto.EndTime),
+            DateTimeKind.Unspecified
+        );
 
         exam.Title = dto.Title;
         exam.StartTime = startTime;
@@ -354,13 +364,10 @@ public class ExamManagerService : IExamManagerService
         return OperationResult.Success();
     }
 
-    private static string GetStatus(Exam exam, DateTime _ )
+    private static string GetStatus(Exam exam)
     {
-        // Phase 5: استخدام TimeZoneInfo بدل من AddHours هاردكود
-        var cairoZone = TimeZoneInfo.FindSystemTimeZoneById(
-            OperatingSystem.IsWindows() ? "Egypt Standard Time" : "Africa/Cairo"
-        );
-        var now = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, cairoZone);
+        // Use server local time — on this machine the clock is set to Egypt time
+        var now = DateTime.SpecifyKind(DateTime.Now, DateTimeKind.Unspecified);
 
         if (!exam.IsPublished)
             return "draft";

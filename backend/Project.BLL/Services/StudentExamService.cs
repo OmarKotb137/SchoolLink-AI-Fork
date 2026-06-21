@@ -305,7 +305,7 @@ public class StudentExamService : IStudentExamService
         if (!exam.IsPublished)
             return OperationResult.Failure("الامتحان غير منشور");
 
-        var now = DateTime.UtcNow.AddHours(3);
+        var now = DateTime.SpecifyKind(DateTime.Now, DateTimeKind.Unspecified);
         if (exam.StartTime.HasValue && now < exam.StartTime.Value)
             return OperationResult.Failure("الامتحان لم يبدأ بعد");
 
@@ -317,7 +317,7 @@ public class StudentExamService : IStudentExamService
 
     private static string GetExamStatus(Exam exam, StudentExamAttempt? attempt, bool isResultPublished)
     {
-        var now = DateTime.UtcNow.AddHours(3);
+        var now = DateTime.SpecifyKind(DateTime.Now, DateTimeKind.Unspecified);
 
         if (attempt?.SubmittedAt != null)
         {

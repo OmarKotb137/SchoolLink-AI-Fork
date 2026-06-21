@@ -720,6 +720,7 @@ export class ExamGenerator implements OnInit {
     const questions = this.previewQuestions().map((q, i) => ({
       id: 0,
       questionText: edited[i]?.questionText || q.questionText,
+      questionType: q.questionType,
       points: edited[i]?.points ?? q.points,
       displayOrder: i + 1,
       correctAnswer: edited[i]?.correctAnswer ?? q.correctAnswer,

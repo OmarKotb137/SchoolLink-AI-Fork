@@ -1,3 +1,0 @@
-    .glass-panel { background: rgba(255,255,255,0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.3); }
-    .ai-border { position: relative; }
-    .ai-border::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(to right, #00236f, #6B7280); border-top-left-radius: inherit; border-top-right-radius: inherit; }
