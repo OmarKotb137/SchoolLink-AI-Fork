@@ -3,6 +3,7 @@ using Common.Results;
 using Project.BLL.DTOs.Assignment;
 using Project.BLL.DTOs.AssignmentQuestion;
 using Project.BLL.Interfaces;
+using Project.BLL.Utils;
 using Project.DAL.Interfaces;
 using Project.Domain.Entities;
 using Project.Domain.Enums;
@@ -143,6 +144,15 @@ namespace Project.BLL.Services
                 return OperationResult<AssignmentDto>.Failure("الواجب غير موجود", 404);
 
             var question = _mapper.Map<AssignmentQuestion>(dto);
+
+            // Validation (الطبقة 4): رفض القيم غير الصالحة لأسئلة صح/خطأ
+            if (question.QuestionType == QuestionType.TrueFalse
+                && !BooleanNormalizer.IsValidTrueFalseAnswer(question.CorrectAnswer))
+                return OperationResult<AssignmentDto>.Failure($"قيمة الإجابة الصحيحة لسؤال صح/خطأ غير صالحة: \"{question.CorrectAnswer}\"");
+
+            // تطبيع (الطبقة 2): canonical "True"/"False" لأسئلة صح/خطأ
+            question.CorrectAnswer = BooleanNormalizer.NormalizeCanonicalCorrectAnswer(question.QuestionType, question.CorrectAnswer);
+
             assignment.Questions.Add(question);
 
             _unitOfWork.Assignments.Update(assignment);
@@ -198,7 +208,14 @@ namespace Project.BLL.Services
             question.QuestionText = dto.QuestionText;
             question.QuestionType = dto.QuestionType;
             question.ImageUrl = dto.ImageUrl;
-            question.CorrectAnswer = dto.CorrectAnswer;
+
+            // Validation (الطبقة 4): رفض القيم غير الصالحة لأسئلة صح/خطأ
+            if (question.QuestionType == QuestionType.TrueFalse
+                && !BooleanNormalizer.IsValidTrueFalseAnswer(dto.CorrectAnswer))
+                return OperationResult.Failure($"قيمة الإجابة الصحيحة لسؤال صح/خطأ غير صالحة: \"{dto.CorrectAnswer}\"");
+
+            // تطبيع (الطبقة 2): canonical "True"/"False" لأسئلة صح/خطأ
+            question.CorrectAnswer = BooleanNormalizer.NormalizeCanonicalCorrectAnswer(question.QuestionType, dto.CorrectAnswer);
             question.DisplayOrder = dto.DisplayOrder;
             question.Points = dto.Points;
             question.UpdatedAt = DateTime.UtcNow;

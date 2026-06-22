@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Project.BLL.DTOs.Common;
 using Project.BLL.DTOs.Exam;
 using Project.BLL.Interfaces;
+using Project.BLL.Utils;
 using Project.DAL.Context;
 using Project.DAL.Interfaces;
 using Project.Domain.Entities;
@@ -316,7 +317,11 @@ public class ExamManagerService : IExamManagerService
 
         // حفظ الأسئلة اليدوية لو وُجدت
         if (dto.Questions != null)
-            await SaveQuestionsAsync(exam.Id, dto.Questions);
+        {
+            var saveResult = await SaveQuestionsAsync(exam.Id, dto.Questions);
+            if (!saveResult.IsSuccess)
+                return OperationResult<ExamManagerDetailDto>.Failure(saveResult.Message!, saveResult.StatusCode);
+        }
 
         var detail = await GetByIdAsync(exam.Id);
         return detail;
@@ -394,7 +399,9 @@ public class ExamManagerService : IExamManagerService
                 q.UpdatedAt = DateTime.UtcNow;
             }
             await _context.SaveChangesAsync();
-            await SaveQuestionsAsync(id, dto.Questions);
+            var updateSaveResult = await SaveQuestionsAsync(id, dto.Questions);
+            if (!updateSaveResult.IsSuccess)
+                return updateSaveResult;
         }
 
         return OperationResult.Success("تم تحديث الامتحان بنجاح");
@@ -512,7 +519,7 @@ public class ExamManagerService : IExamManagerService
     }
 
     // Phase 3: حفظ أسئلة يدوية جديدة لامتحان
-    private async Task SaveQuestionsAsync(int examId, List<CreateExamManagerQuestionDto> questions)
+    private async Task<OperationResult> SaveQuestionsAsync(int examId, List<CreateExamManagerQuestionDto> questions)
     {
         var now = DateTime.UtcNow;
         int order = 1;
@@ -527,12 +534,19 @@ public class ExamManagerService : IExamManagerService
                 _             => QuestionType.Essay,
             };
 
+            // Validation (الطبقة 4): رفض القيم غير الصالحة لأسئلة صح/خطأ
+            if (qType == QuestionType.TrueFalse && !BooleanNormalizer.IsValidTrueFalseAnswer(q.CorrectAnswer))
+                return OperationResult.Failure($"قيمة الإجابة الصحيحة لسؤال صح/خطأ غير صالحة: \"{q.CorrectAnswer}\"");
+
+            // تطبيع (الطبقة 2): تخزين True/False canonical لأسئلة صح/خطأ
+            var canonicalAnswer = BooleanNormalizer.NormalizeCanonicalCorrectAnswer(qType, q.CorrectAnswer) ?? "";
+
             var question = new ExamQuestion
             {
                 ExamId       = examId,
                 QuestionText = q.Text,
                 QuestionType = qType,
-                CorrectAnswer = q.CorrectAnswer ?? "",
+                CorrectAnswer = canonicalAnswer,
                 Points       = q.Points,
                 DisplayOrder = order++,
                 CreatedAt    = now,
@@ -560,6 +574,8 @@ public class ExamManagerService : IExamManagerService
                 await _context.SaveChangesAsync();
             }
         }
+
+        return OperationResult.Success();
     }
 
     private static ExamManagerQuestionDto MapQuestion(ExamQuestion q)

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Project.BLL.Utils;
 using Project.DAL.Context;
 using Project.Domain.Entities;
 using Project.Domain.Enums;
@@ -3284,5 +3285,197 @@ public static class SeedData
             }
         }
         catch { /* ignore */ }
+
+        // ── 7. Normalize True/False CorrectAnswer to canonical "True"/"False" ──
+        // إصلاح بيانات صح/خطأ المخزّنة بصيغ غير موحّدة (مثل "صواب"، "نعم"، "yes"...)
+        // إلى الصيغة الكانونية "True"/"False". Idempotent: الـ guard بيمنع التشغيل التكراري.
+        await NormalizeTrueFalseAnswersAsync(ctx, now);
+    }
+
+    /// <summary>
+    /// يطبّع كل صفوف TrueFalse في ExamQuestions/AssignmentQuestions/QuestionBank
+    /// إلى الصيغة الكانونية "True"/"False"، ثم يُعيد تصحيح (re-grade) الإجابات المتأثرة فقط.
+    /// </summary>
+    private static async Task NormalizeTrueFalseAnswersAsync(AppDbContext ctx, DateTime now)
+    {
+        // Guard: لو مفيش أي صف TrueFalse مش canonical، نخرج فوراً (idempotent)
+        var needsExamQuestions = await ctx.ExamQuestions.AnyAsync(q =>
+            q.QuestionType == QuestionType.TrueFalse && !q.IsDeleted &&
+            !(q.CorrectAnswer == "True" || q.CorrectAnswer == "False"));
+        var needsAssignmentQuestions = await ctx.AssignmentQuestions.AnyAsync(q =>
+            q.QuestionType == QuestionType.TrueFalse && !q.IsDeleted &&
+            !(q.CorrectAnswer == "True" || q.CorrectAnswer == "False"));
+        var needsQuestionBank = await ctx.QuestionBank.AnyAsync(q =>
+            q.QuestionType == QuestionType.TrueFalse && !q.IsDeleted &&
+            !(q.CorrectAnswer == "True" || q.CorrectAnswer == "False"));
+
+        if (!needsExamQuestions && !needsAssignmentQuestions && !needsQuestionBank)
+            return;
+
+        // 7أ. تطبيع صفوف TrueFalse في الامتحانات
+        if (needsExamQuestions)
+        {
+            var examTfQuestions = await ctx.ExamQuestions
+                .Where(q => q.QuestionType == QuestionType.TrueFalse && !q.IsDeleted)
+                .ToListAsync();
+
+            foreach (var q in examTfQuestions)
+            {
+                var normalized = BooleanNormalizer.NormalizeBoolean(q.CorrectAnswer);
+                if (normalized.HasValue)
+                    q.CorrectAnswer = normalized.Value ? "True" : "False";
+                // لو null (قيمة مش متعرّف عليها) → نسيبها زي ما هي (مبنلمسهاش)
+            }
+            await ctx.SaveChangesAsync();
+        }
+
+        // 7ب. تطبيع صفوف TrueFalse في الواجبات
+        if (needsAssignmentQuestions)
+        {
+            var assignmentTfQuestions = await ctx.AssignmentQuestions
+                .Where(q => q.QuestionType == QuestionType.TrueFalse && !q.IsDeleted)
+                .ToListAsync();
+
+            foreach (var q in assignmentTfQuestions)
+            {
+                var normalized = BooleanNormalizer.NormalizeBoolean(q.CorrectAnswer);
+                if (normalized.HasValue)
+                    q.CorrectAnswer = normalized.Value ? "True" : "False";
+            }
+            await ctx.SaveChangesAsync();
+        }
+
+        // 7ج. تطبيع صفوف TrueFalse في بنك الأسئلة
+        if (needsQuestionBank)
+        {
+            var bankTfQuestions = await ctx.QuestionBank
+                .Where(q => q.QuestionType == QuestionType.TrueFalse && !q.IsDeleted)
+                .ToListAsync();
+
+            foreach (var q in bankTfQuestions)
+            {
+                var normalized = BooleanNormalizer.NormalizeBoolean(q.CorrectAnswer);
+                if (normalized.HasValue)
+                    q.CorrectAnswer = normalized.Value ? "True" : "False";
+            }
+            await ctx.SaveChangesAsync();
+        }
+
+        // 7د. إعادة تصحيح (Re-grade) إجابات الطلاب المتأثرة بالـ bug بس.
+        // نعيد حساب IsCorrect/PointsEarned للإجابات اللي سؤالها بقى canonical دلوقتي
+        // (يعني كانت متأثرة بالـ bug فعلاً).
+        await RegradeExamTrueFalseAnswersAsync(ctx, now);
+        await RegradeAssignmentTrueFalseAnswersAsync(ctx, now);
+    }
+
+    /// <summary>
+    /// يُعيد تصحيح إجابات أسئلة صح/خطأ في محاولات الامتحان المتأثرة بالـ bug،
+    /// ويُحدّث درجة كل محاولة بشكل deterministic.
+    /// </summary>
+    private static async Task RegradeExamTrueFalseAnswersAsync(AppDbContext ctx, DateTime now)
+    {
+        // نجيب بس الإجابات اللي سؤالها TrueFalse canonical (يعني كانت محتاجة regrade)
+        var affectedExamAnswers = await ctx.StudentExamAnswers
+            .Include(a => a.Question)
+            .Include(a => a.Attempt)
+            .Where(a => a.Question.QuestionType == QuestionType.TrueFalse &&
+                        (a.Question.CorrectAnswer == "True" || a.Question.CorrectAnswer == "False"))
+            .ToListAsync();
+
+        if (affectedExamAnswers.Count == 0)
+            return;
+
+        var affectedAttemptIds = affectedExamAnswers.Select(a => a.AttemptId).Distinct().ToHashSet();
+
+        foreach (var answer in affectedExamAnswers)
+        {
+            var correct = BooleanNormalizer.NormalizeBoolean(answer.Question.CorrectAnswer);
+            if (correct.HasValue && answer.BooleanAnswer.HasValue)
+            {
+                var isCorrect = correct.Value == answer.BooleanAnswer.Value;
+                answer.IsCorrect = isCorrect;
+                answer.PointsEarned = isCorrect ? answer.Question.Points : 0;
+            }
+        }
+
+        // إعادة حساب الدرجة الكلية لكل محاولة متأثرة
+        var attempts = await ctx.StudentExamAttempts
+            .Include(t => t.Answers)
+                .ThenInclude(a => a.Question)
+            .Where(t => affectedAttemptIds.Contains(t.Id))
+            .ToListAsync();
+
+        foreach (var attempt in attempts)
+        {
+            decimal totalScore = 0;
+            var hasManual = false;
+            foreach (var answer in attempt.Answers)
+            {
+                if (answer.IsCorrect.HasValue)
+                    totalScore += answer.PointsEarned;
+                else
+                    hasManual = true;
+            }
+            attempt.Score = totalScore;
+            attempt.IsGraded = !hasManual;
+            attempt.UpdatedAt = now;
+        }
+
+        await ctx.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// يُعيد تصحيح إجابات أسئلة صح/خطأ في تسليمات الواجبات المتأثرة بالـ bug،
+    /// ويُحدّث درجة كل تسليم بشكل deterministic.
+    /// </summary>
+    private static async Task RegradeAssignmentTrueFalseAnswersAsync(AppDbContext ctx, DateTime now)
+    {
+        var affectedAssignmentAnswers = await ctx.StudentAssignmentAnswers
+            .Include(a => a.Question)
+            .Include(a => a.Submission)
+            .Where(a => a.Question.QuestionType == QuestionType.TrueFalse &&
+                        (a.Question.CorrectAnswer == "True" || a.Question.CorrectAnswer == "False"))
+            .ToListAsync();
+
+        if (affectedAssignmentAnswers.Count == 0)
+            return;
+
+        var affectedSubmissionIds = affectedAssignmentAnswers.Select(a => a.SubmissionId).Distinct().ToHashSet();
+
+        foreach (var answer in affectedAssignmentAnswers)
+        {
+            var correct = BooleanNormalizer.NormalizeBoolean(answer.Question.CorrectAnswer);
+            if (correct.HasValue && answer.BooleanAnswer.HasValue)
+            {
+                var isCorrect = correct.Value == answer.BooleanAnswer.Value;
+                answer.IsCorrect = isCorrect;
+                answer.PointsEarned = isCorrect ? answer.Question.Points : 0;
+            }
+        }
+
+        // إعادة حساب الدرجة الكلية لكل تسليم متأثر
+        var submissions = await ctx.StudentAssignmentSubmissions
+            .Include(s => s.Answers)
+                .ThenInclude(a => a.Question)
+            .Where(s => affectedSubmissionIds.Contains(s.Id))
+            .ToListAsync();
+
+        foreach (var submission in submissions)
+        {
+            decimal totalScore = 0;
+            var hasManual = false;
+            foreach (var answer in submission.Answers)
+            {
+                if (answer.IsCorrect.HasValue)
+                    totalScore += answer.PointsEarned;
+                else
+                    hasManual = true;
+            }
+            submission.Score = totalScore;
+            submission.IsGraded = !hasManual;
+            submission.UpdatedAt = now;
+        }
+
+        await ctx.SaveChangesAsync();
     }
 }

@@ -6,6 +6,7 @@ using Project.BLL.AI.Models;
 using Project.BLL.DTOs;
 using Project.BLL.DTOs.Exam;
 using Project.BLL.Interfaces;
+using Project.BLL.Utils;
 using Project.DAL.Interfaces;
 using Project.Domain.Enums;
 
@@ -278,7 +279,9 @@ public class AiExamGeneratorService : IAiExamGeneratorService
                     IsCorrect = o.IsCorrect,
                     DisplayOrder = o.DisplayOrder
                 }).ToList(),
-                CorrectAnswer = q.CorrectAnswer,
+                // تطبيع (الطبقة 2): canonical "True"/"False" لأسئلة صح/خطأ
+                // الـ AI عادةً بيبعت options للـ TF، بس نطبّع كـ safety net لو رجّع نص
+                CorrectAnswer = BooleanNormalizer.NormalizeCanonicalCorrectAnswer((QuestionType)q.QuestionType, q.CorrectAnswer),
                 Points = q.Points > 0 ? q.Points : (request.TotalScore / generatedExam.StandaloneQuestions.Count),
                 DisplayOrder = i + 1
             }).ToList()

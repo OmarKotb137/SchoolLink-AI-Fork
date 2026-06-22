@@ -2,6 +2,7 @@ using AutoMapper;
 using Common.Results;
 using Project.BLL.DTOs.AssignmentSubmission;
 using Project.BLL.Interfaces;
+using Project.BLL.Utils;
 using Project.DAL.Interfaces;
 using Project.Domain.Entities;
 using Project.Domain.Enums;
@@ -94,11 +95,21 @@ namespace Project.BLL.Services
 
                     if (question == null) continue;
 
-                    if (question.QuestionType == QuestionType.MultipleChoice ||
-                        question.QuestionType == QuestionType.TrueFalse)
+                    if (question.QuestionType == QuestionType.MultipleChoice)
                     {
                         var isCorrect = question.CorrectAnswer?
                             .Equals(answer.AnswerText, StringComparison.OrdinalIgnoreCase) ?? false;
+
+                        answer.IsCorrect = isCorrect;
+                        answer.PointsEarned = isCorrect ? question.Points : 0;
+                        totalPoints += answer.PointsEarned;
+                    }
+                    else if (question.QuestionType == QuestionType.TrueFalse)
+                    {
+                        // تطبيع كلا الجانبين للأسئلة صح/خطأ لضمان التطابق
+                        var correctBool = BooleanNormalizer.NormalizeBoolean(question.CorrectAnswer);
+                        var answerBool = BooleanNormalizer.NormalizeBoolean(answer.AnswerText);
+                        var isCorrect = correctBool.HasValue && answerBool.HasValue && correctBool.Value == answerBool.Value;
 
                         answer.IsCorrect = isCorrect;
                         answer.PointsEarned = isCorrect ? question.Points : 0;

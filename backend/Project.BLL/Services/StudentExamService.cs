@@ -1,6 +1,7 @@
 using Common.Results;
 using Project.BLL.DTOs.StudentExams;
 using Project.BLL.Interfaces;
+using Project.BLL.Utils;
 using Project.DAL.Interfaces;
 using Project.Domain.Entities;
 using Project.Domain.Enums;
@@ -409,7 +410,7 @@ public class StudentExamService : IStudentExamService
 
         if (question.QuestionType == QuestionType.TrueFalse)
         {
-            var correct = NormalizeBoolean(question.CorrectAnswer);
+            var correct = BooleanNormalizer.NormalizeBoolean(question.CorrectAnswer);
             var isCorrect = correct.HasValue && answer.BooleanAnswer.HasValue && correct.Value == answer.BooleanAnswer.Value;
             answer.IsCorrect = isCorrect;
             answer.PointsEarned = isCorrect ? question.Points : 0;
@@ -439,18 +440,9 @@ public class StudentExamService : IStudentExamService
         // Essay: لا يُصحَّح تلقائياً أبداً، بينتظر تصحيح المعلم اليدوي دايماً (IsCorrect يفضل null)
     }
 
-    private static bool? NormalizeBoolean(string? value)
+    private static bool IsResultPublished(Exam exam)
     {
-        if (string.IsNullOrWhiteSpace(value))
-            return null;
-
-        var normalized = value.Trim().ToLowerInvariant();
-        return normalized switch
-        {
-            "true" or "صح" or "صحيح" or "1" => true,
-            "false" or "خطأ" or "خطا" or "0" => false,
-            _ => null
-        };
+        return exam.IsResultPublished;
     }
 
     private static StudentExamAttemptResultDto MapResult(StudentExamAttempt attempt, bool isResultPublished)
@@ -499,7 +491,7 @@ public class StudentExamService : IStudentExamService
                                 finalAnswerText = a.BooleanAnswer.Value ? "صح" : "خطأ";
                             }
                             
-                            var normalizedCorrect = NormalizeBoolean(a.Question.CorrectAnswer);
+                            var normalizedCorrect = BooleanNormalizer.NormalizeBoolean(a.Question.CorrectAnswer);
                             if (normalizedCorrect.HasValue)
                             {
                                 correctAnswerText = normalizedCorrect.Value ? "صح" : "خطأ";
@@ -530,11 +522,6 @@ public class StudentExamService : IStudentExamService
                     }).ToList()
                 : new List<StudentExamResultAnswerDto>()
         };
-    }
-
-    private static bool IsResultPublished(Exam exam)
-    {
-        return exam.IsResultPublished;
     }
 
     private static string GetSubjectName(Exam exam)
