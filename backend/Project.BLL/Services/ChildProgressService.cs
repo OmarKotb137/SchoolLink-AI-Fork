@@ -14,6 +14,17 @@ public class ChildProgressService : IChildProgressService
         _unitOfWork = unitOfWork;
     }
 
+    private static readonly TimeZoneInfo _cairoZone = TimeZoneInfo.FindSystemTimeZoneById(
+        OperatingSystem.IsWindows() ? "Egypt Standard Time" : "Africa/Cairo");
+
+    private static string FormatCairoTime(DateTime? utcTime, string format)
+    {
+        if (!utcTime.HasValue) return "";
+        var cairoTime = TimeZoneInfo.ConvertTimeFromUtc(
+            DateTime.SpecifyKind(utcTime.Value, DateTimeKind.Utc), _cairoZone);
+        return cairoTime.ToString(format);
+    }
+
     public async Task<OperationResult<List<ChildProgressItemDto>>> GetChildProgressAsync(int parentUserId, int? term = null)
     {
         var currentYear = await _unitOfWork.AcademicYears.FirstOrDefaultAsync(y => y.IsCurrent && !y.IsDeleted);
@@ -74,7 +85,7 @@ public class ChildProgressService : IChildProgressService
                     Id = a.Id,
                     Subject = subject,
                     Title = a.Title,
-                    Deadline = a.DueDate?.ToString("yyyy-MM-dd"),
+                    Deadline = FormatCairoTime(a.DueDate, "yyyy-MM-dd"),
                     Status = status,
                     Score = score,
                     MaxScore = (double)a.MaxScore,
@@ -121,7 +132,7 @@ public class ChildProgressService : IChildProgressService
                 {
                     Id = e.Id,
                     Subject = subject,
-                    Date = e.StartTime?.ToString("yyyy-MM-dd"),
+                    Date = FormatCairoTime(e.StartTime, "yyyy-MM-dd"),
                     Status = status,
                     Score = score,
                     MaxScore = (double)e.TotalScore,

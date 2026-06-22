@@ -557,7 +557,9 @@ export class AssignmentManagement implements OnInit, OnDestroy {
 
   formatDeadline(iso: string): string {
     if (!iso) return '—';
-    const d = new Date(iso.endsWith('Z') ? iso : iso + 'Z');
+    // Deadline بيجي بتوقيت القاهرة من الـ Manager (string بدون Z للـ datetime-local input).
+    // نفسره كـ local browser time — للمعلم المصري = توقيت القاهرة صح.
+    const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return iso;
     const datePart = d.toLocaleDateString('ar-EG', { day: 'numeric', month: 'numeric', year: 'numeric' });
     const timePart = d.toLocaleTimeString('ar-EG', { hour: 'numeric', minute: '2-digit' });
@@ -572,7 +574,8 @@ export class AssignmentManagement implements OnInit, OnDestroy {
 
   deadlineRemaining(iso: string): string {
     if (!iso) return '';
-    const d = new Date(iso.endsWith('Z') ? iso : iso + 'Z');
+    // Deadline بيجي بتوقيت القاهرة (string بدون Z) — نفسره كـ local browser time
+    const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return '';
     const now = new Date();
     const diff = d.getTime() - now.getTime();
@@ -586,7 +589,8 @@ export class AssignmentManagement implements OnInit, OnDestroy {
 
   isOverdue(iso: string): boolean {
     if (!iso) return false;
-    const d = new Date(iso.endsWith('Z') ? iso : iso + 'Z');
+    // Deadline بيجي بتوقيت القاهرة (string بدون Z) — نفسره كـ local browser time
+    const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return false;
     return d.getTime() < Date.now();
   }

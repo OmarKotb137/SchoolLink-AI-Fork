@@ -21,12 +21,22 @@ public class ExamManagerService : IExamManagerService
         _unitOfWork = unitOfWork;
     }
 
+    private static readonly TimeZoneInfo _cairoZone = TimeZoneInfo.FindSystemTimeZoneById(
+        OperatingSystem.IsWindows() ? "Egypt Standard Time" : "Africa/Cairo"
+    );
+
+    private static string FormatCairoTime(DateTime? utcTime, string format)
+    {
+        if (!utcTime.HasValue) return "";
+        var cairoTime = TimeZoneInfo.ConvertTimeFromUtc(
+            DateTime.SpecifyKind(utcTime.Value, DateTimeKind.Utc), _cairoZone
+        );
+        return cairoTime.ToString(format);
+    }
+
     public async Task<OperationResult<PagedResult<ExamManagerItemDto>>> GetAllAsync(ExamManagerFilterDto filter)
     {
-        var cairoZone = TimeZoneInfo.FindSystemTimeZoneById(
-            OperatingSystem.IsWindows() ? "Egypt Standard Time" : "Africa/Cairo"
-        );
-        var now = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, cairoZone);
+        var now = DateTime.UtcNow;
 
         var query = _context.Exams
             .Include(e => e.Subject)
@@ -118,9 +128,9 @@ public class ExamManagerService : IExamManagerService
             return new ExamManagerItemDto(
                 e.Id, e.Title, subjectName, className,
                 subjectId, e.ClassSubjectTeacher?.ClassId, e.GradeLevelId, gradeLevelName,
-                e.StartTime?.ToString("yyyy-MM-dd") ?? "",
-                e.StartTime?.ToString("HH:mm") ?? "",
-                e.EndTime?.ToString("HH:mm") ?? "",
+                FormatCairoTime(e.StartTime, "yyyy-MM-dd"),
+                FormatCairoTime(e.StartTime, "HH:mm"),
+                FormatCairoTime(e.EndTime,   "HH:mm"),
                 e.DurationMinutes ?? 0,
                 questionCount, status,
                 avgScore, e.Attempts.Count, totalStudents > 0 ? totalStudents : null,
@@ -184,9 +194,9 @@ public class ExamManagerService : IExamManagerService
         var dto = new ExamManagerDetailDto(
             exam.Id, exam.Title, subjectName, className,
             subjectId, exam.ClassSubjectTeacher?.ClassId, exam.GradeLevelId, gradeLevelName,
-            exam.StartTime?.ToString("yyyy-MM-dd") ?? "",
-            exam.StartTime?.ToString("HH:mm") ?? "",
-            exam.EndTime?.ToString("HH:mm") ?? "",
+            FormatCairoTime(exam.StartTime, "yyyy-MM-dd"),
+            FormatCairoTime(exam.StartTime, "HH:mm"),
+            FormatCairoTime(exam.EndTime,   "HH:mm"),
             exam.DurationMinutes ?? 0,
             questionCount, status, exam.IsResultPublished,
             exam.TotalScore, questions
@@ -280,8 +290,10 @@ public class ExamManagerService : IExamManagerService
         }
         // else: نشر للصف كله → CST يبقى null
 
-        var startTime = DateTime.Parse(dto.Date + " " + dto.StartTime);
-        var endTime = DateTime.Parse(dto.Date + " " + dto.EndTime);
+        var localStartTime = DateTime.Parse(dto.Date + " " + dto.StartTime);
+        var localEndTime   = DateTime.Parse(dto.Date + " " + dto.EndTime);
+        var startTime = TimeZoneInfo.ConvertTimeToUtc(localStartTime, _cairoZone);
+        var endTime   = TimeZoneInfo.ConvertTimeToUtc(localEndTime,   _cairoZone);
 
         var exam = new Exam
         {
@@ -351,8 +363,10 @@ public class ExamManagerService : IExamManagerService
             gradeLevelId = cst.Class.GradeLevelId;
         }
 
-        var startTime = DateTime.Parse(dto.Date + " " + dto.StartTime);
-        var endTime = DateTime.Parse(dto.Date + " " + dto.EndTime);
+        var localStartTime = DateTime.Parse(dto.Date + " " + dto.StartTime);
+        var localEndTime   = DateTime.Parse(dto.Date + " " + dto.EndTime);
+        var startTime = TimeZoneInfo.ConvertTimeToUtc(localStartTime, _cairoZone);
+        var endTime   = TimeZoneInfo.ConvertTimeToUtc(localEndTime,   _cairoZone);
 
         exam.Title = dto.Title;
         exam.SubjectId = dto.SubjectId;
@@ -483,11 +497,8 @@ public class ExamManagerService : IExamManagerService
 
     private static string GetStatus(Exam exam, DateTime _ )
     {
-        // Phase 5: استخدام TimeZoneInfo بدل من AddHours هاردكود
-        var cairoZone = TimeZoneInfo.FindSystemTimeZoneById(
-            OperatingSystem.IsWindows() ? "Egypt Standard Time" : "Africa/Cairo"
-        );
-        var now = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, cairoZone);
+        // بعد إصلاح التخزين: الوقت مخزّن UTC، فنقارن UTC بـ UTC مباشرة
+        var now = DateTime.UtcNow;
 
         if (!exam.IsPublished)
             return "draft";

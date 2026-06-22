@@ -7,15 +7,15 @@ public class StudentExamListItemDto
     public int ExamId { get; set; }
     public string Title { get; set; } = string.Empty;
     public string SubjectName { get; set; } = string.Empty;
-    public DateTime? StartTime { get; set; }
-    public DateTime? EndTime { get; set; }
+    public DateTimeOffset? StartTime { get; set; }
+    public DateTimeOffset? EndTime { get; set; }
     public int? DurationMinutes { get; set; }
     public decimal TotalScore { get; set; }
     public int QuestionsCount { get; set; }
     public string Status { get; set; } = string.Empty;
     public int? AttemptId { get; set; }
-    public DateTime? StartedAt { get; set; }
-    public DateTime? SubmittedAt { get; set; }
+    public DateTimeOffset? StartedAt { get; set; }
+    public DateTimeOffset? SubmittedAt { get; set; }
     public bool IsGraded { get; set; }
     public bool IsResultPublished { get; set; }
     public decimal? Score { get; set; }
@@ -58,10 +58,10 @@ public class StudentExamAttemptStartedDto
 {
     public int AttemptId { get; set; }
     public int ExamId { get; set; }
-    public DateTime StartedAt { get; set; }
-    public DateTime ServerNow { get; set; }
+    public DateTimeOffset StartedAt { get; set; }
+    public DateTimeOffset ServerNow { get; set; }
     public int? DurationMinutes { get; set; }
-    public DateTime? EndsAt { get; set; }
+    public DateTimeOffset? EndsAt { get; set; }
 }
 
 // DTO لحفظ إجابة واحدة تلقائياً أثناء الامتحان (Auto-Save)

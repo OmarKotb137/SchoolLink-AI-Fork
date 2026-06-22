@@ -16,6 +16,9 @@ namespace Project.BLL.Services
         private readonly IMapper _mapper;
         private readonly INotificationService _notificationService;
 
+        private static readonly TimeZoneInfo _cairoZone = TimeZoneInfo.FindSystemTimeZoneById(
+            OperatingSystem.IsWindows() ? "Egypt Standard Time" : "Africa/Cairo");
+
         public AssignmentService(IUnitOfWork unitOfWork, IMapper mapper, INotificationService notificationService)
         {
             _unitOfWork = unitOfWork;
@@ -52,6 +55,14 @@ namespace Project.BLL.Services
                 return OperationResult<AssignmentDto>.Failure("بيان الفصل-المادة-المعلم غير موجود", 404);
 
             var assignment = _mapper.Map<Assignment>(dto);
+
+            // تحويل توقيت القاهرة لـ UTC عند الحفظ (نفس منطق AssignmentManagerService)
+            if (assignment.DueDate.HasValue)
+            {
+                assignment.DueDate = TimeZoneInfo.ConvertTimeToUtc(
+                    DateTime.SpecifyKind(assignment.DueDate.Value, DateTimeKind.Unspecified),
+                    _cairoZone);
+            }
 
             await _unitOfWork.Assignments.AddAsync(assignment);
             await _unitOfWork.SaveChangesAsync();
@@ -97,7 +108,10 @@ namespace Project.BLL.Services
 
             assignment.Title = dto.Title;
             assignment.Description = dto.Description;
-            assignment.DueDate = dto.DueDate;
+            assignment.DueDate = dto.DueDate.HasValue
+                ? TimeZoneInfo.ConvertTimeToUtc(
+                    DateTime.SpecifyKind(dto.DueDate.Value, DateTimeKind.Unspecified), _cairoZone)
+                : null;
             assignment.MaxScore = dto.MaxScore;
             assignment.UpdatedAt = DateTime.UtcNow;
 
@@ -323,7 +337,9 @@ namespace Project.BLL.Services
                     Id = a.Id,
                     Subject = subject,
                     Title = a.Title,
-                    DueDate = a.DueDate,
+                    DueDate = a.DueDate.HasValue
+                        ? new DateTimeOffset(DateTime.SpecifyKind(a.DueDate.Value, DateTimeKind.Utc))
+                        : null,
                     MaxScore = a.MaxScore,
                     Score = score,
                     Status = status,

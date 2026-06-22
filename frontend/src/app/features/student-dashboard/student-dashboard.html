@@ -225,7 +225,7 @@
                     <div class="sd-upcoming-dot"></div>
                     <div>
                       <p class="sd-upcoming-name">{{ e.title }}</p>
-                      <p class="sd-upcoming-meta">{{ e.subjectName }}@if (e.startTime) { · {{ e.startTime | date:'d MMM' }} }</p>
+                      <p class="sd-upcoming-meta">{{ e.subjectName }}@if (e.startTime) { · {{ e.startTime | date:'d MMM':'Africa/Cairo' }} }</p>
                     </div>
                     <span class="sd-upcoming-score">{{ e.totalScore }} د</span>
                   </div>
@@ -274,7 +274,7 @@
                     [class.sd-assignment--pending]="a.status === 'not-submitted'">
                     <div>
                       <p class="sd-assignment-title">{{ a.title }}</p>
-                      <p class="sd-assignment-meta">{{ a.subject }}@if (a.dueDate) { · {{ a.dueDate.slice(0,10) }} }</p>
+                      <p class="sd-assignment-meta">{{ a.subject }}@if (a.dueDate) { · {{ a.dueDate | date:'d MMM':'Africa/Cairo' }} }</p>
                     </div>
                     <span class="sd-assignment-status">
                       @if (a.status === 'submitted' && a.score !== undefined) { {{ a.score }}/{{ a.maxScore }} }

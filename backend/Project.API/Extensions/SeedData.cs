@@ -52,6 +52,20 @@ public static class SeedData
         var now = DateTime.UtcNow;
         var rng = new Random(42);
 
+        // ── timezone helper ─────────────────────────────────────────────
+        // كل المواعيد بتتخزن UTC (نفس إصلاح التوقيت المطبّق على الـ services).
+        // الـ helper ده بياخد وقت بتوقيت القاهرة + إزاحة بالأيام ويرجّع UTC
+        // → الامتحانات والواجبات بتبقى بمواعيد مدرسية واقعية (مش حسب وقت تشغيل الـ seeder).
+        var cairoZone = TimeZoneInfo.FindSystemTimeZoneById(
+            OperatingSystem.IsWindows() ? "Egypt Standard Time" : "Africa/Cairo");
+        DateTime CairoAt(int daysOffset, int hour, int minute)
+        {
+            var cairoToday = TimeZoneInfo.ConvertTimeFromUtc(now, cairoZone).Date;
+            var localDt = cairoToday.AddDays(daysOffset).AddHours(hour).AddMinutes(minute);
+            return TimeZoneInfo.ConvertTimeToUtc(
+                DateTime.SpecifyKind(localDt, DateTimeKind.Unspecified), cairoZone);
+        }
+
         // =================================================================
         // 1. AcademicYear
         // =================================================================
@@ -908,7 +922,7 @@ public static class SeedData
             ClassSubjectTeacherId = mathCst1.Id,
             Title       = "واجب الرياضيات الأول",
             Description = "واجب أسبوعي — حل التمارين من الكتاب.",
-            DueDate     = now.AddDays(7),
+            DueDate     = CairoAt(7, 23, 59),  // موعد التسليم بعد أسبوع منتصف الليل بتوقيت القاهرة
             MaxScore    = 10,
             IsAutoGraded= true,
             Category    = EvaluationCategory.Academic,
@@ -977,8 +991,8 @@ public static class SeedData
             ClassSubjectTeacherId = mathCst1.Id,
             GradeLevelId = grade1.Id,
             Title           = "اختبار الرياضيات القصير",
-            StartTime       = now.AddDays(1),
-            EndTime         = now.AddDays(1).AddMinutes(30),
+            StartTime       = CairoAt(1, 10, 0),               // بكرة 10 صباحًا بتوقيت القاهرة
+            EndTime         = CairoAt(1, 10, 0).AddMinutes(30), // نفس النهار 10:30
             DurationMinutes = 30,
             TotalScore      = 10,
             Category        = EvaluationCategory.Academic,
@@ -1091,8 +1105,8 @@ public static class SeedData
                 ClassSubjectTeacherId = cst.Id,
                 GradeLevelId = grade.Id,
                 Title = title,
-                StartTime = now.AddDays(2),
-                EndTime = now.AddDays(2).AddMinutes(duration),
+                StartTime = CairoAt(2, 10, 0),               // بعد يومين 10 صباحًا بتوقيت القاهرة
+                EndTime = CairoAt(2, 10, 0).AddMinutes(duration),
                 DurationMinutes = duration,
                 TotalScore = totalScore,
                 Category = EvaluationCategory.Academic,
@@ -1207,7 +1221,7 @@ public static class SeedData
                 ClassSubjectTeacherId = cst.Id,
                 Title = title,
                 Description = $"واجب في مادة {S[subjCode].Name}",
-                DueDate = now.AddDays(14),
+                DueDate = CairoAt(14, 23, 59),  // موعد التسليم بعد أسبوعين منتصف الليل بتوقيت القاهرة
                 MaxScore = maxScore,
                 IsAutoGraded = true,
                 Category = EvaluationCategory.Academic,

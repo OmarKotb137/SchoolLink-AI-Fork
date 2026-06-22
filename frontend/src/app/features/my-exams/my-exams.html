@@ -121,11 +121,11 @@
               <div class="meta-grid">
                 <div class="meta-chip">
                   <span class="material-symbols-outlined chip-icon">calendar_today</span>
-                  <span>{{ exam.startTime ? (exam.startTime | date: 'yyyy/MM/dd') : 'غير محدد' }}</span>
+                  <span>{{ exam.startTime ? (exam.startTime | date: 'yyyy/MM/dd':'Africa/Cairo') : 'غير محدد' }}</span>
                 </div>
                 <div class="meta-chip">
                   <span class="material-symbols-outlined chip-icon">schedule</span>
-                  <span>{{ exam.startTime ? (exam.startTime | date: 'HH:mm') : '--:--' }}</span>
+                  <span>{{ exam.startTime ? (exam.startTime | date: 'HH:mm':'Africa/Cairo') : '--:--' }}</span>
                 </div>
                 <div class="meta-chip">
                   <span class="material-symbols-outlined chip-icon">timer</span>

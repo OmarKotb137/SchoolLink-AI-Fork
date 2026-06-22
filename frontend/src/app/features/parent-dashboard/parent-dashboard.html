@@ -386,7 +386,7 @@
                         @if (exam.startTime) {
                           <div class="exam-date">
                             <span class="material-symbols-outlined text-[14px]">schedule</span>
-                            <span class="text-[11px]">{{ exam.startTime | date:'d MMM' }}</span>
+                            <span class="text-[11px]">{{ exam.startTime | date:'d MMM':'Africa/Cairo' }}</span>
                           </div>
                         }
                       </div>

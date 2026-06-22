@@ -183,9 +183,9 @@ public class StudentExamAttemptRepository
             var isTimeUpByDuration = a.Exam.DurationMinutes.HasValue &&
                 startedAtUtc.AddMinutes(a.Exam.DurationMinutes.Value).AddMinutes(gracePeriodMinutes) < nowUtc;
 
-            // أو وقت الامتحان الكلي انتهى — EndTime محفوظ بتوقيت مصر (UTC+3)
+            // أو وقت الامتحان الكلي انتهى — EndTime مخزّن UTC بعد إصلاح التخزين
             var isTimeUpByEndTime = a.Exam.EndTime.HasValue &&
-                a.Exam.EndTime.Value.AddHours(-3).AddMinutes(gracePeriodMinutes) < nowUtc;
+                a.Exam.EndTime.Value.AddMinutes(gracePeriodMinutes) < nowUtc;
 
             return isTimeUpByDuration || isTimeUpByEndTime;
         }).ToList();

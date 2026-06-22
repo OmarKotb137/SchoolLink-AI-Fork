@@ -57,7 +57,8 @@ namespace Project.BLL.Services
             if (assignment == null || assignment.IsDeleted)
                 return OperationResult<GetAssignmentSubmissionDto>.Failure("لم يتم العثور على الواجب", 404);
 
-            if (assignment.DueDate.HasValue && assignment.DueDate < DateTime.UtcNow.AddHours(3))
+            // DueDate مخزّن UTC حقيقي بعد إصلاح التخزين — نقارن UTC vs UTC مباشرة
+            if (assignment.DueDate.HasValue && assignment.DueDate.Value < DateTime.UtcNow)
                 return OperationResult<GetAssignmentSubmissionDto>.Failure("لقد انتهى موعد تسليم الواجب");
 
             var existingSubmission = await _unitOfWork.StudentAssignmentSubmissions
