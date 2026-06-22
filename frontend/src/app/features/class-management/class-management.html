@@ -55,7 +55,7 @@
         <div class="flex flex-col gap-6">
 
           <!-- Editor Form — horizontal bar -->
-          <section class="cm-card cm-editor-card animate-fade-up">
+          <section id="classEditorSection" class="cm-card cm-editor-card animate-fade-up">
             <div class="cm-card-header">
               <h3 class="cm-card-title">
                 <span class="material-symbols-outlined">{{ editingClassId() ? 'edit' : 'school' }}</span>
@@ -116,7 +116,7 @@
                 </button>
                 <button
                   (click)="saveClass()"
-                  class="cm-btn cm-btn-primary">
+                  class="cm-btn cm-btn-primary cm-btn-sm">
                   <span class="material-symbols-outlined">save</span>
                   {{ editingClassId() ? 'حفظ التحديث' : 'إضافة الفصل' }}
                 </button>

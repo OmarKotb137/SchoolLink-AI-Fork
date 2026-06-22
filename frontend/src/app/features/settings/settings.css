@@ -1143,7 +1143,7 @@ button:disabled { cursor: not-allowed; opacity: 0.42; }
 }
 
 .settings-switch input:checked ~ .settings-switch-track::after {
-  transform: translateX(-20px);
+  transform: translateX(20px);
 }
 
 /* ═══════════════════════════════════════════════════════════════

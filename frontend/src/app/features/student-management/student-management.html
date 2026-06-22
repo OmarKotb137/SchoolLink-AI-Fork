@@ -330,20 +330,47 @@
                     </div>
                     <div>
                       <h3>ربط ولي أمر</h3>
-                      <p>اختر حساب Parent وحدد صلة القرابة.</p>
+                      <p>ابحث عن ولي الأمر بالاسم وحدد صلة القرابة.</p>
                     </div>
                   </div>
 
                   <div class="sm-link-fields">
-                    <select
-                      [value]="selectedParentId() ?? ''"
-                      (change)="selectedParentId.set($any($event.target).value ? +$any($event.target).value : null)"
-                    >
-                      <option value="">اختر ولي الأمر</option>
-                      @for (parent of parentAccounts(); track parent.id) {
-                        <option [value]="parent.id">{{ parent.fullName }} - {{ parent.email }}</option>
-                      }
-                    </select>
+                    @if (selectedParentAccount(); as chosenParent) {
+                      <div class="sm-parent-chip">
+                        <span class="sm-parent-chip-name">{{ chosenParent.fullName }}</span>
+                        <button class="sm-icon-btn danger" type="button" (click)="clearSelectedParent()" title="تغيير ولي الأمر">
+                          <span class="material-symbols-outlined">close</span>
+                        </button>
+                      </div>
+                    } @else {
+                      <div class="sm-parent-combobox">
+                        <div class="sm-parent-combobox-input">
+                          <span class="material-symbols-outlined">search</span>
+                          <input
+                            type="text"
+                            placeholder="ابحث باسم ولي الأمر..."
+                            [value]="parentSearchQuery()"
+                            (input)="parentSearchQuery.set($any($event.target).value)"
+                            (focus)="parentDropdownOpen.set(true)"
+                            (blur)="closeParentDropdownDelayed()"
+                          />
+                        </div>
+
+                        @if (parentDropdownOpen()) {
+                          <div class="sm-parent-combobox-list">
+                            @if (filteredParentAccounts().length === 0) {
+                              <div class="sm-parent-combobox-empty">لا يوجد ولي أمر مطابق</div>
+                            } @else {
+                              @for (parent of filteredParentAccounts(); track parent.id) {
+                                <button class="sm-parent-combobox-item" type="button" (mousedown)="$event.preventDefault()" (click)="selectParent(parent)">
+                                  {{ parent.fullName }}
+                                </button>
+                              }
+                            }
+                          </div>
+                        }
+                      </div>
+                    }
 
                     <select
                       [value]="selectedRelationship()"
@@ -356,7 +383,7 @@
                       <option value="5">أخرى</option>
                     </select>
 
-                    <button class="sm-link-btn orange" type="button" (click)="linkParentToStudent()" [disabled]="isLoading()">
+                    <button class="sm-link-btn orange" type="button" (click)="linkParentToStudent()" [disabled]="isLoading() || !selectedParentId()">
                       <span class="material-symbols-outlined">family_restroom</span>
                       ربط ولي الأمر
                     </button>

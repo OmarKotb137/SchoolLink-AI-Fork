@@ -204,7 +204,7 @@
               <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                 <span class="material-symbols-outlined text-gray-400 text-sm">search</span>
               </div>
-              <input type="text" class="bg-white border border-gray-300 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500 block w-full pr-10 p-2.5" placeholder="ابحث بالاسم أو البريد أو الهاتف..." [value]="searchQuery()" (input)="searchQuery.set($any($event.target).value); currentPage.set(1)">
+              <input type="text" class="bg-white border border-gray-300 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500 block w-full pr-10 p-2.5" placeholder="ابحث بالاسم أو اسم المستخدم أو الهاتف..." [value]="searchQuery()" (input)="searchQuery.set($any($event.target).value); currentPage.set(1)">
             </div>
           </div>
 
@@ -214,7 +214,7 @@
                 <tr>
                   <th scope="col" class="px-6 py-4">الاسم</th>
                   <th scope="col" class="px-6 py-4">الدور</th>
-                  <th scope="col" class="px-6 py-4">البريد الإلكتروني</th>
+                  <th scope="col" class="px-6 py-4">اسم المستخدم</th>
                   <th scope="col" class="px-6 py-4">الهاتف</th>
                   <th scope="col" class="px-6 py-4 text-center">الحالة</th>
                   <th scope="col" class="px-6 py-4 text-center">إدارة الأبناء</th>
@@ -407,7 +407,7 @@
             </select>
           </div>
           <div class="flex flex-col gap-2">
-            <label class="text-sm font-medium text-gray-900">البريد الإلكتروني <span class="text-red-500">*</span></label>
+            <label class="text-sm font-medium text-gray-900">اسم المستخدم <span class="text-red-500">*</span></label>
             <input class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5" type="text" [value]="formUsername()" (input)="formUsername.set($any($event.target).value)" />
           </div>
           <div class="flex flex-col gap-2">
@@ -571,7 +571,7 @@
       <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 shrink-0">
         <div>
           <h2 class="text-xl font-bold text-gray-900">تعديل الحساب</h2>
-          <p class="text-sm text-gray-500 mt-1">يمكن تعديل الاسم والهاتف من هنا. تغيير الدور أو البريد غير متاح حاليًا من الـ API.</p>
+          <p class="text-sm text-gray-500 mt-1">يمكن تعديل الاسم والهاتف من هنا. تغيير الدور أو اسم المستخدم غير متاح حاليًا من الـ API.</p>
         </div>
         <button class="text-gray-400 hover:text-gray-900 hover:bg-gray-200 p-2 rounded-2xl transition-colors" (click)="closeModals()">
           <span class="material-symbols-outlined">close</span>
@@ -794,7 +794,7 @@
             <div class="bg-white border border-gray-100 rounded-2xl p-4 shadow-lg hover:shadow-xl transition-shadow duration-300">
               <div class="flex items-center justify-between gap-3">
                 <div>
-                  <span class="block text-xs text-gray-500 mb-1">بريد الدخول</span>
+                  <span class="block text-xs text-gray-500 mb-1">اسم المستخدم</span>
                   <strong class="text-sm text-gray-900 break-all font-mono">{{ credential.generatedUsername }}</strong>
                 </div>
                 <button class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:shadow-md transition-all hover:-translate-y-0.5 flex items-center gap-2" type="button" (click)="copyToClipboard(credential.generatedUsername)">
@@ -871,7 +871,7 @@
               <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th class="px-4 py-3">الطالب</th>
-                  <th class="px-4 py-3">بريد الدخول</th>
+                  <th class="px-4 py-3">اسم المستخدم</th>
                   <th class="px-4 py-3">كلمة المرور</th>
                   <th class="px-4 py-3">الحالة</th>
                 </tr>

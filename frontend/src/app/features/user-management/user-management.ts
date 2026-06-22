@@ -689,7 +689,7 @@ export class UserManagement implements OnInit {
             <thead>
               <tr>
                 <th>الطالب</th>
-                <th>بريد الدخول</th>
+                <th>اسم المستخدم</th>
                 <th>كلمة المرور</th>
                 <th>الحالة</th>
               </tr>

@@ -214,6 +214,10 @@ export class ClassManagement implements OnInit {
       gradeLevelId: cls.gradeLevelId,
       academicYearId: cls.academicYearId
     };
+
+    setTimeout(() => {
+      document.getElementById('classEditorSection')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
   }
 
   cancelEdit() {

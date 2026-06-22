@@ -1081,6 +1081,104 @@
 
 .sm-link-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
+/* Parent search combobox */
+.sm-parent-combobox {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sm-parent-combobox-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.sm-parent-combobox-input:focus-within {
+  border-color: #ea580c;
+  box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.1);
+}
+
+.sm-parent-combobox-input .material-symbols-outlined {
+  color: #94a3b8;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.sm-parent-combobox-input input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  min-height: 42px;
+  font: inherit;
+  font-size: 13px;
+  color: #0f172a;
+}
+
+.sm-parent-combobox-input input::placeholder { color: #c4cdd8; }
+
+.sm-parent-combobox-list {
+  max-height: 220px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+}
+
+.sm-parent-combobox-item {
+  text-align: right;
+  padding: 10px 14px;
+  border: 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+  background: #fff;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.sm-parent-combobox-item:last-child { border-bottom: 0; }
+
+.sm-parent-combobox-item:hover {
+  background: rgba(234, 88, 12, 0.08);
+  color: #c2410c;
+}
+
+.sm-parent-combobox-empty {
+  padding: 14px;
+  text-align: center;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.sm-parent-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(234, 88, 12, 0.08);
+  border: 1.5px solid rgba(234, 88, 12, 0.25);
+}
+
+.sm-parent-chip-name {
+  font-size: 13px;
+  font-weight: 800;
+  color: #9a3412;
+}
+
 /* Relations */
 .sm-relations-head { margin-bottom: 12px; }
 

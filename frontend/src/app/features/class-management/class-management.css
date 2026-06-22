@@ -351,6 +351,13 @@
 .cm-btn-block { width: 100%; }
 .cm-btn-sm { padding: 9px 14px; font-size: .8rem; border-radius: 12px; }
 
+.cm-form-h-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 /* ════════════════════════════════════════════════════════════════════
    FILTERS PANEL
    ════════════════════════════════════════════════════════════════════ */

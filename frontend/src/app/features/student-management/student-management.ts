@@ -90,6 +90,8 @@ export class StudentManagement implements OnInit {
   selectedStudentUserId = signal<number | null>(null);
   selectedParentId = signal<number | null>(null);
   selectedRelationship = signal<RelationshipType>(1);
+  parentSearchQuery = signal('');
+  parentDropdownOpen = signal(false);
 
   showCreateModal = signal(false);
   showEditModal = signal(false);
@@ -127,6 +129,19 @@ export class StudentManagement implements OnInit {
       !linkedIds.has(account.id) || account.id === selected?.userId
     );
   });
+
+  filteredParentAccounts = computed(() => {
+    const query = this.parentSearchQuery().trim().toLowerCase();
+    if (!query) return this.parentAccounts();
+
+    return this.parentAccounts().filter(parent =>
+      parent.fullName.toLowerCase().includes(query)
+    );
+  });
+
+  selectedParentAccount = computed(() =>
+    this.parentAccounts().find(parent => parent.id === this.selectedParentId()) ?? null
+  );
 
   ngOnInit() {
     this.loadAllData();
@@ -183,6 +198,8 @@ export class StudentManagement implements OnInit {
     this.selectedStudentId.set(student.id);
     this.selectedStudentUserId.set(student.userId ?? null);
     this.selectedParentId.set(null);
+    this.parentSearchQuery.set('');
+    this.parentDropdownOpen.set(false);
     this.loadParentLinks(student.id);
   }
 
@@ -362,7 +379,7 @@ export class StudentManagement implements OnInit {
     }).subscribe({
       next: () => {
         this.showSuccess('تم ربط ولي الأمر بالطالب بنجاح');
-        this.selectedParentId.set(null);
+        this.clearSelectedParent();
         this.loadParentLinks(student.id);
         this.isLoading.set(false);
       },
@@ -372,6 +389,21 @@ export class StudentManagement implements OnInit {
         this.isLoading.set(false);
       }
     });
+  }
+
+  selectParent(parent: User) {
+    this.selectedParentId.set(parent.id);
+    this.parentSearchQuery.set('');
+    this.parentDropdownOpen.set(false);
+  }
+
+  clearSelectedParent() {
+    this.selectedParentId.set(null);
+    this.parentSearchQuery.set('');
+  }
+
+  closeParentDropdownDelayed() {
+    setTimeout(() => this.parentDropdownOpen.set(false), 120);
   }
 
   unlinkParent(link: ParentStudentLink) {
