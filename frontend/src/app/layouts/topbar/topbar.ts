@@ -27,7 +27,11 @@ export class Topbar implements OnInit {
   showSearch = input(true);
   showNotifications = input(true);
   showSpark = input(true);
-  showSettings = input(true);
+  /** Show settings only for admin role */
+  showSettings = computed(() => {
+    const role = this.roleService.currentRole();
+    return role === 'admin';
+  });
   showAvatar = input(true);
   notificationCount = input(0);
   searchOpen = signal(false);

@@ -40,6 +40,14 @@ export class ParentDashboard implements OnInit, AfterViewInit {
   selectedWeekDetail = signal<WeeklyPerformance | null>(null);
   selectedWeek = signal<WeeklyPerformance | null>(null);
   selectedTerm = signal<number | null>(null);
+
+  // Chart info popup
+  chartInfo = signal<{
+    name: string;
+    performance: number;
+    weeks: { name: string; pct: number; score: number; max: number }[];
+    avgPct: number;
+  } | null>(null);
   readonly terms = [
     { value: null, label: 'الترم الحالي' },
     { value: 1, label: 'الترم الأول' },
@@ -123,7 +131,7 @@ export class ParentDashboard implements OnInit, AfterViewInit {
     this.buildWeeklyChart();
   }
 
-  private buildPerformanceCharts(children: { name: string; performance: number }[]) {
+  private buildPerformanceCharts(children: ParentChildStats[]) {
     // Destroy old charts
     this.performanceCharts.forEach(c => c.destroy());
     this.performanceCharts = [];
@@ -155,6 +163,7 @@ export class ParentDashboard implements OnInit, AfterViewInit {
           responsive: true,
           maintainAspectRatio: false,
           cutout: '72%',
+          onClick: () => this.showChartInfo(child),
           plugins: {
             legend: { display: false },
             tooltip: {
@@ -182,6 +191,25 @@ export class ParentDashboard implements OnInit, AfterViewInit {
 
       this.performanceCharts.push(chart);
     });
+  }
+
+  private showChartInfo(child: ParentChildStats) {
+    const weeks = (child.weeklyPerformances || []).map(w => ({
+      name: w.periodName,
+      pct: w.maxScore > 0 ? Math.round((w.avgScore / w.maxScore) * 100) : 0,
+      score: Math.round(w.totalScore),
+      max: Math.round(w.totalMaxScore)
+    }));
+    this.chartInfo.set({
+      name: child.name,
+      performance: child.performance,
+      weeks,
+      avgPct: child.performance
+    });
+  }
+
+  closeChartInfo() {
+    this.chartInfo.set(null);
   }
 
   private buildAbsencesChart(children: { name: string; absences: number }[]) {

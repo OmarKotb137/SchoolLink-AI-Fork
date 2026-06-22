@@ -175,7 +175,8 @@
                 }
               </div>
               <button class="p-2 rounded-full transition-colors hover:bg-white/40 text-outline"
-                (click)="activeConversation()?.type === 'group' ? openGroupMembersModal() : toggleProfilePanel()" title="إدارة المجموعة">
+                (click)="activeConversation()?.type === 'group' ? openGroupMembersModal() : toggleProfilePanel()"
+                [title]="activeConversation()?.type === 'group' ? 'إدارة المجموعة' : 'الملف الشخصي'">
                 <span class="material-symbols-outlined">info</span>
               </button>
             </div>
