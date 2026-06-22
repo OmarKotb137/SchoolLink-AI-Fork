@@ -427,29 +427,54 @@ public class BookParserService : IBookParserService
             return string.Empty;
         }
 
-        using var doc = JsonDocument.Parse(responseBody);
-        var content = doc.RootElement
-            .GetProperty("choices")[0]
-            .GetProperty("message")
-            .GetProperty("content")
-            .GetString()?.Trim() ?? string.Empty;
-
-        if (content.StartsWith("```markdown", StringComparison.OrdinalIgnoreCase))
+        try
         {
-            var start = content.IndexOf('\n') + 1;
-            var end = content.LastIndexOf("```");
-            if (start > 0 && end > start)
-                content = content[start..end].Trim();
-        }
-        else if (content.StartsWith("```"))
-        {
-            var start = content.IndexOf('\n') + 1;
-            var end = content.LastIndexOf("```");
-            if (start > 0 && end > start)
-                content = content[start..end].Trim();
-        }
+            using var doc = JsonDocument.Parse(responseBody);
+            var root = doc.RootElement;
 
-        return string.IsNullOrWhiteSpace(content) ? string.Empty : content;
+            // Try the standard choices[0].message.content path
+            if (root.TryGetProperty("choices", out var choices) &&
+                choices.GetArrayLength() > 0 &&
+                choices[0].TryGetProperty("message", out var message) &&
+                message.TryGetProperty("content", out var contentProp))
+            {
+                var content = contentProp.GetString()?.Trim() ?? string.Empty;
+
+                if (content.StartsWith("```markdown", StringComparison.OrdinalIgnoreCase))
+                {
+                    var start = content.IndexOf('\n') + 1;
+                    var end = content.LastIndexOf("```");
+                    if (start > 0 && end > start)
+                        content = content[start..end].Trim();
+                }
+                else if (content.StartsWith("```"))
+                {
+                    var start = content.IndexOf('\n') + 1;
+                    var end = content.LastIndexOf("```");
+                    if (start > 0 && end > start)
+                        content = content[start..end].Trim();
+                }
+
+                return string.IsNullOrWhiteSpace(content) ? string.Empty : content;
+            }
+
+            // Try error / message path (OpenRouter sometimes returns errors here)
+            if (root.TryGetProperty("error", out var errorProp))
+            {
+                var errMsg = errorProp.TryGetProperty("message", out var errMsgProp)
+                    ? errMsgProp.GetString()
+                    : errorProp.GetRawText();
+                _logger.LogWarning("OpenRouter API error: {Error}", errMsg);
+            }
+
+            _logger.LogWarning("OpenRouter unexpected response structure: {Body}", responseBody);
+            return string.Empty;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning("Failed to parse OpenRouter response: {Ex}, Body: {Body}", ex.Message, responseBody);
+            return string.Empty;
+        }
     }
 
     private async Task<string> CleanContentWithLlmAsync(string rawText, string unitName)
@@ -498,8 +523,11 @@ public class BookParserService : IBookParserService
                       مهمتك:
                       1. حلل الفهرس وحدد الوحدات (Units) الموجودة في الكتاب
                       2. داخل كل وحدة، حدد الدروس (Lessons) الموجودة
-                      3. لكل درس، حدد رقم الصفحة التي يبدأ فيها والصفحة التي ينتهي فيها
+                      3. لكل درس، حدد عنوانه الحقيقي كما هو في الفهرس (وليس مجرد "الدرس الأول" أو "الدرس الثاني") ورقم الصفحة التي يبدأ فيها والصفحة التي ينتهي فيها
                       4. إذا كانت المادة لا تحتوي على دروس داخل الوحدات (مثل اللغة الإنجليزية)، فأرجع الوحدات فقط مع مصفوفة lessons فارغة
+                      5. **مهم جداً: استخرج اسم الدرس الحقيقي من الفهرس وليس اسماً افتراضياً.**
+                         مثال على اسم درس حقيقي: "الدرس الأول: مصر مهد العلم" أو "الدرس الثاني: مصر والحضارة"
+                         إذا رأيت في النص "الدرس الأول: عناصر المناخ" فاجعل title = "الدرس الأول: عناصر المناخ" وليس "الدرس الأول" فقط
 
                       ملاحظات مهمة:
                       - الأرقام التي تظهر في نهاية السطر غالباً هي أرقام الصفحات
@@ -510,6 +538,17 @@ public class BookParserService : IBookParserService
                       - قد تظهر أرقام الصفحات في الجانب الأيسر أو الأيمن
                       - استخدم أرقام الصفحات الحقيقية من الكتاب
                       - حقل content للوحدة سيتم ملؤه لاحقاً - اتركه فارغاً ""
+                      - قد يحتوي النص المستخرج بواسطة OCR على أخطاء إملائية أو أخطاء في التعرف على الحروف.
+                      - قم بتصحيح أسماء الوحدات والدروس والعناوين مع الحفاظ على معناها الأصلي.
+
+                      أمثلة:
+                      - إذا ظهر "الوحده الاولى: الاعداد" صحّحه إلى "الوحدة الأولى: الأعداد".
+                      - إذا ظهر "Unlt 1 Gen Alpha" صحّحه إلى "Unit 1 Gen Alpha".
+                      - إذا ظهر "مراجعـة" أو "مراجعه" صحّحه إلى "مراجعة".
+                      - إذا ظهر "الدر س الاول" صحّحه إلى "الدرس الأول".
+
+                      - لا تضف أو تحذف أي معلومات غير موجودة في النص الأصلي.
+                      - صحّح الأخطاء الإملائية وأخطاء OCR فقط.
 
                       أرجع النتيجة بصيغة JSON فقط (بدون أي نص إضافي):
                       [
@@ -521,7 +560,7 @@ public class BookParserService : IBookParserService
                           "displayOrder": 1,
                           "lessons": [
                             {
-                              "title": "اسم الدرس كاملاً",
+                              "title": "الدرس الأول: مصر مهد العلم",  // ← الاسم الحقيقي للدرس من الفهرس وليس مجرد "الدرس الأول"
                               "pageStart": 12,
                               "pageEnd": 25,
                               "displayOrder": 1

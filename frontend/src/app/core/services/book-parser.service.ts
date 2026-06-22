@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { buildApiUrl } from '../utils/api-url';
 export interface ParsedLessonDto {
+  id?: number;
   title: string;
   content?: string;
   pageStart: number | null;
@@ -130,8 +131,12 @@ export class BookParserService {
     return this.http.put<any>(`${this.parserBase}/units/${unitId}`, body);
   }
 
-  updateLesson(lessonId: number, title: string): Observable<any> {
-    return this.http.put<any>(`${this.parserBase}/lessons/${lessonId}`, { title });
+  updateLesson(lessonId: number, title: string, content?: string, pageStart?: number | null, pageEnd?: number | null): Observable<any> {
+    const body: any = { title };
+    if (content !== undefined) body.content = content;
+    if (pageStart !== undefined) body.pageStart = pageStart;
+    if (pageEnd !== undefined) body.pageEnd = pageEnd;
+    return this.http.put<any>(`${this.parserBase}/lessons/${lessonId}`, body);
   }
 
   createLesson(unitId: number, dto: { title: string; displayOrder: number }): Observable<any> {
