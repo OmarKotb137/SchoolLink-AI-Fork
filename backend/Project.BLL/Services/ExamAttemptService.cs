@@ -2,6 +2,7 @@
 using Common.Results;
 using Project.BLL.DTOs.ExamAttempt;
 using Project.BLL.Interfaces;
+using Project.BLL.Utils;
 using Project.DAL.Interfaces;
 using Project.Domain.Entities;
 using Project.Domain.Enums;
@@ -190,10 +191,22 @@ namespace Project.BLL.Services
             var question = exam.Questions.FirstOrDefault(q => q.Id == answer.QuestionId);
             if (question == null) continue;
 
-            if (question.QuestionType is QuestionType.MultipleChoice or QuestionType.TrueFalse)
+            if (question.QuestionType == QuestionType.MultipleChoice)
             {
                 var isCorrect = !string.IsNullOrEmpty(question.CorrectAnswer) &&
                                 answer.AnswerText?.Trim().Equals(question.CorrectAnswer.Trim(), StringComparison.OrdinalIgnoreCase) == true;
+
+                answer.IsCorrect = isCorrect;
+                answer.PointsEarned = isCorrect ? question.Points : 0;
+                totalScore += answer.PointsEarned;
+                _unitOfWork.StudentExamAnswers.Update(answer);
+            }
+            else if (question.QuestionType == QuestionType.TrueFalse)
+            {
+                // تطبيع كلا الجانبين قبل المقارنة لضمان تطابق "صح"/"True"/"نعم"... إلخ
+                var correctBool = BooleanNormalizer.NormalizeBoolean(question.CorrectAnswer);
+                var answerBool = BooleanNormalizer.NormalizeBoolean(answer.AnswerText);
+                var isCorrect = correctBool.HasValue && answerBool.HasValue && correctBool.Value == answerBool.Value;
 
                 answer.IsCorrect = isCorrect;
                 answer.PointsEarned = isCorrect ? question.Points : 0;
@@ -356,9 +369,21 @@ namespace Project.BLL.Services
             {
                 if (answer.Question == null) continue;
 
-                var isCorrect = !string.IsNullOrEmpty(answer.Question.CorrectAnswer) &&
+                var isCorrect = false;
+                if (answer.Question.QuestionType == QuestionType.TrueFalse)
+                {
+                    // تطبيع كلا الجانبين للأسئلة صح/خطأ
+                    var correctBool = BooleanNormalizer.NormalizeBoolean(answer.Question.CorrectAnswer);
+                    var answerBool = BooleanNormalizer.NormalizeBoolean(answer.AnswerText);
+                    isCorrect = correctBool.HasValue && answerBool.HasValue && correctBool.Value == answerBool.Value;
+                }
+                else
+                {
+                    // باقي الأنواع: مقارنة نصية مباشرة
+                    isCorrect = !string.IsNullOrEmpty(answer.Question.CorrectAnswer) &&
                                 answer.AnswerText?.Trim().ToLower() ==
                                 answer.Question.CorrectAnswer.Trim().ToLower();
+                }
 
                 answer.IsCorrect = isCorrect;
                 answer.PointsEarned = isCorrect ? answer.Question.Points : 0;

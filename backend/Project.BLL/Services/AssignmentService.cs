@@ -3,6 +3,7 @@ using Common.Results;
 using Project.BLL.DTOs.Assignment;
 using Project.BLL.DTOs.AssignmentQuestion;
 using Project.BLL.Interfaces;
+using Project.BLL.Utils;
 using Project.DAL.Interfaces;
 using Project.Domain.Entities;
 using Project.Domain.Enums;
@@ -15,6 +16,9 @@ namespace Project.BLL.Services
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
         private readonly INotificationService _notificationService;
+
+        private static readonly TimeZoneInfo _cairoZone = TimeZoneInfo.FindSystemTimeZoneById(
+            OperatingSystem.IsWindows() ? "Egypt Standard Time" : "Africa/Cairo");
 
         public AssignmentService(IUnitOfWork unitOfWork, IMapper mapper, INotificationService notificationService)
         {
@@ -52,6 +56,14 @@ namespace Project.BLL.Services
                 return OperationResult<AssignmentDto>.Failure("بيان الفصل-المادة-المعلم غير موجود", 404);
 
             var assignment = _mapper.Map<Assignment>(dto);
+
+            // تحويل توقيت القاهرة لـ UTC عند الحفظ (نفس منطق AssignmentManagerService)
+            if (assignment.DueDate.HasValue)
+            {
+                assignment.DueDate = TimeZoneInfo.ConvertTimeToUtc(
+                    DateTime.SpecifyKind(assignment.DueDate.Value, DateTimeKind.Unspecified),
+                    _cairoZone);
+            }
 
             await _unitOfWork.Assignments.AddAsync(assignment);
             await _unitOfWork.SaveChangesAsync();
@@ -97,7 +109,10 @@ namespace Project.BLL.Services
 
             assignment.Title = dto.Title;
             assignment.Description = dto.Description;
-            assignment.DueDate = dto.DueDate;
+            assignment.DueDate = dto.DueDate.HasValue
+                ? TimeZoneInfo.ConvertTimeToUtc(
+                    DateTime.SpecifyKind(dto.DueDate.Value, DateTimeKind.Unspecified), _cairoZone)
+                : null;
             assignment.MaxScore = dto.MaxScore;
             assignment.UpdatedAt = DateTime.UtcNow;
 
@@ -129,6 +144,15 @@ namespace Project.BLL.Services
                 return OperationResult<AssignmentDto>.Failure("الواجب غير موجود", 404);
 
             var question = _mapper.Map<AssignmentQuestion>(dto);
+
+            // Validation (الطبقة 4): رفض القيم غير الصالحة لأسئلة صح/خطأ
+            if (question.QuestionType == QuestionType.TrueFalse
+                && !BooleanNormalizer.IsValidTrueFalseAnswer(question.CorrectAnswer))
+                return OperationResult<AssignmentDto>.Failure($"قيمة الإجابة الصحيحة لسؤال صح/خطأ غير صالحة: \"{question.CorrectAnswer}\"");
+
+            // تطبيع (الطبقة 2): canonical "True"/"False" لأسئلة صح/خطأ
+            question.CorrectAnswer = BooleanNormalizer.NormalizeCanonicalCorrectAnswer(question.QuestionType, question.CorrectAnswer);
+
             assignment.Questions.Add(question);
 
             _unitOfWork.Assignments.Update(assignment);
@@ -184,7 +208,14 @@ namespace Project.BLL.Services
             question.QuestionText = dto.QuestionText;
             question.QuestionType = dto.QuestionType;
             question.ImageUrl = dto.ImageUrl;
-            question.CorrectAnswer = dto.CorrectAnswer;
+
+            // Validation (الطبقة 4): رفض القيم غير الصالحة لأسئلة صح/خطأ
+            if (question.QuestionType == QuestionType.TrueFalse
+                && !BooleanNormalizer.IsValidTrueFalseAnswer(dto.CorrectAnswer))
+                return OperationResult.Failure($"قيمة الإجابة الصحيحة لسؤال صح/خطأ غير صالحة: \"{dto.CorrectAnswer}\"");
+
+            // تطبيع (الطبقة 2): canonical "True"/"False" لأسئلة صح/خطأ
+            question.CorrectAnswer = BooleanNormalizer.NormalizeCanonicalCorrectAnswer(question.QuestionType, dto.CorrectAnswer);
             question.DisplayOrder = dto.DisplayOrder;
             question.Points = dto.Points;
             question.UpdatedAt = DateTime.UtcNow;
@@ -323,7 +354,9 @@ namespace Project.BLL.Services
                     Id = a.Id,
                     Subject = subject,
                     Title = a.Title,
-                    DueDate = a.DueDate,
+                    DueDate = a.DueDate.HasValue
+                        ? new DateTimeOffset(DateTime.SpecifyKind(a.DueDate.Value, DateTimeKind.Utc))
+                        : null,
                     MaxScore = a.MaxScore,
                     Score = score,
                     Status = status,

@@ -68,7 +68,7 @@ export class AssignmentManagement implements OnInit, OnDestroy {
   assignments = signal<AssignmentItem[]>([]);
   stats       = signal<AssignmentStats>({ total: 0, active: 0, avgDelivery: 0, overdue: 0 });
   subjects    = signal<{ id: number; name: string }[]>([]);
-  classes     = signal<{ id: number; name: string }[]>([]);
+  classes     = signal<{ id: number; name: string; gradeLevelId: number }[]>([]);
 
   readonly assignmentTabs = [
     { key: 'all',     label: 'الكل'      },
@@ -231,10 +231,29 @@ export class AssignmentManagement implements OnInit, OnDestroy {
       error: () => this.subjects.set([])
     });
 
-    this.api.getClasses().subscribe({
-      next:  r => this.classes.set(r),
-      error: () => this.classes.set([])
+    // الفصول بتتحمل لما المعلم يختار مادة (loadClassesForSubject)
+    this.classes.set([]);
+  }
+
+  /** تحميل قائمة الفصول الخاصة بمادة معيّنة (المعلم + المادة معاً) */
+  private loadClassesForSubject(subjectId: number | null, onLoaded?: () => void) {
+    if (!subjectId) {
+      this.classes.set([]);
+      onLoaded?.();
+      return;
+    }
+    this.api.getClasses(subjectId).subscribe({
+      next:  r => { this.classes.set(r); onLoaded?.(); },
+      error: () => { this.classes.set([]); onLoaded?.(); }
     });
+  }
+
+  /** لما يبدّل المعلم المادة في فورم إنشاء/تعديل واجب — نعيد تحميل الفصول المرتبطة بها ونصفّر اختيار الفصل السابق */
+  onFormSubjectChange(value: number | string | null) {
+    const id = value ? Number(value) : null;
+    this.newSubjectId.set(id);
+    this.newClassId.set(null);
+    this.loadClassesForSubject(id);
   }
 
   openAddModal() {
@@ -245,6 +264,7 @@ export class AssignmentManagement implements OnInit, OnDestroy {
     this.newDeadline.set('');
     this.formError.set('');
     this.draftQuestions.set([]);
+    this.classes.set([]);
     this.showAddModal.set(true);
   }
 
@@ -256,10 +276,11 @@ export class AssignmentManagement implements OnInit, OnDestroy {
     this.draftQuestions.set([]);
 
     const subj = this.subjects().find(s => s.name === e.subject);
-    this.newSubjectId.set(subj ? subj.id : null);
-    const cls = this.classes().find(c => c.name === e.class);
-    this.newClassId.set(cls ? cls.id : null);
+    const subjectId = subj ? subj.id : null;
+    this.newSubjectId.set(subjectId);
+    this.newClassId.set(null);
 
+    // حمّل تفاصيل الواجب (الأسئلة)
     this.api.getById(e.id).subscribe({
       next: detail => {
         const drafts: AssignmentDraftQuestion[] = (detail.questions ?? []).map(q => ({
@@ -277,6 +298,12 @@ export class AssignmentManagement implements OnInit, OnDestroy {
       error: () => {
         this.showAddModal.set(true);
       }
+    });
+
+    // حمّل فصول المادة، وبعد ما تخلص نطابق الفصل الحالي بالاسم
+    this.loadClassesForSubject(subjectId, () => {
+      const cls = this.classes().find(c => c.name === e.class);
+      this.newClassId.set(cls ? cls.id : null);
     });
   }
 
@@ -557,7 +584,9 @@ export class AssignmentManagement implements OnInit, OnDestroy {
 
   formatDeadline(iso: string): string {
     if (!iso) return '—';
-    const d = new Date(iso.endsWith('Z') ? iso : iso + 'Z');
+    // Deadline بيجي بتوقيت القاهرة من الـ Manager (string بدون Z للـ datetime-local input).
+    // نفسره كـ local browser time — للمعلم المصري = توقيت القاهرة صح.
+    const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return iso;
     const datePart = d.toLocaleDateString('ar-EG', { day: 'numeric', month: 'numeric', year: 'numeric' });
     const timePart = d.toLocaleTimeString('ar-EG', { hour: 'numeric', minute: '2-digit' });
@@ -572,7 +601,8 @@ export class AssignmentManagement implements OnInit, OnDestroy {
 
   deadlineRemaining(iso: string): string {
     if (!iso) return '';
-    const d = new Date(iso.endsWith('Z') ? iso : iso + 'Z');
+    // Deadline بيجي بتوقيت القاهرة (string بدون Z) — نفسره كـ local browser time
+    const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return '';
     const now = new Date();
     const diff = d.getTime() - now.getTime();
@@ -586,7 +616,8 @@ export class AssignmentManagement implements OnInit, OnDestroy {
 
   isOverdue(iso: string): boolean {
     if (!iso) return false;
-    const d = new Date(iso.endsWith('Z') ? iso : iso + 'Z');
+    // Deadline بيجي بتوقيت القاهرة (string بدون Z) — نفسره كـ local browser time
+    const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return false;
     return d.getTime() < Date.now();
   }

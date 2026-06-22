@@ -193,8 +193,10 @@ export class AssignmentService {
     return this.http.get<{ id: number; name: string }[]>(`${this.base}/subjects`);
   }
 
-  getClasses(): Observable<{ id: number; name: string }[]> {
-    return this.http.get<{ id: number; name: string }[]>(`${this.base}/classes`);
+  getClasses(subjectId?: number): Observable<{ id: number; name: string; gradeLevelId: number }[]> {
+    let params = new HttpParams();
+    if (subjectId) params = params.set('subjectId', subjectId);
+    return this.http.get<{ id: number; name: string; gradeLevelId: number }[]>(`${this.base}/classes`, { params });
   }
 
   getSubmissions(assignmentId: number): Observable<OperationResult<AssignmentSubmissionItem[]>> {

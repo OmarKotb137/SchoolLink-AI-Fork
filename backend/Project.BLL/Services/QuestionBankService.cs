@@ -3,6 +3,7 @@ using Common.Results;
 using Microsoft.Extensions.Logging;
 using Project.BLL.DTOs.QuestionBank;
 using Project.BLL.Interfaces;
+using Project.BLL.Utils;
 using Project.DAL.Interfaces;
 using Project.Domain.Entities;
 using Project.Domain.Enums;
@@ -121,11 +122,21 @@ public class QuestionBankService : IQuestionBankService
             }), JsonOpts)
             : null;
 
+        var questionType = (QuestionType)dto.QuestionType;
+
+        // Validation (الطبقة 4): رفض القيم غير الصالحة لأسئلة صح/خطأ
+        if (questionType == QuestionType.TrueFalse
+            && !BooleanNormalizer.IsValidTrueFalseAnswer(dto.CorrectAnswer))
+            return OperationResult<QuestionBankItemDto>.Failure($"قيمة الإجابة الصحيحة لسؤال صح/خطأ غير صالحة: \"{dto.CorrectAnswer}\"");
+
+        // تطبيع (الطبقة 2): canonical "True"/"False" لأسئلة صح/خطأ
+        var canonicalCorrectAnswer = BooleanNormalizer.NormalizeCanonicalCorrectAnswer(questionType, dto.CorrectAnswer);
+
         var bankItem = new QuestionBank
         {
             QuestionText = dto.QuestionText,
-            QuestionType = (QuestionType)dto.QuestionType,
-            CorrectAnswer = dto.CorrectAnswer,
+            QuestionType = questionType,
+            CorrectAnswer = canonicalCorrectAnswer,
             OptionsJson = optionsJson,
             SubjectId = dto.SubjectId,
             GradeLevelId = dto.GradeLevelId,
@@ -255,7 +266,14 @@ public class QuestionBankService : IQuestionBankService
         // تحديث البيانات
         item.QuestionText = dto.QuestionText;
         item.QuestionType = (QuestionType)dto.QuestionType;
-        item.CorrectAnswer = dto.CorrectAnswer;
+
+        // Validation (الطبقة 4): رفض القيم غير الصالحة لأسئلة صح/خطأ
+        if (item.QuestionType == QuestionType.TrueFalse
+            && !BooleanNormalizer.IsValidTrueFalseAnswer(dto.CorrectAnswer))
+            return OperationResult<QuestionBankItemDto>.Failure($"قيمة الإجابة الصحيحة لسؤال صح/خطأ غير صالحة: \"{dto.CorrectAnswer}\"");
+
+        // تطبيع (الطبقة 2): canonical "True"/"False" لأسئلة صح/خطأ
+        item.CorrectAnswer = BooleanNormalizer.NormalizeCanonicalCorrectAnswer(item.QuestionType, dto.CorrectAnswer);
         item.OptionsJson = dto.Options?.Count > 0
             ? JsonSerializer.Serialize(dto.Options.Select(o => new
             {

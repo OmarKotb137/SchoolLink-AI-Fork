@@ -131,11 +131,11 @@
               <div class="meta-grid">
                 <div class="meta-chip">
                   <span class="material-symbols-outlined chip-icon">event</span>
-                  <span>{{ assignment.dueDate ? (assignment.dueDate | date: 'yyyy/MM/dd') : 'بدون موعد' }}</span>
+                  <span>{{ assignment.dueDate ? (assignment.dueDate | date: 'yyyy/MM/dd':'Africa/Cairo') : 'بدون موعد' }}</span>
                 </div>
                 <div class="meta-chip">
                   <span class="material-symbols-outlined chip-icon">schedule</span>
-                  <span>{{ assignment.dueDate ? (assignment.dueDate | date: 'HH:mm') : '--:--' }}</span>
+                  <span>{{ assignment.dueDate ? (assignment.dueDate | date: 'HH:mm':'Africa/Cairo') : '--:--' }}</span>
                 </div>
                 <div class="meta-chip">
                   <span class="material-symbols-outlined chip-icon">quiz</span>

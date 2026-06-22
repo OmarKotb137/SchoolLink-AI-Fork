@@ -1,6 +1,7 @@
 using Common.Results;
 using Project.BLL.DTOs.StudentAssignments;
 using Project.BLL.Interfaces;
+using Project.BLL.Utils;
 using Project.DAL.Interfaces;
 using Project.Domain.Entities;
 using Project.Domain.Enums;
@@ -231,24 +232,11 @@ public class StudentAssignmentService : IStudentAssignmentService
 
         if (question.QuestionType == QuestionType.TrueFalse)
         {
-            var correct = NormalizeBoolean(question.CorrectAnswer);
+            var correct = BooleanNormalizer.NormalizeBoolean(question.CorrectAnswer);
             var isCorrect = correct.HasValue && answer.BooleanAnswer.HasValue && correct.Value == answer.BooleanAnswer.Value;
             answer.IsCorrect = isCorrect;
             answer.PointsEarned = isCorrect ? question.Points : 0;
         }
-    }
-
-    private static bool? NormalizeBoolean(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-            return null;
-
-        return value.Trim().ToLowerInvariant() switch
-        {
-            "true" or "صح" or "صحيح" or "1" => true,
-            "false" or "خطأ" or "خطا" or "0" => false,
-            _ => null
-        };
     }
 
     private static StudentAssignmentSubmissionResultDto MapResult(StudentAssignmentSubmission submission, bool includeAnswers)
@@ -280,7 +268,7 @@ public class StudentAssignmentService : IStudentAssignmentService
                         }
                         else if (a.Question.QuestionType == QuestionType.TrueFalse)
                         {
-                            var normalized = NormalizeBoolean(a.Question.CorrectAnswer);
+                            var normalized = BooleanNormalizer.NormalizeBoolean(a.Question.CorrectAnswer);
                             if (normalized.HasValue)
                                 correctAnswerText = normalized.Value ? "صح" : "خطأ";
                             else

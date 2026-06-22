@@ -1,6 +1,7 @@
 using Common.Results;
 using Project.BLL.DTOs.StudentExams;
 using Project.BLL.Interfaces;
+using Project.BLL.Utils;
 using Project.DAL.Interfaces;
 using Project.Domain.Entities;
 using Project.Domain.Enums;
@@ -40,15 +41,15 @@ public class StudentExamService : IStudentExamService
                 ExamId = exam.Id,
                 Title = exam.Title,
                 SubjectName = GetSubjectName(exam),
-                StartTime = exam.StartTime,
-                EndTime = exam.EndTime,
+                StartTime = ToUtcOffset(exam.StartTime),
+                EndTime = ToUtcOffset(exam.EndTime),
                 DurationMinutes = exam.DurationMinutes,
                 TotalScore = exam.TotalScore,
                 QuestionsCount = exam.Questions.Count(q => !q.IsDeleted),
                 Status = GetExamStatus(exam, latestAttempt, isResultPublished),
                 AttemptId = latestAttempt?.Id,
-                StartedAt = latestAttempt?.StartedAt,
-                SubmittedAt = latestAttempt?.SubmittedAt,
+                StartedAt = ToUtcOffset(latestAttempt?.StartedAt),
+                SubmittedAt = ToUtcOffset(latestAttempt?.SubmittedAt),
                 IsGraded = latestAttempt?.IsGraded ?? false,
                 IsResultPublished = isResultPublished,
                 Score = isResultPublished ? latestAttempt?.Score : null
@@ -309,7 +310,7 @@ public class StudentExamService : IStudentExamService
         if (!exam.IsPublished)
             return OperationResult.Failure("الامتحان غير منشور");
 
-        var now = DateTime.SpecifyKind(DateTime.Now, DateTimeKind.Unspecified);
+        var now = DateTime.UtcNow;
         if (exam.StartTime.HasValue && now < exam.StartTime.Value)
             return OperationResult.Failure("الامتحان لم يبدأ بعد");
 
@@ -321,7 +322,7 @@ public class StudentExamService : IStudentExamService
 
     private static string GetExamStatus(Exam exam, StudentExamAttempt? attempt, bool isResultPublished)
     {
-        var now = DateTime.SpecifyKind(DateTime.Now, DateTimeKind.Unspecified);
+        var now = DateTime.UtcNow;
 
         if (attempt?.SubmittedAt != null)
         {
@@ -375,10 +376,10 @@ public class StudentExamService : IStudentExamService
             endsAtUtc = startedAtUtc.AddMinutes(exam.DurationMinutes.Value);
         }
 
-        // The exam.EndTime is stored as Egypt Local Time (UTC+3). Convert it to UTC for absolute comparison.
+        // exam.EndTime مخزّن UTC حقيقي بعد إصلاح التخزين — مفيش تحويل مطلوب
         if (exam.EndTime.HasValue)
         {
-            var examEndUtc = DateTime.SpecifyKind(exam.EndTime.Value.AddHours(-3), DateTimeKind.Utc);
+            var examEndUtc = DateTime.SpecifyKind(exam.EndTime.Value, DateTimeKind.Utc);
             if (endsAtUtc == null || examEndUtc < endsAtUtc.Value)
             {
                 endsAtUtc = examEndUtc;
@@ -389,10 +390,10 @@ public class StudentExamService : IStudentExamService
         {
             AttemptId = attempt.Id,
             ExamId = exam.Id,
-            StartedAt = startedAtUtc,
-            ServerNow = DateTime.UtcNow,
+            StartedAt = new DateTimeOffset(startedAtUtc),
+            ServerNow = DateTimeOffset.UtcNow,
             DurationMinutes = exam.DurationMinutes,
-            EndsAt = endsAtUtc
+            EndsAt = endsAtUtc.HasValue ? new DateTimeOffset(endsAtUtc.Value) : null
         };
     }
 
@@ -409,7 +410,7 @@ public class StudentExamService : IStudentExamService
 
         if (question.QuestionType == QuestionType.TrueFalse)
         {
-            var correct = NormalizeBoolean(question.CorrectAnswer);
+            var correct = BooleanNormalizer.NormalizeBoolean(question.CorrectAnswer);
             var isCorrect = correct.HasValue && answer.BooleanAnswer.HasValue && correct.Value == answer.BooleanAnswer.Value;
             answer.IsCorrect = isCorrect;
             answer.PointsEarned = isCorrect ? question.Points : 0;
@@ -439,18 +440,9 @@ public class StudentExamService : IStudentExamService
         // Essay: لا يُصحَّح تلقائياً أبداً، بينتظر تصحيح المعلم اليدوي دايماً (IsCorrect يفضل null)
     }
 
-    private static bool? NormalizeBoolean(string? value)
+    private static bool IsResultPublished(Exam exam)
     {
-        if (string.IsNullOrWhiteSpace(value))
-            return null;
-
-        var normalized = value.Trim().ToLowerInvariant();
-        return normalized switch
-        {
-            "true" or "صح" or "صحيح" or "1" => true,
-            "false" or "خطأ" or "خطا" or "0" => false,
-            _ => null
-        };
+        return exam.IsResultPublished;
     }
 
     private static StudentExamAttemptResultDto MapResult(StudentExamAttempt attempt, bool isResultPublished)
@@ -499,7 +491,7 @@ public class StudentExamService : IStudentExamService
                                 finalAnswerText = a.BooleanAnswer.Value ? "صح" : "خطأ";
                             }
                             
-                            var normalizedCorrect = NormalizeBoolean(a.Question.CorrectAnswer);
+                            var normalizedCorrect = BooleanNormalizer.NormalizeBoolean(a.Question.CorrectAnswer);
                             if (normalizedCorrect.HasValue)
                             {
                                 correctAnswerText = normalizedCorrect.Value ? "صح" : "خطأ";
@@ -532,11 +524,10 @@ public class StudentExamService : IStudentExamService
         };
     }
 
-    private static bool IsResultPublished(Exam exam)
-    {
-        return exam.IsResultPublished;
-    }
-
     private static string GetSubjectName(Exam exam)
         => exam.Subject?.Name ?? exam.ClassSubjectTeacher?.Subject?.Name ?? string.Empty;
+
+    // يحوّل DateTime المخزّن UTC (لو Kind بقي Unspecified بعد القراعة من EF) لـ DateTimeOffset بدون ما يفسّره كlocal time بالـimplicit conversion
+    private static DateTimeOffset? ToUtcOffset(DateTime? value)
+        => value.HasValue ? new DateTimeOffset(DateTime.SpecifyKind(value.Value, DateTimeKind.Utc)) : null;
 }

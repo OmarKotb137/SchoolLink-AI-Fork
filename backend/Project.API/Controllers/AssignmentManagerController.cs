@@ -152,26 +152,82 @@ public class AssignmentManagerController : ControllerBase
     }
 
     [HttpGet("subjects")]
-    [AllowAnonymous]
     public async Task<IActionResult> GetSubjects()
     {
-        var subjects = await _context.Subjects
+        var userId = GetUserId();
+        var role   = GetUserRole();
+
+        if (role == "Teacher")
+        {
+            // نرجّع بس المواد التي يُدرّسها المعلم الحالي
+            var subjectIds = await _context.ClassSubjectTeachers
+                .Where(c => c.TeacherId == userId && !c.IsDeleted)
+                .Select(c => c.SubjectId)
+                .Distinct()
+                .ToListAsync();
+
+            var subjects = await _context.Subjects
+                .Where(s => subjectIds.Contains(s.Id) && !s.IsDeleted)
+                .Select(s => new { s.Id, s.Name })
+                .ToListAsync();
+
+            return Ok(subjects);
+        }
+
+        var allSubjects = await _context.Subjects
             .Where(s => !s.IsDeleted)
             .Select(s => new { s.Id, s.Name })
             .ToListAsync();
-        return Ok(subjects);
+        return Ok(allSubjects);
     }
 
     [HttpGet("classes")]
-    [AllowAnonymous]
-    public async Task<IActionResult> GetClasses()
+    public async Task<IActionResult> GetClasses([FromQuery] int? subjectId = null)
     {
-        var classes = await _context.Classes
+        var userId = GetUserId();
+        var role   = GetUserRole();
+
+        if (role == "Teacher")
+        {
+            // نرجّع بس الفصول التي يُدرّسها المعلم الحالي (اختيارياً في مادة محددة)
+            var cstQuery = _context.ClassSubjectTeachers
+                .Where(c => c.TeacherId == userId && !c.IsDeleted);
+
+            if (subjectId.HasValue)
+                cstQuery = cstQuery.Where(c => c.SubjectId == subjectId.Value);
+
+            var classIds = await cstQuery
+                .Select(c => c.ClassId)
+                .Distinct()
+                .ToListAsync();
+
+            var classes = await _context.Classes
+                .Include(c => c.GradeLevel)
+                .Where(c => classIds.Contains(c.Id) && !c.IsDeleted)
+                .Select(c => new { c.Id, Name = c.GradeLevel.Name + " - " + c.Name, c.GradeLevelId })
+                .ToListAsync();
+
+            return Ok(classes);
+        }
+
+        var allClassesQuery = _context.Classes
             .Include(c => c.GradeLevel)
-            .Where(c => !c.IsDeleted)
-            .Select(c => new { c.Id, Name = c.GradeLevel.Name + " - " + c.Name })
+            .Where(c => !c.IsDeleted);
+
+        if (subjectId.HasValue)
+        {
+            var classIdsForSubject = await _context.ClassSubjectTeachers
+                .Where(c => c.SubjectId == subjectId.Value && !c.IsDeleted)
+                .Select(c => c.ClassId)
+                .Distinct()
+                .ToListAsync();
+            allClassesQuery = allClassesQuery.Where(c => classIdsForSubject.Contains(c.Id));
+        }
+
+        var allClasses = await allClassesQuery
+            .Select(c => new { c.Id, Name = c.GradeLevel.Name + " - " + c.Name, c.GradeLevelId })
             .ToListAsync();
-        return Ok(classes);
+        return Ok(allClasses);
     }
 
     [HttpGet("{id:int}/submissions")]

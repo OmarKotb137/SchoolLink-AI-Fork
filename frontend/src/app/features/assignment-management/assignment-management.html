@@ -320,7 +320,7 @@
           </div>
           <div class="flex flex-col gap-1">
             <label class="font-label-md text-label-md" style="font-weight:600;">المادة</label>
-            <select class="glass-select" [ngModel]="newSubjectId()" (ngModelChange)="newSubjectId.set($event)" [disabled]="editingAssignment() !== null"><option [ngValue]="null">اختر...</option>@for (s of subjects(); track s.id) {<option [ngValue]="s.id">{{ s.name }}</option>}</select>
+            <select class="glass-select" [ngModel]="newSubjectId()" (ngModelChange)="onFormSubjectChange($event)" [disabled]="editingAssignment() !== null"><option [ngValue]="null">اختر...</option>@for (s of subjects(); track s.id) {<option [ngValue]="s.id">{{ s.name }}</option>}</select>
           </div>
           <div class="flex flex-col gap-1">
             <label class="font-label-md text-label-md" style="font-weight:600;">الفصل</label>

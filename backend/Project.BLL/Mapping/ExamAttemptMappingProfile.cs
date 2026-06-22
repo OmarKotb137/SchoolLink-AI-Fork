@@ -1,5 +1,6 @@
 using AutoMapper;
 using Project.BLL.DTOs.ExamAttempt;
+using Project.BLL.Utils;
 using Project.Domain.Entities;
 using Project.Domain.Enums;
 
@@ -65,7 +66,7 @@ namespace Project.BLL.Mapping
                 .ForMember(dest => dest.Feedback,
                     opt => opt.MapFrom(src => src.AIFeedback))
                 .ForMember(dest => dest.CorrectAnswerText,
-                    opt => opt.MapFrom(src => src.Question.CorrectAnswer));
+                    opt => opt.MapFrom(src => ResolveCorrectAnswerText(src)));
         }
 
         private static string? ResolveAnswerText(StudentExamAnswer src)
@@ -78,6 +79,34 @@ namespace Project.BLL.Mapping
             if (src.BooleanAnswer.HasValue)
                 return src.BooleanAnswer.Value ? "صح" : "خطأ";
             return src.AnswerText;
+        }
+
+        /// <summary>
+        /// يحوّل الإجابة النموذجية لصيغة عربية للعرض ("صح"/"خطأ") لأسئلة صح/خطأ،
+        /// ويسيب باقي الأنواع زي ما هي. ده يمنع عرض "True"/"False" الإنجليزية للطالب/المعلم.
+        /// </summary>
+        private static string? ResolveCorrectAnswerText(StudentExamAnswer src)
+        {
+            var q = src.Question;
+            if (q == null) return null;
+
+            if (q.QuestionType == QuestionType.TrueFalse)
+            {
+                // الأول: لو فيه options، نعرض نص الإجابة الصحيحة من options (عشان نحافظ على الـ wording الأصلي)
+                if (q.Options != null)
+                {
+                    var correctOpt = q.Options.FirstOrDefault(o => o.IsCorrect && !o.IsDeleted);
+                    if (correctOpt != null) return correctOpt.OptionText;
+                }
+
+                // ثانياً: نطبّع القيمة النصية لـ "صح"/"خطأ"
+                var normalized = BooleanNormalizer.NormalizeBoolean(q.CorrectAnswer);
+                if (normalized.HasValue)
+                    return normalized.Value ? "صح" : "خطأ";
+            }
+
+            // لأنواع الأسئلة الأخرى (MCQ بدون options، FillBlank، Essay) نعرض النص زي ما هو
+            return q.CorrectAnswer;
         }
     }
 }

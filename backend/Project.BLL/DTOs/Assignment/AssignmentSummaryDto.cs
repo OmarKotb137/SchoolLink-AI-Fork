@@ -5,7 +5,7 @@ public class AssignmentSummaryDto
     public int Id { get; set; }
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
-    public DateTime? DueDate { get; set; }
+    public DateTimeOffset? DueDate { get; set; }
     public decimal MaxScore { get; set; }
     public bool IsAutoGraded { get; set; }
     public bool IsAIGenerated { get; set; }

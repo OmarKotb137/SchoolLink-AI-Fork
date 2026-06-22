@@ -11,6 +11,9 @@ namespace Project.BLL.Mapping
         {
             // Assignment → AssignmentDto
             CreateMap<Assignment, AssignmentDto>()
+                .ForMember(d => d.DueDate, o => o.MapFrom(s => s.DueDate.HasValue
+                    ? new DateTimeOffset(DateTime.SpecifyKind(s.DueDate.Value, DateTimeKind.Utc))
+                    : (DateTimeOffset?)null))
                 .ForMember(d => d.SubjectName, o => o.MapFrom(s => s.ClassSubjectTeacher.Subject.Name))
                 .ForMember(d => d.ClassName, o => o.MapFrom(s => s.ClassSubjectTeacher.Class.Name))
                 .ForMember(d => d.TeacherName, o => o.MapFrom(s => s.ClassSubjectTeacher.Teacher.FullName))
@@ -19,6 +22,9 @@ namespace Project.BLL.Mapping
 
             // Assignment → GetAssignmentDto
             CreateMap<Assignment, GetAssignmentDto>()
+                .ForMember(d => d.DueDate, o => o.MapFrom(s => s.DueDate.HasValue
+                    ? new DateTimeOffset(DateTime.SpecifyKind(s.DueDate.Value, DateTimeKind.Utc))
+                    : (DateTimeOffset?)null))
                 .ForMember(d => d.SubjectName, o => o.MapFrom(s => s.ClassSubjectTeacher.Subject.Name))
                 .ForMember(d => d.ClassName, o => o.MapFrom(s => s.ClassSubjectTeacher.Class.Name))
                 .ForMember(d => d.TeacherName, o => o.MapFrom(s => s.ClassSubjectTeacher.Teacher.FullName))
@@ -44,6 +50,9 @@ namespace Project.BLL.Mapping
 
             // Assignment → AssignmentSummaryDto
             CreateMap<Assignment, AssignmentSummaryDto>()
+                .ForMember(d => d.DueDate, o => o.MapFrom(s => s.DueDate.HasValue
+                    ? new DateTimeOffset(DateTime.SpecifyKind(s.DueDate.Value, DateTimeKind.Utc))
+                    : (DateTimeOffset?)null))
                 .ForMember(d => d.SubjectName, o => o.MapFrom(s => s.ClassSubjectTeacher.Subject.Name))
                 .ForMember(d => d.ClassName, o => o.MapFrom(s => s.ClassSubjectTeacher.Class.Name))
                 .ForMember(d => d.TeacherName, o => o.MapFrom(s => s.ClassSubjectTeacher.Teacher.FullName))

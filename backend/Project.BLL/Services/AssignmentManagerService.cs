@@ -21,6 +21,17 @@ public class AssignmentManagerService : IAssignmentManagerService
         _context = context;
     }
 
+    private static readonly TimeZoneInfo _cairoZone = TimeZoneInfo.FindSystemTimeZoneById(
+        OperatingSystem.IsWindows() ? "Egypt Standard Time" : "Africa/Cairo");
+
+    private static string FormatCairoTime(DateTime? utcTime, string format)
+    {
+        if (!utcTime.HasValue) return "";
+        var cairoTime = TimeZoneInfo.ConvertTimeFromUtc(
+            DateTime.SpecifyKind(utcTime.Value, DateTimeKind.Utc), _cairoZone);
+        return cairoTime.ToString(format);
+    }
+
     public async Task<OperationResult<List<AssignmentManagerItemDto>>> GetAllAsync(int? classSubjectTeacherId = null)
     {
         var query = _context.Assignments
@@ -50,7 +61,7 @@ public class AssignmentManagerService : IAssignmentManagerService
                 Title = a.Title,
                 Subject = a.ClassSubjectTeacher?.Subject?.Name ?? "",
                 Class = a.ClassSubjectTeacher?.Class?.Name ?? "",
-                Deadline = a.DueDate?.ToString("yyyy-MM-ddTHH:mm") ?? "",
+                Deadline = FormatCairoTime(a.DueDate, "yyyy-MM-ddTHH:mm"),
                 Submitted = submitted,
                 Total = totalStudents,
                 Status = GetStatus(a)
@@ -140,7 +151,7 @@ public class AssignmentManagerService : IAssignmentManagerService
                 Class = a.ClassSubjectTeacher?.Class != null
                     ? $"{a.ClassSubjectTeacher.Class.GradeLevel?.Name} - {a.ClassSubjectTeacher.Class.Name}"
                     : "",
-                Deadline = a.DueDate?.ToString("yyyy-MM-ddTHH:mm") ?? "",
+                Deadline = FormatCairoTime(a.DueDate, "yyyy-MM-ddTHH:mm"),
                 MaxScore = a.MaxScore,
                 IsPublished = a.IsPublished,
                 IsAIGenerated = a.IsAIGenerated,
@@ -237,7 +248,8 @@ public class AssignmentManagerService : IAssignmentManagerService
 
         DateTime? dueDate = null;
         if (DateTime.TryParse(dto.Deadline, out var parsed))
-            dueDate = parsed;
+            dueDate = TimeZoneInfo.ConvertTimeToUtc(
+                DateTime.SpecifyKind(parsed, DateTimeKind.Unspecified), _cairoZone);
 
         var assignment = new Assignment
         {
@@ -299,7 +311,7 @@ public class AssignmentManagerService : IAssignmentManagerService
             Title = assignment.Title,
             Subject = cst.Subject?.Name ?? "",
             Class = cst.Class?.Name ?? "",
-            Deadline = dueDate?.ToString("yyyy-MM-ddTHH:mm") ?? "",
+            Deadline = FormatCairoTime(dueDate, "yyyy-MM-ddTHH:mm"),
             Submitted = 0,
             Total = cst.Class?.Enrollments
                 .Count(e => !e.IsDeleted && e.AcademicYearId == year.Id) ?? 0,
@@ -319,7 +331,8 @@ public class AssignmentManagerService : IAssignmentManagerService
 
         DateTime? dueDate = null;
         if (DateTime.TryParse(dto.Deadline, out var parsed))
-            dueDate = parsed;
+            dueDate = TimeZoneInfo.ConvertTimeToUtc(
+                DateTime.SpecifyKind(parsed, DateTimeKind.Unspecified), _cairoZone);
 
         assignment.Title = dto.Title;
         assignment.DueDate = dueDate;
@@ -513,6 +526,7 @@ public class AssignmentManagerService : IAssignmentManagerService
     private static string GetStatus(Assignment a)
     {
         if (!a.IsPublished) return "draft";
+        // DueDate مخزّن UTC بعد إصلاح التخزين — نقارن UTC vs UTC مباشرة
         if (a.DueDate.HasValue && a.DueDate.Value < DateTime.UtcNow) return "closed";
         return "open";
     }

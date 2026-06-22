@@ -2,6 +2,7 @@
 using Common.Results;
 using Project.BLL.DTOs.Exam;
 using Project.BLL.Interfaces;
+using Project.BLL.Utils;
 using Project.DAL.Interfaces;
 using Project.Domain.Entities;
 using Project.Domain.Enums;
@@ -484,15 +485,21 @@ namespace Project.BLL.Services
                     question.QuestionType = qDto.QuestionType;
 
                 // Set CorrectAnswer from options (MCQ/TF) or from DTO (FillBlank/Essay)
+                // مع تطبيع القيمة لـ canonical "True"/"False" لأسئلة صح/خطأ (الطبقة 2)
                 if (qDto.Options.Count > 0)
                 {
                     var correctOpt = qDto.Options.FirstOrDefault(o => o.IsCorrect);
                     if (correctOpt != null)
-                        question.CorrectAnswer = correctOpt.OptionText;
+                        question.CorrectAnswer = BooleanNormalizer.NormalizeCanonicalCorrectAnswer(question.QuestionType, correctOpt.OptionText);
                 }
                 else if (qDto.CorrectAnswer != null)
                 {
-                    question.CorrectAnswer = qDto.CorrectAnswer;
+                    // Validation (الطبقة 4): رفض القيم غير الصالحة لأسئلة صح/خطأ
+                    if (question.QuestionType == QuestionType.TrueFalse
+                        && !BooleanNormalizer.IsValidTrueFalseAnswer(qDto.CorrectAnswer))
+                        return OperationResult.Failure($"قيمة الإجابة الصحيحة لسؤال صح/خطأ غير صالحة: \"{qDto.CorrectAnswer}\"");
+
+                    question.CorrectAnswer = BooleanNormalizer.NormalizeCanonicalCorrectAnswer(question.QuestionType, qDto.CorrectAnswer);
                 }
 
                 question.QuestionText = qDto.QuestionText;
@@ -550,7 +557,9 @@ namespace Project.BLL.Services
                 DisplayType = displayType,
                 QuestionText = dto.QuestionText,
                 QuestionType = dto.QuestionType,
-                CorrectAnswer = dto.CorrectAnswer,
+                // تطبيع القيمة لـ canonical "True"/"False" لأسئلة صح/خطأ (الطبقة 2)
+                // (الـ AI flow بيبعت options للـ TF عادةً، بس نطبّع كـ safety net لو رجّع نص)
+                CorrectAnswer = BooleanNormalizer.NormalizeCanonicalCorrectAnswer(dto.QuestionType, dto.CorrectAnswer),
                 Points = dto.Points,
                 DisplayOrder = dto.DisplayOrder,
                 Options = dto.Options?.Select(o => new ExamQuestionOption

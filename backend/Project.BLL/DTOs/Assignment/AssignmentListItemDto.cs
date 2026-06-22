@@ -6,7 +6,7 @@ public class AssignmentListItemDto
     public string Title { get; set; } = string.Empty;
     public string Subject { get; set; } = string.Empty;
     public string Class { get; set; } = string.Empty;
-    public DateTime? DueDate { get; set; }
+    public DateTimeOffset? DueDate { get; set; }
     public decimal MaxScore { get; set; }
     public bool IsPublished { get; set; }
     public bool IsAIGenerated { get; set; }
