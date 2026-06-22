@@ -68,12 +68,56 @@
               @for (child of dashboardData()?.children; track child.name; let i = $index) {
                 <div class="perf-donut-wrap">
                   <div class="perf-donut-canvas-box">
-                    <canvas [id]="'perfChart_' + i"></canvas>
+                    <canvas [id]="'perfChart_' + i" style="cursor:pointer"></canvas>
                   </div>
                   <p class="perf-donut-name">{{ child.name }}</p>
+                  <span class="perf-donut-hint">اضغط للتفاصيل</span>
                 </div>
               }
             </div>
+
+            <!-- Chart Info Popup -->
+            @if (chartInfo(); as info) {
+              <div class="chart-info-overlay" (click)="closeChartInfo()">
+                <div class="chart-info-card" (click)="$event.stopPropagation()">
+                  <button class="chart-info-close" (click)="closeChartInfo()">
+                    <span class="material-symbols-outlined">close</span>
+                  </button>
+                  <div class="chart-info-header">
+                    <div class="chart-info-title-row">
+                      <span class="material-symbols-outlined" style="color:#6366f1">pie_chart</span>
+                      <span class="chart-info-title">نسبة الأداء</span>
+                    </div>
+                    <span class="chart-info-name">{{ info.name }}</span>
+                  </div>
+                  <div class="chart-info-body">
+                    <div class="chart-info-main-score">
+                      <span class="chart-info-pct">{{ info.avgPct }}%</span>
+                      <span class="chart-info-desc">متوسط التقييمات الأسبوعية</span>
+                    </div>
+                    <div class="chart-info-calculation">
+                      <div class="calc-row-header">
+                        <span class="calc-dot"></span>
+                        <span>محسوبة من متوسط نسب جميع الأسابيع:</span>
+                      </div>
+                      @for (week of info.weeks; track week.name) {
+                        <div class="calc-row">
+                          <span class="calc-week-name">{{ week.name }}</span>
+                          <span class="calc-week-score">{{ week.score }}/{{ week.max }}</span>
+                          <span class="calc-week-pct">{{ week.pct }}%</span>
+                        </div>
+                      }
+                      <div class="calc-divider"></div>
+                      <div class="calc-row final">
+                        <span class="calc-week-name">المتوسط</span>
+                        <span class="calc-week-score"></span>
+                        <span class="calc-week-pct" style="font-weight:800;color:#6366f1">{{ info.avgPct }}%</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            }
           </div>
           <div class="chart-card">
             <div class="flex items-center justify-between mb-3">
