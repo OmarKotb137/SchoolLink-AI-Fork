@@ -48,8 +48,6 @@ public class StudentExamAttemptRepository
             .Include(a => a.Enrollment)
                 .ThenInclude(e => e.Student)
                     .ThenInclude(s => s.User)
-            .Include(a => a.Answers)
-                .ThenInclude(ans => ans.Question)
             .OrderByDescending(a => a.Score)
             .ToListAsync(ct);
 
@@ -99,24 +97,55 @@ public class StudentExamAttemptRepository
     public async Task<StudentExamAttempt?> GetWithAnswersAsync(
         int attemptId,
         CancellationToken ct = default)
-        => await _context.StudentExamAttempts
-            .Include(a => a.Answers)
-                .ThenInclude(ans => ans.Question)
-                    .ThenInclude(q => q.Options
-                        .OrderBy(o => o.DisplayOrder))
+    {
+        var attempt = await _context.StudentExamAttempts
+            .AsSplitQuery()
+            .Include(a => a.Enrollment)
+                .ThenInclude(e => e.Student)
+                    .ThenInclude(s => s.User)
             .Include(a => a.Exam)
             .FirstOrDefaultAsync(a => a.Id == attemptId, ct);
+
+        if (attempt != null)
+        {
+            // Explicit loading عشان نتخطى مشكلة HasQueryFilter على ExamQuestion.
+            // النهج القديم كان Include(a => a.Answers).ThenInclude(ans => ans.Question)
+            // وده بيعمل INNER JOIN، فلما السؤال معمول soft delete بتتشاف الإجابة كلها.
+            // الحل: نحمّل الإجابات بشكل منفصل، بعدين نحمّل الأسئلة بـ IgnoreQueryFilters
+            // ونسيب EF Core يعمل relationship fixup.
+            await _context.Entry(attempt)
+                .Collection(a => a.Answers)
+                .Query()
+                .Where(a => !a.IsDeleted)
+                .LoadAsync(ct);
+
+            // نحمّل الأسئلة (حتى المحذوفة) عشان الـ navigation properties تشتغل صح
+            var questionIds = attempt.Answers
+                .Select(a => a.QuestionId)
+                .Distinct()
+                .ToArray();
+
+            if (questionIds.Length > 0)
+            {
+                await _context.ExamQuestions
+                    .IgnoreQueryFilters()
+                    .Where(q => questionIds.Contains(q.Id))
+                    .Include(q => q.Options
+                        .OrderBy(o => o.DisplayOrder))
+                    .LoadAsync(ct);
+            }
+        }
+
+        return attempt;
+    }
 
     public async Task<StudentExamAttempt?> GetWithAnswersForEnrollmentAsync(
         int attemptId,
         int enrollmentId,
         CancellationToken ct = default)
-        => await _context.StudentExamAttempts
-            .AsSplitQuery()                                     // ✅ يمنع Cartesian Explosion بين Collections
-            .Include(a => a.Answers)
-                .ThenInclude(ans => ans.Question)
-                    .ThenInclude(q => q.Options
-                        .OrderBy(o => o.DisplayOrder))
+    {
+        var attempt = await _context.StudentExamAttempts
+            .AsSplitQuery()
             .Include(a => a.Exam)
                 .ThenInclude(e => e.Questions.Where(q => !q.IsDeleted))
                     .ThenInclude(q => q.Options.Where(o => !o.IsDeleted))
@@ -128,6 +157,33 @@ public class StudentExamAttemptRepository
                 .ThenInclude(e => e.ClassSubjectTeacher)
                     .ThenInclude(cst => cst.Subject)
             .FirstOrDefaultAsync(a => a.Id == attemptId && a.EnrollmentId == enrollmentId, ct);
+
+        if (attempt != null)
+        {
+            await _context.Entry(attempt)
+                .Collection(a => a.Answers)
+                .Query()
+                .Where(a => !a.IsDeleted)
+                .LoadAsync(ct);
+
+            var questionIds = attempt.Answers
+                .Select(a => a.QuestionId)
+                .Distinct()
+                .ToArray();
+
+            if (questionIds.Length > 0)
+            {
+                await _context.ExamQuestions
+                    .IgnoreQueryFilters()
+                    .Where(q => questionIds.Contains(q.Id))
+                    .Include(q => q.Options
+                        .OrderBy(o => o.DisplayOrder))
+                    .LoadAsync(ct);
+            }
+        }
+
+        return attempt;
+    }
 
 
     public async Task<decimal> GetAverageScoreAsync(

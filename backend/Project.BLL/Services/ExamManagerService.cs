@@ -2,6 +2,7 @@ using Common.Results;
 using Microsoft.EntityFrameworkCore;
 using Project.BLL.DTOs.Common;
 using Project.BLL.DTOs.Exam;
+using Project.BLL.DTOs.Notifications;
 using Project.BLL.Interfaces;
 using Project.BLL.Utils;
 using Project.DAL.Context;
@@ -15,11 +16,13 @@ public class ExamManagerService : IExamManagerService
 {
     private readonly AppDbContext _context;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly INotificationService _notificationService;
 
-    public ExamManagerService(AppDbContext context, IUnitOfWork unitOfWork)
+    public ExamManagerService(AppDbContext context, IUnitOfWork unitOfWork, INotificationService notificationService)
     {
         _context = context;
         _unitOfWork = unitOfWork;
+        _notificationService = notificationService;
     }
 
     private static readonly TimeZoneInfo _cairoZone = TimeZoneInfo.FindSystemTimeZoneById(
@@ -438,6 +441,10 @@ public class ExamManagerService : IExamManagerService
         _context.Exams.Update(exam);
         await _context.SaveChangesAsync();
 
+        // Notify students about published exam
+        await NotifyExamStudentsAsync(exam, "امتحان جديد",
+            $"تم نشر الامتحان: {exam.Title}", NotificationType.Exam);
+
         return OperationResult.Success("تم نشر الامتحان بنجاح");
     }
 
@@ -468,6 +475,13 @@ public class ExamManagerService : IExamManagerService
 
         _context.Exams.Update(exam);
         await _context.SaveChangesAsync();
+
+        // Notify students about published results
+        if (isPublished)
+        {
+            await NotifyExamStudentsAsync(exam, "نتائج الامتحان",
+                $"تم نشر نتائج الامتحان: {exam.Title}", NotificationType.ExamResult);
+        }
 
         return OperationResult.Success();
     }
@@ -604,5 +618,76 @@ public class ExamManagerService : IExamManagerService
         }
 
         return new ExamManagerQuestionDto(q.Id, type, q.QuestionText, options, correctAnswer, q.Points);
+    }
+
+    /// <summary>
+    /// إرسال إشعار إلى جميع الطلاب المستهدفين (و أولياء أمورهم) بعد نشر الامتحان أو نتيجته
+    /// </summary>
+    private async Task NotifyExamStudentsAsync(Exam exam, string title, string body, NotificationType type)
+    {
+        var studentIds = await GetExamStudentUserIdsAsync(exam);
+        if (studentIds.Count == 0) return;
+
+        await _notificationService.SendBulkNotificationAsync(new SendBulkNotificationRequest
+        {
+            UserIds = studentIds,
+            Title = title,
+            Body = body,
+            Type = type
+        });
+
+        // Notify parents too
+        var parentIds = new List<int>();
+        var enrollments = await _context.StudentEnrollments
+            .Where(e => studentIds.Contains(e.Student.UserId!.Value))
+            .ToListAsync();
+        foreach (var enrollment in enrollments.DistinctBy(e => e.StudentId))
+        {
+            var parentLinks = await _context.ParentStudents
+                .Where(ps => ps.StudentId == enrollment.StudentId)
+                .ToListAsync();
+            parentIds.AddRange(parentLinks.Select(ps => ps.ParentId));
+        }
+        parentIds = parentIds.Distinct().ToList();
+        if (parentIds.Count == 0) return;
+
+        await _notificationService.SendBulkNotificationAsync(new SendBulkNotificationRequest
+        {
+            UserIds = parentIds,
+            Title = title,
+            Body = body,
+            Type = type
+        });
+    }
+
+    /// <summary>
+    /// يجلب UserIds جميع الطلاب المستهدفين في امتحان (حسب الفصل أو الصف)
+    /// </summary>
+    private async Task<List<int>> GetExamStudentUserIdsAsync(Exam exam)
+    {
+        if (exam.ClassSubjectTeacherId.HasValue)
+        {
+            var cst = await _context.ClassSubjectTeachers
+                .FirstOrDefaultAsync(c => c.Id == exam.ClassSubjectTeacherId.Value);
+            if (cst == null) return new List<int>();
+
+            return await _context.StudentEnrollments
+                .Where(e => e.ClassId == cst.ClassId
+                         && e.AcademicYearId == cst.AcademicYearId
+                         && !e.IsDeleted
+                         && e.Student != null && e.Student.UserId != null && e.Student.IsActive)
+                .Select(e => e.Student.UserId!.Value)
+                .Distinct()
+                .ToListAsync();
+        }
+
+        // Grade-level exam (no specific CST)
+        return await _context.StudentEnrollments
+            .Where(e => e.Class.GradeLevelId == exam.GradeLevelId
+                     && !e.IsDeleted
+                     && e.Student != null && e.Student.UserId != null && e.Student.IsActive)
+            .Select(e => e.Student.UserId!.Value)
+            .Distinct()
+            .ToListAsync();
     }
 }

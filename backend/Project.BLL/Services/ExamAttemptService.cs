@@ -132,7 +132,9 @@ namespace Project.BLL.Services
                 {
                     AttemptId = attempt.Id,
                     QuestionId = question.Id,
-                    AnswerText = answerDto.AnswerText
+                    AnswerText = answerDto.AnswerText,
+                    SelectedOptionId = answerDto.SelectedOptionId,
+                    BooleanAnswer = answerDto.BooleanAnswer
                 };
 
                 await _unitOfWork.StudentExamAnswers.AddAsync(answer);
