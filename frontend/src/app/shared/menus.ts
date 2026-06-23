@@ -17,7 +17,7 @@ export const ADMIN_MENU: SidebarMenuSection[] = [
     title: 'الرئيسية',
     items: [
       { label: 'لوحة القيادة',    icon: 'dashboard',      route: '/admin'       },
-      { label: 'تحليل الأداء',    icon: 'analytics',      route: '/analysis-ai' },
+      { label: 'تحليل الأداء',    icon: 'analytics',      route: '/analysis' },
       { label: 'تحليل هيكل الكتاب',icon: 'auto_stories',  route: '/book-parser' },
       { label: 'حسابي',           icon: 'account_circle', route: '/profile'     },
     ],
