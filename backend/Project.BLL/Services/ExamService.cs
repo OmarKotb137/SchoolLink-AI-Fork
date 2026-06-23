@@ -216,53 +216,8 @@ namespace Project.BLL.Services
             _unitOfWork.Exams.Update(exam);
             await _unitOfWork.SaveChangesAsync(CancellationToken.None);
 
-            // Notify students about published exam results
-            var publishedExam = await _unitOfWork.Exams.GetByIdAsync(id);
-            if (publishedExam?.ClassSubjectTeacherId != null)
-            {
-                var cst = await _unitOfWork.ClassSubjectTeachers.GetByIdAsync(publishedExam.ClassSubjectTeacherId.Value);
-                if (cst != null)
-                {
-                    var enrollments = await _unitOfWork.StudentEnrollments
-                        .GetActiveByClassAsync(cst.ClassId, cst.AcademicYearId);
-                    var studentIds = enrollments
-                        .Where(e => e.Student != null && e.Student.UserId != null)
-                        .Select(e => e.Student.UserId!.Value)
-                        .Distinct()
-                        .ToList();
-
-                    if (studentIds.Count != 0)
-                    {
-                        await _notificationService.SendBulkNotificationAsync(new SendBulkNotificationRequest
-                        {
-                            UserIds = studentIds,
-                            Title = "نتائج الامتحان",
-                            Body = $"تم نشر نتائج الامتحان: {publishedExam.Title}",
-                            Type = NotificationType.ExamResult
-                        });
-
-                        // كمان نبعت إشعار لأولياء الأمور
-                        var parentIds = new List<int>();
-                        foreach (var enrollment in enrollments)
-                        {
-                            var parentLinks = await _unitOfWork.ParentStudents
-                                .FindAsync(ps => ps.StudentId == enrollment.StudentId);
-                            parentIds.AddRange(parentLinks.Select(ps => ps.ParentId));
-                        }
-                        parentIds = parentIds.Distinct().ToList();
-                        if (parentIds.Count != 0)
-                        {
-                            await _notificationService.SendBulkNotificationAsync(new SendBulkNotificationRequest
-                            {
-                                UserIds = parentIds,
-                                Title = "نتائج الامتحان",
-                                Body = $"تم نشر نتائج الامتحان: {publishedExam.Title}",
-                                Type = NotificationType.ExamResult
-                            });
-                        }
-                    }
-                }
-            }
+            // Notify students about published exam
+            await NotifyExamStudentsAsync(exam);
 
             return OperationResult.Success("تم نشر الامتحان بنجاح");
         }
@@ -571,6 +526,74 @@ namespace Project.BLL.Services
             };
 
             return question;
+        }
+
+        /// <summary>
+        /// إرسال إشعار إلى جميع الطلاب المستهدفين (و أولياء أمورهم) بعد نشر الامتحان
+        /// </summary>
+        private async Task NotifyExamStudentsAsync(Exam exam)
+        {
+            var currentYear = await _unitOfWork.AcademicYears.GetCurrentAsync();
+            if (currentYear == null) return;
+
+            List<int> studentIds;
+
+            if (exam.ClassSubjectTeacherId.HasValue)
+            {
+                var cst = await _unitOfWork.ClassSubjectTeachers
+                    .GetByIdAsync(exam.ClassSubjectTeacherId.Value);
+                if (cst == null) return;
+
+                var enrollments = await _unitOfWork.StudentEnrollments
+                    .GetActiveByClassAsync(cst.ClassId, cst.AcademicYearId);
+                studentIds = enrollments
+                    .Where(e => e.Student != null && e.Student.UserId != null && e.Student.IsActive)
+                    .Select(e => e.Student.UserId!.Value)
+                    .Distinct()
+                    .ToList();
+            }
+            else
+            {
+                // Grade-level exam (no specific CST)
+                var enrollments = await _unitOfWork.StudentEnrollments
+                    .GetActiveByGradeLevelAndYearWithDetailsAsync(exam.GradeLevelId, currentYear.Id);
+                studentIds = enrollments
+                    .Where(e => e.Student != null && e.Student.UserId != null && e.Student.IsActive)
+                    .Select(e => e.Student.UserId!.Value)
+                    .Distinct()
+                    .ToList();
+            }
+
+            if (studentIds.Count == 0) return;
+
+            await _notificationService.SendBulkNotificationAsync(new SendBulkNotificationRequest
+            {
+                UserIds = studentIds,
+                Title = "امتحان جديد",
+                Body = $"تم نشر الامتحان: {exam.Title}",
+                Type = NotificationType.Exam
+            });
+
+            // كمان نبعت إشعار لأولياء الأمور
+            var parentIds = new List<int>();
+            var allEnrollments = await _unitOfWork.StudentEnrollments
+                .GetActiveByStudentsAndYearAsync(studentIds, currentYear.Id);
+            foreach (var enrollment in allEnrollments.DistinctBy(e => e.StudentId))
+            {
+                var parentLinks = await _unitOfWork.ParentStudents
+                    .FindAsync(ps => ps.StudentId == enrollment.StudentId);
+                parentIds.AddRange(parentLinks.Select(ps => ps.ParentId));
+            }
+            parentIds = parentIds.Distinct().ToList();
+            if (parentIds.Count == 0) return;
+
+            await _notificationService.SendBulkNotificationAsync(new SendBulkNotificationRequest
+            {
+                UserIds = parentIds,
+                Title = "امتحان جديد",
+                Body = $"تم نشر الامتحان: {exam.Title}",
+                Type = NotificationType.Exam
+            });
         }
     }
 }

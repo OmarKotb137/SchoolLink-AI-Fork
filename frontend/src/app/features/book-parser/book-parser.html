@@ -659,9 +659,18 @@
       <!-- Modal Body (Content) -->
       <div class="flex-1 overflow-y-auto p-6 bg-surface-container-lowest">
         @if (selectedLesson()?.content) {
-          <div class="prose prose-sm md:prose-base prose-headings:text-primary prose-a:text-primary prose-strong:text-on-surface max-w-none leading-relaxed text-on-surface font-body-md"
-               [innerHTML]="formattedLessonContent()">
-          </div>
+          @if (selectedLesson()?.id) {
+            <!-- Saved lesson: editable textarea -->
+            <textarea #lessonContentInput
+                      class="w-full min-h-[300px] bg-surface-container border border-outline-variant rounded-xl p-4 text-body-sm font-body-sm text-on-surface leading-relaxed focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all resize-y"
+                      [value]="selectedLesson()?.content"
+                      (input)="selectedLesson.set({ ...selectedLesson()!, content: lessonContentInput.value })">{{ selectedLesson()?.content }}</textarea>
+          } @else {
+            <!-- Preview lesson: read-only rendered markdown -->
+            <div class="prose prose-sm md:prose-base prose-headings:text-primary prose-a:text-primary prose-strong:text-on-surface max-w-none leading-relaxed text-on-surface font-body-md"
+                 [innerHTML]="formattedLessonContent()">
+            </div>
+          }
         } @else {
           <div class="h-full flex flex-col items-center justify-center text-on-surface-variant p-12">
             <span class="material-symbols-outlined text-6xl mb-4 opacity-50">article</span>
@@ -676,6 +685,18 @@
                 class="px-6 py-2.5 rounded-full border border-outline-variant text-on-surface font-label-md text-label-md hover:bg-surface-container-high transition-colors">
           إغلاق
         </button>
+        @if (selectedLesson()?.id) {
+          <button (click)="saveLessonContent()" [disabled]="savingLessonContent()"
+                  class="px-6 py-2.5 rounded-full bg-primary text-on-primary font-label-md text-label-md hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2 shadow-sm">
+            @if (savingLessonContent()) {
+              <span class="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
+              جاري الحفظ...
+            } @else {
+              <span class="material-symbols-outlined text-[18px]">save</span>
+              حفظ المحتوى
+            }
+          </button>
+        }
         @if (selectedLessonUnitIndex() !== null && selectedLessonIndex() !== null) {
           <button (click)="generateLessonContent()" [disabled]="generatingContent() || !selectedLesson()?.content"
                   class="px-6 py-2.5 rounded-full bg-primary text-on-primary font-label-md text-label-md hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2 shadow-sm">
@@ -695,7 +716,7 @@
 
 <!-- Toast -->
 @if (toastMessage()) {
-  <div class="fixed bottom-6 right-6 lg:right-[304px] z-[100] px-6 py-4 rounded-xl shadow-2xl border text-label-md font-label-md font-bold flex items-center gap-3 transition-all transform duration-300"
+  <div class="fixed bottom-6 right-6 lg:right-[304px] z-[1100] px-6 py-4 rounded-xl shadow-2xl border text-label-md font-label-md font-bold flex items-center gap-3 transition-all transform duration-300"
        [class.bg-[#f0fdf4]]="toastType() === 'success'"
        [class.text-[#166534]]="toastType() === 'success'"
        [class.border-[#bbf7d0]]="toastType() === 'success'"

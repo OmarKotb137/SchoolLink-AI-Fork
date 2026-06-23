@@ -230,15 +230,24 @@ export class Notifications implements OnInit {
     if (!dateStr) return '';
     const now = new Date();
     const date = new Date(dateStr);
-    const diffMs = now.getTime() - date.getTime();
+    // طرح ساعة لتعويض فارق التوقيت الصيفي (Windows timezone data لمصر مش متحدّث)
+    const diffMs = now.getTime() - date.getTime() - 3600000;
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
 
     if (diffMins < 1) return 'الآن';
-    if (diffMins < 60) return `منذ ${diffMins} دقيقة`;
-    if (diffHours < 24) return `منذ ${diffHours} ساعة`;
-    if (diffDays < 7) return `منذ ${diffDays} يوم`;
+    if (diffHours < 1) return `منذ ${diffMins} دقيقة`;
+    if (diffDays < 1) {
+      const remainingMins = diffMins - (diffHours * 60);
+      if (remainingMins === 0) return `منذ ${diffHours} ساعة`;
+      return `منذ ${diffHours} ساعة و ${remainingMins} دقيقة`;
+    }
+    if (diffDays < 7) {
+      const remainingHours = diffHours - (diffDays * 24);
+      if (remainingHours === 0) return `منذ ${diffDays} يوم`;
+      return `منذ ${diffDays} يوم و ${remainingHours} ساعة`;
+    }
     return date.toLocaleDateString('ar-EG');
   }
 }

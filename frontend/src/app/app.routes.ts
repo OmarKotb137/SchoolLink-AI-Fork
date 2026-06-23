@@ -39,7 +39,7 @@ export const routes: Routes = [
   { path: 'reports', canActivate: [authGuard], data: { roles: ['parent'] }, loadComponent: () => import('./features/reports/reports').then(c => c.Reports) },
   { path: 'reports-academic', canActivate: [authGuard], loadComponent: () => import('./features/reports-academic/reports-academic').then(c => c.ReportsAcademic) },
   { path: 'reports-training', canActivate: [authGuard], loadComponent: () => import('./features/reports-training/reports-training').then(c => c.ReportsTraining) },
-  { path: 'analysis-ai', canActivate: [authGuard], loadComponent: () => import('./features/analysis-ai/analysis-ai').then(c => c.AnalysisAi) },
+  { path: 'analysis', canActivate: [authGuard], loadComponent: () => import('./features/analysis-ai/analysis-ai').then(c => c.AnalysisAi) },
   { path: 'announcements', canActivate: [authGuard], data: { roles: ['admin'] }, loadComponent: () => import('./features/announcements/announcements').then(c => c.Announcements) },
   { path: 'admin-meetings', canActivate: [authGuard], data: { roles: ['admin'] }, loadComponent: () => import('./features/admin-meetings/admin-meetings').then(c => c.AdminMeetings) },
   { path: 'import-students', canActivate: [authGuard], data: { roles: ['admin'] }, loadComponent: () => import('./features/import-students/import-students').then(c => c.ImportStudents) },

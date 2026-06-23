@@ -188,6 +188,32 @@ public class StudentExamService : IStudentExamService
         var freshAttempt = await _unitOfWork.StudentExamAttempts.GetWithAnswersForEnrollmentAsync(attemptId, enrollmentResult.Data!.Id);
         var savedAnswersByQuestion = (freshAttempt?.Answers ?? attempt.Answers).ToDictionary(a => a.QuestionId);
 
+        // ─── الخطوة 3: حفظ الإجابات اللي وصلت مع التسليم وما اتحفظتش قبل كده ──
+        // الفلنت بتبعت كل الإجابات في الـ dto.Answers وقت التسليم، لكن الكود القديم
+        // كان بيعتمد بس على auto-save. لو auto-save مشتغلش (زي ما بيحصّل في أول امتحان)
+        // الإجابات بتضيع. الحل: نضيف الإجابات اللي في الـ dto للـ dictionary ونحفظها.
+        foreach (var answerDto in dto.Answers)
+        {
+            if (savedAnswersByQuestion.ContainsKey(answerDto.QuestionId))
+                continue; // auto-save سبق وحفظها
+
+            var question = attempt.Exam.Questions
+                .FirstOrDefault(q => q.Id == answerDto.QuestionId && !q.IsDeleted);
+            if (question == null) continue;
+
+            var answer = new StudentExamAnswer
+            {
+                AttemptId = attempt.Id,
+                QuestionId = question.Id,
+                AnswerText = answerDto.AnswerText,
+                SelectedOptionId = answerDto.SelectedOptionId,
+                BooleanAnswer = answerDto.BooleanAnswer
+            };
+
+            await _unitOfWork.StudentExamAnswers.AddAsync(answer);
+            savedAnswersByQuestion[answerDto.QuestionId] = answer;
+        }
+
         decimal totalScore = 0;
         var hasManualQuestions = false;
 

@@ -53,14 +53,15 @@ namespace Project.BLL.Mapping
             // StudentExamAnswer → GetExamAnswerDto
             CreateMap<StudentExamAnswer, GetExamAnswerDto>()
                 .ForMember(dest => dest.QuestionText,
-                    opt => opt.MapFrom(src => src.Question.QuestionText))
+                    opt => opt.MapFrom(src => src.Question != null ? src.Question.QuestionText : null))
                 .ForMember(dest => dest.QuestionType,
                     opt => opt.MapFrom(src =>
+                        src.Question == null ? "unknown" :
                         src.Question.QuestionType == QuestionType.MultipleChoice ? "mcq" :
                         src.Question.QuestionType == QuestionType.TrueFalse ? "true-false" :
                         src.Question.QuestionType == QuestionType.FillBlank ? "fill-blank" : "essay"))
                 .ForMember(dest => dest.QuestionPoints,
-                    opt => opt.MapFrom(src => src.Question.Points))
+                    opt => opt.MapFrom(src => src.Question != null ? src.Question.Points : 0))
                 .ForMember(dest => dest.AnswerText,
                     opt => opt.MapFrom(src => ResolveAnswerText(src)))
                 .ForMember(dest => dest.Feedback,

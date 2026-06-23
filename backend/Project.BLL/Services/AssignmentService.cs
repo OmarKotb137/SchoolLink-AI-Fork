@@ -177,6 +177,34 @@ namespace Project.BLL.Services
             _unitOfWork.Assignments.Update(assignment);
             await _unitOfWork.SaveChangesAsync();
 
+            // Notify students about published assignment
+            var cst = await _unitOfWork.ClassSubjectTeachers.GetByIdAsync(assignment.ClassSubjectTeacherId);
+            if (cst != null)
+            {
+                var classEntity = await _unitOfWork.Classes.GetByIdAsync(cst.ClassId);
+                if (classEntity != null)
+                {
+                    var enrollments = await _unitOfWork.StudentEnrollments
+                        .GetActiveByClassAsync(cst.ClassId, cst.AcademicYearId);
+                    var studentIds = enrollments
+                        .Where(e => e.Student != null && e.Student.UserId != null)
+                        .Select(e => e.Student.UserId!.Value)
+                        .Distinct()
+                        .ToList();
+
+                    if (studentIds.Count != 0)
+                    {
+                        await _notificationService.SendBulkNotificationAsync(new SendBulkNotificationRequest
+                        {
+                            UserIds = studentIds,
+                            Title = "واجب جديد",
+                            Body = $"تم نشر الواجب: {assignment.Title}",
+                            Type = NotificationType.NewAssignment
+                        });
+                    }
+                }
+            }
+
             return OperationResult.Success("تم نشر الواجب بنجاح");
         }
 

@@ -76,8 +76,14 @@ export class BookParser {
   // Move lesson state
   moveLessonSrc = signal<{ unitIdx: number; lessonIdx: number } | null>(null);
 
-  // Term filter for saved subjects view
-  selectedTerm = signal<number>(1);
+  // Term filter for saved subjects view — persist in localStorage
+  selectedTerm = signal<number>(localStorage.getItem('book_parser_term')
+    ? parseInt(localStorage.getItem('book_parser_term')!, 10)
+    : 1);
+
+  private saveTerm(term: number) {
+    try { localStorage.setItem('book_parser_term', String(term)); } catch { /* ignore */ }
+  }
 
   subjectsGroupedByGrade = computed(() => {
     const subjects = this.parsedSubjects();
@@ -104,14 +110,24 @@ export class BookParser {
   }
 
   loadCurrentTerm() {
+    // If user saved a term preference, don't override it
+    const saved = localStorage.getItem('book_parser_term');
+    if (saved) return;
+
     this.academicYearService.getCurrentTerm().subscribe({
       next: (res) => {
-        if (res?.data != null) this.selectedTerm.set(res.data);
+        if (res?.data != null) {
+          const termMap: Record<string, number> = { FirstSemester: 1, SecondSemester: 2, Final: 3 };
+          const term = termMap[res.data as string] ?? 1;
+          this.selectedTerm.set(term);
+          this.saveTerm(term);
+        }
       }
     });
   }
 
   onTermChange() {
+    this.saveTerm(this.selectedTerm());
     this.loadParsedSubjects();
     // Also reload subject structure if a subject is expanded
     const subjectId = this.expandedSubjectId();
@@ -193,18 +209,6 @@ export class BookParser {
   cancelEditSavedLesson() {
     this.editingSavedLessonId.set(null);
     this.editingSavedLessonTitle.set('');
-  }
-
-  saveSavedUnitContent(unitId: number, name: string, content: string) {
-    this.service.updateUnit(unitId, name, content).subscribe({
-      next: () => {
-        const units = this.subjectUnits().map(u => u.id === unitId ? { ...u, content } : u);
-        this.subjectUnits.set(units);
-        this.editingSavedUnitContent.set(null);
-        this.showToast('تم حفظ محتوى الوحدة', 'success');
-      },
-      error: () => this.showToast('فشل حفظ المحتوى', 'error')
-    });
   }
 
   addSavedUnit() {
@@ -656,7 +660,7 @@ export class BookParser {
   }
 
   openSavedUnitContent(unit: any) {
-    this.selectedLesson.set({ title: unit.name, content: unit.content, pageStart: unit.pageStart, pageEnd: unit.pageEnd } as any);
+    this.selectedLesson.set({ title: unit.name, content: unit.content, pageStart: unit.pageStart, pageEnd: unit.pageEnd, id: unit.id } as any);
     this.selectedLessonUnitIndex.set(null);
     this.selectedLessonIndex.set(null);
     this.showLessonModal.set(true);
@@ -674,6 +678,45 @@ export class BookParser {
     this.selectedLesson.set(null);
     this.selectedLessonUnitIndex.set(null);
     this.selectedLessonIndex.set(null);
+  }
+
+  /** حفظ التعديلات على محتوى الدرس في المواد المحفوظة */
+  savingLessonContent = signal(false);
+
+  saveLessonContent() {
+    const lesson = this.selectedLesson();
+    if (!lesson || !lesson.id) { this.showToast('لا يمكن حفظ هذا المحتوى', 'error'); return; }
+
+    this.savingLessonContent.set(true);
+    this.service.updateLesson(lesson.id, lesson.title, lesson.content, lesson.pageStart, lesson.pageEnd).subscribe({
+      next: () => {
+        // تحديث الوحدات المحفوظة في الواجهة
+        const units = this.subjectUnits().map(u => ({
+          ...u,
+          lessons: u.lessons?.map((l: any) => l.id === lesson.id ? { ...l, content: lesson.content } : l)
+        }));
+        this.subjectUnits.set(units);
+        this.savingLessonContent.set(false);
+        this.showToast('تم حفظ محتوى الدرس', 'success');
+      },
+      error: () => {
+        this.savingLessonContent.set(false);
+        this.showToast('فشل حفظ المحتوى', 'error');
+      }
+    });
+  }
+
+  /** حفظ تعديلات محتوى الوحدة المحفوظة */
+  saveSavedUnitContent(unitId: number, name: string, content: string) {
+    this.service.updateUnit(unitId, name, content).subscribe({
+      next: () => {
+        const units = this.subjectUnits().map(u => u.id === unitId ? { ...u, content } : u);
+        this.subjectUnits.set(units);
+        this.editingSavedUnitContent.set(null);
+        this.showToast('تم حفظ محتوى الوحدة', 'success');
+      },
+      error: () => this.showToast('فشل حفظ المحتوى', 'error')
+    });
   }
 
   generateLessonContent() {

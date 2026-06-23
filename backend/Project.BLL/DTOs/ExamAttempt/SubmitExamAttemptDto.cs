@@ -16,5 +16,7 @@ namespace Project.BLL.DTOs.ExamAttempt
     {
         public int QuestionId { get; set; }
         public string? AnswerText { get; set; }
+        public int? SelectedOptionId { get; set; }
+        public bool? BooleanAnswer { get; set; }
     }
 }

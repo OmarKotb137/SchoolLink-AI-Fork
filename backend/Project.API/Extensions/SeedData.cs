@@ -843,6 +843,7 @@ public static class SeedData
             periodsList.FirstOrDefault(p => p.StartDate <= d && p.EndDate >= d)?.Id;
 
         var absences = new List<DailyAbsence>();
+        var absenceKeys = new HashSet<(int, int?, DateOnly)>();  // تجنب الـ duplicate
         foreach (var enr in enrollments)
         {
             if (rng.NextDouble() >= 0.25) continue;
@@ -851,6 +852,8 @@ public static class SeedData
             {
                 var absenceDate = studyDates[rng.Next(studyDates.Length)]
                     .AddDays(rng.Next(0, 5));  // إزاحة صغيرة ضمن نفس الأسبوع
+                var key = (enr.Id, mathCstForClass.Id, absenceDate);
+                if (!absenceKeys.Add(key)) continue;  // تخطي الـ duplicate
                 absences.Add(new DailyAbsence
                 {
                     EnrollmentId          = enr.Id,

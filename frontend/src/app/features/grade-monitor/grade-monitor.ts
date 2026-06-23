@@ -85,9 +85,15 @@ export class GradeMonitor implements OnInit {
     return p?.id ?? null;
   });
 
+  // ══════════════════════════════════════
+  //  EXPORT
+  // ══════════════════════════════════════
   exportClassId = signal<number | null>(null);
   exportType = signal<'weekly' | 'attendance' | 'summary'>('weekly');
   exporting = signal(false);
+  /** Data loaded from API for the export preview (summary type) */
+  exportGradeData = signal<Record<string, Record<string, number>>>({});
+  loadingExportData = signal(false);
 
   // Loading / status
   saving = signal(false);
@@ -975,12 +981,19 @@ export class GradeMonitor implements OnInit {
     }
   }
 
-  goEntry(cid: number) {
+  async goEntry(cid: number) {
     // إلغاء أي طلب HTTP جاري قبل تغيير الفصل
     this.cancelLoad$.next();
     this.entryClassId.set(+cid);
     this.entryWeek.set(1);
     this.entryTemplateId.set(null); // إعادة تعيين القالب اليدوي
+
+    // اكتشف المرحلة الدراسية للفصل المختار وحدّث القوالب
+    const foundClass = this.apiClasses().find((ac: any) => ac.id === Number(cid));
+    if (foundClass?.gradeLevelId && foundClass.gradeLevelId !== this.selectedGradeLevelId()) {
+      this.selectedGradeLevelId.set(foundClass.gradeLevelId);
+      await this.loadTemplatesAsync(); // أعد تحميل القوالب للمرحلة الجديدة
+    }
 
     // تعيين الترم تلقائياً من القالب المرتبط
     const cls = this.visibleClasses().find(c => c.id === Number(cid));
@@ -1016,13 +1029,28 @@ export class GradeMonitor implements OnInit {
   }
 
   // ══ يُستدعى من الـ HTML عند تغيير الأسبوع أو الفصل ══
-  onClassOrWeekChange() {
+  async onClassOrWeekChange() {
     // إلغاء أي طلب HTTP جاري
     this.cancelLoad$.next();
     // إذا لم يتم اختيار قالب يدوي، اختر أول قالب متاح تلقائياً
     if (!this.entryTemplateId()) {
       const avail = this.availableTemplatesForEntry();
       if (avail.length) this.entryTemplateId.set(avail[0].id);
+    }
+    // اكتشف المرحلة الدراسية للفصل المختار وحدّث القوالب
+    const cid = this.entryClassId();
+    if (cid != null) {
+      const foundClass = this.apiClasses().find((ac: any) => ac.id === Number(cid));
+      if (foundClass?.gradeLevelId && foundClass.gradeLevelId !== this.selectedGradeLevelId()) {
+        this.selectedGradeLevelId.set(foundClass.gradeLevelId);
+        await this.loadTemplatesAsync(); // انتظر تحميل القوالب للمرحلة الجديدة
+      }
+    }
+    // حدّث الترم من القالب الجديد (لأهمية تطابق الترم مع الفصل المختار)
+    const cls = this.currentCls();
+    const tmpl = this.currentTmpl();
+    if (tmpl?.term != null) {
+      this.entryTerm.set(this.normalizeTerm(tmpl.term) ?? 1);
     }
     // امسح البيانات القديمة
     this.gradeValues.set({});
@@ -1032,9 +1060,49 @@ export class GradeMonitor implements OnInit {
     this.loadEvaluations();
   }
 
-  goExp(cid: number) {
+  async goExp(cid: number) {
+    // اكتشف المرحلة الدراسية للفصل المختار وحدّث القوالب
+    const foundClass = this.apiClasses().find((ac: any) => ac.id === Number(cid));
+    if (foundClass?.gradeLevelId && foundClass.gradeLevelId !== this.selectedGradeLevelId()) {
+      this.selectedGradeLevelId.set(foundClass.gradeLevelId);
+      await this.loadTemplatesAsync();
+    }
     this.exportClassId.set(cid);
     this.activeSection.set('exp');
+    this.loadExportPreviewData(cid);
+  }
+
+  /** عند تغيير الفصل أو نوع التصدير في صفحة المعاينة، نحمل البيانات */
+  async onExportClassChange(cid: number) {
+    this.exportClassId.set(cid);
+    // حدّث المرحلة الدراسية لو لزم
+    const foundClass = this.apiClasses().find((ac: any) => ac.id === Number(cid));
+    if (foundClass?.gradeLevelId && foundClass.gradeLevelId !== this.selectedGradeLevelId()) {
+      this.selectedGradeLevelId.set(foundClass.gradeLevelId);
+      await this.loadTemplatesAsync();
+    }
+    this.loadExportPreviewData(cid);
+  }
+
+  onExportTypeChange(type: string) {
+    this.exportType.set(type as any);
+    const cid = this.exportClassId();
+    if (cid) this.loadExportPreviewData(cid);
+  }
+
+  private async loadExportPreviewData(cid: number | null) {
+    if (!cid) {
+      this.exportGradeData.set({});
+      return;
+    }
+    this.loadingExportData.set(true);
+    const cls = this.visibleClasses().find(c => c.id === Number(cid));
+    const tmpl = this.exportTmpl();
+    if (cls && tmpl) {
+      const data = await this.loadAllWeeksGrades(cls, tmpl);
+      this.exportGradeData.set(data);
+    }
+    this.loadingExportData.set(false);
   }
 
   // ══════════════════════════════════════
@@ -1121,11 +1189,15 @@ export class GradeMonitor implements OnInit {
     let total = 0; let count = 0;
     const tmpl = this.exportTmpl();
     if (!tmpl) return '—';
+    const data = this.exportGradeData();
+    if (!Object.keys(data).length) return '—';
     for (const w of monthGroup.weeks) {
+      let weekTotal = 0; let hasData = false;
       for (const c of tmpl.criteria) {
-        const val = this.gradeValues()[studentId + '_' + w + '_' + c.id];
-        if (val != null) { total += val; count++; }
+        const val = data[`${studentId}_${w}`]?.[c.id];
+        if (val != null) { weekTotal += val; hasData = true; }
       }
+      if (hasData) { total += weekTotal; count++; }
     }
     return count > 0 ? (total / count).toFixed(1) : '—';
   }
@@ -1133,13 +1205,17 @@ export class GradeMonitor implements OnInit {
   getExportTotalAverage(studentId: number): string {
     const tmpl = this.exportTmpl();
     if (!tmpl) return '—';
+    const data = this.exportGradeData();
+    if (!Object.keys(data).length) return '—';
     let total = 0; let count = 0;
     for (const mg of tmpl.month_groups) {
       for (const w of mg.weeks) {
+        let weekTotal = 0; let hasData = false;
         for (const c of tmpl.criteria) {
-          const val = this.gradeValues()[studentId + '_' + w + '_' + c.id];
-          if (val != null) { total += val; count++; }
+          const val = data[`${studentId}_${w}`]?.[c.id];
+          if (val != null) { weekTotal += val; hasData = true; }
         }
+        if (hasData) { total += weekTotal; count++; }
       }
     }
     return count > 0 ? (total / count).toFixed(1) : '—';
@@ -2125,6 +2201,116 @@ export class GradeMonitor implements OnInit {
       this.showSnackbar('فشل التصدير');
     }
     this.exporting.set(false);
+  }
+
+  /** طباعة المعاينة في نافذة جديدة بدون واجهة الموقع */
+  async printPreview() {
+    const cls = this.exportCls();
+    const tmpl = this.exportTmpl();
+    if (!cls || !tmpl) return;
+
+    const data = this.exportGradeData();
+    // لو البيانات لسه محملتش، حملها الأول
+    const gradeData = Object.keys(data).length ? data : await this.loadAllWeeksGrades(cls, tmpl);
+
+    const profile = this.schoolProfile();
+    const termNum = this.normalizeTerm(tmpl.term);
+    const termName = termNum === 1 ? 'الفصل الدراسي الأول'
+      : termNum === 2 ? 'الفصل الدراسي الثاني'
+      : 'الفصل الدراسي';
+
+    let tableRows = '';
+    for (const [i, st] of cls.students.entries()) {
+      let monthCells = '';
+      for (const mg of tmpl.month_groups) {
+        let total = 0, count = 0;
+        for (const w of mg.weeks) {
+          let weekTotal = 0, hasData = false;
+          for (const c of tmpl.criteria) {
+            const val = gradeData[`${st.id}_${w}`]?.[c.id];
+            if (val != null) { weekTotal += val; hasData = true; }
+          }
+          if (hasData) { total += weekTotal; count++; }
+        }
+        const avg = count > 0 ? (total / count).toFixed(1) : '—';
+        monthCells += `<td style="text-align:center;padding:8px;border:1px solid #ddd;font-size:13px">${avg}</td>`;
+      }
+      // Total average
+      let totalAll = 0, countAll = 0;
+      for (const mg of tmpl.month_groups) {
+        for (const w of mg.weeks) {
+          let weekTotal = 0, hasData = false;
+          for (const c of tmpl.criteria) {
+            const val = gradeData[`${st.id}_${w}`]?.[c.id];
+            if (val != null) { weekTotal += val; hasData = true; }
+          }
+          if (hasData) { totalAll += weekTotal; countAll++; }
+        }
+      }
+      const avgAll = countAll > 0 ? (totalAll / countAll).toFixed(1) : '—';
+      tableRows += `<tr>
+        <td style="text-align:center;padding:8px;border:1px solid #ddd;font-size:13px">${i + 1}</td>
+        <td style="padding:8px;border:1px solid #ddd;font-size:13px;font-weight:600">${st.name}</td>
+        ${monthCells}
+        <td style="text-align:center;padding:8px;border:1px solid #ddd;font-size:13px;font-weight:700;color:#16a34a">${avgAll}</td>
+      </tr>`;
+    }
+
+    let monthHeaders = '';
+    for (const mg of tmpl.month_groups) {
+      monthHeaders += `<th style="text-align:center;padding:10px 8px;border:1px solid #ddd;background:#f8f9fa;font-size:13px">متوسط ${mg.name}</th>`;
+    }
+
+    const printWindow = window.open('', '_blank', 'width=1200,height=900');
+    if (!printWindow) { this.showSnackbar('الرجاء السماح للنوافذ المنبثقة'); return; }
+
+    printWindow.document.write(`<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>طباعة - ${cls.name} - ${cls.subject}</title>
+  <style>
+    @page { margin: 1.5cm; size: landscape; }
+    body { font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; padding: 20px; color: #1a1a1a; }
+    .header { text-align: center; margin-bottom: 20px; }
+    .header .org { font-size: 11px; color: #666; }
+    .header h2 { font-size: 16px; margin: 6px 0; }
+    .header .sub { font-size: 12px; color: #444; }
+    table { width: 100%; border-collapse: collapse; }
+    th { background: #00236f; color: #fff; font-size: 13px; padding: 10px 8px; border: 1px solid #00236f; }
+    td { padding: 8px; border: 1px solid #ddd; font-size: 13px; }
+    tr:nth-child(even) td { background: #f8f9fa; }
+    @media print { body { padding: 0; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="org">${tmpl.directorate || profile?.directorate || ''} — ${tmpl.administration || profile?.educationalAdministration || ''}</div>
+    <h2>${tmpl.school || profile?.schoolName || ''}</h2>
+    <div class="sub">سجل رصد الدرجات — ${cls.name} — ${cls.subject} — ${termName}</div>
+    <div class="sub" style="font-size:11px">المعلم: ${cls.teacher} · عدد الطلاب: ${cls.students.length}</div>
+    <p style="font-size:13px">سيتم إغلاق هذه النافذة تلقائياً بعد الطباعة</p>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:40px">#</th>
+        <th style="text-align:right">الاسم</th>
+        ${monthHeaders}
+        <th style="text-align:center;color:#ffd700">المتوسط الكلي</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${tableRows}
+    </tbody>
+  </table>
+  <script>
+    window.onload = function() { window.print(); };
+    window.onafterprint = function() { window.close(); };
+  ${'<'}/script>
+</body>
+</html>`);
+    printWindow.document.close();
   }
 
   private async loadAllWeeksGrades(cls: ClassItem, tmpl: Template): Promise<Record<string, Record<string, number>>> {

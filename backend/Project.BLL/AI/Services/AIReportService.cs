@@ -17,7 +17,14 @@ public class AIReportService : IAIReportService
     private readonly ILogger<AIReportService> _logger;
 
     private const string SystemPrompt =
-        "أنت مولد تقارير تقييم. بناءً على بيانات الطالب والتقييمات، قم بتوليد تقرير أكاديمي مفصل باللغة العربية.";
+        "أنت محلل أكاديمي خبير في كتابة تقارير تقييم الطلاب.\n\n" +
+        "مهمتك: توليد تقرير أكاديمي احترافي باللغة العربية بناءً على بيانات الطالب.\n\n" +
+        "التنسيق المطلوب (التزم به بدقة):\n" +
+        "1. استخدم **عنوان القسم** (بين نجمتين مزدوجتين) لعناوين الأقسام الرئيسية.\n" +
+        "2. استخدم - **مسمى:** (شرطة ونجمة مزدوجة ونقطتين) لتسمية الحقول.\n" +
+        "3. استخدم | لجداول البيانات.\n" +
+        "4. استخدم --- للفصل بين الأقسام.\n" +
+        "5. اكتب الدرجات بصيغة 35.0 / 40.0 والنسب المئوية بصيغة 87.5%.";
 
     public AIReportService(
         ILLMRouter router,
@@ -31,6 +38,88 @@ public class AIReportService : IAIReportService
         _logger = logger;
     }
 
+    /// <summary>
+    /// Helper to compute subject grades from evaluations for a given enrollment and period.
+    /// </summary>
+    private async Task<List<SubjectGradeDto>> ComputeSubjectGradesAsync(
+        StudentEnrollment? enrollment, int periodId, CancellationToken ct)
+    {
+        var subjectGrades = new List<SubjectGradeDto>();
+        if (enrollment == null) return subjectGrades;
+
+        var evaluations = await _unitOfWork.StudentEvaluations
+            .GetByEnrollmentAndPeriodAsync(enrollment.Id, periodId, ct);
+
+        if (evaluations.Count == 0) return subjectGrades;
+
+        var itemIds = evaluations.Select(e => e.EvaluationItemId).Distinct().ToList();
+        var items = (await _unitOfWork.EvaluationItems.FindAsync(i => itemIds.Contains(i.Id))).ToList();
+        var templateIds = items.Select(i => i.TemplateId).Distinct().ToList();
+        var templates = (await _unitOfWork.EvaluationTemplates.FindAsync(t => templateIds.Contains(t.Id))).ToList();
+        var subjectIds = templates.Select(t => t.SubjectId).Distinct().ToList();
+        var subjects = (await _unitOfWork.Subjects.FindAsync(s => subjectIds.Contains(s.Id))).ToList();
+
+        var subjectDict = subjects.ToDictionary(s => s.Id, s => s.Name);
+        var templateDict = templates.ToDictionary(t => t.Id, t => t.SubjectId);
+        var itemDict = items.ToDictionary(i => i.Id, i => new { i.TemplateId, i.MaxScore, i.Name });
+
+        var subjectGroups = new Dictionary<int, (decimal Score, decimal Max, string Name)>();
+        foreach (var eval in evaluations)
+        {
+            if (!itemDict.TryGetValue(eval.EvaluationItemId, out var itemInfo)) continue;
+            if (!templateDict.TryGetValue(itemInfo.TemplateId, out var subjId)) continue;
+            if (!subjectDict.TryGetValue(subjId, out var subjName)) continue;
+
+            var score = eval.Score ?? 0;
+            if (!subjectGroups.ContainsKey(subjId))
+                subjectGroups[subjId] = (0, 0, subjName);
+            var cur = subjectGroups[subjId];
+            subjectGroups[subjId] = (cur.Score + score, cur.Max + itemInfo.MaxScore, subjName);
+        }
+
+        subjectGrades = subjectGroups.Select(sg => new SubjectGradeDto
+        {
+            SubjectName = sg.Value.Name,
+            Score = sg.Value.Score,
+            MaxScore = sg.Value.Max
+        }).ToList();
+
+        return subjectGrades;
+    }
+
+    /// <summary>
+    /// Compute attendance rate for a given enrollment within a date range.
+    /// Excludes weekends (Friday/Saturday) from the total school days count.
+    /// </summary>
+    private async Task<double> ComputeAttendanceRateAsync(int enrollmentId, DateOnly from, DateOnly to, CancellationToken ct)
+    {
+        var allAbsences = await _unitOfWork.DailyAbsences
+            .FindAsync(a => a.EnrollmentId == enrollmentId && !a.IsDeleted);
+
+        var periodAbsences = allAbsences
+            .Where(a => a.AbsenceDate >= from && a.AbsenceDate <= to)
+            .Count();
+
+        var schoolDays = CountWeekdays(from, to);
+        if (schoolDays <= 0) return 100;
+
+        return Math.Max(0, 100 - periodAbsences / (double)schoolDays * 100);
+    }
+
+    /// <summary>
+    /// Count weekdays (Sunday–Thursday) between two dates (inclusive).
+    /// </summary>
+    private static int CountWeekdays(DateOnly from, DateOnly to)
+    {
+        var count = 0;
+        for (var d = from; d <= to; d = d.AddDays(1))
+        {
+            if (d.DayOfWeek != DayOfWeek.Friday && d.DayOfWeek != DayOfWeek.Saturday)
+                count++;
+        }
+        return count;
+    }
+
     public async Task<OperationResult<AIReport>> GenerateStudentReportAsync(int studentId, int periodId, AcademicTerm? term = null, CancellationToken ct = default)
     {
         var student = await _unitOfWork.Students.GetByIdAsync(studentId);
@@ -41,7 +130,7 @@ public class AIReportService : IAIReportService
         if (period == null || period.IsDeleted)
             return OperationResult<AIReport>.Failure("فترة التقييم غير موجودة", 404);
 
-        var termInfo = term.HasValue ? $"\nالفصل الدراسي: {term.Value}" : "";
+        var termInfo = term.HasValue ? $"\nالفصل الدراسي: {GetTermArabicName(term.Value)}" : "";
         var prompt = $"ولّد تقريراً أكاديمياً للطالب {student.FullName} عن فترة التقييم {period.Name}" +
                      $"\nتاريخ البداية: {period.StartDate}\nتاريخ النهاية: {period.EndDate}{termInfo}" +
                      $"\nملاحظة: السنة الحالية هي {DateTime.UtcNow.Year}، استخدمها في كتابة التاريخ أسفل التقرير.";
@@ -68,7 +157,7 @@ public class AIReportService : IAIReportService
     {
         var period = await _unitOfWork.EvaluationPeriods.GetByIdAsync(periodId);
         var periodName = period?.Name ?? "الفترة الحالية";
-        var termInfo = term.HasValue ? $" في الفصل الدراسي {term.Value}" : "";
+        var termInfo = term.HasValue ? $" في الفصل الدراسي {GetTermArabicName(term.Value)}" : "";
         var prompt = $"ولّد تقريراً عن أداء الفصل في فترة التقييم {periodName}{termInfo}";
         var content = await _router.GenerateAsync(SystemPrompt, prompt, ct: ct);
 
@@ -92,7 +181,7 @@ public class AIReportService : IAIReportService
     {
         var student = await _unitOfWork.Students.GetByIdAsync(studentId);
         var studentName = student?.FullName ?? "الطالب";
-        var termInfo = term.HasValue ? $" في الفصل الدراسي {term.Value}" : "";
+        var termInfo = term.HasValue ? $" في الفصل الدراسي {GetTermArabicName(term.Value)}" : "";
         var prompt = $"قدّم توصيات أكاديمية لتحسين أداء الطالب {studentName}{termInfo}";
         var content = await _router.GenerateAsync(SystemPrompt, prompt, ct: ct);
 
@@ -188,49 +277,8 @@ public class AIReportService : IAIReportService
                 .ToList();
         }
 
-        // Subject-level grades via evaluations
-        var subjectGrades = new List<SubjectGradeDto>();
-
-        if (enrollment != null)
-        {
-            var evaluations = await _unitOfWork.StudentEvaluations
-                .GetByEnrollmentAndPeriodAsync(enrollment.Id, periodId, ct);
-
-            if (evaluations.Count > 0)
-            {
-                var itemIds = evaluations.Select(e => e.EvaluationItemId).Distinct().ToList();
-                var items = (await _unitOfWork.EvaluationItems.FindAsync(i => itemIds.Contains(i.Id))).ToList();
-                var templateIds = items.Select(i => i.TemplateId).Distinct().ToList();
-                var templates = (await _unitOfWork.EvaluationTemplates.FindAsync(t => templateIds.Contains(t.Id))).ToList();
-                var subjectIds = templates.Select(t => t.SubjectId).Distinct().ToList();
-                var subjects = (await _unitOfWork.Subjects.FindAsync(s => subjectIds.Contains(s.Id))).ToList();
-
-                var subjectDict = subjects.ToDictionary(s => s.Id, s => s.Name);
-                var templateDict = templates.ToDictionary(t => t.Id, t => t.SubjectId);
-                var itemDict = items.ToDictionary(i => i.Id, i => new { i.TemplateId, i.MaxScore, i.Name });
-
-                var subjectGroups = new Dictionary<int, (decimal Score, decimal Max, string Name)>();
-                foreach (var eval in evaluations)
-                {
-                    if (!itemDict.TryGetValue(eval.EvaluationItemId, out var itemInfo)) continue;
-                    if (!templateDict.TryGetValue(itemInfo.TemplateId, out var subjId)) continue;
-                    if (!subjectDict.TryGetValue(subjId, out var subjName)) continue;
-
-                    var score = eval.Score ?? 0;
-                    if (!subjectGroups.ContainsKey(subjId))
-                        subjectGroups[subjId] = (0, 0, subjName);
-                    var cur = subjectGroups[subjId];
-                    subjectGroups[subjId] = (cur.Score + score, cur.Max + itemInfo.MaxScore, subjName);
-                }
-
-                subjectGrades = subjectGroups.Select(sg => new SubjectGradeDto
-                {
-                    SubjectName = sg.Value.Name,
-                    Score = sg.Value.Score,
-                    MaxScore = sg.Value.Max
-                }).ToList();
-            }
-        }
+        // Subject-level grades via evaluations (current period)
+        var subjectGrades = await ComputeSubjectGradesAsync(enrollment, periodId, ct);
 
         // Calculate overall from subject grades (evaluations) — consistent with what's displayed
         if (subjectGrades.Count > 0)
@@ -283,13 +331,11 @@ public class AIReportService : IAIReportService
             new() { Label = "التقييمات", Value = overallScore, Max = overallMax }
         };
 
-        if (enrollment != null)
+        if (enrollment != null && period.StartDate.HasValue && period.EndDate.HasValue)
         {
             try
             {
-                var absences = await _unitOfWork.DailyAbsences
-                    .FindAsync(a => a.EnrollmentId == enrollment.Id && !a.IsDeleted);
-                var attendanceRate = Math.Max(0, 100 - absences.Count() / 90.0 * 100);
+                var attendanceRate = await ComputeAttendanceRateAsync(enrollment.Id, period.StartDate.Value, period.EndDate.Value, ct);
                 metrics.Add(new MetricDto { Label = "نسبة الحضور", Value = Math.Round(attendanceRate, 1), Max = 100 });
             }
             catch { /* skip */ }
@@ -297,21 +343,207 @@ public class AIReportService : IAIReportService
 
         // Metrics: only overall metrics — subjects are shown in their own card below
 
+        // ── Previous month comparison ──
+        PeriodComparisonDto? previousMonthData = null;
+        if (enrollment != null)
+        {
+            try
+            {
+                var allEvals = await _unitOfWork.StudentEvaluations
+                    .GetByEnrollmentIdAsync(enrollment.Id, ct);
+
+                // Distinct periods sorted by OrderNum
+                var periodOrderMap = allEvals
+                    .GroupBy(e => e.PeriodId)
+                    .Select(g => new { PeriodId = g.Key, OrderNum = g.First().Period?.OrderNum ?? 0 })
+                    .OrderBy(p => p.OrderNum)
+                    .ToList();
+
+                var currentIdx = periodOrderMap.FindIndex(p => p.PeriodId == periodId);
+                if (currentIdx > 0)
+                {
+                    var prevMonthId = periodOrderMap[currentIdx - 1].PeriodId;
+                    var prevMonth = await _unitOfWork.EvaluationPeriods.GetByIdAsync(prevMonthId);
+
+                    if (prevMonth is { IsDeleted: false })
+                    {
+                        var prevSubjectGrades = await ComputeSubjectGradesAsync(enrollment, prevMonthId, ct);
+
+                        double prevOverall = 0;
+                        if (prevSubjectGrades.Count > 0)
+                        {
+                            var prevSumScore = (double)prevSubjectGrades.Sum(sg => sg.Score);
+                            var prevSumMax = (double)prevSubjectGrades.Sum(sg => sg.MaxScore);
+                            if (prevSumMax > 0)
+                                prevOverall = Math.Round(prevSumScore / prevSumMax * 100, 1);
+                        }
+
+                        // ── Previous month metrics (include attendance if dates available) ──
+                        var prevMetrics = new List<MetricDto>
+                        {
+                            new() { Label = "التقييمات", Value = prevOverall, Max = 100 }
+                        };
+                        if (prevMonth.StartDate.HasValue && prevMonth.EndDate.HasValue)
+                        {
+                            try
+                            {
+                                var prevAttendance = await ComputeAttendanceRateAsync(
+                                    enrollment.Id, prevMonth.StartDate.Value, prevMonth.EndDate.Value, ct);
+                                prevMetrics.Add(new MetricDto
+                                {
+                                    Label = "نسبة الحضور",
+                                    Value = Math.Round(prevAttendance, 1),
+                                    Max = 100
+                                });
+                            }
+                            catch { /* skip */ }
+                        }
+
+                        previousMonthData = new PeriodComparisonDto
+                        {
+                            PeriodId = prevMonthId,
+                            PeriodName = prevMonth.Name,
+                            OverallScore = prevOverall,
+                            OverallMax = 100,
+                            SubjectGrades = prevSubjectGrades,
+                            Metrics = prevMetrics
+                        };
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to load previous month data for student {StudentId}", studentId);
+            }
+        }
+
         // Generate AI-enhanced report text with real scores
         var currentYear = DateTime.UtcNow.Year;
         var scoresSummary = string.Join("\n", subjectGrades.Select(sg => $"- {sg.SubjectName}: {sg.Score:F1}/{sg.MaxScore:F1}"));
-        var aiPrompt = $"ولّد تقريراً أكاديمياً باللغة العربية للطالب {student.FullName} " +
-                       $"عن فترة التقييم: {period.Name}. " +
-                       $"الدرجة الكلية: {overallScore:F1}/{overallMax:F1}. " +
-                       $"التغيير عن التقرير السابق: {overallChange:+#;-#;0}%. " +
-                       $"المواد:\n{scoresSummary}\n\n" +
-                       $"اكتب تحليلاً مفصلاً للأداء مع نقاط القوة والضعف." +
-                       (term.HasValue ? $"\nالفصل الدراسي: {term.Value}" : "") +
-                       $"\nملاحظة: السنة الحالية هي {currentYear}، استخدمها في كتابة التاريخ أسفل التقرير.";
 
-        var aiContent = await _router.GenerateAsync(
-            "أنت محلل أكاديمي متخصص في تحليل أداء الطلاب وكتابة تقارير باللغة العربية.",
-            aiPrompt, ct: ct);
+        // Build rich comparison text for the prompt
+        var comparisonText = "";
+        if (previousMonthData != null)
+        {
+            var changeSign = overallChange > 0 ? "+" : "";
+            comparisonText =
+                $"\nبيانات الشهر السابق ({previousMonthData.PeriodName}):\n" +
+                $"- **الدرجة الكلية:** {previousMonthData.OverallScore:F1}%\n" +
+                $"- **المواد:\n";
+            foreach (var sg in previousMonthData.SubjectGrades)
+            {
+                var pct = sg.MaxScore > 0 ? sg.Score / sg.MaxScore * 100 : 0;
+                comparisonText += $"    {sg.SubjectName}: {sg.Score:F1} / {sg.MaxScore:F1} ({pct:F1}%)\n";
+            }
+            comparisonText += $"\nالتغيير الإجمالي: {changeSign}{overallChange:F1}%\n";
+        }
+
+        var promptBuilder = new System.Text.StringBuilder();
+        promptBuilder.AppendLine("-- بيانات الطالب --");
+        promptBuilder.AppendLine($"الاسم: {student.FullName}");
+        promptBuilder.AppendLine($"فترة التقييم: {period.Name}");
+        if (term.HasValue) promptBuilder.AppendLine($"الفصل الدراسي: {GetTermArabicName(term.Value)}");
+        promptBuilder.AppendLine();
+        promptBuilder.AppendLine("-- الدرجات --");
+        promptBuilder.AppendLine($"الدرجة الكلية: {overallScore:F1} من {overallMax:F1}");
+        promptBuilder.AppendLine();
+        promptBuilder.AppendLine("المواد:");
+        promptBuilder.AppendLine(scoresSummary);
+        if (overallChange != 0)
+            promptBuilder.AppendLine($"التغيير عن التقرير السابق: {overallChange:+#;-#;0}%");
+        promptBuilder.Append(comparisonText);
+        promptBuilder.AppendLine();
+        promptBuilder.AppendLine("-- التعليمات --");
+        promptBuilder.Append($"اكتب تقريراً أكاديمياً باللغة العربية للطالب {student.FullName} عن فترة {period.Name} ");
+        promptBuilder.AppendLine("باتباع الهيكل التالي بالضبط:");
+        promptBuilder.AppendLine();
+        promptBuilder.AppendLine("**البيانات الأساسية**");
+        promptBuilder.AppendLine("| العنصر | التفاصيل |");
+        promptBuilder.AppendLine("|---|---|");
+        promptBuilder.AppendLine($"| اسم الطالب | {student.FullName} |");
+        promptBuilder.AppendLine($"| فترة التقييم | {period.Name} |");
+        if (term.HasValue) promptBuilder.AppendLine($"| الفصل الدراسي | {GetTermArabicName(term.Value)} |");
+        promptBuilder.AppendLine($"| الدرجة الكلية | {overallScore:F1}% |");
+        if (previousMonthData != null)
+            promptBuilder.AppendLine($"| درجة الشهر السابق ({previousMonthData.PeriodName}) | {previousMonthData.OverallScore:F1}% |");
+        if (overallChange != 0)
+            promptBuilder.AppendLine($"| التغير عن التقرير السابق | {overallChange:+#;-#;0}% |");
+        promptBuilder.AppendLine($"| التاريخ | يوليو {currentYear} م |");
+        promptBuilder.AppendLine();
+        promptBuilder.AppendLine("---");
+        promptBuilder.AppendLine();
+        promptBuilder.AppendLine("**الأداء العام**");
+        promptBuilder.AppendLine("اكتب فقرة موجزة تصف الأداء العام للطالب. اذكر الدرجة الكلية والتقييم العام (ممتاز / جيد جداً / جيد / مقبول / ضعيف).");
+        promptBuilder.AppendLine("استخدم - **مسمى:** للتفاصيل. اذكر نقاط القوة والضعف بشكل عام.");
+        promptBuilder.AppendLine();
+        promptBuilder.AppendLine("---");
+        promptBuilder.AppendLine();
+        promptBuilder.AppendLine("**تحليل المواد الدراسية**");
+        promptBuilder.AppendLine("قسم المواد إلى:");
+        promptBuilder.AppendLine("1. مواد التميز (أعلى من 90%): اذكرها مع تحليل سبب التميز.");
+        promptBuilder.AppendLine("2. مواد جيدة جدا (80% - 90%): اذكرها مع ملاحظات.");
+        promptBuilder.AppendLine("3. مواد تحتاج تحسين (أقل من 80%): اذكرها مع تحليل المشكلة.");
+        promptBuilder.AppendLine();
+        promptBuilder.AppendLine("لكل مادة اكتب:");
+        promptBuilder.AppendLine("- **اسم المادة:** الدرجة (مثلاً 35.0 / 40.0 - 87.5%) مع تحليل الأداء.");
+        promptBuilder.AppendLine("- إذا توفرت مقارنة مع الشهر السابق، اذكر التغير (+ أو -).");
+        promptBuilder.AppendLine();
+        promptBuilder.AppendLine("---");
+        promptBuilder.AppendLine();
+        if (previousMonthData != null)
+        {
+            promptBuilder.AppendLine($"**مقارنة مع {previousMonthData.PeriodName}**");
+            promptBuilder.AppendLine("حلل التغيرات بين الشهرين. اذكر المواد التي تحسنت والتي تراجعت. اذكر الأسباب المحتملة.");
+            promptBuilder.AppendLine();
+            promptBuilder.AppendLine("---");
+            promptBuilder.AppendLine();
+        }
+        promptBuilder.AppendLine("**التوصيات**");
+        promptBuilder.AppendLine("قدم 3-5 توصيات محددة وقابلة للتنفيذ. اكتب كل توصية في سطر منفصل يبدأ بـ -.");
+        promptBuilder.AppendLine("- ركز على المواد التي تحتاج تحسين.");
+        promptBuilder.AppendLine("- قدم نصائح عملية (مثل: حل تمارين إضافية، مراجعة مع المعلم، تنظيم وقت المذاكرة).");
+        promptBuilder.AppendLine();
+        promptBuilder.AppendLine("---");
+        promptBuilder.AppendLine();
+        promptBuilder.AppendLine("**خلاصة**");
+        promptBuilder.AppendLine("فقرة ختامية تلخص أداء الطالب وتوجهه للمستقبل.");
+        promptBuilder.AppendLine();
+        promptBuilder.AppendLine("---");
+        promptBuilder.AppendLine();
+        promptBuilder.AppendLine($"*التاريخ: يوليو {currentYear} م*");
+        promptBuilder.AppendLine("*المحلل الأكاديمي*");
+        promptBuilder.AppendLine();
+        promptBuilder.AppendLine("ملاحظات مهمة:");
+        promptBuilder.AppendLine("- استخدم | لكتابة الجداول.");
+        promptBuilder.AppendLine("- استخدم **نص** للعناوين الرئيسية.");
+        promptBuilder.AppendLine("- استخدم - **مسمى:** للحقول المسمّاة.");
+        promptBuilder.AppendLine("- استخدم --- للفصل بين الأقسام.");
+        promptBuilder.AppendLine("- اكتب النسب المئوية بصيغة 87.5%.");
+        promptBuilder.AppendLine("- اكتب الكسور بصيغة 35.0 / 40.0.");
+        promptBuilder.AppendLine("- لا تستخدم رموزا تعبيرية في التقرير.");
+
+        var aiPrompt = promptBuilder.ToString();
+
+        // Try AI generation; fallback to template-based report if AI is unavailable
+        string aiContent;
+        try
+        {
+            aiContent = await _router.GenerateAsync(
+                SystemPrompt,
+                aiPrompt, ct: ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "AI generation failed for student {StudentId}, using template fallback", studentId);
+            aiContent = GenerateFallbackReportText(student.FullName, period.Name, overallScore, overallMax,
+                finalGradeAvg, subjectGrades, overallTrend, overallChange, term);
+        }
+
+        if (string.IsNullOrWhiteSpace(aiContent))
+        {
+            aiContent = GenerateFallbackReportText(student.FullName, period.Name, overallScore, overallMax,
+                finalGradeAvg, subjectGrades, overallTrend, overallChange, term);
+        }
 
         // Build DTO
         var reportDto = new StudentReportDto
@@ -329,7 +561,8 @@ public class AIReportService : IAIReportService
             FinalGradeMax = 100,
             SubjectGrades = subjectGrades,
             Metrics = metrics,
-            ReportText = aiContent
+            ReportText = aiContent,
+            PreviousMonth = previousMonthData
         };
 
         // Save to AIReports table for history
@@ -358,7 +591,7 @@ public class AIReportService : IAIReportService
         if (student == null || student.IsDeleted)
             return OperationResult<RecommendationsDto>.Failure("الطالب غير موجود", 404);
 
-        var termInfo = term.HasValue ? $" في الفصل الدراسي {term.Value}" : "";
+        var termInfo = term.HasValue ? $" في الفصل الدراسي {GetTermArabicName(term.Value)}" : "";
         var enrollment = (await _unitOfWork.StudentEnrollments
             .FindAsync(e => e.StudentId == studentId && e.LeftAt == null))
             .FirstOrDefault();
@@ -421,9 +654,23 @@ public class AIReportService : IAIReportService
                      "يجب أن تكون التوصيات محددة وقابلة للتطبيق." +
                      $"\nملاحظة: السنة الحالية هي {currentYear}.";
 
-        var content = await _router.GenerateAsync(
-            "أنت مستشار أكاديمي خبير في تقديم توصيات تعليمية مخصصة باللغة العربية.",
-            prompt, ct: ct);
+        string content;
+        try
+        {
+            content = await _router.GenerateAsync(
+                "أنت مستشار أكاديمي خبير في تقديم توصيات تعليمية مخصصة باللغة العربية.",
+                prompt, ct: ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "AI recommendations generation failed for student {StudentId}, using template fallback", studentId);
+            content = GenerateFallbackRecommendations(student.FullName, weakAreas, term);
+        }
+
+        if (string.IsNullOrWhiteSpace(content))
+        {
+            content = GenerateFallbackRecommendations(student.FullName, weakAreas, term);
+        }
 
         // Parse sections: **Title** blocks followed by - items
         var sections = new List<RecommendationSection>();
@@ -554,6 +801,185 @@ public class AIReportService : IAIReportService
         await _unitOfWork.SaveChangesAsync();
 
         return OperationResult<object>.Success(new { }, "تم حذف التقرير بنجاح");
+    }
+
+    /// <summary>
+    /// Translates AcademicTerm enum to Arabic.
+    /// </summary>
+    private static string GetTermArabicName(AcademicTerm term) => term switch
+    {
+        AcademicTerm.FirstSemester => "الفصل الدراسي الأول",
+        AcademicTerm.SecondSemester => "الفصل الدراسي الثاني",
+        AcademicTerm.Final => "الفصل الدراسي الثالث",
+        _ => $"الفصل {term}"
+    };
+
+    /// <summary>
+    /// Generates a template-based report text when AI generation is unavailable.
+    /// </summary>
+    private static string GenerateFallbackReportText(
+        string studentName, string periodName,
+        double overallScore, double overallMax,
+        double finalGradeAvg, List<SubjectGradeDto> subjectGrades,
+        string overallTrend, double overallChange,
+        AcademicTerm? term)
+    {
+        var lines = new List<string>();
+
+        var overallStatus = overallScore >= 90 ? "ممتاز" : overallScore >= 80 ? "جيد جداً" : overallScore >= 70 ? "جيد" : overallScore >= 50 ? "مقبول" : "ضعيف";
+
+        lines.Add("**البيانات الأساسية**");
+        lines.Add("| العنصر | التفاصيل |");
+        lines.Add("|---|---|");
+        lines.Add($"| اسم الطالب | {studentName} |");
+        lines.Add($"| فترة التقييم | {periodName} |");
+        if (term.HasValue)
+            lines.Add($"| الفصل الدراسي | {GetTermArabicName(term.Value)} |");
+        lines.Add($"| الدرجة الكلية | {overallScore:F1}% |");
+        lines.Add($"| التقييم العام | {overallStatus} |");
+        if (overallChange != 0)
+        {
+            var changeWord = overallChange > 0 ? "تحسن" : "تراجع";
+            lines.Add($"| التغير عن التقرير السابق | {overallChange:+#;-#;0}% ({changeWord}) |");
+        }
+        lines.Add($"| التاريخ | {DateTime.Now:yyyy/MM/dd} |");
+
+        lines.Add(string.Empty);
+        lines.Add("---");
+        lines.Add(string.Empty);
+
+        lines.Add("**الأداء العام**");
+        lines.Add($"- **التقييم العام:** {overallStatus}");
+        lines.Add($"- **الدرجة الكلية:** {overallScore:F1}%");
+        if (overallChange > 0)
+            lines.Add($"- **الاتجاه:** تحسن بنسبة {overallChange:F1}% عن التقرير السابق.");
+        else if (overallChange < 0)
+            lines.Add($"- **الاتجاه:** تراجع بنسبة {Math.Abs(overallChange):F1}% عن التقرير السابق.");
+        else if (overallChange != 0)
+            lines.Add($"- **الاتجاه:** مستقر مع تغير طفيف.");
+        else
+            lines.Add($"- **الاتجاه:** مستقر.");
+        lines.Add($"حصل الطالب على نسبة {overallScore:F1}% في التقييمات العامة، وهو مستوى {overallStatus}.");
+
+        if (finalGradeAvg > 0)
+        {
+            lines.Add($"- **الدرجات النهائية:** {finalGradeAvg:F1}%.");
+        }
+
+        lines.Add(string.Empty);
+        lines.Add("---");
+        lines.Add(string.Empty);
+
+        lines.Add("**تحليل المواد الدراسية**");
+
+        var sortedGrades = subjectGrades.OrderByDescending(s => s.Percentage).ToList();
+        var excellent = sortedGrades.Where(s => s.Percentage >= 90).ToList();
+        var good = sortedGrades.Where(s => s.Percentage >= 80 && s.Percentage < 90).ToList();
+        var needsWork = sortedGrades.Where(s => s.Percentage < 80).ToList();
+
+        if (excellent.Count > 0)
+        {
+            lines.Add(string.Empty);
+            lines.Add("مواد التميز:");
+            foreach (var sg in excellent)
+                lines.Add($"- **{sg.SubjectName}:** {sg.Score:F1} / {sg.MaxScore:F1} ({sg.Percentage:F1}%) - أداء متميز.");
+        }
+
+        if (good.Count > 0)
+        {
+            lines.Add(string.Empty);
+            lines.Add("مواد جيدة جداً:");
+            foreach (var sg in good)
+                lines.Add($"- **{sg.SubjectName}:** {sg.Score:F1} / {sg.MaxScore:F1} ({sg.Percentage:F1}%) - أداء جيد جداً.");
+        }
+
+        if (needsWork.Count > 0)
+        {
+            lines.Add(string.Empty);
+            lines.Add("مواد تحتاج تحسين:");
+            foreach (var sg in needsWork)
+                lines.Add($"- **{sg.SubjectName}:** {sg.Score:F1} / {sg.MaxScore:F1} ({sg.Percentage:F1}%) - يحتاج إلى مزيد من الاهتمام.");
+        }
+
+        lines.Add(string.Empty);
+        lines.Add("---");
+        lines.Add(string.Empty);
+
+        lines.Add("**التوصيات**");
+        if (needsWork.Count > 0)
+        {
+            foreach (var sg in needsWork)
+                lines.Add($"- التركيز على مادة {sg.SubjectName} من خلال حل تمارين إضافية ومراجعة الدروس بانتظام.");
+        }
+        if (excellent.Count > 0)
+        {
+            lines.Add($"- الاستمرار في التفوق في المواد المتميزة ({string.Join("، ", excellent.Select(s => s.SubjectName))}) مع تحديات إضافية.");
+        }
+        lines.Add("- تنظيم وقت المذاكرة اليومي وتخصيص مراجعة أسبوعية.");
+        if (finalGradeAvg > 0)
+            lines.Add($"- متابعة الاستعداد لامتحانات نهاية الفصل (متوسط الدرجات النهائية: {finalGradeAvg:F1}%).");
+
+        lines.Add(string.Empty);
+        lines.Add("---");
+        lines.Add(string.Empty);
+
+        lines.Add("**خلاصة**");
+        lines.Add($"المستوى العام للطالب {overallStatus} بنسبة {overallScore:F1}%. " +
+                   (needsWork.Count > 0
+                       ? $"يحتاج للتركيز على تحسين المواد التالية: {string.Join("، ", needsWork.Select(s => s.SubjectName))}."
+                       : "أداء ممتاز في جميع المواد. نوصي بالاستمرار على هذا المستوى."));
+        lines.Add(string.Empty);
+        lines.Add($"*تم إنشاء هذا التقرير تلقائياً في {DateTime.Now:yyyy/MM/dd HH:mm}*");
+
+        return string.Join("\n", lines);
+    }
+
+    /// <summary>
+    /// Generates template-based recommendations when AI generation is unavailable.
+    /// </summary>
+    private static string GenerateFallbackRecommendations(string studentName, List<string> weakAreas, AcademicTerm? term)
+    {
+        var sections = new List<string>();
+        var termInfo = term.HasValue ? $" في الفصل الدراسي {GetTermArabicName(term.Value)}" : "";
+        
+        sections.Add($"**توصيات لتحسين أداء الطالب {studentName}{termInfo}**");
+        sections.Add(string.Empty);
+
+        sections.Add("**تحسين المواد الدراسية**");
+        if (weakAreas.Count > 0)
+        {
+            sections.Add($"- يحتاج الطالب إلى التركيز على المواد التالية: {string.Join("، ", weakAreas)}.");
+            foreach (var weak in weakAreas)
+            {
+                sections.Add($"- يُنصح بمراجعة دروس {weak} بشكل يومي وحل التمارين الإضافية.");
+            }
+        }
+        else
+        {
+            sections.Add("- الأداء العام جيد. يُنصح بالاستمرار على نفس المستوى.");
+        }
+        sections.Add(string.Empty);
+
+        sections.Add("**تنظيم الوقت والدراسة**");
+        sections.Add("- وضع جدول دراسة يومي منتظم مع تخصيص وقت لكل مادة.");
+        sections.Add("- تخصيص وقت كافٍ للمراجعة قبل الامتحانات.");
+        sections.Add("- أخذ فترات راحة قصيرة بين جلسات الدراسة لتحسين التركيز.");
+        sections.Add(string.Empty);
+
+        sections.Add("**التفاعل مع المعلمين**");
+        sections.Add("- تشجيع الطالب على المشاركة في الحصص الدراسية وطرح الأسئلة.");
+        sections.Add("- التواصل مع معلمي المواد التي يحتاج فيها الطالب دعماً إضافياً.");
+        sections.Add(string.Empty);
+
+        sections.Add("**متابعة أولياء الأمور**");
+        sections.Add("- متابعة أداء الطالب بشكل أسبوعي من خلال التقارير المتاحة.");
+        sections.Add("- توفير بيئة مناسبة للدراسة في المنزل.");
+        sections.Add("- تحفيز الطالب وتقديم الدعم المعنوي المستمر.");
+        sections.Add(string.Empty);
+
+        sections.Add($"*تم إنشاء هذه التوصيات تلقائياً في {DateTime.Now:yyyy/MM/dd HH:mm}*");
+
+        return string.Join("\n", sections);
     }
 
     /// <summary>
