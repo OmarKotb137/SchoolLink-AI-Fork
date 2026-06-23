@@ -18,6 +18,21 @@ public class MetricDto
     public string Trend { get; set; } = "stable"; // up, down, stable
 }
 
+/// <summary>
+/// بيانات فترة سابقة للمقارنة (شهريّة)
+/// </summary>
+public class PeriodComparisonDto
+{
+    public int PeriodId { get; set; }
+    public string PeriodName { get; set; } = string.Empty;
+    public double OverallScore { get; set; }
+    public double OverallMax { get; set; } = 100;
+    public double FinalGradeAverage { get; set; }
+    public double FinalGradeMax { get; set; } = 100;
+    public List<SubjectGradeDto> SubjectGrades { get; set; } = new();
+    public List<MetricDto> Metrics { get; set; } = new();
+}
+
 public class StudentReportDto
 {
     public int StudentId { get; set; }
@@ -45,6 +60,10 @@ public class StudentReportDto
     // AI-generated texts
     public string? ReportText { get; set; }
     public string? RecommendationsText { get; set; }
+
+    // ── Comparison with previous month ─────────────────────────────
+    /// <summary>بيانات الشهر السابق للمقارنة (إن وُجدت)</summary>
+    public PeriodComparisonDto? PreviousMonth { get; set; }
 }
 
 public class RecommendationSection

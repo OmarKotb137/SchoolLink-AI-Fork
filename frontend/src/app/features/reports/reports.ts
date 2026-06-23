@@ -37,6 +37,17 @@ interface MetricDto {
   trend: string;
 }
 
+interface PeriodComparisonDto {
+  periodId: number;
+  periodName: string;
+  overallScore: number;
+  overallMax: number;
+  finalGradeAverage: number;
+  finalGradeMax: number;
+  subjectGrades: SubjectGradeDto[];
+  metrics: MetricDto[];
+}
+
 interface StudentReportDto {
   studentId: number;
   studentName: string;
@@ -53,6 +64,7 @@ interface StudentReportDto {
   metrics: MetricDto[];
   reportText: string | null;
   recommendationsText: string | null;
+  previousMonth?: PeriodComparisonDto;
 }
 
 interface RecommendationSection {
@@ -97,6 +109,8 @@ export class Reports implements OnInit {
   generatingReport = signal(false);
   generatingRecs = signal(false);
   error = signal<string | null>(null);
+  Math = Math; // expose Math for template
+  compareToggle = signal(false);
 
   userName = computed(() => this.authService.user()?.fullName ?? 'ولي الأمر');
 
@@ -125,6 +139,33 @@ export class Reports implements OnInit {
   recSections = computed(() => this.recsData()?.sections ?? []);
   finalGradeAverage = computed(() => this.reportData()?.finalGradeAverage ?? 0);
   finalGradeMax = computed(() => this.reportData()?.finalGradeMax ?? 100);
+  previousMonth = computed(() => this.reportData()?.previousMonth);
+  hasPreviousMonth = computed(() => !!this.previousMonth());
+
+  // Computed arrays for template @for loops (Angular doesn't support for (let i = 0; ...))
+  subjectComparisonItems = computed(() => {
+    const prev = this.previousMonth()?.subjectGrades ?? [];
+    const curr = this.subjectGrades();
+    const allSubjects = [...new Set([...prev.map(s => s.subjectName), ...curr.map(s => s.subjectName)])];
+    return allSubjects.map((name, i) => ({
+      index: i,
+      subjectName: name,
+      prevGrade: prev.find(s => s.subjectName === name) ?? null,
+      currGrade: curr.find(s => s.subjectName === name) ?? null,
+    }));
+  });
+
+  metricsComparisonItems = computed(() => {
+    const prev = this.previousMonth()?.metrics ?? [];
+    const curr = this.metrics();
+    const allLabels = [...new Set([...prev.map(m => m.label), ...curr.map(m => m.label)])];
+    return allLabels.map((label, i) => ({
+      index: i,
+      label,
+      prevMetric: prev.find(m => m.label === label) ?? null,
+      currMetric: curr.find(m => m.label === label) ?? null,
+    }));
+  });
 
   // Circle info popup
   circleInfo = signal<{ title: string; score: number; max: number; lines: string[] } | null>(null);

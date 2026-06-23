@@ -75,7 +75,153 @@
             <div class="child-banner">
               <span class="material-symbols-outlined">person</span>
               <span>تقرير الطالب: <strong>{{ reportData()?.studentName || selectedChildName() }}</strong></span>
+              @if (hasPreviousMonth()) {
+                <button class="period-compare-btn" (click)="compareToggle.set(!compareToggle())">
+                  <span class="material-symbols-outlined">{{ compareToggle() ? 'close' : 'compare' }}</span>
+                  <span>مقارنة مع {{ previousMonth()?.periodName }}</span>
+                </button>
+              }
             </div>
+
+            <!-- Period Comparison Panel -->
+            @if (hasPreviousMonth() && compareToggle()) {
+              @let prevOverall = previousMonth()?.overallScore ?? 0;
+              @let currOverall = overallScore();
+              @let monthDiff = currOverall - prevOverall;
+              <div class="period-comparison-card">
+                <div class="comparison-header">
+                  <h4>مقارنة: {{ previousMonth()?.periodName }} مع {{ reportData()?.periodName }}</h4>
+                  <span class="comparison-indicator"
+                        [class.increase]="monthDiff > 0"
+                        [class.decrease]="monthDiff < 0"
+                        [class.stable]="monthDiff === 0">
+                    @if (monthDiff > 0) { <span>+{{ monthDiff.toFixed(1) }}%</span> }
+                    @else if (monthDiff < 0) { <span>{{ monthDiff.toFixed(1) }}%</span> }
+                    @else { <span>0.0%</span> }
+                  </span>
+                </div>
+
+                <div class="comparison-content">
+                  <!-- Overall Scores Comparison -->
+                  <div class="comparison-section">
+                    <div class="overall-box">
+                      <div class="overall-box-item prev-item">
+                        <span class="overall-label">السابق</span>
+                        <span class="overall-val">{{ prevOverall.toFixed(1) }}%</span>
+                      </div>
+                      <div class="overall-vs-wrap">
+                        <span class="vs-badge">VS</span>
+                        <span class="diff-badge" [class.up]="monthDiff > 0" [class.down]="monthDiff < 0">
+                          @if (monthDiff > 0) { +{{ monthDiff.toFixed(1) }}% }
+                          @else if (monthDiff < 0) { {{ monthDiff.toFixed(1) }}% }
+                          @else { 0.0% }
+                        </span>
+                      </div>
+                      <div class="overall-box-item curr-item">
+                        <span class="overall-label">الحالي</span>
+                        <span class="overall-val">{{ currOverall.toFixed(1) }}%</span>
+                      </div>
+                    </div>
+                    <div class="overall-bars">
+                      <div class="obar-row">
+                        <span class="obar-lbl">السابق ({{ previousMonth()?.periodName }})</span>
+                        <div class="obar-track">
+                          <div class="obar-fill obar-prev" [style.width.%]="prevOverall"></div>
+                        </div>
+                      </div>
+                      <div class="obar-row">
+                        <span class="obar-lbl">الحالي ({{ reportData()?.periodName }})</span>
+                        <div class="obar-track">
+                          <div class="obar-fill obar-curr" [style.width.%]="currOverall"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Subject Grades Table -->
+                  @if (subjectComparisonItems().length > 0) {
+                    <div class="comparison-section">
+                      <table class="subject-comp-table">
+                        <thead>
+                          <tr>
+                            <th>المادة</th>
+                            <th>{{ previousMonth()?.periodName }}</th>
+                            <th>{{ reportData()?.periodName }}</th>
+                            <th>الفرق</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (item of subjectComparisonItems(); track item.index) {
+                            @let pPct = item.prevGrade ? (item.prevGrade.score / item.prevGrade.maxScore) * 100 : 0;
+                            @let cPct = item.currGrade ? (item.currGrade.score / item.currGrade.maxScore) * 100 : 0;
+                            @let d = cPct - pPct;
+                            <tr>
+                              <td>{{ item.subjectName }}</td>
+                              <td>
+                                <span class="sgrade sgrade-prev">
+                                  @if (item.prevGrade) { {{ item.prevGrade.score }}/{{ item.prevGrade.maxScore }} }
+                                  @else { - }
+                                </span>
+                              </td>
+                              <td>
+                                <span class="sgrade sgrade-curr">
+                                  @if (item.currGrade) { {{ item.currGrade.score }}/{{ item.currGrade.maxScore }} }
+                                  @else { - }
+                                </span>
+                              </td>
+                              <td>
+                                <span class="diff-badge-sm" [class.up]="d > 0" [class.down]="d < 0">
+                                  @if (d > 0) { +{{ d.toFixed(1) }}% }
+                                  @else if (d < 0) { -{{ Math.abs(d).toFixed(1) }}% }
+                                  @else { - }
+                                </span>
+                              </td>
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    </div>
+                  }
+
+                  <!-- Metrics -->
+                  @if (metricsComparisonItems().length > 0) {
+                    <div class="comparison-section">
+                      @for (item of metricsComparisonItems(); track item.index) {
+                        @let pVal = item.prevMetric ? (item.prevMetric.value / item.prevMetric.max) * 100 : 0;
+                        @let cVal = item.currMetric ? (item.currMetric.value / item.currMetric.max) * 100 : 0;
+                        @let d = cVal - pVal;
+                        <div class="metric-block">
+                          <div class="metric-block-header">
+                            <span class="metric-block-title">{{ item.label }}</span>
+                            <span class="diff-badge-sm" [class.up]="d > 0" [class.down]="d < 0">
+                              @if (d > 0) { +{{ d.toFixed(1) }}% }
+                              @else if (d < 0) { {{ d.toFixed(1) }}% }
+                              @else { 0.0% }
+                            </span>
+                          </div>
+                          <div class="metric-block-bars">
+                            <div class="mbar-row">
+                              <span class="mbar-lbl mbar-lbl-prev">السابق</span>
+                              <div class="mbar-track">
+                                <div class="mbar-fill mbar-prev" [style.width.%]="pVal"></div>
+                              </div>
+                              <span class="mbar-val">{{ (item.prevMetric?.value || 0).toFixed(1) }}%</span>
+                            </div>
+                            <div class="mbar-row">
+                              <span class="mbar-lbl mbar-lbl-curr">الحالي</span>
+                              <div class="mbar-track">
+                                <div class="mbar-fill mbar-curr" [style.width.%]="cVal"></div>
+                              </div>
+                              <span class="mbar-val">{{ (item.currMetric?.value || 0).toFixed(1) }}%</span>
+                            </div>
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
+            }
 
             <!-- Dual Grade Circles: Evaluations + Final Grades -->
             @if (overallMax() > 0) {
