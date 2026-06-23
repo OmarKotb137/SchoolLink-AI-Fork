@@ -77,8 +77,10 @@ public class StudentExamService : IStudentExamService
             Title = exam.Title,
             SubjectName = GetSubjectName(exam),
             ClassName = exam.ClassSubjectTeacher?.Class?.Name ?? string.Empty,
-            StartTime = exam.StartTime,
-            EndTime = exam.EndTime,
+            // نمرّر عبر ToUtcOffset عشان نضمن إن القيمة تتسيريل بـ offset واضح (+00:00)
+            // بدل ما تظهر كـ DateTime بدون offset فيفسرها المتصفح كـ local time.
+            StartTime = ToUtcOffset(exam.StartTime),
+            EndTime = ToUtcOffset(exam.EndTime),
             DurationMinutes = exam.DurationMinutes,
             TotalScore = exam.TotalScore,
             Status = GetExamStatus(exam, activeAttempt, false),

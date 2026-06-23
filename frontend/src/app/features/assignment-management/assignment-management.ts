@@ -631,7 +631,9 @@ export class AssignmentManagement implements OnInit, OnDestroy {
   }
 
   formatSubmittedAt(iso: string): string {
-    if (!iso.endsWith('Z')) iso += 'Z';
+    // الـ API بترجع DateTimeOffset بصيغة "2026-06-23T10:00:00+00:00" وهي صالحة
+    // لـ Date مباشرة. لا نضيف 'Z' لأن لو القيمة فيها offset بالفعل، الناتج
+    // "...+00:00Z" غير صالح ويرجع NaN.
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return iso;
     const datePart = d.toLocaleDateString('ar-EG', { day: 'numeric', month: 'numeric', year: 'numeric' });

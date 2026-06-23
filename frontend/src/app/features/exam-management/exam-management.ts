@@ -688,9 +688,9 @@ export class ExamManagement implements OnInit, OnDestroy {
   }
 
   formatSubmittedAt(iso: string): string {
-    if (!iso.endsWith('Z')) {
-      iso += 'Z';
-    }
+    // الـ API بترجع DateTimeOffset على شكل "2026-06-23T10:00:00+00:00" وهي صيغة
+    // صالحة لـ Date مباشرة. لا نضيف 'Z' لأن لو القيمة فيها offset بالفعل (مثل +00:00)
+    // هيبقى "...+00:00Z" وهي صيغة غير صالحة ويرجع NaN. نمرّر النص كما هو لـ Date.
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return iso;
     const datePart = d.toLocaleDateString('ar-EG', { day: 'numeric', month: 'numeric', year: 'numeric' });
