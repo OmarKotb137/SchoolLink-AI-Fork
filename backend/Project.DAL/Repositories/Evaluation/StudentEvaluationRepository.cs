@@ -86,9 +86,34 @@ public class StudentEvaluationRepository : Repository<StudentEvaluation>, IStude
     {
         var ids = enrollmentIds.ToList();
         return await _context.StudentEvaluations
+            .AsNoTracking()
             .Where(se =>
                 se.PeriodId == periodId &&
                 ids.Contains(se.EnrollmentId))
+            .Include(se => se.EvaluationItem)
+                .ThenInclude(ei => ei.Template)
+                .ThenInclude(t => t.Subject)
+            .Include(se => se.Period)
+            .Include(se => se.Enrollment)
+                .ThenInclude(e => e.Student)
+            .OrderBy(se => se.Enrollment.Student.FullName)
+            .ThenBy(se => se.EvaluationItem.DisplayOrder)
+            .ToListAsync(ct);
+    }
+
+    /// <summary>
+    /// Batch version — single DB round‑trip for all periods.
+    /// </summary>
+    public async Task<IReadOnlyList<StudentEvaluation>> GetByPeriodsAndEnrollmentsAsync(
+        IEnumerable<int> periodIds,
+        IEnumerable<int> enrollmentIds,
+        CancellationToken ct = default)
+    {
+        var pIds = periodIds.ToList();
+        var eIds = enrollmentIds.ToList();
+        return await _context.StudentEvaluations
+            .AsNoTracking()
+            .Where(se => pIds.Contains(se.PeriodId) && eIds.Contains(se.EnrollmentId))
             .Include(se => se.EvaluationItem)
                 .ThenInclude(ei => ei.Template)
                 .ThenInclude(t => t.Subject)

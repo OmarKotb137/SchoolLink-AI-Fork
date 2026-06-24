@@ -89,4 +89,100 @@ public class ClassAnalysisController : ControllerBase
             return NotFound(result);
         return Ok(result);
     }
+
+    [HttpGet("teacher-growth")]
+    public async Task<IActionResult> GetTeacherGrowthDashboard(
+        [FromQuery] AcademicTerm? term,
+        [FromQuery] int? teacherId,
+        [FromQuery] int? classId)
+    {
+        var result = await _service.GetTeacherGrowthDashboardAsync(term, teacherId, classId);
+        if (!result.IsSuccess)
+            return NotFound(result);
+        return Ok(result);
+    }
+
+    [HttpGet("teacher-growth/overview")]
+    public async Task<IActionResult> GetTeacherGrowthOverview(
+        [FromQuery] AcademicTerm? term,
+        [FromQuery] int? teacherId,
+        [FromQuery] int? classId)
+    {
+        var result = await _service.GetTeacherGrowthDashboardOverviewAsync(term, teacherId, classId);
+        if (!result.IsSuccess)
+            return NotFound(result);
+        return Ok(result);
+    }
+
+    [HttpGet("teacher-growth/teachers")]
+    public async Task<IActionResult> GetTeacherGrowthTeachers(
+        [FromQuery] AcademicTerm? term,
+        [FromQuery] int? teacherId,
+        [FromQuery] int? classId)
+    {
+        var result = await _service.GetTeacherGrowthDashboardTeachersAsync(term, teacherId, classId);
+        if (!result.IsSuccess)
+            return NotFound(result);
+        return Ok(result);
+    }
+
+    [HttpGet("teacher-growth/students")]
+    public async Task<IActionResult> GetTeacherGrowthStudents(
+        [FromQuery] int teacherId,
+        [FromQuery] int? classId,
+        [FromQuery] int? subjectId,
+        [FromQuery] AcademicTerm? term,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
+    {
+        var result = await _service.GetTeacherGrowthStudentsAsync(teacherId, classId, subjectId, term, page, pageSize);
+        if (!result.IsSuccess)
+            return NotFound(result);
+        return Ok(result);
+    }
+
+    [HttpGet("teacher-growth/student-weeks")]
+    public async Task<IActionResult> GetStudentGrowthWeeks(
+        [FromQuery] int studentId,
+        [FromQuery] int? classId,
+        [FromQuery] int? subjectId,
+        [FromQuery] int? teacherId,
+        [FromQuery] AcademicTerm? term)
+    {
+        var result = await _service.GetStudentGrowthWeeksAsync(studentId, classId, subjectId, teacherId, term);
+        if (!result.IsSuccess)
+            return NotFound(result);
+        return Ok(result);
+    }
+
+    [HttpGet("teacher-growth/student-rankings")]
+    public async Task<IActionResult> GetStudentGrowthRankings([FromQuery] AcademicTerm? term)
+    {
+        var result = await _service.GetStudentGrowthRankingsAsync(term);
+        if (!result.IsSuccess)
+            return NotFound(result);
+        return Ok(result);
+    }
+
+    [HttpGet("teacher-growth/student-exams")]
+    public async Task<IActionResult> GetStudentExamSummary(
+        [FromQuery] int studentId,
+        [FromQuery] AcademicTerm? term)
+    {
+        var result = await _service.GetStudentExamSummaryAsync(studentId, term);
+        if (!result.IsSuccess)
+            return NotFound(result);
+        return Ok(result);
+    }
+
+    [HttpGet("teacher-growth/student-final-grades")]
+    public async Task<IActionResult> GetStudentFinalGrades(
+        [FromQuery] int studentId,
+        [FromQuery] AcademicTerm? term)
+    {
+        var result = await _service.GetStudentFinalGradesAsync(studentId, term);
+        if (!result.IsSuccess)
+            return NotFound(result);
+        return Ok(result);
+    }
 }

@@ -14,6 +14,7 @@ public interface IStudentEvaluationRepository : IRepository<StudentEvaluation>
 
     Task<IReadOnlyList<StudentEvaluation>> GetByPeriodAndClassAsync(int periodId, int classId, CancellationToken ct = default);
     Task<IReadOnlyList<StudentEvaluation>> GetByPeriodAndEnrollmentsAsync(int periodId, IEnumerable<int> enrollmentIds, CancellationToken ct = default);
+    Task<IReadOnlyList<StudentEvaluation>> GetByPeriodsAndEnrollmentsAsync(IEnumerable<int> periodIds, IEnumerable<int> enrollmentIds, CancellationToken ct = default);
 
     Task<decimal> GetWeeklyTotalScoreAsync(int enrollmentId, int periodId, CancellationToken ct = default);
 

@@ -1,99 +1,742 @@
-﻿    <app-sidebar [(isOpen)]="sidebarOpen" />
-    <div class="main-content">
-      <main class="flex-1 flex flex-col min-h-screen relative">
-        <div class="pt-24 px-gutter-mobile md:px-gutter-desktop pb-container-margin flex-1 flex flex-col gap-6 max-w-7xl mx-auto w-full">
-          <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
-            <div>
-              <h2 class="text-headline-lg-mobile md:text-headline-lg font-headline-lg font-bold text-on-surface">التحليلات المتقدمة</h2>
-              <p class="text-body-md font-body-md text-on-surface-variant mt-1">نظرة شاملة على الأداء الأكاديمي للربع الحالي.</p>
-            </div>
-            <div class="flex items-center gap-3">
-              <select class="bg-surface border border-outline-variant rounded-lg px-4 py-2 text-label-md font-label-md text-on-surface focus:outline-none focus:border-primary">
-                <option>آخر 3 أشهر</option>
-                <option>آخر 6 أشهر</option>
-                <option>العام الدراسي الحالي</option>
-              </select>
-              <button class="bg-surface border border-outline-variant rounded-lg px-4 py-2 flex items-center gap-2 hover:bg-surface-container-low transition-colors">
-                <span class="material-symbols-outlined text-[18px]">download</span>
-                <span class="text-label-md font-label-md">تصدير التقرير</span>
-              </button>
-            </div>
+﻿<app-sidebar [(isOpen)]="sidebarOpen" />
+<div class="main-content">
+  <div class="analysis-page" dir="rtl">
+
+    <!-- ========== الهيدر ========== -->
+    <header class="aa-header">
+      <div>
+        <h1>تحليل أداء المدرسين</h1>
+        <p class="aa-subtitle">مقارنة بين أول نصف وآخر نصف من الترم بناءً على التقييمات الأسبوعية</p>
+      </div>
+      <div class="aa-header-actions">
+        <div class="aa-term-switch">
+          <button [class.active]="selectedTerm() === 1" (click)="changeTerm(1)">الترم الأول</button>
+          <button [class.active]="selectedTerm() === 2" (click)="changeTerm(2)">الترم الثاني</button>
+        </div>
+        <button class="aa-refresh-btn" (click)="loadDashboard()" [disabled]="loading()">
+          <span class="material-symbols-outlined" [class.spin]="loading()">refresh</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- ========== حالة التحميل ========== -->
+    @if (loading()) {
+      <section class="aa-skeleton-grid">
+        @for (_ of [1,2,3,4,5,6]; track _) {
+          <div class="aa-skeleton"></div>
+        }
+      </section>
+    }
+
+    <!-- ========== حالة الخطأ ========== -->
+    @else if (error()) {
+      <div class="aa-empty">
+        <span class="material-symbols-outlined aa-empty-icon">error_outline</span>
+        <h2>{{ error() }}</h2>
+        <button class="aa-btn-primary" (click)="loadDashboard()">إعادة المحاولة</button>
+      </div>
+    }
+
+    <!-- ========== المحتوى الرئيسي ========== -->
+    @else {
+      @let data = dashboard()!;
+
+      <!-- ===== بطاقات المؤشرات العامة ===== -->
+      <section class="aa-kpi-row">
+        <div class="aa-kpi">
+          <div class="aa-kpi-icon" style="background:#dbeafe;color:#1d4ed8;">
+            <span class="material-symbols-outlined">trending_up</span>
           </div>
-          <div class="bg-[#f5f3ff] rounded-xl p-widget-padding ai-gradient-border shadow-sm flex flex-col md:flex-row items-start md:items-center gap-4 relative overflow-hidden">
-            <div class="w-12 h-12 rounded-full bg-secondary-fixed flex items-center justify-center shrink-0 z-10">
-              <span class="material-symbols-outlined text-secondary">insights</span>
-            </div>
-            <div class="z-10 flex-1">
-              <h3 class="text-headline-sm font-headline-sm font-bold text-primary mb-1 flex items-center gap-2">
-                ملخص الذكاء الاصطناعي <span class="text-xs bg-primary-fixed text-on-primary-fixed px-2 py-0.5 rounded-full">محدث</span>
-              </h3>
-              <p class="text-body-md font-body-md text-on-surface-variant">يظهر تحليل البيانات تحسناً بنسبة 12% في درجات الرياضيات لطلاب الصف العاشر، بينما تتطلب مادة الفيزياء في الصف الحادي عشر انتباهاً فورياً بسبب انخفاض معدلات المشاركة بنسبة 8% خلال الشهر الماضي.</p>
-            </div>
-            <button class="shrink-0 z-10 bg-primary text-on-primary px-4 py-2 rounded-lg text-label-md font-label-md hover:bg-primary/90 transition-colors">عرض التفاصيل</button>
-          </div>
-          <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
-            <div class="md:col-span-8 bg-surface rounded-xl border border-outline-variant shadow-sm p-container-margin flex flex-col">
-              <div class="flex justify-between items-center mb-6">
-                <h3 class="text-headline-sm font-headline-sm font-semibold text-on-surface">مؤشر الأداء العام</h3>
-                <div class="flex gap-2">
-                  <span class="flex items-center gap-1 text-label-sm text-on-surface-variant"><div class="w-3 h-3 rounded-full bg-primary"></div> الرياضيات</span>
-                  <span class="flex items-center gap-1 text-label-sm text-on-surface-variant"><div class="w-3 h-3 rounded-full bg-secondary"></div> العلوم</span>
-                </div>
-              </div>
-              <div class="flex-1 min-h-[300px] w-full"><canvas #trendChart></canvas></div>
-            </div>
-            <div class="md:col-span-4 flex flex-col gap-6">
-              <div class="bg-surface rounded-xl border border-outline-variant shadow-sm p-container-margin flex-1">
-                <h3 class="text-headline-sm font-headline-sm font-semibold text-on-surface mb-4 flex items-center gap-2">
-                  <span class="material-symbols-outlined text-error">warning</span> تتطلب الانتباه
-                </h3>
-                <ul class="space-y-4">
-                  <li class="flex items-center justify-between p-3 bg-error-container/30 rounded-lg">
-                    <div>
-                      <p class="text-label-md font-label-md font-bold text-on-surface">الفيزياء - 11 علمي</p>
-                      <p class="text-label-sm text-on-surface-variant">انخفاض في درجات الاختبار الأخير</p>
-                    </div>
-                    <span class="bg-error text-on-error px-2 py-1 rounded text-[10px] font-bold">-8%</span>
-                  </li>
-                  <li class="flex items-center justify-between p-3 bg-surface-container-low rounded-lg">
-                    <div>
-                      <p class="text-label-md font-label-md font-bold text-on-surface">اللغة العربية - 9 ب</p>
-                      <p class="text-label-sm text-on-surface-variant">تأخر في تسليم الواجبات</p>
-                    </div>
-                    <span class="bg-surface-variant text-on-surface-variant px-2 py-1 rounded text-[10px] font-bold">15 طالب</span>
-                  </li>
-                </ul>
-              </div>
-              <div class="bg-surface rounded-xl border border-outline-variant shadow-sm p-container-margin flex-1">
-                <h3 class="text-headline-sm font-headline-sm font-semibold text-on-surface mb-4 flex items-center gap-2">
-                  <span class="material-symbols-outlined text-primary">emoji_events</span> أفضل أداء
-                </h3>
-                <div class="space-y-3">
-                  <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded-full bg-primary-fixed text-on-primary-fixed-variant flex items-center justify-center font-bold text-sm">أحمد</div>
-                    <div class="flex-1">
-                      <div class="flex justify-between"><p class="text-label-md font-label-md text-on-surface">الرياضيات المتقدمة</p><p class="text-label-sm font-bold text-primary">98%</p></div>
-                      <div class="w-full bg-surface-container-highest h-1.5 rounded-full mt-1"><div class="bg-primary h-1.5 rounded-full" style="width: 98%"></div></div>
-                    </div>
-                  </div>
-                  <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded-full bg-secondary-fixed text-on-secondary-fixed-variant flex items-center justify-center font-bold text-sm">سارة</div>
-                    <div class="flex-1">
-                      <div class="flex justify-between"><p class="text-label-md font-label-md text-on-surface">علوم الحاسوب</p><p class="text-label-sm font-bold text-secondary">95%</p></div>
-                      <div class="w-full bg-surface-container-highest h-1.5 rounded-full mt-1"><div class="bg-secondary h-1.5 rounded-full" style="width: 95%"></div></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="md:col-span-12 bg-surface rounded-xl border border-outline-variant shadow-sm p-container-margin">
-              <div class="flex justify-between items-center mb-6">
-                <h3 class="text-headline-sm font-headline-sm font-semibold text-on-surface">توزيع الدرجات حسب المادة</h3>
-                <button class="text-label-sm font-label-sm text-primary hover:underline">عرض التقرير المفصل</button>
-              </div>
-              <div class="h-[280px]"><canvas #subjectChart></canvas></div>
-            </div>
+          <div class="aa-kpi-body">
+            <strong dir="ltr">{{ data.schoolGrowthRate.toFixed(1) }}%</strong>
+            <span>نسبة التحسن العامة</span>
+            <small>{{ data.totalImprovedCount }} طالب تحسنوا</small>
           </div>
         </div>
-      </main>
-    </div>
+        <div class="aa-kpi">
+          <div class="aa-kpi-icon" style="background:#e0f2fe;color:#0284c7;">
+            <span class="material-symbols-outlined">drag_handle</span>
+          </div>
+          <div class="aa-kpi-body">
+            <strong dir="ltr">{{ data.schoolAverageChange > 0 ? '+' : '' }}{{ data.schoolAverageChange.toFixed(2) }}%</strong>
+            <span>متوسط مقدار التغير في الدرجات</span>
+            <small>آخر نصف مقارنة بأول نصف</small>
+          </div>
+        </div>
+        <div class="aa-kpi">
+          <div class="aa-kpi-icon" style="background:#fef3c7;color:#d97706;">
+            <span class="material-symbols-outlined">trending_down</span>
+          </div>
+          <div class="aa-kpi-body">
+            <strong dir="ltr" style="color:#d97706;">{{ data.declinedStudentsRate.toFixed(1) }}%</strong>
+            <span>نسبة الهبوط</span>
+            <small>{{ data.totalDeclinedCount }} طالب هبطوا</small>
+          </div>
+        </div>
+        <div class="aa-kpi">
+          <div class="aa-kpi-icon" style="background:#f3e8ff;color:#7c3aed;">
+            <span class="material-symbols-outlined">people</span>
+          </div>
+          <div class="aa-kpi-body">
+            <strong dir="ltr">{{ data.teachersCount }}</strong>
+            <span>عدد المدرسين</span>
+            <small>{{ data.academicYearName }}</small>
+          </div>
+        </div>
+        <div class="aa-kpi">
+          <div class="aa-kpi-icon" style="background:#ecfdf5;color:#059669;">
+            <span class="material-symbols-outlined">calendar_view_week</span>
+          </div>
+          <div class="aa-kpi-body">
+            <strong dir="ltr">{{ data.evaluatedWeeks }} / {{ data.totalConfiguredWeeks }}</strong>
+            <span>أسابيع التقييم</span>
+            <small>تم تقييمها</small>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== تصنيف الطلاب (فوق المنحنى) ===== -->
+      @if (!rankingsLoading() && rankings()) {
+        <section class="aa-card aa-rankings-banner" (click)="openRankingsModal()">
+          <div class="aa-rankings-banner-inner">
+            <div class="aa-rankings-banner-icon">
+              <span class="material-symbols-outlined">leaderboard</span>
+            </div>
+            <div class="aa-rankings-banner-info">
+              <strong>تصنيف الطلاب وإحصائياتهم</strong>
+              <span>أفضل 10 متحسن · أسوأ 10 منخفض · أوائل التقييمات · أعلى تقييم امتحانات شهور · نهاية الترم</span>
+            </div>
+            <div class="aa-rankings-banner-badges">
+              <span class="aa-badge aa-badge--up">تصنيف</span>
+              <span class="aa-badge aa-badge--star">أوائل</span>
+            </div>
+            <span class="material-symbols-outlined aa-rankings-banner-arrow">arrow_back</span>
+          </div>
+        </section>
+      }
+
+      <!-- ===== الرسم البياني ===== -->
+      <section class="aa-card aa-chart-card">
+        <div class="aa-card-head">
+          <div>
+            <h2>منحنى أداء المدرسين</h2>
+            <p>متوسط التقييمات الأسبوعية لكل معلم مع جميع طلابه</p>
+          </div>
+          <span class="aa-badge">أسبوعي</span>
+        </div>
+
+        <!-- Teacher tabs — two‑column grid -->
+        @let trendList = teachersWeeklyTrend();
+        @let selId = selectedTeacherTrendId();
+        <div class="aa-trend-tabs">
+          @for (tt of trendList; track tt.teacherId; let i = $index) {
+            <button class="aa-trend-tab"
+              [class.aa-trend-tab--active]="selId === tt.teacherId"
+              [style.--tab-color]="palette[i % palette.length]"
+              (click)="selectedTeacherTrendId.set(tt.teacherId); renderGrowthChart()">
+              <span class="aa-trend-tab-dot" [style.background]="palette[i % palette.length]"></span>
+              <span class="aa-trend-tab-name">{{ tt.teacherName }}</span>
+              <span class="aa-trend-tab-subj">{{ tt.subjectName }}</span>
+            </button>
+          }
+        </div>
+
+        <!-- Chart canvas -->
+        <div class="aa-chart-box">
+          @if (selectedTeacherTrend()) {
+            <canvas #growthChart></canvas>
+          } @else {
+            <div class="aa-chart-placeholder">
+              <span class="material-symbols-outlined">show_chart</span>
+              <p>اختر معلماً لعرض منحنى أدائه</p>
+            </div>
+          }
+        </div>
+
+        <!-- Stats bar -->
+        @let st = selectedTeacherTrend();
+        @if (st) {
+          <div class="aa-trend-stats">
+            <div class="aa-trend-stat">
+              <span class="aa-trend-stat-label">أول نصف</span>
+              <strong class="aa-trend-stat-value">{{ st.firstHalfAverage.toFixed(1) }}%</strong>
+            </div>
+            <div class="aa-trend-stat-sep"></div>
+            <div class="aa-trend-stat">
+              <span class="aa-trend-stat-label">آخر نصف</span>
+              <strong class="aa-trend-stat-value">{{ st.secondHalfAverage.toFixed(1) }}%</strong>
+            </div>
+            <div class="aa-trend-stat-sep"></div>
+            <div class="aa-trend-stat">
+              <span class="aa-trend-stat-label">الفرق</span>
+              <strong class="aa-trend-stat-value"
+                [style.color]="st.secondHalfAverage >= st.firstHalfAverage ? '#10b981' : '#f43f5e'">
+                {{ st.secondHalfAverage >= st.firstHalfAverage ? '+' : '' }}{{ (st.secondHalfAverage - st.firstHalfAverage).toFixed(1) }}%
+              </strong>
+            </div>
+            <div class="aa-trend-stat-sep"></div>
+            <div class="aa-trend-stat">
+              <span class="aa-trend-stat-label">المادة</span>
+              <strong class="aa-trend-stat-value aa-trend-stat-value--sm">{{ st.subjectName }}</strong>
+            </div>
+          </div>
+        }
+      </section>
+
+      <!-- ===== إشارات للإدارة ===== -->
+      @let signals = data.signals;
+      @if (signals && signals.length > 0) {
+        <section class="aa-card">
+          <div class="aa-card-head">
+            <h2>إشارات للإدارة</h2>
+            <span class="aa-badge">تنبيهات</span>
+          </div>
+          <div class="aa-signals-list">
+            @for (sig of signals; track sig) {
+              <div class="aa-signal" [class.aa-signal--success]="sig.severity === 'success'"
+                [class.aa-signal--warning]="sig.severity === 'warning'"
+                [class.aa-signal--critical]="sig.severity === 'critical'"
+                [class.aa-signal--info]="sig.severity === 'info'">
+                <span class="material-symbols-outlined">
+                  @if (sig.severity === 'success') { verified }
+                  @else if (sig.severity === 'critical') { priority_high }
+                  @else if (sig.severity === 'warning') { warning }
+                  @else { info }
+                </span>
+                <div>
+                  <strong>{{ sig.title }}</strong>
+                  <p>{{ sig.description }}</p>
+                </div>
+              </div>
+            }
+          </div>
+        </section>
+      } @else {
+        <section class="aa-card">
+          <div class="aa-signals-empty">
+            <span class="material-symbols-outlined">check_circle</span>
+            <p>لا توجد إشارات تستدعي الانتباه. الأداء مستقر.</p>
+          </div>
+        </section>
+      }
+
+      <!-- ===== أفضل المدرسين حسب التحسن (رسم بياني) ===== -->
+      <section class="aa-card">
+        <div class="aa-card-head">
+          <h2>أفضل المدرسين حسب التحسن</h2>
+          <p>عدد الطلاب اللي تحسنت درجاتهم عند كل معلم في آخر نصف الترم</p>
+        </div>
+        <div class="aa-rank-chart-box">
+          <canvas #rankingChart></canvas>
+        </div>
+      </section>
+
+      <!-- ===== لوحة المدرسين (جدول) ===== -->
+      @let teachers = data.teachers;
+      @if (teachers && teachers.length > 0) {
+        <section class="aa-card">
+          <div class="aa-card-head">
+            <h2>لوحة المدرسين</h2>
+            <p>عدد الطلاب اللي تحسنوا أو هبطوا عند كل معلم</p>
+          </div>
+          <div class="aa-table-wrap">
+            <table class="aa-table">
+              <thead>
+                <tr>
+                  <th>المعلم</th>
+                  <th>المادة · الفصل</th>
+                  <th>الطلاب</th>
+                  <th>أول نصف</th>
+                  <th>آخر نصف</th>
+                  <th>الفرق</th>
+                  <th>تحسنوا</th>
+                  <th>هبطوا</th>
+                  <th>الحالة</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (t of teachers; track t.teacherId) {
+                  <tr class="aa-tr" (click)="openDetails(t)">
+                    <td>
+                      <div class="aa-teacher-cell">
+                        <div class="aa-avatar">{{ t.teacherName.charAt(0) }}</div>
+                        <strong>{{ t.teacherName }}</strong>
+                      </div>
+                    </td>
+                    <td class="aa-subj-class">
+                      <div>{{ t.subjectName }}</div>
+                      <small>{{ t.gradeLevelName }} {{ t.className }}</small>
+                    </td>
+                    <td>{{ t.studentsCount }}</td>
+                    <td><div class="aa-stat-cell"><b>{{ t.firstHalfAverage.toFixed(1) }}%</b></div></td>
+                    <td><div class="aa-stat-cell"><b>{{ t.secondHalfAverage.toFixed(1) }}%</b></div></td>
+                    <td>
+                      <span class="aa-diff" [class.aa-diff--pos]="t.averageChange >= 0" [class.aa-diff--neg]="t.averageChange < 0">
+                        {{ t.averageChange >= 0 ? '+' : '' }}{{ t.averageChange.toFixed(1) }}%
+                      </span>
+                    </td>
+                    <td><div class="aa-stat-cell aa-stat-cell--up"><b>{{ t.improvedCount }}</b><small>طالب</small></div></td>
+                    <td><div class="aa-stat-cell aa-stat-cell--down"><b>{{ t.declinedCount }}</b><small>طالب</small></div></td>
+                    <td>
+                      <span class="aa-badge aa-risk" [class.aa-risk--healthy]="t.riskLevel === 'healthy'"
+                        [class.aa-risk--watch]="t.riskLevel === 'watch'"
+                        [class.aa-risk--critical]="t.riskLevel === 'critical'">
+                        {{ riskLabel(t.riskLevel) }}
+                      </span>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+      }
+
+      <!-- ===== مدرسون يحتاجون متابعة ===== -->
+      @let watch = watchTeachers();
+      @if (watch.length > 0) {
+        <section class="aa-card">
+          <div class="aa-card-head">
+            <h2>مدرسون يحتاجون متابعة</h2>
+            <span class="aa-badge" style="background:#fef3c7;color:#d97706;">{{ watch.length }} مدرس</span>
+          </div>
+          <div class="aa-watch-grid">
+            @for (teacher of watch; track teacher.teacherId) {
+              <button class="aa-watch-card" (click)="openDetails(teacher)">
+                <div>
+                  <strong>{{ teacher.teacherName }}</strong>
+                  <span>جميع المواد — {{ teacher.evaluatedStudentsCount }} طالب</span>
+                </div>
+                <div class="aa-watch-metrics">
+                  <div>
+                    <small>هبوط</small>
+                    <b style="color:#e11d48;">{{ teacher.declinedCount }}</b>
+                    <small>طالب</small>
+                  </div>
+                  <div>
+                    <small>التحسن</small>
+                    <b style="color:#16a34a;">{{ teacher.improvedCount }}</b>
+                    <small>طالب</small>
+                  </div>
+                </div>
+              </button>
+            }
+          </div>
+        </section>
+      }
+    }
+
+    <!-- ========== Drawer تفاصيل الطلاب ========== -->
+    @if (selectedCard()) {
+      @let card = selectedCard()!;
+      <div class="aa-drawer-backdrop" (click)="closeDetails()"></div>
+      <aside class="aa-drawer">
+        <div class="aa-drawer-head">
+          <div>
+            <h2>{{ card.teacherName }}</h2>
+            @if (isAggregatedView()) {
+              <span>جميع المواد — جميع الفصول</span>
+            } @else {
+              <span>{{ card.subjectName }} · {{ card.gradeLevelName }} {{ card.className }}</span>
+            }
+          </div>
+          <button class="aa-btn-ghost" (click)="closeDetails()">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+
+        <div class="aa-drawer-stats">
+          <div><span>أول نصف</span><strong dir="ltr">{{ card.firstHalfAverage.toFixed(1) }}%</strong></div>
+          <div><span>آخر نصف</span><strong dir="ltr">{{ card.secondHalfAverage.toFixed(1) }}%</strong></div>
+          <div><span>التحسن</span><strong dir="ltr" [style.color]="card.averageChange >= 0 ? '#16a34a' : '#e11d48'">{{ card.averageChange > 0 ? '+' : '' }}{{ card.averageChange.toFixed(1) }}%</strong></div>
+          <div><span>تحسنوا</span><strong dir="ltr" style="color:#16a34a;">{{ card.improvedCount }}</strong><small>طالب</small></div>
+          <div><span>هبطوا</span><strong dir="ltr" style="color:#e11d48;">{{ card.declinedCount }}</strong><small>طالب</small></div>
+        </div>
+
+        <!-- ===== شريط إحصاء التصنيفات ===== -->
+        <div class="aa-status-bar">
+          <span class="aa-status-chip aa-status-chip--improved">🟢 متحسن {{ card.improvedCount }}</span>
+          <span class="aa-status-chip aa-status-chip--declined">🔴 منخفض {{ card.declinedCount }}</span>
+          <span class="aa-status-chip aa-status-chip--stable">⚪ ثابت {{ card.stableCount }}</span>
+        </div>
+
+        @if (detailsLoading()) {
+          <div class="aa-drawer-loading">جارٍ تحميل بيانات الطلاب...</div>
+        } @else {
+          <div class="aa-drawer-table">
+            <div class="aa-drawer-table-head">
+              <span>الطالب</span>
+              <span>أول نصف</span>
+              <span>آخر نصف</span>
+              <span>الفرق</span>
+              <span>التصنيف</span>
+            </div>
+            @for (student of selectedStudents(); track student.studentId) {
+              <div class="aa-drawer-row">
+                <strong class="aa-drawer-student-name" (click)="$event.stopPropagation(); openStudentWeeks(student)">{{ student.studentName }}</strong>
+                <span dir="ltr">{{ student.firstHalfAverage.toFixed(1) }}%</span>
+                <span dir="ltr">{{ student.secondHalfAverage.toFixed(1) }}%</span>
+                <span class="aa-diff" [class.aa-diff--pos]="student.change > 0" [class.aa-diff--neg]="student.change < 0" dir="ltr">{{ student.change > 0 ? '+' : '' }}{{ student.change.toFixed(1) }}%</span>
+                <span class="aa-badge aa-student-status" [ngClass]="'aa-student-status--' + student.status">
+                  <span class="material-symbols-outlined">{{ statusIcon(student.status) }}</span>
+                  {{ statusLabel(student.status) }}
+                </span>
+              </div>
+            }
+          </div>
+          @if (totalPages() > 0) {
+            <div class="aa-pager">
+              <button (click)="previousPage()" [disabled]="page() <= 1">السابق</button>
+              <span>صفحة {{ page() }} من {{ totalPages() }}</span>
+              <button (click)="nextPage()" [disabled]="page() >= totalPages()">التالي</button>
+            </div>
+          }
+        }
+      </aside>
+    }
+
+    <!-- ========== نافذة الأسابيع الدراسية للطالب ========== -->
+    @if (selectedStudentWeeks()) {
+      @let weeks = selectedStudentWeeks()!;
+      <div class="aa-swp-backdrop aa-swp-backdrop--overlay" (click)="closeStudentWeeks()"></div>
+      <div class="aa-swp-modal aa-swp-modal--overlay">
+        <div class="aa-swp-modal-head">
+          <div>
+            <h3>{{ selectedStudentName() }}</h3>
+            <span>تفاصيل التقييمات الأسبوعية</span>
+          </div>
+          <button class="aa-btn-ghost" (click)="closeStudentWeeks()">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+
+        @if (weeksLoading()) {
+          <div class="aa-drawer-loading">جاري التحميل...</div>
+        } @else if (weeks.length === 0) {
+          <div class="aa-empty-inline">لا توجد تقييمات أسبوعية متاحة.</div>
+        } @else {
+          @let fAvg = weeksFirstAvg();
+          @let sAvg = weeksSecondAvg();
+          @let diff = sAvg - fAvg;
+          <div class="aa-swp-summary">
+            <div class="aa-swp-summary-card aa-swp-summary--first">
+              <small>متوسط أول نصف</small>
+              <strong>{{ fAvg.toFixed(1) }}%</strong>
+            </div>
+            <div class="aa-swp-summary-card aa-swp-summary--second">
+              <small>متوسط آخر نصف</small>
+              <strong>{{ sAvg.toFixed(1) }}%</strong>
+            </div>
+            <div class="aa-swp-summary-card" [class.aa-swp-summary--up]="diff >= 0" [class.aa-swp-summary--down]="diff < 0">
+              <small>الفرق</small>
+              <strong dir="ltr">{{ diff >= 0 ? '+' : '' }}{{ diff.toFixed(2) }}%</strong>
+            </div>
+          </div>
+
+          <div class="aa-swp-modal-table-wrap">
+            <table class="aa-swp-modal-table">
+              <thead>
+                <tr>
+                  <th>الأسبوع</th>
+                  <th>الدرجة</th>
+                  <th>النسبة</th>
+                  <th>نصف الترم</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (week of weeks; track week.orderNum) {
+                  <tr>
+                    <td>{{ week.periodName }}</td>
+                    <td dir="ltr">{{ week.score }} / {{ week.maxScore }}</td>
+                    <td dir="ltr">{{ week.percentage }}%</td>
+                    <td>
+                      <span class="aa-badge" [class.aa-swp-half--first]="week.isFirstHalf" [class.aa-swp-half--second]="!week.isFirstHalf">
+                        {{ week.isFirstHalf ? 'أول نصف' : 'آخر نصف' }}
+                      </span>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+    }
+
+    <!-- ========== نافذة تصنيف الطلاب ========== -->
+    @if (showRankingsModal()) {
+      @let rankingData = rankings();
+      <div class="aa-swp-backdrop" (click)="closeRankingsModal()"></div>
+      <div class="aa-swp-modal aa-rank-modal">
+        <div class="aa-swp-modal-head">
+          <div>
+            <h3>تصنيف الطلاب وإحصائياتهم</h3>
+            <span>التقييمات الأسبوعية ونتائج الامتحانات الشهرية</span>
+          </div>
+          <button class="aa-btn-ghost" (click)="closeRankingsModal()">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+
+        <!-- Tabs -->
+        <div class="aa-rank-tabs">
+          <button class="aa-rank-tab" [class.aa-rank-tab--active]="rankingsTab() === 0" (click)="switchRankingsTab(0)">
+            <span class="material-symbols-outlined">sort</span>
+            التصنيف
+          </button>
+          <button class="aa-rank-tab" [class.aa-rank-tab--active]="rankingsTab() === 1" (click)="switchRankingsTab(1)">
+            <span class="material-symbols-outlined">star</span>
+            أوائل التقييمات
+          </button>
+          <button class="aa-rank-tab" [class.aa-rank-tab--active]="rankingsTab() === 2" (click)="switchRankingsTab(2)">
+            <span class="material-symbols-outlined">quiz</span>
+            أعلى تقييم
+          </button>
+          <button class="aa-rank-tab" [class.aa-rank-tab--active]="rankingsTab() === 3" (click)="switchRankingsTab(3)">
+            <span class="material-symbols-outlined">assignment_turned_in</span>
+            نهاية الترم
+          </button>
+        </div>
+
+        <!-- Tab content -->
+        <div class="aa-rank-body">
+          @if (rankingsTab() === 0) {
+            @if (rankingData) {
+              <div class="aa-rankings-grid">
+                <!-- Top Improved -->
+                <div class="aa-rankings-col aa-rankings-col--improved">
+                  <div class="aa-rankings-col-head">
+                    <span class="material-symbols-outlined">trending_up</span>
+                    <strong>الأكثر تحسناً</strong>
+                  </div>
+                  <div class="aa-rankings-list">
+                    @for (s of rankingData.topImproved; track s.studentId) {
+                      <button class="aa-ranking-item" (click)="openRankingStudentWeeks(s.studentId, s.studentName, s.subjectId)">
+                        <div class="aa-ranking-pos"><span class="aa-ranking-num">{{ $index + 1 }}</span></div>
+                        <div class="aa-ranking-info">
+                          <strong>{{ s.studentName }}</strong>
+                          <small>{{ s.subjectName }} · {{ s.className ? 'الصف ' + s.className : '' }}</small>
+                        </div>
+                        <div class="aa-ranking-change aa-ranking-change--up">+{{ s.change.toFixed(1) }}%</div>
+                      </button>
+                    }
+                  </div>
+                </div>
+                <!-- Top Declined -->
+                <div class="aa-rankings-col aa-rankings-col--declined">
+                  <div class="aa-rankings-col-head">
+                    <span class="material-symbols-outlined">trending_down</span>
+                    <strong>الأكثر انخفاضاً</strong>
+                  </div>
+                  <div class="aa-rankings-list">
+                    @for (s of rankingData.topDeclined; track s.studentId) {
+                      <button class="aa-ranking-item" (click)="openRankingStudentWeeks(s.studentId, s.studentName, s.subjectId)">
+                        <div class="aa-ranking-pos"><span class="aa-ranking-num">{{ $index + 1 }}</span></div>
+                        <div class="aa-ranking-info">
+                          <strong>{{ s.studentName }}</strong>
+                          <small>{{ s.subjectName }} · {{ s.className ? 'الصف ' + s.className : '' }}</small>
+                        </div>
+                        <div class="aa-ranking-change aa-ranking-change--down">{{ s.change.toFixed(1) }}%</div>
+                      </button>
+                    }
+                  </div>
+                </div>
+              </div>
+            }
+          } @else if (rankingsTab() === 1) {
+            @if (rankingData) {
+              <div class="aa-rankings-col aa-rankings-col--eval">
+                <div class="aa-rankings-col-head">
+                  <span class="material-symbols-outlined">star</span>
+                  <strong>أوائل التقييمات الأسبوعية</strong>
+                </div>
+                <div class="aa-rankings-list">
+                  @for (s of rankingData.topEvaluationStudents; track s.studentId) {
+                    <button class="aa-ranking-item" (click)="openRankingStudentWeeks(s.studentId, s.studentName, s.subjectId)">
+                      <div class="aa-ranking-pos"><span class="aa-ranking-num">{{ $index + 1 }}</span></div>
+                      <div class="aa-ranking-info">
+                        <strong>{{ s.studentName }}</strong>
+                        <small>{{ s.className ? 'الصف ' + s.className : '' }}</small>
+                      </div>
+                      <div class="aa-ranking-change aa-ranking-change--up">
+                        <span>{{ s.firstHalfAverage.toFixed(1) }}%</span>
+                        @if (s.averageMaxScore > 0) {
+                          <small class="aa-rank-raw">({{ (s.averageScore * s.maxPerPeriod / s.averageMaxScore).toFixed(1) }} / {{ s.maxPerPeriod.toFixed(0) }})</small>
+                        }
+                      </div>
+                    </button>
+                  }
+                </div>
+              </div>
+            }
+          } @else if (rankingsTab() === 2) {
+            @if (rankingData) {
+              <div class="aa-rankings-col aa-rankings-col--exam">
+                <div class="aa-rankings-col-head">
+                  <span class="material-symbols-outlined">quiz</span>
+                  <strong>أعلى تقييم في الامتحانات الشهرية</strong>
+                </div>
+                <div class="aa-rankings-list">
+                  @for (s of rankingData.topMonthlyExamStudents; track s.studentId) {
+                    <button class="aa-ranking-item" (click)="openStudentExams(s.studentId, s.studentName)">
+                      <div class="aa-ranking-pos"><span class="aa-ranking-num">{{ $index + 1 }}</span></div>
+                      <div class="aa-ranking-info">
+                        <strong>{{ s.studentName }}</strong>
+                        <small>{{ s.className ? 'الصف ' + s.className : '' }}</small>
+                      </div>
+                      <div class="aa-ranking-exam-details">
+                        <span class="aa-ranking-exam-row">شهر1: {{ s.monthlyExam1Score.toFixed(1) }} / {{ s.monthlyExam1Max.toFixed(1) }}</span>
+                        <span class="aa-ranking-exam-row">شهر2: {{ s.monthlyExam2Score.toFixed(1) }} / {{ s.monthlyExam2Max.toFixed(1) }}</span>
+                        <span class="aa-ranking-exam-pct">{{ s.firstHalfAverage.toFixed(1) }}%</span>
+                      </div>
+                    </button>
+                  }
+                </div>
+              </div>
+            }
+          } @else {
+            @if (rankingData) {
+              <div class="aa-rankings-col aa-rankings-col--exam">
+                <div class="aa-rankings-col-head">
+                  <span class="material-symbols-outlined">assignment_turned_in</span>
+                  <strong>أوائل امتحانات نهاية الترم</strong>
+                </div>
+                <div class="aa-rankings-list">
+                  @for (s of rankingData.topFinalExamStudents; track s.studentId) {
+                    <button class="aa-ranking-item" (click)="openStudentFinalGrades(s.studentId, s.studentName)">
+                      <div class="aa-ranking-pos"><span class="aa-ranking-num">{{ $index + 1 }}</span></div>
+                      <div class="aa-ranking-info">
+                        <strong>{{ s.studentName }}</strong>
+                        <small>{{ s.className ? 'الصف ' + s.className : '' }}</small>
+                      </div>
+                      <div class="aa-ranking-change aa-ranking-change--up">
+                        <span>{{ s.firstHalfAverage.toFixed(1) }}%</span>
+                        @if (s.averageMaxScore > 0) {
+                          <small class="aa-rank-raw">({{ s.averageScore.toFixed(1) }} / {{ s.averageMaxScore.toFixed(1) }})</small>
+                        }
+                      </div>
+                    </button>
+                  }
+                </div>
+              </div>
+            }
+          }
+        </div>
+      </div>
+    }
+
+    <!-- ========== نافذة ملخص امتحانات الطالب ========== -->
+    @if (selectedStudentExams()) {
+      @let exams = selectedStudentExams()!;
+      <div class="aa-swp-backdrop aa-swp-backdrop--overlay" (click)="closeStudentExams()"></div>
+      <div class="aa-swp-modal aa-swp-modal--overlay">
+        <div class="aa-swp-modal-head">
+          <div>
+            <h3>{{ exams.studentName }}</h3>
+            <span>ملخص الامتحانات الشهرية</span>
+          </div>
+          <button class="aa-btn-ghost" (click)="closeStudentExams()">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+
+        @if (examLoading()) {
+          <div class="aa-drawer-loading">جاري التحميل...</div>
+        } @else if (exams.subjects.length === 0) {
+          <div class="aa-empty-inline">لا توجد امتحانات شهرية متاحة.</div>
+        } @else {
+          <div class="aa-exam-table-wrap">
+            <table class="aa-swp-modal-table">
+              <thead>
+                <tr>
+                  <th>المادة</th>
+                  <th>الشهر الأول</th>
+                  <th>الشهر الثاني</th>
+                  <th>الحالة</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (subj of exams.subjects; track subj.subjectId) {
+                  <tr>
+                    <td><strong>{{ subj.subjectName }}</strong></td>
+                    <td>
+                      @if (subj.monthlyExam1Percent != null) {
+                        <span dir="ltr">{{ subj.monthlyExam1Percent.toFixed(1) }}%</span>
+                        <br><small class="aa-na" dir="ltr">({{ subj.monthlyExam1Score }} / {{ subj.monthlyExam1Max }})</small>
+                      } @else {
+                        <span class="aa-na">—</span>
+                      }
+                    </td>
+                    <td>
+                      @if (subj.monthlyExam2Percent != null) {
+                        <span dir="ltr">{{ subj.monthlyExam2Percent.toFixed(1) }}%</span>
+                        <br><small class="aa-na" dir="ltr">({{ subj.monthlyExam2Score }} / {{ subj.monthlyExam2Max }})</small>
+                      } @else {
+                        <span class="aa-na">—</span>
+                      }
+                    </td>
+                    <td>
+                      <span class="aa-badge aa-student-status" [ngClass]="'aa-student-status--' + subj.status">
+                        <span class="material-symbols-outlined">{{ subj.status === 'improved' ? 'trending_up' : subj.status === 'declined' ? 'trending_down' : 'drag_handle' }}</span>
+                        {{ subj.status === 'improved' ? 'تحسن' : subj.status === 'declined' ? 'انخفض' : 'ثابت' }}
+                      </span>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+    }
+
+    <!-- ========== نافذة نتائج نهاية الترم ========== -->
+    @if (selectedStudentFinalGrades()) {
+      @let grades = selectedStudentFinalGrades()!;
+      <div class="aa-swp-backdrop aa-swp-backdrop--overlay" (click)="closeStudentFinalGrades()"></div>
+      <div class="aa-swp-modal aa-swp-modal--overlay">
+        <div class="aa-swp-modal-head">
+          <div>
+            <h3>{{ grades.studentName }}</h3>
+            <span>نتائج امتحانات نهاية الترم</span>
+          </div>
+          <button class="aa-btn-ghost" (click)="closeStudentFinalGrades()">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+
+        @if (finalGradeLoading()) {
+          <div class="aa-drawer-loading">جاري التحميل...</div>
+        } @else if (grades.subjects.length === 0) {
+          <div class="aa-empty-inline">لا توجد نتائج نهاية ترم متاحة.</div>
+        } @else {
+          <div class="aa-exam-table-wrap">
+            <table class="aa-swp-modal-table">
+              <thead>
+                <tr>
+                  <th>المادة</th>
+                  <th>الدرجة التحريرية</th>
+                  <th>الامتحان النهائي</th>
+                  <th>المجموع</th>
+                  <th>النسبة</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (subj of grades.subjects; track subj.subjectId) {
+                  <tr>
+                    <td><strong>{{ subj.subjectName }}</strong></td>
+                    <td dir="ltr">{{ subj.writtenTotal.toFixed(1) }}</td>
+                    <td dir="ltr">{{ subj.finalExamScore.toFixed(1) }}</td>
+                    <td dir="ltr">{{ subj.total.toFixed(1) }} / {{ subj.maxTotal.toFixed(1) }}</td>
+                    <td dir="ltr">{{ subj.percentage.toFixed(1) }}%</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+    }
+
+  </div>
+</div>
