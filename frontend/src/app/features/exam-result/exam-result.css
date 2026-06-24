@@ -23,9 +23,24 @@
 }
 
 .score-circle {
-  background: linear-gradient(135deg, #2563eb, #1e3a8a);
   color: #ffffff;
-  box-shadow: 0 16px 34px rgba(37, 99, 235, 0.28);
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.18);
+}
+
+.score-circle.score-excellent {
+  background: linear-gradient(135deg, #10b981, #047857);
+}
+
+.score-circle.score-good {
+  background: linear-gradient(135deg, #3b82f6, #1e3a8a);
+}
+
+.score-circle.score-pass {
+  background: linear-gradient(135deg, #d97706, #b45309);
+}
+
+.score-circle.score-fail {
+  background: linear-gradient(135deg, #ef4444, #b91c1c);
 }
 
 .score-circle strong {
@@ -84,6 +99,11 @@
   color: #047857;
 }
 
+.answer-chip.partial {
+  background: #fffbeb;
+  color: #b45309;
+}
+
 .answer-chip.wrong {
   background: #fef2f2;
   color: #dc2626;
@@ -103,15 +123,15 @@
   border: 1px solid #a7f3d0;
 }
 .result-char.char-fail {
-  background: linear-gradient(135deg, #fef3c7, #fde68a);
-  border: 1px solid #fcd34d;
+  background: linear-gradient(135deg, #fef2f2, #fee2e2);
+  border: 1px solid #fecaca;
 }
 .char-icon {
   font-size: 3rem !important;
   animation: charBounce 2s ease-in-out infinite;
 }
 .char-pass .char-icon { color: #059669; }
-.char-fail .char-icon { color: #d97706; }
+.char-fail .char-icon { color: #dc2626; }
 .char-msg { display: flex; flex-direction: column; }
 .char-msg strong { font-size: 1.25rem; font-weight: 900; color: #0f172a; }
 .char-msg span { font-size: 0.875rem; color: #475569; margin-top: 0.125rem; }

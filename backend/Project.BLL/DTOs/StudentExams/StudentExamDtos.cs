@@ -27,8 +27,10 @@ public class StudentExamDetailsDto
     public string Title { get; set; } = string.Empty;
     public string SubjectName { get; set; } = string.Empty;
     public string ClassName { get; set; } = string.Empty;
-    public DateTime? StartTime { get; set; }
-    public DateTime? EndTime { get; set; }
+    // DateTimeOffset عشان يظهر بـ offset واضح (مثلاً +00:00) بدل ما المتصفح
+    // يفسره كـ local time غلط. نفس النوع المستخدم في ListItem/AttemptStarted DTOs.
+    public DateTimeOffset? StartTime { get; set; }
+    public DateTimeOffset? EndTime { get; set; }
     public int? DurationMinutes { get; set; }
     public decimal TotalScore { get; set; }
     public string Status { get; set; } = string.Empty;
