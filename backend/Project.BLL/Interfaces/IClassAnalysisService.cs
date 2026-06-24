@@ -23,4 +23,5 @@ public interface IClassAnalysisService
     Task<OperationResult<StudentGrowthRankingDto>> GetStudentGrowthRankingsAsync(AcademicTerm? term = null);
     Task<OperationResult<StudentExamSummaryDto>> GetStudentExamSummaryAsync(int studentId, AcademicTerm? term = null);
     Task<OperationResult<StudentFinalGradeSummaryDto>> GetStudentFinalGradesAsync(int studentId, AcademicTerm? term = null);
+    Task<OperationResult<ClassSubjectTeacherBoardDto>> GetClassSubjectTeacherBoardAsync(AcademicTerm? term = null);
 }

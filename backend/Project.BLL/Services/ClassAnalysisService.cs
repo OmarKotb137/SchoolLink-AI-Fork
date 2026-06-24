@@ -638,9 +638,10 @@ public class ClassAnalysisService : IClassAnalysisService
 
         var (startDate, endDate) = GetTermDateRange(currentYear, resolvedTerm);
 
-        // 1. Evaluation periods
+        // 1. Evaluation periods (weekly only)
         data.Periods = (await _unitOfWork.EvaluationPeriods
             .FindAsync(p => p.StartDate >= startDate && p.EndDate <= endDate && !p.IsDeleted))
+            .Where(p => p.PeriodType == Domain.Enums.PeriodType.Weekly)
             .OrderBy(p => p.OrderNum)
             .ToList();
 
@@ -847,6 +848,7 @@ public class ClassAnalysisService : IClassAnalysisService
                 FirstHalfAverage = Math.Round(firstAvg, 1),
                 SecondHalfAverage = Math.Round(secondAvg, 1),
                 Status = status,
+                SubjectId = subjectId,
                 SubjectName = subj?.Name ?? "جميع المواد",
                 TeacherName = "",
                 ClassName = info.ClassName,
@@ -957,27 +959,59 @@ public class ClassAnalysisService : IClassAnalysisService
             })
             .ToList();
 
-        // -- Top final exam students --
+        // -- Top final exam students per grade level --
         var allFinalGrades = (await _unitOfWork.FinalGrades.FindAsync(fg =>
             allEnrollmentIds.Contains(fg.EnrollmentId) &&
             fg.Term == resolvedTerm &&
             !fg.IsDeleted)).ToList();
 
-        var finalExamAverages = allFinalGrades
+        // Build a map: enrollmentId -> gradeLevelId
+        var enrollmentGradeMap = cache.AllEnrollments
+            .Select(e =>
+            {
+                var cls = cache.Classes.GetValueOrDefault(e.ClassId);
+                return new { e.Id, GradeLevelId = cls?.GradeLevelId ?? 0, ClassName = cls?.Name ?? "" };
+            })
+            .ToDictionary(x => x.Id);
+
+        var finalExamByGrade = allFinalGrades
             .Where(fg => fg.MaxTotal > 0)
             .GroupBy(fg => fg.EnrollmentId)
             .Select(g =>
             {
                 var sid = cache.AllEnrollments.FirstOrDefault(e => e.Id == g.Key)?.StudentId ?? 0;
+                var info = enrollmentGradeMap.GetValueOrDefault(g.Key);
                 var avgPct = g.Average(fg => (double)(fg.Total / fg.MaxTotal * 100));
-                return new { StudentId = sid, AvgPct = avgPct, TotalScore = g.Sum(fg => (double)fg.Total), TotalMax = g.Sum(fg => (double)fg.MaxTotal) };
+                return new
+                {
+                    StudentId = sid,
+                    GradeLevelId = info?.GradeLevelId ?? 0,
+                    ClassName = info?.ClassName ?? "",
+                    AvgPct = avgPct,
+                    TotalScore = g.Sum(fg => (double)fg.Total),
+                    TotalMax = g.Sum(fg => (double)fg.MaxTotal)
+                };
             })
-            .Where(x => x.StudentId > 0)
+            .Where(x => x.StudentId > 0 && x.GradeLevelId > 0)
             .GroupBy(x => x.StudentId)
             .Select(g => g.OrderByDescending(x => x.AvgPct).First())
-            .OrderByDescending(x => x.AvgPct)
-            .Take(10)
-            .Select(x => MakeItem(x.StudentId, 0, x.AvgPct, 0, "improved", subjectId: 0, score: x.TotalScore, maxScore: x.TotalMax))
+            .GroupBy(x => x.GradeLevelId)
+            .Select(g =>
+            {
+                var gl = cache.GradeLevels.GetValueOrDefault(g.Key);
+                return new GradeLevelRankingGroupDto
+                {
+                    GradeLevelId = g.Key,
+                    GradeLevelName = gl?.Name ?? $"المرحلة {g.Key}",
+                    Students = g
+                        .OrderByDescending(x => x.AvgPct)
+                        .Take(10)
+                        .Select(x => MakeItem(x.StudentId, 0, x.AvgPct, 0, "improved",
+                            subjectId: 0, score: x.TotalScore, maxScore: x.TotalMax))
+                        .ToList()
+                };
+            })
+            .OrderBy(g => g.GradeLevelId)
             .ToList();
 
         return OperationResult<StudentGrowthRankingDto>.Success(new StudentGrowthRankingDto
@@ -986,7 +1020,7 @@ public class ClassAnalysisService : IClassAnalysisService
             TopDeclined = topDeclined,
             TopEvaluationStudents = topEvals,
             TopMonthlyExamStudents = examAverages,
-            TopFinalExamStudents = finalExamAverages
+            TopFinalExamStudentsByGrade = finalExamByGrade
         });
     }
 
@@ -1355,6 +1389,7 @@ public class ClassAnalysisService : IClassAnalysisService
         var (startDate, endDate) = GetTermDateRange(currentYear, resolvedTerm);
         var periods = (await _unitOfWork.EvaluationPeriods
             .FindAsync(p => p.StartDate >= startDate && p.EndDate <= endDate && !p.IsDeleted))
+            .Where(p => p.PeriodType == Domain.Enums.PeriodType.Weekly)
             .OrderBy(p => p.OrderNum)
             .ToList();
 
@@ -1458,7 +1493,57 @@ public class ClassAnalysisService : IClassAnalysisService
                 cards.Add(card);
         }
 
-        var orderedCards = cards
+        // Merge cards by TeacherId so each teacher appears once
+        var mergedCards = cards
+            .GroupBy(c => c.TeacherId)
+            .Select(g =>
+            {
+                var first = g.First();
+                var totalStudents = g.Sum(c => c.StudentsCount);
+                var totalEvaluated = g.Sum(c => c.EvaluatedStudentsCount);
+                var totalImproved = g.Sum(c => c.ImprovedCount);
+                var totalDeclined = g.Sum(c => c.DeclinedCount);
+                var totalStable = Math.Max(totalEvaluated - totalImproved - totalDeclined, 0);
+                var growthRate = totalEvaluated > 0 ? (double)totalImproved / totalEvaluated * 100 : 0;
+                var declinedRate = totalEvaluated > 0 ? (double)totalDeclined / totalEvaluated * 100 : 0;
+                var firstAvg = g.Average(c => c.FirstHalfAverage);
+                var secondAvg = g.Average(c => c.SecondHalfAverage);
+
+                var subjectName = g.Select(c => c.SubjectName).Distinct().Count() > 1
+                    ? "جميع المواد"
+                    : g.First().SubjectName;
+
+                return new TeacherGrowthCardDto
+                {
+                    TeacherId = first.TeacherId,
+                    TeacherName = first.TeacherName,
+                    SubjectId = 0,
+                    SubjectName = subjectName,
+                    ClassId = 0,
+                    ClassName = "جميع الفصول",
+                    GradeLevelName = "",
+                    StudentsCount = totalStudents,
+                    EvaluatedStudentsCount = totalEvaluated,
+                    EvaluatedWeeks = g.Max(c => c.EvaluatedWeeks),
+                    TotalConfiguredWeeks = g.Max(c => c.TotalConfiguredWeeks),
+                    FirstHalfAverage = Math.Round(firstAvg, 1),
+                    SecondHalfAverage = Math.Round(secondAvg, 1),
+                    AverageChange = Math.Round(secondAvg - firstAvg, 1),
+                    GrowthRate = Math.Round(growthRate, 1),
+                    ImprovedStudentsRate = Math.Round(growthRate, 1),
+                    DeclinedStudentsRate = Math.Round(declinedRate, 1),
+                    StableStudentsRate = Math.Round(totalEvaluated > 0 ? (double)totalStable / totalEvaluated * 100 : 0, 1),
+                    ExamGrowthRate = 0,
+                    Momentum = secondAvg - firstAvg >= 4 ? "up" : secondAvg - firstAvg <= -4 ? "down" : "stable",
+                    RiskLevel = totalDeclined > totalImproved ? "critical" : totalDeclined > 0 && totalDeclined >= totalImproved ? "watch" : "healthy",
+                    ImprovedCount = totalImproved,
+                    DeclinedCount = totalDeclined,
+                    StableCount = totalStable
+                };
+            })
+            .ToList();
+
+        var orderedCards = mergedCards
             .OrderByDescending(c => c.GrowthRate)
             .ThenByDescending(c => c.ImprovedStudentsRate)
             .ToList();
@@ -1534,7 +1619,7 @@ public class ClassAnalysisService : IClassAnalysisService
             StableStudentsRate = Math.Round(evaluatedCount > 0 ? (double)stable / evaluatedCount * 100 : 0, 1),
             ExamGrowthRate = 0,
             Momentum = secondAvg - firstAvg >= 4 ? "up" : secondAvg - firstAvg <= -4 ? "down" : "stable",
-            RiskLevel = declinedRate >= 35 ? "critical" : declinedRate >= 20 ? "watch" : "healthy",
+            RiskLevel = declined > improved ? "critical" : declined > 0 && declined >= improved ? "watch" : "healthy",
             ImprovedCount = improved,
             DeclinedCount = declined,
             StableCount = stable
@@ -1677,6 +1762,7 @@ public class ClassAnalysisService : IClassAnalysisService
         var (startDate, endDate) = GetTermDateRange(year, term);
         return (await _unitOfWork.EvaluationPeriods
             .FindAsync(p => p.StartDate >= startDate && p.EndDate <= endDate && !p.IsDeleted))
+            .Where(p => p.PeriodType == Domain.Enums.PeriodType.Weekly)
             .OrderBy(p => p.OrderNum)
             .ToList();
     }
@@ -2098,6 +2184,7 @@ public class ClassAnalysisService : IClassAnalysisService
         var stable = Math.Max(evaluatedCount - improved - declined, 0);
         var growthRate = evaluatedCount > 0 ? (double)improved / evaluatedCount * 100 : 0;
         var declinedRate = evaluatedCount > 0 ? (double)declined / evaluatedCount * 100 : 0;
+        var averageChange = evaluatedCount > 0 ? evaluated.Average(r => r.Change) : 0;
 
         return new TeacherGrowthCardDto
         {
@@ -2114,17 +2201,104 @@ public class ClassAnalysisService : IClassAnalysisService
             TotalConfiguredWeeks = 14,
             FirstHalfAverage = Math.Round(firstAvg, 1),
             SecondHalfAverage = Math.Round(secondAvg, 1),
-            AverageChange = Math.Round(secondAvg - firstAvg, 1),
+            AverageChange = Math.Round(averageChange, 1),
             GrowthRate = Math.Round(growthRate, 1),
             ImprovedStudentsRate = Math.Round(growthRate, 1),
             DeclinedStudentsRate = Math.Round(declinedRate, 1),
             StableStudentsRate = Math.Round(evaluatedCount > 0 ? (double)stable / evaluatedCount * 100 : 0, 1),
             ExamGrowthRate = 0,
             Momentum = secondAvg - firstAvg >= 4 ? "up" : secondAvg - firstAvg <= -4 ? "down" : "stable",
-            RiskLevel = declinedRate >= 35 ? "critical" : declinedRate >= 20 ? "watch" : "healthy",
+            RiskLevel = declined > improved ? "critical" : declined > 0 && declined >= improved ? "watch" : "healthy",
             ImprovedCount = improved,
             DeclinedCount = declined,
             StableCount = stable
         };
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    //  Class × Subject × Teacher Board
+    // ═══════════════════════════════════════════════════════════
+
+    public async Task<OperationResult<ClassSubjectTeacherBoardDto>> GetClassSubjectTeacherBoardAsync(
+        AcademicTerm? term = null)
+    {
+        var currentYear = await _unitOfWork.AcademicYears.GetCurrentAsync();
+        if (currentYear == null)
+            return OperationResult<ClassSubjectTeacherBoardDto>.Success(new ClassSubjectTeacherBoardDto());
+
+        var resolvedTerm = term ?? (await _academicYearService.GetCurrentTermAsync()).Data;
+
+        var assignments = (await _unitOfWork.ClassSubjectTeachers.FindAsync(cst =>
+            cst.AcademicYearId == currentYear.Id && !cst.IsDeleted)).ToList();
+
+        if (assignments.Count == 0)
+            return OperationResult<ClassSubjectTeacherBoardDto>.Success(new ClassSubjectTeacherBoardDto());
+
+        var classIds = assignments.Select(a => a.ClassId).Distinct().ToList();
+        var classes = (await _unitOfWork.Classes.FindAsync(c => classIds.Contains(c.Id) && !c.IsDeleted))
+            .ToDictionary(c => c.Id);
+
+        var gradeLevelIds = classes.Values.Select(c => c.GradeLevelId).Distinct().ToList();
+        var gradeLevels = (await _unitOfWork.GradeLevels.FindAsync(gl => gradeLevelIds.Contains(gl.Id)))
+            .ToDictionary(gl => gl.Id);
+
+        var subjectIds = assignments.Select(a => a.SubjectId).Distinct().ToList();
+        var subjects = (await _unitOfWork.Subjects.FindAsync(s => subjectIds.Contains(s.Id)))
+            .ToDictionary(s => s.Id);
+
+        var teacherIds = assignments.Select(a => a.TeacherId).Distinct().ToList();
+        var teachers = (await _unitOfWork.Users.FindAsync(t => teacherIds.Contains(t.Id)))
+            .ToDictionary(t => t.Id);
+
+        // Student count per class (all students in a class take all subjects)
+        var enrollments = (await _unitOfWork.StudentEnrollments.FindAsync(e =>
+            classIds.Contains(e.ClassId) &&
+            e.AcademicYearId == currentYear.Id &&
+            e.LeftAt == null &&
+            !e.IsDeleted)).ToList();
+
+        var studentCountByClass = enrollments
+            .GroupBy(e => e.ClassId)
+            .ToDictionary(g => g.Key, g => g.Count());
+
+        var result = new ClassSubjectTeacherBoardDto();
+
+        foreach (var classGroup in assignments.GroupBy(a => a.ClassId))
+        {
+            var classEntity = classes.GetValueOrDefault(classGroup.Key);
+            if (classEntity == null) continue;
+
+            var gradeLevel = gradeLevels.GetValueOrDefault(classEntity.GradeLevelId);
+
+            var boardItem = new ClassSubjectTeacherBoardItemDto
+            {
+                ClassId = classGroup.Key,
+                ClassName = classEntity.Name,
+                GradeLevelName = gradeLevel?.Name ?? "",
+                Subjects = new List<SubjectTeacherEntryDto>()
+            };
+
+            foreach (var assignment in classGroup)
+            {
+                var subject = subjects.GetValueOrDefault(assignment.SubjectId);
+                var teacher = teachers.GetValueOrDefault(assignment.TeacherId);
+
+                var key = new { ClassId = classGroup.Key, SubjectId = assignment.SubjectId };
+                var studentCount = studentCountByClass.GetValueOrDefault(classGroup.Key, 0);
+
+                boardItem.Subjects.Add(new SubjectTeacherEntryDto
+                {
+                    SubjectId = assignment.SubjectId,
+                    SubjectName = subject?.Name ?? $"مادة {assignment.SubjectId}",
+                    TeacherId = assignment.TeacherId,
+                    TeacherName = teacher?.FullName ?? $"مدرس {assignment.TeacherId}",
+                    StudentsCount = studentCount
+                });
+            }
+
+            result.Classes.Add(boardItem);
+        }
+
+        return OperationResult<ClassSubjectTeacherBoardDto>.Success(result);
     }
 }

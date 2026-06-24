@@ -54,16 +54,6 @@
           </div>
         </div>
         <div class="aa-kpi">
-          <div class="aa-kpi-icon" style="background:#e0f2fe;color:#0284c7;">
-            <span class="material-symbols-outlined">drag_handle</span>
-          </div>
-          <div class="aa-kpi-body">
-            <strong dir="ltr">{{ data.schoolAverageChange > 0 ? '+' : '' }}{{ data.schoolAverageChange.toFixed(2) }}%</strong>
-            <span>متوسط مقدار التغير في الدرجات</span>
-            <small>آخر نصف مقارنة بأول نصف</small>
-          </div>
-        </div>
-        <div class="aa-kpi">
           <div class="aa-kpi-icon" style="background:#fef3c7;color:#d97706;">
             <span class="material-symbols-outlined">trending_down</span>
           </div>
@@ -326,6 +316,48 @@
       }
     }
 
+    <!-- ===== لوحة الفصول والمواد والمدرسين ===== -->
+    @let board = subjectTeacherBoard();
+    @if (board && board.classes.length > 0) {
+      <section class="aa-card">
+        <div class="aa-card-head">
+          <h2>لوحة الفصول والمواد والمدرسين</h2>
+          <span class="aa-badge" style="background:#e0e7ff;color:#4338ca;">{{ board.classes.length }} فصل</span>
+        </div>
+        <div class="aa-board-classes">
+          @for (cls of board.classes; track cls.classId) {
+            <details class="aa-board-class" open>
+              <summary class="aa-board-class-head">
+                <span class="material-symbols-outlined">school</span>
+                <strong>{{ cls.gradeLevelName }} {{ cls.className }}</strong>
+                <small>{{ cls.subjects.length }} مادة</small>
+              </summary>
+              <div class="aa-board-subjects">
+                <table class="aa-table aa-board-table">
+                  <thead>
+                    <tr>
+                      <th>المادة</th>
+                      <th>المدرس</th>
+                      <th>عدد الطلاب</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (sub of cls.subjects; track sub.subjectId) {
+                      <tr class="aa-board-row" (click)="openBoardSubject(cls, sub)">
+                        <td><strong>{{ sub.subjectName }}</strong></td>
+                        <td class="aa-board-teacher">{{ sub.teacherName }}</td>
+                        <td>{{ sub.studentsCount }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          }
+        </div>
+      </section>
+    }
+
     <!-- ========== Drawer تفاصيل الطلاب ========== -->
     @if (selectedCard()) {
       @let card = selectedCard()!;
@@ -404,6 +436,9 @@
           <div>
             <h3>{{ selectedStudentName() }}</h3>
             <span>تفاصيل التقييمات الأسبوعية</span>
+            @if (selectedSubjectName()) {
+              <span class="aa-swp-subject">— {{ selectedSubjectName() }}</span>
+            }
           </div>
           <button class="aa-btn-ghost" (click)="closeStudentWeeks()">
             <span class="material-symbols-outlined">close</span>
@@ -511,7 +546,7 @@
                   </div>
                   <div class="aa-rankings-list">
                     @for (s of rankingData.topImproved; track s.studentId) {
-                      <button class="aa-ranking-item" (click)="openRankingStudentWeeks(s.studentId, s.studentName, s.subjectId)">
+                      <button class="aa-ranking-item" (click)="openRankingStudentWeeks(s.studentId, s.studentName, s.subjectId, s.subjectName)">
                         <div class="aa-ranking-pos"><span class="aa-ranking-num">{{ $index + 1 }}</span></div>
                         <div class="aa-ranking-info">
                           <strong>{{ s.studentName }}</strong>
@@ -530,7 +565,7 @@
                   </div>
                   <div class="aa-rankings-list">
                     @for (s of rankingData.topDeclined; track s.studentId) {
-                      <button class="aa-ranking-item" (click)="openRankingStudentWeeks(s.studentId, s.studentName, s.subjectId)">
+                      <button class="aa-ranking-item" (click)="openRankingStudentWeeks(s.studentId, s.studentName, s.subjectId, s.subjectName)">
                         <div class="aa-ranking-pos"><span class="aa-ranking-num">{{ $index + 1 }}</span></div>
                         <div class="aa-ranking-info">
                           <strong>{{ s.studentName }}</strong>
@@ -552,7 +587,7 @@
                 </div>
                 <div class="aa-rankings-list">
                   @for (s of rankingData.topEvaluationStudents; track s.studentId) {
-                    <button class="aa-ranking-item" (click)="openRankingStudentWeeks(s.studentId, s.studentName, s.subjectId)">
+                    <button class="aa-ranking-item" (click)="openRankingStudentWeeks(s.studentId, s.studentName, s.subjectId, s.subjectName)">
                       <div class="aa-ranking-pos"><span class="aa-ranking-num">{{ $index + 1 }}</span></div>
                       <div class="aa-ranking-info">
                         <strong>{{ s.studentName }}</strong>
@@ -596,29 +631,46 @@
             }
           } @else {
             @if (rankingData) {
-              <div class="aa-rankings-col aa-rankings-col--exam">
-                <div class="aa-rankings-col-head">
-                  <span class="material-symbols-outlined">assignment_turned_in</span>
-                  <strong>أوائل امتحانات نهاية الترم</strong>
-                </div>
-                <div class="aa-rankings-list">
-                  @for (s of rankingData.topFinalExamStudents; track s.studentId) {
-                    <button class="aa-ranking-item" (click)="openStudentFinalGrades(s.studentId, s.studentName)">
-                      <div class="aa-ranking-pos"><span class="aa-ranking-num">{{ $index + 1 }}</span></div>
-                      <div class="aa-ranking-info">
-                        <strong>{{ s.studentName }}</strong>
-                        <small>{{ s.className ? 'الصف ' + s.className : '' }}</small>
-                      </div>
-                      <div class="aa-ranking-change aa-ranking-change--up">
-                        <span>{{ s.firstHalfAverage.toFixed(1) }}%</span>
-                        @if (s.averageMaxScore > 0) {
-                          <small class="aa-rank-raw">({{ s.averageScore.toFixed(1) }} / {{ s.averageMaxScore.toFixed(1) }})</small>
-                        }
-                      </div>
-                    </button>
+              @let gradeGroups = rankingData.topFinalExamStudentsByGrade;
+              @if (gradeGroups.length > 0) {
+                <div class="aa-rankings-col aa-rankings-col--exam">
+                  <div class="aa-rankings-col-head">
+                    <span class="material-symbols-outlined">assignment_turned_in</span>
+                    <strong>أوائل امتحانات نهاية الترم</strong>
+                  </div>
+                  <!-- Grade level tabs -->
+                  @if (gradeGroups.length > 1) {
+                    <div class="aa-rank-tabs aa-rank-tabs--sm">
+                      @for (group of gradeGroups; track group.gradeLevelId; let i = $index) {
+                        <button class="aa-rank-tab" [class.aa-rank-tab--active]="selectedFinalGradeTab() === i"
+                          (click)="selectedFinalGradeTab.set(i)">
+                          {{ group.gradeLevelName }}
+                        </button>
+                      }
+                    </div>
                   }
+                  <div class="aa-rankings-list">
+                    @let activeGroup = gradeGroups[selectedFinalGradeTab()];
+                    @if (activeGroup) {
+                      @for (s of activeGroup.students; track s.studentId) {
+                        <button class="aa-ranking-item" (click)="openStudentFinalGrades(s.studentId, s.studentName)">
+                          <div class="aa-ranking-pos"><span class="aa-ranking-num">{{ $index + 1 }}</span></div>
+                          <div class="aa-ranking-info">
+                            <strong>{{ s.studentName }}</strong>
+                            <small>{{ s.className ? 'الصف ' + s.className : '' }}</small>
+                          </div>
+                          <div class="aa-ranking-change aa-ranking-change--up">
+                            <span>{{ s.firstHalfAverage.toFixed(1) }}%</span>
+                            @if (s.averageMaxScore > 0) {
+                              <small class="aa-rank-raw">({{ s.averageScore.toFixed(1) }} / {{ s.averageMaxScore.toFixed(1) }})</small>
+                            }
+                          </div>
+                        </button>
+                      }
+                    }
+                  </div>
                 </div>
-              </div>
+              }
             }
           }
         </div>
