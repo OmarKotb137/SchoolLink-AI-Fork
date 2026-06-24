@@ -22,6 +22,7 @@ namespace Project.BLL.Services
         {
             var exam = await _db.Exams
                 .Include(e => e.ClassSubjectTeacher).ThenInclude(c => c.Subject)
+                .Include(e => e.Subject)
                 .FirstOrDefaultAsync(e => e.Id == examId, ct);
 
             if (exam == null || exam.IsDeleted)
@@ -42,7 +43,7 @@ namespace Project.BLL.Services
                 .OrderBy(q => q.DisplayOrder)
                 .ToListAsync(ct);
 
-            var subj = exam.ClassSubjectTeacher?.Subject?.Name ?? "–";
+            var subj = exam.ClassSubjectTeacher?.Subject?.Name ?? exam.Subject?.Name ?? "–";
             var uid = exam.Uid;
 
             var sb = new StringBuilder();
@@ -463,13 +464,13 @@ body{
   .q-number{color:#00236f!important}
   .q-points{color:#999!important}
   .q-options li{background:#fafafa!important;border-color:#e5e7eb!important;color:#333!important}
-  .q-options li.correct{background:#f0fdf4!important;border-color:#86efac!important}
+  .q-options li.correct{background:#fafafa!important;border-color:#e5e7eb!important}
   .q-options li:before{border-color:#999!important;color:#666!important}
-  .q-options li.correct:before{background:#00236f!important;color:#fff!important}
+  .q-options li.correct:before{background:#f5f5f5!important;border-color:#999!important;color:#666!important}
   .passage-box{background:#fafafa!important;border-color:#ddd!important}
   .passage-text{color:#333!important}
   .passage-title{color:#00236f!important}
-  .correct-answer{background:#f0fdf4!important;border-color:#86efac!important;color:#059669!important}
+  .correct-answer{display:none!important}
   .answer-line{border-bottom-color:#ccc!important}
   .exam-footer{color:#999!important;border-top-color:#e5e7eb!important}
   .edit-input,.edit-textarea{border:none!important;background:transparent!important;padding:0!important;color:#1a1b21!important}
