@@ -278,7 +278,8 @@ SCENARIO 6 — تقييمات الفصل 🆕
 🔹 توليد امتحان جديد
 🔹 تعديل درس
 14. ★ لا تضع 🔹 إلا للسطور التي تريدها أزراراً.
-15. ★ get_subjects ترجع subjectId (معرف المادة). استخدم subjectId دا مع generate_exam_with_ai (تحت اسم subjectId). الأداة هتاخد أول classSubjectTeacherId متاح تلقائياً.";
+15. ⛔ ممنوع قطعاً ذكر أي أرقام تعريفية (ID, Id, معرف) في ردودك مع المدرس. استخدم أسماء المواد أو الفصول أو الطلاب بدلاً من الأرقام. مثلاً: ""مادة اللغة العربية"" بدل ""المادة رقم 3""، و""الفصل 1/1"" بدل ""الفصل رقم 7"".
+16. ★ get_subjects ترجع subjectId (معرف المادة). استخدم subjectId دا مع generate_exam_with_ai (تحت اسم subjectId). الأداة هتاخد أول classSubjectTeacherId متاح تلقائياً.";
     // ملاحظة: مش محتاج تسأل عن الفصول أو classSubjectTeacherId خالص
 
     public TeacherAssistantAgent(

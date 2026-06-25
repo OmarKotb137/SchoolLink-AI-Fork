@@ -18,6 +18,7 @@ public class StudentToolService : IStudentToolService
     private readonly ISubjectService _subjectService;
     private readonly IUnitService _unitService;
     private readonly IQuestionEmbeddingService _questionEmbeddingService;
+    private readonly IUnitOfWork _unitOfWork;
 
     public StudentToolService(
         ILessonRepository lessonRepo,
@@ -26,7 +27,8 @@ public class StudentToolService : IStudentToolService
         IExamService examService,
         ISubjectService subjectService,
         IUnitService unitService,
-        IQuestionEmbeddingService questionEmbeddingService)
+        IQuestionEmbeddingService questionEmbeddingService,
+        IUnitOfWork unitOfWork)
     {
         _lessonRepo = lessonRepo;
         _evalService = evalService;
@@ -35,6 +37,7 @@ public class StudentToolService : IStudentToolService
         _subjectService = subjectService;
         _unitService = unitService;
         _questionEmbeddingService = questionEmbeddingService;
+        _unitOfWork = unitOfWork;
     }
 
     public Dictionary<string, AiTool> CreateTools(UserContext context, CancellationToken ct = default)
@@ -212,28 +215,117 @@ public class StudentToolService : IStudentToolService
             list.Add(new AiTool
             {
                 Name = "get_academic_evaluations",
-                Description = "جلب التقييمات الدراسية للطالب (غياب، سلوك، واجبات، تفاعل)",
+                Description = "جلب التقييمات الدراسية للطالب (غياب، سلوك، واجبات، تفاعل). لو periodId مش مذكور، هيرجع ملخص كامل لكل فترات الترم.",
                 Parameters = JsonSerializer.SerializeToElement(new
                 {
                     type = "object",
                     properties = new
                     {
-                        periodId = new { type = "integer", description = "معرف فترة التقييم" },
+                        periodId = new { type = "integer", description = "معرف فترة التقييم (اختياري — لو مش مذكور هيرجع كل التقييمات للترم كامل)" },
                         term = new { type = "integer", description = "الفصل الدراسي (اختياري): 1 = الترم الأول, 2 = الترم الثاني, 3 = النهائي (افتراضي = الترم الحالي)" }
                     },
-                    required = new[] { "periodId" }
+                    required = Array.Empty<string>()
                 }),
                 ExecuteAsync = async (args) =>
                 {
                     using var doc = JsonDocument.Parse(args);
-                    var pId = doc.RootElement.GetProperty("periodId").GetInt32();
 
                     AcademicTerm? term = context.CurrentTerm;
                     if (doc.RootElement.TryGetProperty("term", out var termEl) && termEl.ValueKind == JsonValueKind.Number)
                         term = (AcademicTerm)termEl.GetInt32();
 
-                    var result = await _evalService.GetByEnrollmentAndPeriodAsync(eId, pId, term);
-                    return JsonSerializer.Serialize(result.Data, new JsonSerializerOptions { WriteIndented = true });
+                    // لو periodId مدخول → نجيب تقييمات فترة محددة
+                    if (doc.RootElement.TryGetProperty("periodId", out var pEl) && pEl.ValueKind == JsonValueKind.Number)
+                    {
+                        var pId = pEl.GetInt32();
+                        var result = await _evalService.GetByEnrollmentAndPeriodAsync(eId, pId, term);
+                        return JsonSerializer.Serialize(result.Data, new JsonSerializerOptions { WriteIndented = true });
+                    }
+
+                    // لو periodId مش مدخول → نجيب كل أسابيع الترم ونحسب المتوسطات
+                    var yearId = context.AcademicYearId;
+                    if (!yearId.HasValue)
+                        return JsonSerializer.Serialize(new { error = "لم يتم تحديد السنة الدراسية" });
+
+                    int semesterNumber = term.HasValue ? (int)term.Value : 1;
+
+                    var periods = await _unitOfWork.EvaluationPeriods.GetWeeksByYearAndSemesterAsync(yearId.Value, semesterNumber);
+                    if (periods is null || periods.Count == 0)
+                        return JsonSerializer.Serialize(new { error = "لا توجد فترات تقييم متاحة" });
+
+                    // نجيب كل التقييمات لكل الفترات
+                    var itemsAvgDict = new Dictionary<string, List<decimal>>();
+                    var weeklyBreakdown = new List<object>();
+
+                    foreach (var period in periods)
+                    {
+                        var periodResult = await _evalService.GetByEnrollmentAndPeriodAsync(eId, period.Id, term);
+                        var periodEvals = periodResult.Data ?? Enumerable.Empty<Project.BLL.DTOs.StudentEvaluations.StudentEvaluationDto>();
+
+                        decimal weekScore = 0;
+                        decimal weekMax = 0;
+
+                        foreach (var eval in periodEvals)
+                        {
+                            weekScore += eval.Score ?? 0;
+                            weekMax += eval.MaxScore;
+
+                            var key = eval.ItemName ?? "أخرى";
+                            if (!itemsAvgDict.ContainsKey(key))
+                                itemsAvgDict[key] = new List<decimal>();
+                        }
+
+                        if (weekMax > 0)
+                        {
+                            weeklyBreakdown.Add(new
+                            {
+                                periodName = period.Name,
+                                percentage = Math.Round(weekScore / weekMax * 100, 1),
+                                score = Math.Round(weekScore, 1),
+                                maxScore = Math.Round(weekMax, 1)
+                            });
+                        }
+                    }
+
+                    // ملخص التقييمات (متوسط النسب لكل بند — بدون أرقام مجمعة ضخمة)
+                    foreach (var period in periods)
+                    {
+                        var periodResult = await _evalService.GetByEnrollmentAndPeriodAsync(eId, period.Id, term);
+                        var periodEvals = periodResult.Data ?? Enumerable.Empty<Project.BLL.DTOs.StudentEvaluations.StudentEvaluationDto>();
+
+                        foreach (var eval in periodEvals)
+                        {
+                            var key = eval.ItemName ?? "أخرى";
+                            var pct = eval.MaxScore > 0 ? Math.Round((eval.Score ?? 0) / eval.MaxScore * 100, 1) : 0;
+                            itemsAvgDict[key].Add(pct);
+                        }
+                    }
+
+                    var summaryItems = itemsAvgDict.Select(kv => new
+                    {
+                        name = kv.Key,
+                        averagePercentage = kv.Value.Count > 0 ? Math.Round(kv.Value.Average(), 1) : 0
+                    }).ToList();
+
+                    var overallAvgPct = weeklyBreakdown
+                        .Select(w => w.GetType().GetProperty("percentage")?.GetValue(w))
+                        .Where(v => v is decimal || v is double)
+                        .Select(v => Convert.ToDecimal(v))
+                        .ToList();
+
+                    var overallAvg = overallAvgPct.Count > 0
+                        ? Math.Round(overallAvgPct.Average(), 1)
+                        : 0m;
+
+                    var resultObj = new
+                    {
+                        overallAveragePercentage = overallAvg,
+                        totalWeeks = periods.Count,
+                        itemsSummary = summaryItems,
+                        weeklyBreakdown
+                    };
+
+                    return JsonSerializer.Serialize(resultObj, new JsonSerializerOptions { WriteIndented = true });
                 }
             });
 

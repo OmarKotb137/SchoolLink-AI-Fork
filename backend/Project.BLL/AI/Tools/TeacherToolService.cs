@@ -57,7 +57,7 @@ public class TeacherToolService : ITeacherToolService
             list.Add(new AiTool
             {
                 Name = "get_subjects",
-                Description = "جلب المواد المتاحة للمدرس (أسماء فقط بدون فصول)",
+                Description = "جلب المواد المتاحة للمدرس (المواد اللي بيدرسها المدرس فقط)",
                 Parameters = JsonSerializer.SerializeToElement(new
                 {
                     type = "object",
@@ -178,6 +178,38 @@ public class TeacherToolService : ITeacherToolService
                         term = (AcademicTerm)termEl.GetInt32();
 
                     var result = await _evalService.GetByClassAndPeriodAsync(classId, periodId, term);
+
+                    // فلترة التقييمات — نعرض بس مواد المدرس في الفصل ده
+                    if (result.IsSuccess && result.Data is not null)
+                    {
+                        // نجيب المواد اللي المدرس بيدرسها في الفصل ده
+                        var cstList = await _unitOfWork.ClassSubjectTeachers.FindAsync(cst =>
+                            cst.TeacherId == tId &&
+                            cst.ClassId == classId &&
+                            cst.AcademicYearId == yId &&
+                            !cst.IsDeleted);
+
+                        var subjectIds = cstList.Select(c => c.SubjectId).Distinct().ToList();
+                        if (subjectIds.Count > 0)
+                        {
+                            var subjects = await _unitOfWork.Subjects.FindAsync(s => subjectIds.Contains(s.Id) && !s.IsDeleted);
+                            var subjectNames = subjects.Select(s => s.Name).Where(n => !string.IsNullOrWhiteSpace(n)).ToHashSet();
+
+                            var filtered = result.Data
+                                .Select(c => new Project.BLL.DTOs.StudentEvaluations.ClassEvaluationDto
+                                {
+                                    EnrollmentId = c.EnrollmentId,
+                                    StudentName = c.StudentName,
+                                    Evaluations = c.Evaluations.Where(e =>
+                                        e.SubjectName is not null && subjectNames.Contains(e.SubjectName))
+                                })
+                                .Where(c => c.Evaluations.Any())
+                                .ToList();
+
+                            return JsonSerializer.Serialize(filtered, new JsonSerializerOptions { WriteIndented = true });
+                        }
+                    }
+
                     return JsonSerializer.Serialize(result.Data, new JsonSerializerOptions { WriteIndented = true });
                 }
             });
@@ -400,27 +432,36 @@ public class TeacherToolService : ITeacherToolService
                             cst.AcademicYearId == context.AcademicYearId.Value &&
                             cst.SubjectId == resolvedSubjectId.Value && !cst.IsDeleted);
 
-                        if (cstsForSubject.Count == 0 && !cstId.HasValue)
+                        if (cstsForSubject.Count > 0)
                         {
-                            return JsonSerializer.Serialize(new { error = $"لم يتم العثور على المادة المحددة ضمن موادك. استخدم get_subjects أولاً لمعرفة المواد المتاحة." });
+                            var validClasses = new List<Project.Domain.Entities.SchoolClass>();
+                            foreach (var classId in cstsForSubject.Select(cst => cst.ClassId).Distinct())
+                            {
+                                var cls = await _unitOfWork.Classes.GetByIdAsync(classId);
+                                if (cls is not null)
+                                    validClasses.Add(cls);
+                            }
+
+                            if (validClasses.Count > 0)
+                            {
+                                gradeLevelId = validClasses[0]!.GradeLevelId;
+                            }
                         }
 
-                        var validClasses = new List<Project.Domain.Entities.SchoolClass>();
-                        foreach (var classId in cstsForSubject.Select(cst => cst.ClassId).Distinct())
+                        // لو ملاقيش CST للمادة (لأن المدرس اختار مادة مش بتاعته من get_subjects)
+                        // نحاول نستنتج gradeLevelId من أي فصل المدرس بيدرسه
+                        if (gradeLevelId == 0)
                         {
-                            var cls = await _unitOfWork.Classes.GetByIdAsync(classId);
-                            if (cls is not null)
-                                validClasses.Add(cls);
-                        }
-
-                        if (validClasses.Count == 1)
-                        {
-                            gradeLevelId = validClasses[0]!.GradeLevelId;
-                        }
-                        else if (validClasses.Count > 1)
-                        {
-                            // Pick first available grade level automatically
-                            gradeLevelId = validClasses[0]!.GradeLevelId;
+                            var allCsts = await _unitOfWork.ClassSubjectTeachers.FindAsync(cst =>
+                                cst.TeacherId == context.TeacherId.Value &&
+                                cst.AcademicYearId == context.AcademicYearId.Value && !cst.IsDeleted);
+                            var firstClassId = allCsts.Select(c => c.ClassId).FirstOrDefault();
+                            if (firstClassId > 0)
+                            {
+                                var cls = await _unitOfWork.Classes.GetByIdAsync(firstClassId);
+                                if (cls is not null)
+                                    gradeLevelId = cls.GradeLevelId;
+                            }
                         }
                     }
                 }

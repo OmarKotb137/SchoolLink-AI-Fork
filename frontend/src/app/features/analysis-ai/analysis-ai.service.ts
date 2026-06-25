@@ -152,12 +152,18 @@ export interface StudentGrowthRankingItem {
   monthlyExam2Max: number;
 }
 
+export interface GradeLevelRankingGroup {
+  gradeLevelId: number;
+  gradeLevelName: string;
+  students: StudentGrowthRankingItem[];
+}
+
 export interface StudentGrowthRanking {
   topImproved: StudentGrowthRankingItem[];
   topDeclined: StudentGrowthRankingItem[];
   topEvaluationStudents: StudentGrowthRankingItem[];
   topMonthlyExamStudents: StudentGrowthRankingItem[];
-  topFinalExamStudents: StudentGrowthRankingItem[];
+  topFinalExamStudentsByGrade: GradeLevelRankingGroup[];
 }
 
 export interface StudentSubjectExam {
@@ -192,6 +198,26 @@ export interface StudentFinalGradeSummary {
   studentId: number;
   studentName: string;
   subjects: StudentFinalGradeSubject[];
+}
+
+// ── Class × Subject × Teacher Board ─────────────────────────
+export interface SubjectTeacherEntry {
+  subjectId: number;
+  subjectName: string;
+  teacherId: number;
+  teacherName: string;
+  studentsCount: number;
+}
+
+export interface ClassSubjectTeacherBoardItem {
+  classId: number;
+  className: string;
+  gradeLevelName: string;
+  subjects: SubjectTeacherEntry[];
+}
+
+export interface ClassSubjectTeacherBoard {
+  classes: ClassSubjectTeacherBoardItem[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -262,5 +288,11 @@ export class AnalysisAiService {
       .set('studentId', studentId);
     if (term) params = params.set('term', term);
     return this.http.get<OperationResult<StudentFinalGradeSummary>>(`${this.apiUrl}/teacher-growth/student-final-grades`, { params });
+  }
+
+  getClassSubjectTeacherBoard(term?: number): Observable<OperationResult<ClassSubjectTeacherBoard>> {
+    let params = new HttpParams();
+    if (term) params = params.set('term', term);
+    return this.http.get<OperationResult<ClassSubjectTeacherBoard>>(`${this.apiUrl}/subject-teacher-board`, { params });
   }
 }

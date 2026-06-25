@@ -13,6 +13,7 @@ import {
   StudentGrowthRanking,
   StudentExamSummary,
   StudentFinalGradeSummary,
+  ClassSubjectTeacherBoard,
 } from './analysis-ai.service';
 
 Chart.register(...registerables);
@@ -38,9 +39,12 @@ export class AnalysisAi implements AfterViewInit, OnDestroy {
   studentPage = signal<TeacherGrowthStudentPage | null>(null);
   selectedStudentWeeks = signal<StudentGrowthWeek[] | null>(null);
   selectedStudentName = signal<string>('');
+  selectedSubjectName = signal<string>('');
   weeksLoading = signal(false);
   selectedStudentFinalGrades = signal<StudentFinalGradeSummary | null>(null);
   finalGradeLoading = signal(false);
+  subjectTeacherBoard = signal<ClassSubjectTeacherBoard | null>(null);
+  boardLoading = signal(false);
   page = signal(1);
   pageSize = 20;
   dashboard = signal<TeacherGrowthDashboard | null>(null);
@@ -80,7 +84,6 @@ export class AnalysisAi implements AfterViewInit, OnDestroy {
     const all = this.teachers();
     const map = new Map<number, { card: TeacherGrowthCard; totalDeclined: number; totalEvaluated: number; totalImproved: number; worstAvgChange: number }>();
     for (const t of all) {
-      if (t.riskLevel === 'healthy') continue;
       const existing = map.get(t.teacherId);
       if (existing) {
         existing.totalDeclined += t.declinedCount;
@@ -93,6 +96,7 @@ export class AnalysisAi implements AfterViewInit, OnDestroy {
       }
     }
     return Array.from(map.values())
+      .filter(item => item.totalDeclined > item.totalEvaluated / 2)
       .sort((a, b) => b.totalDeclined - a.totalDeclined)
       .slice(0, 5)
       .map(item => ({
@@ -134,7 +138,8 @@ export class AnalysisAi implements AfterViewInit, OnDestroy {
   topDeclinedStudents = computed(() => this.rankings()?.topDeclined ?? []);
   topEvalStudents = computed(() => this.rankings()?.topEvaluationStudents ?? []);
   topMonthlyExamStudents = computed(() => this.rankings()?.topMonthlyExamStudents ?? []);
-  topFinalExamStudents = computed(() => this.rankings()?.topFinalExamStudents ?? []);
+  topFinalExamStudentsByGrade = computed(() => this.rankings()?.topFinalExamStudentsByGrade ?? []);
+  selectedFinalGradeTab = signal<number>(0);
   rankingsLoading = signal(false);
   showRankingsModal = signal(false);
   rankingsTab = signal(0); // 0 = rankings, 1 = top evaluations
@@ -162,8 +167,9 @@ export class AnalysisAi implements AfterViewInit, OnDestroy {
     forkJoin([
       this.service.getTeacherGrowthOverview(term),
       this.service.getTeacherGrowthTeachers(term),
+      this.service.getClassSubjectTeacherBoard(term),
     ]).subscribe({
-      next: ([overviewRes, teachersRes]) => {
+      next: ([overviewRes, teachersRes, boardRes]) => {
         if (overviewRes.isSuccess && overviewRes.data && teachersRes.isSuccess && teachersRes.data) {
           const overview = overviewRes.data;
           const teachers = teachersRes.data;
@@ -197,11 +203,13 @@ export class AnalysisAi implements AfterViewInit, OnDestroy {
         } else {
           this.error.set(overviewRes.message || teachersRes.message || 'تعذر تحميل مؤشرات التحسن.');
         }
+        this.subjectTeacherBoard.set(boardRes.isSuccess && boardRes.data ? boardRes.data : null);
         this.loading.set(false);
         this.loadRankings();
       },
       error: () => {
         this.error.set('تعذر الاتصال بخدمة التحليلات.');
+        this.subjectTeacherBoard.set(null);
         this.loading.set(false);
       },
     });
@@ -250,6 +258,36 @@ export class AnalysisAi implements AfterViewInit, OnDestroy {
     this.openDetails(card, this.page() - 1);
   }
 
+  openBoardSubject(cls: { classId: number; className: string; gradeLevelName: string }, sub: { subjectId: number; subjectName: string; teacherId: number; teacherName: string; studentsCount: number }) {
+    const mockCard: TeacherGrowthCard = {
+      teacherId: sub.teacherId,
+      teacherName: sub.teacherName,
+      subjectId: sub.subjectId,
+      subjectName: sub.subjectName,
+      classId: cls.classId,
+      className: cls.className,
+      gradeLevelName: cls.gradeLevelName,
+      studentsCount: sub.studentsCount,
+      evaluatedStudentsCount: 0,
+      evaluatedWeeks: 0,
+      totalConfiguredWeeks: 14,
+      firstHalfAverage: 0,
+      secondHalfAverage: 0,
+      averageChange: 0,
+      growthRate: 0,
+      improvedStudentsRate: 0,
+      declinedStudentsRate: 0,
+      stableStudentsRate: 0,
+      examGrowthRate: 0,
+      momentum: 'stable',
+      riskLevel: 'healthy',
+      improvedCount: 0,
+      declinedCount: 0,
+      stableCount: 0,
+    };
+    this.openDetails(mockCard);
+  }
+
   openStudentWeeks(student: { studentId: number; studentName: string }) {
     const card = this.selectedCard();
     if (!card) return;
@@ -268,8 +306,9 @@ export class AnalysisAi implements AfterViewInit, OnDestroy {
     });
   }
 
-  openRankingStudentWeeks(studentId: number, studentName: string, subjectId: number) {
+  openRankingStudentWeeks(studentId: number, studentName: string, subjectId: number, subjectName: string = '') {
     this.selectedStudentName.set(studentName);
+    this.selectedSubjectName.set(subjectName);
     this.weeksLoading.set(true);
     const term = this.selectedTerm() || undefined;
     this.service.getStudentWeeks(studentId, undefined, subjectId || undefined, undefined, term).subscribe({
@@ -287,6 +326,7 @@ export class AnalysisAi implements AfterViewInit, OnDestroy {
   closeStudentWeeks() {
     this.selectedStudentWeeks.set(null);
     this.selectedStudentName.set('');
+    this.selectedSubjectName.set('');
   }
 
   loadRankings() {

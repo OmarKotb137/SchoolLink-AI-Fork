@@ -185,4 +185,13 @@ public class ClassAnalysisController : ControllerBase
             return NotFound(result);
         return Ok(result);
     }
+
+    [HttpGet("subject-teacher-board")]
+    public async Task<IActionResult> GetClassSubjectTeacherBoard([FromQuery] AcademicTerm? term)
+    {
+        var result = await _service.GetClassSubjectTeacherBoardAsync(term);
+        if (!result.IsSuccess)
+            return NotFound(result);
+        return Ok(result);
+    }
 }

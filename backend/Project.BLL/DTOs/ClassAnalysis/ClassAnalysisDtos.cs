@@ -257,7 +257,14 @@ public class StudentGrowthRankingDto
     public List<StudentGrowthRankingItemDto> TopDeclined { get; set; } = new();
     public List<StudentGrowthRankingItemDto> TopEvaluationStudents { get; set; } = new();
     public List<StudentGrowthRankingItemDto> TopMonthlyExamStudents { get; set; } = new();
-    public List<StudentGrowthRankingItemDto> TopFinalExamStudents { get; set; } = new();
+    public List<GradeLevelRankingGroupDto> TopFinalExamStudentsByGrade { get; set; } = new();
+}
+
+public class GradeLevelRankingGroupDto
+{
+    public int GradeLevelId { get; set; }
+    public string GradeLevelName { get; set; } = string.Empty;
+    public List<StudentGrowthRankingItemDto> Students { get; set; } = new();
 }
 
 // ── Student Monthly Exam Summary ──────────────────────────────
@@ -298,4 +305,27 @@ public class StudentFinalGradeSummaryDto
     public int StudentId { get; set; }
     public string StudentName { get; set; } = string.Empty;
     public List<StudentFinalGradeSubjectDto> Subjects { get; set; } = new();
+}
+
+// ── Class × Subject × Teacher Board ─────────────────────────
+public class ClassSubjectTeacherBoardItemDto
+{
+    public int ClassId { get; set; }
+    public string ClassName { get; set; } = string.Empty;
+    public string GradeLevelName { get; set; } = string.Empty;
+    public List<SubjectTeacherEntryDto> Subjects { get; set; } = new();
+}
+
+public class SubjectTeacherEntryDto
+{
+    public int SubjectId { get; set; }
+    public string SubjectName { get; set; } = string.Empty;
+    public int TeacherId { get; set; }
+    public string TeacherName { get; set; } = string.Empty;
+    public int StudentsCount { get; set; }
+}
+
+public class ClassSubjectTeacherBoardDto
+{
+    public List<ClassSubjectTeacherBoardItemDto> Classes { get; set; } = new();
 }
