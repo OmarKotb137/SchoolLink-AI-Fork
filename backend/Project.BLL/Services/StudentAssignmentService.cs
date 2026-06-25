@@ -259,6 +259,7 @@ public class StudentAssignmentService : IStudentAssignmentService
                 ? submission.Answers
                     .OrderBy(a => a.Question.DisplayOrder)
                     .Select(a => {
+                        string? finalAnswerText = a.AnswerText;
                         string? correctAnswerText = null;
                         if (a.Question.QuestionType == QuestionType.MultipleChoice)
                         {
@@ -268,11 +269,16 @@ public class StudentAssignmentService : IStudentAssignmentService
                         }
                         else if (a.Question.QuestionType == QuestionType.TrueFalse)
                         {
+                            // FIX: نوحّد حساب نص الإجابة (صح/خطأ) هنا في الباك إند بدل ما كان الفرونت
+                            // بيتكفّل بتحويل BooleanAnswer بنفسه — نفس نمط exam-result بالضبط،
+                            // عشان BooleanNormalizer يبقى المصدر الوحيد للحقيقة في النظام كله.
+                            if (a.BooleanAnswer.HasValue)
+                                finalAnswerText = a.BooleanAnswer.Value ? "صح" : "خطأ";
+
                             var normalized = BooleanNormalizer.NormalizeBoolean(a.Question.CorrectAnswer);
-                            if (normalized.HasValue)
-                                correctAnswerText = normalized.Value ? "صح" : "خطأ";
-                            else
-                                correctAnswerText = a.Question.CorrectAnswer;
+                            correctAnswerText = normalized.HasValue
+                                ? (normalized.Value ? "صح" : "خطأ")
+                                : a.Question.CorrectAnswer;
                         }
                         else
                         {
@@ -287,7 +293,7 @@ public class StudentAssignmentService : IStudentAssignmentService
                         {
                             QuestionId = a.QuestionId,
                             QuestionText = a.Question.QuestionText,
-                            AnswerText = a.AnswerText,
+                            AnswerText = finalAnswerText,
                             SelectedOptionId = a.SelectedOptionId,
                             SelectedOptionText = selectedOptionText,
                             BooleanAnswer = a.BooleanAnswer,

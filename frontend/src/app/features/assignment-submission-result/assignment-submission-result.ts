@@ -2,7 +2,7 @@ import { CommonModule, DatePipe } from '@angular/common';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Sidebar } from '../../layouts/sidebar/sidebar';
-import { StudentAssignmentSubmissionResult } from '../../core/models/student-assignment.models';
+import { StudentAssignmentSubmissionResult, StudentAssignmentResultAnswer } from '../../core/models/student-assignment.models';
 import { StudentAssignmentsService } from '../../core/services/student-assignments.service';
 
 @Component({
@@ -49,6 +49,30 @@ export class AssignmentSubmissionResult implements OnInit {
   getScorePercent(r: StudentAssignmentSubmissionResult): number {
     if (!r.maxScore || r.score == null) return 0;
     return Math.round((r.score / r.maxScore) * 100);
+  }
+
+  /**
+   * حالة الإجابة بناءً على الدرجة المُكتسبة مقابل درجة السؤال الكاملة.
+   *
+   * نفس منطق exam-result: بنقارن الدرجة فعليًا بدل الاعتماد على isCorrect،
+   * لأن isCorrect بيبقى true لأي درجة > 0 (زي الأسئلة المقالية اللي بتاخد
+   * درجة جزئية)، فكانت بتظهر كأنها "صحيحة بالكامل" بالغلط.
+   */
+  answerState(answer: StudentAssignmentResultAnswer): 'correct' | 'partial' | 'wrong' {
+    if (answer.pointsEarned >= answer.questionPoints) return 'correct';
+    if (answer.pointsEarned > 0) return 'partial';
+    return 'wrong';
+  }
+
+  /**
+   * هل نعرض الإجابة الصحيحة لهذه الإجابة؟
+   *
+   * نعرضها كل ما الطالب ما يأخدش الدرجة الكاملة للسؤال، سواء كانت إجابة
+   * غلط بالكامل أو درجة جزئية، عشان يقدر يقارن. أما الدرجة الكاملة
+   * فإجابته هي الصحيحة ولا داعي لتكرارها.
+   */
+  shouldShowModelAnswer(answer: StudentAssignmentResultAnswer): boolean {
+    return !!answer.correctAnswerText && answer.pointsEarned < answer.questionPoints;
   }
 
   backToAssignments() {
